@@ -17324,6 +17324,24 @@ async function createNewMdFile() {
 //   本文を `🔒MeOS-enc:v1 <base64>` 1行に置換=暗号化膜。Unlockで合言葉→平文へ戻す(GCM認証で合言葉違いは確実に検出)。
 //   ★正直な注意: 合言葉を忘れたら復元不能/Unlock中は平文がundo履歴・自動保存に残り得る(暗号は本物・「文字変換」ではない)。
 const _MEOS_ENC_PREFIX = '🔒MeOS-enc:v1 ';
+// ★v5.1.10(俊克 pm01:27 質問1「パスワード欄で中身が見れるようにはできないのか? かな漢字変換ができないので、ペーストするしかない」):
+//   伏せ字の欄は OS がかな漢字変換を止める。→ 欄の右に👁ボタン(押すと見える欄=変換できる/もう一度押すと伏せ字)。始めは伏せ字。
+//   Me Dock の合言葉欄の👁と同じ考え。返り値は打った合言葉(Escなら undefined)= showInputBox と同じ。
+function meosAskPass(prompt, placeHolder) {
+  if (!vscode.window.createInputBox) return vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt, placeHolder });
+  return new Promise((resolve) => {
+    const ib = vscode.window.createInputBox();
+    let done = false;
+    const fin = (v) => { if (done) return; done = true; resolve(v); try { ib.dispose(); } catch (_) { } };
+    const eye = () => ({ iconPath: new vscode.ThemeIcon(ib.password ? 'eye' : 'eye-closed'), tooltip: ib.password ? 'Show the passphrase (lets you type kana/kanji)' : 'Hide the passphrase' });
+    ib.password = true; ib.ignoreFocusOut = true; ib.prompt = prompt || ''; ib.placeholder = placeHolder || '';
+    ib.buttons = [eye()];
+    ib.onDidTriggerButton(() => { ib.password = !ib.password; ib.buttons = [eye()]; });
+    ib.onDidAccept(() => fin(ib.value));
+    ib.onDidHide(() => fin(undefined));
+    ib.show();
+  });
+}
 const _MEOS_CLIP_WIPED = '🔐 (cleared by MeOS)'; // v0.9.9994: クリップボード上書き用の中立語(暗号化時/ペースト時に共通)
 // v0.9.99911: ペースト検知方式(_armWipe*/_meosClipCheckAt)は撤去。クリップボード消去は施錠後/解錠後/📋ボタンの確実な経路に一本化。
 function meosEncryptText(plain, pass) {
@@ -17365,9 +17383,9 @@ async function encryptCurrentMembrane(passArg) {
   // v0.9.99914: Me Dockのパス入力欄から渡された時(passArg)はそれを使う(👁表示切替が二重入力の代わり)。コマンドパレット等はshowInputBoxで2回確認。
   let pass = (typeof passArg === 'string' && passArg) ? passArg : '';
   if (!pass) {
-    pass = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Passphrase to encrypt this membrane — there is NO recovery if you forget it', placeHolder: 'passphrase' });
+    pass = await meosAskPass('Passphrase to encrypt this membrane — there is NO recovery if you forget it', 'passphrase');
     if (!pass) return;
-    const pass2 = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Confirm passphrase' });
+    const pass2 = await meosAskPass('Confirm passphrase');
     if (pass2 == null) return;
     if (pass2 !== pass) { vscode.window.showErrorMessage('MeOS: Passphrases do not match — nothing was encrypted.'); return; }
   }
@@ -17394,7 +17412,7 @@ async function unlockCurrentMembrane(passArg) {
   }
   if (markerLine < 0) { vscode.window.showInformationMessage('MeOS: This membrane is not encrypted.'); return; }
   let pass = (typeof passArg === 'string' && passArg) ? passArg : '';
-  if (!pass) { pass = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Passphrase to unlock this membrane 🔓' }); if (!pass) return; }
+  if (!pass) { pass = await meosAskPass('Passphrase to unlock this membrane 🔓'); if (!pass) return; }
   let plain; try { plain = meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS: Wrong passphrase, or the data is corrupted. Nothing was changed.'); return; }
   const range = new vscode.Range(markerLine, 0, markerLine, (doc.lineAt(markerLine).text || '').length);
   await editor.edit(eb => { eb.replace(range, plain); });
@@ -17578,7 +17596,7 @@ async function meosVaultUnlock(editor, passArg) {
   const t = doc.lineAt(pair.start + 1).text || '';
   const blob = t.slice(t.indexOf(_MEOS_ENC_PREFIX) + _MEOS_ENC_PREFIX.length).trim();
   let pass = (typeof passArg === 'string' && passArg) ? passArg : '';
-  if (!pass) { pass = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Passphrase to unlock this membrane 🔓 (it stays encrypted on disk)' }); if (!pass) return; }
+  if (!pass) { pass = await meosAskPass('Passphrase to unlock this membrane 🔓 (it stays encrypted on disk)'); if (!pass) return; }
   let plain; try { plain = meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS: Wrong passphrase, or the data is corrupted. Nothing was changed.'); return; }
   const k = _vaultKeyOf(doc.uri);
   if (!_vaultKeys.has(k)) _vaultKeys.set(k, new Map());
@@ -17661,7 +17679,7 @@ function meosVaultLineHints(doc, i, editor) {
   try { if (editor && (b.kind === 'lock' || b.head) && meosShowsRawLineStable(editor, i)) return null; } catch (_) { }   // v5.1.5: 開始行がカーソルで生の字になっている時は出さない(⏰の札と同じ)
   return { col: b.col, label: b.kind === 'unlock' ? '🔓' : '🔐' };   // v5.1.3(俊克「押した時の動作で見せよう」): 施錠中=🔓(押すと開く)/解錠中=🔐(押すと閉じる)= Me Dockの🔐と同じ読み方
 }
-async function meosVaultBtnPress(editor, b) {
+async function meosVaultBtnPress(editor, b, line) {
   if (b.kind === 'lock') {
     if (await meosVaultLock(_vaultKeyOf(editor.document.uri), b.id)) vscode.window.setStatusBarMessage('MeOS 🔐: locked again — the disk had the ciphertext all along.', 3000);
     return;
@@ -17672,6 +17690,12 @@ async function meosVaultBtnPress(editor, b) {
     await meosVaultOpen();
     ed = vscode.window.activeTextEditor;
     if (!ed || !meosIsVaultDoc(ed.document)) return;
+  }
+  // ★v5.1.10(俊克 pm01:27 改良1「膜の🔓を押すと、開始膜がRaw状態になるのは直した方がいい。膜の中の🔓を押した時と同じに」):
+  //   頭の行の🔓を押すとカーソルが頭の行に落ち、その行が生の字になっていた → 押したらすぐカーソルをマーカー行(膜の中の🔓と同じ場所)へ移す。
+  if (b.head && typeof line === 'number' && line + 1 < ed.document.lineCount) {
+    const p1 = new vscode.Position(line + 1, 0);
+    ed.selection = new vscode.Selection(p1, p1);
   }
   await meosVaultUnlock(ed);
 }
@@ -17716,7 +17740,7 @@ function meosVaultActivate(context) {
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { meosVaultRedirectFileTab(ed).catch(() => { }); }));
     const iv = setInterval(() => {
       if (_vaultKeys.size && Date.now() - _vaultLastTouch >= MEOS_VAULT_IDLE_MS) { meosVaultLockAll('30 min idle').catch(() => { }); }
-    }, 60 * 1000);
+    }, 15 * 1000);   // v5.1.10(俊克 👍2「3分待ったら30秒遅れくらいで施錠された」): 見張りを60秒→15秒ごとに(遅れは最大15秒)
     context.subscriptions.push({ dispose() { clearInterval(iv); } });
   } catch (e) { try { console.error('MeOS vault activate failed', e); } catch (_) { } }
 }
@@ -21782,7 +21806,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
     try {
       const _ln = editor.selection.active.line;
       { const _vb = meosVaultLineHints(editor.document, _ln, editor) && meosVaultBtnSpot(editor.document, _ln);   // v5.1.5: 前から生の字だった行(カーソルが居た)は押せない= 文字としてのクリック   // ★v5.1.1: 本文の🔐(解錠)/🔓(施錠)
-        if (_vb && editor.selection.active.character === _vb.col) { await meosVaultBtnPress(editor, _vb); return; } }
+        if (_vb && editor.selection.active.character === _vb.col) { await meosVaultBtnPress(editor, _vb, _ln); return; } }
       // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
       //   → [[feedback_go_get_the_measurement]]。⏰の行をマウスで押した時だけ。
       try {
