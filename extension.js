@@ -17809,10 +17809,50 @@ function _vaultArmAutoSave(doc) {
       _vaultSaveTimers.delete(k);
       try {
         const ks = _vaultKeys.get(_vaultKeyOf(doc.uri));
-        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const ok = await doc.save(); if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる
+        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const ok = await doc.save(); if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
       } catch (_) { }
     }, MEOS_VAULT_AUTOSAVE_MS));
   } catch (_) { }
+}
+// ★v5.1.30(俊克 pm11:41「更新日の×が数回点滅するのは気づき難い。暗号を解錠した膜の開始膜のコメントに、auto-savedという色付きの文字を数回点滅させよう。
+//   同時に、その膜のガターの縦線を一緒に点滅させる。これで何をしているのか理解できるだろう」):
+//   自動保存で書いた時、その文書で解錠中の膜それぞれに: 開始行のコメントの後ろ(尻尾 ` *} -->` の手前)に緑の auto-saved、
+//   ガターのその膜の縦線(深さの位置)に白い太線を重ねる。3回点滅(約1秒)。字も線も装飾だけ=本文は変えない。
+let _vaultFlashDeco = null, _vaultFlashTimer = null;
+const _vaultFlashGutterPool = new Map();   // svg -> type
+function _vaultFlashGutterType(slot) {
+  const x = 0.6 + slot * GUTTER_SLOT_PITCH - 0.5;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" preserveAspectRatio="none"><rect x="' + x.toFixed(2) + '" y="0" width="3.4" height="16" fill="#ffffff"/></svg>';
+  let t = _vaultFlashGutterPool.get(svg);
+  if (!t) { t = vscode.window.createTextEditorDecorationType({ gutterIconPath: vscode.Uri.parse('data:image/svg+xml;base64,' + Buffer.from(svg, 'utf8').toString('base64')), gutterIconSize: 'cover' }); _vaultFlashGutterPool.set(svg, t); }
+  return t;
+}
+function meosVaultFlashSaved(doc) {
+  const ed = (vscode.window.visibleTextEditors || []).find(e => e.document === doc);
+  if (!ed) return;
+  const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
+  if (!keys || !keys.size) return;
+  const pairs = collectPairs(doc, { excludeIndex: false }).filter(p => keys.has(p.id));
+  if (!pairs.length) return;
+  if (!_vaultFlashDeco) _vaultFlashDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  const labels = [], gut = new Map();
+  for (const p of pairs) {
+    const t = doc.lineAt(p.start).text || '';
+    const tm = /(\s?)\*\s*\}\s*-->\s*$/.exec(t);
+    const at = tm ? tm.index : t.length;
+    labels.push({ range: new vscode.Range(p.start, at, p.start, at), renderOptions: { before: { contentText: ' auto-saved', color: '#3fb950', fontWeight: '800', fontStyle: 'italic' } } });
+    const ty = _vaultFlashGutterType(Math.min(Math.max(0, p.depth || 0), GUTTER_SLOT_MAX));
+    if (!gut.has(ty)) gut.set(ty, []);
+    gut.get(ty).push(new vscode.Range(p.start, 0, p.end, 0));
+  }
+  if (_vaultFlashTimer) { clearTimeout(_vaultFlashTimer); _vaultFlashTimer = null; }
+  const paint = (on) => {
+    try { ed.setDecorations(_vaultFlashDeco, on ? labels : []); } catch (_) { }
+    for (const t of _vaultFlashGutterPool.values()) { try { ed.setDecorations(t, on && gut.has(t) ? gut.get(t) : []); } catch (_) { } }
+  };
+  const seq = [1, 0, 1, 0, 1, 0]; let i = 0;
+  const tick = () => { paint(!!seq[i]); i++; if (i < seq.length) _vaultFlashTimer = setTimeout(tick, seq[i - 1] ? 220 : 140); else _vaultFlashTimer = null; };
+  tick();
 }
 let _vaultRedirectBusy = false;
 async function meosVaultRedirectFileTab(ed) {
