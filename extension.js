@@ -17720,7 +17720,7 @@ let _encSkinDeco = null;   // v5.1.1: 本文の🔐/🔓の札の灰色の地を
 // ★v5.1.17(俊克 pm02:56「暗号を解錠している間は、5秒入力なかったら、自動保存すればいい。自動保存は好きじゃないけど、このケースでは必要」):
 //   VSCodium は未保存の文書を控え(Backups フォルダ)へ丸ごと写す= 解錠中は平文が控えに残る。保存すれば控えは消える。
 //   → 解錠中の膜を持つ入口の文書だけ、打つのを止めて5秒で保存(書く口が暗号化し直す)。施錠中や普通のファイルは今まで通り自動保存しない。
-const MEOS_VAULT_AUTOSAVE_MS = 5000;
+const MEOS_VAULT_AUTOSAVE_MS = 500;   // v5.1.18(俊克「0.5秒、あるいはギリ0.9秒」): VSCodium が控えを作る約1秒より先に保存する(0.9秒は保存の所要時間で負け得る)
 const _vaultSaveTimers = new Map();   // 文書uri -> タイマー
 function _vaultArmAutoSave(doc) {
   try {
