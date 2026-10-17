@@ -17676,6 +17676,31 @@ async function meosVaultBtnPress(editor, b) {
   await meosVaultUnlock(ed);
 }
 let _encSkinDeco = null;   // v5.1.1: 本文の🔐/🔓の札の灰色の地を消し、手の形にする(⏰の札と同じ作り・型は別=⏰の札を上書きしない)
+let _vaultRedirectBusy = false;
+async function meosVaultRedirectFileTab(ed) {
+  if (_vaultRedirectBusy || !ed || !ed.document || ed.document.uri.scheme !== 'file') return;
+  const fp = ed.document.uri.fsPath;
+  let vtab = null;
+  try {
+    for (const g of vscode.window.tabGroups.all) for (const t of g.tabs) {
+      const u = t.input && t.input.uri;
+      if (u && u.scheme === MEOS_VAULT_SCHEME && meosDocFsPath(u) === fp) { vtab = { t, g, u }; break; }
+    }
+  } catch (_) { }
+  if (!vtab) return;
+  if (ed.document.isDirty) { vscode.window.showWarningMessage('MeOS 🔐: this file is also open through the vault — edit it there. (This copy has unsaved changes, so it was left open; close it without saving.)'); return; }
+  _vaultRedirectBusy = true;
+  try {
+    const sel = ed.selection;
+    const vdoc = await vscode.workspace.openTextDocument(vtab.u);
+    await vscode.window.showTextDocument(vdoc, { viewColumn: vtab.g.viewColumn, selection: sel });
+    for (const g of vscode.window.tabGroups.all) for (const t of g.tabs) {
+      const u = t.input && t.input.uri;
+      if (u && u.scheme === 'file' && u.fsPath === fp) { try { await vscode.window.tabGroups.close(t); } catch (_) { } }
+    }
+    vscode.window.setStatusBarMessage('MeOS 🔐: this file is open through the vault — switched to that tab.', 3000);
+  } finally { _vaultRedirectBusy = false; }
+}
 function meosVaultActivate(context) {
   try {
     if (!vscode.workspace.registerFileSystemProvider) return;
@@ -17685,6 +17710,10 @@ function meosVaultActivate(context) {
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultLockAll', () => meosVaultLockAll('now')));
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) _vaultTouch(); }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) _vaultTouch(); }));
+    // ★v5.1.8(俊克 pm00:45「ほとんどずっと、Finderの日記ファイルをWクリックしたものを使っている」):
+    //   入口のタブが開いているのに Finder から同じ日記を開くと、file: のタブがもう1つできる= 2つの口から同じファイルを書く
+    //   (片方の保存がもう片方を上書きする)。→ file: のタブが前に出たら、同じファイルの入口のタブへ移し、file: のタブは閉じる。
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { meosVaultRedirectFileTab(ed).catch(() => { }); }));
     const iv = setInterval(() => {
       if (_vaultKeys.size && Date.now() - _vaultLastTouch >= MEOS_VAULT_IDLE_MS) { meosVaultLockAll('30 min idle').catch(() => { }); }
     }, 60 * 1000);
