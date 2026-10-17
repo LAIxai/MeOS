@@ -17344,10 +17344,11 @@ function meosAskPass(prompt, placeHolder) {
 }
 const _MEOS_CLIP_WIPED = '🔐 (cleared by MeOS)'; // v0.9.9994: クリップボード上書き用の中立語(暗号化時/ペースト時に共通)
 // v0.9.99911: ペースト検知方式(_armWipe*/_meosClipCheckAt)は撤去。クリップボード消去は施錠後/解錠後/📋ボタンの確実な経路に一本化。
+let _meosScryptMs = 0;   // TEMP v5.1.32: 鍵を作る計算(scrypt)にかかった時間の合計
 function meosEncryptText(plain, pass) {
   const crypto = require('crypto');
   const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
-  const key = crypto.scryptSync(String(pass), salt, 32);
+  const _k0 = Date.now(); const key = crypto.scryptSync(String(pass), salt, 32); _meosScryptMs += Date.now() - _k0;
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   const ct = Buffer.concat([cipher.update(String(plain), 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
@@ -17357,7 +17358,7 @@ function meosDecryptText(blobB64, pass) {
   const crypto = require('crypto');
   const buf = Buffer.from(String(blobB64), 'base64');
   const salt = buf.subarray(0, 16), iv = buf.subarray(16, 28), tag = buf.subarray(28, 44), ct = buf.subarray(44);
-  const key = crypto.scryptSync(String(pass), salt, 32);
+  const _k0 = Date.now(); const key = crypto.scryptSync(String(pass), salt, 32); _meosScryptMs += Date.now() - _k0;
   const d = crypto.createDecipheriv('aes-256-gcm', key, iv);
   d.setAuthTag(tag);
   return Buffer.concat([d.update(ct), d.final()]).toString('utf8'); // 合言葉違い=GCM認証失敗でthrow
@@ -17597,6 +17598,12 @@ function meosVaultEncryptText(text, keys, seen) {
   }
   return out;
 }
+// ★★TEMP v5.1.32(俊克 10.18 am00:37「重さを測りましょう」): 解錠中の自動保存の重さを測る。書くのは時間(ms)と字数だけ(合言葉・中身は書かない)。
+//   書き先= globalStorage/vault-perf.txt。★理由が分かったら撤去する。
+function meosVaultPerf(line) {
+  try { const fs = require('fs'), path = require('path'); const dir = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(path.join(dir, 'vault-perf.txt'), new Date().toISOString() + ' ' + line + '\n'); } catch (_) { }
+}
 class MeosVaultFs {
   constructor() { this._em = new vscode.EventEmitter(); this.onDidChangeFile = this._em.event; }
   watch() { return { dispose() { } }; }
@@ -17614,13 +17621,17 @@ class MeosVaultFs {
   async writeFile(u, content) {
     const k = _vaultKeyOf(u);
     let out;
+    const _p0 = Date.now();   // TEMP v5.1.32
     try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultKeys.get(k), _vaultSeen.get(k)); }
     catch (e) {
       const msg = 'MeOS 🔐: ' + (e && e.message ? e.message : String(e));
       try { vscode.window.showErrorMessage(msg); } catch (_) { }
       throw (vscode.FileSystemError && vscode.FileSystemError.NoPermissions) ? vscode.FileSystemError.NoPermissions(msg) : new Error(msg);
     }
+    const _p1 = Date.now();   // TEMP v5.1.32
+    const _sc = _meosScryptMs; _meosScryptMs = 0;
     await vscode.workspace.fs.writeFile(meosVaultFileUri(u), Buffer.from(out, 'utf8'));
+    try { const ks = _vaultKeys.get(k); meosVaultPerf('[write] encrypt+check=' + (_p1 - _p0) + 'ms (scrypt=' + _sc + 'ms) disk=' + (Date.now() - _p1) + 'ms keys=' + (ks ? ks.size : 0) + ' chars=' + (out ? out.length : 0)); } catch (_) { }
   }
   delete(u, o) { return vscode.workspace.fs.delete(meosVaultFileUri(u), o); }
   rename(a, b, o) { return vscode.workspace.fs.rename(meosVaultFileUri(a), meosVaultFileUri(b), o); }
@@ -17809,7 +17820,7 @@ function _vaultArmAutoSave(doc) {
       _vaultSaveTimers.delete(k);
       try {
         const ks = _vaultKeys.get(_vaultKeyOf(doc.uri));
-        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const ok = await doc.save(); if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
+        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const _s0 = Date.now(); const ok = await doc.save(); meosVaultPerf('[autosave] total=' + (Date.now() - _s0) + 'ms ok=' + ok);   // TEMP v5.1.32 if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
       } catch (_) { }
     }, MEOS_VAULT_AUTOSAVE_MS));
   } catch (_) { }
@@ -17893,6 +17904,11 @@ function meosVaultActivate(context) {
     //   入口のタブが開いているのに Finder から同じ日記を開くと、file: のタブがもう1つできる= 2つの口から同じファイルを書く
     //   (片方の保存がもう片方を上書きする)。→ file: のタブが前に出たら、同じファイルの入口のタブへ移し、file: のタブは閉じる。
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { meosVaultRedirectFileTab(ed).catch(() => { }); }));
+    { let _lt = Date.now(), _lagMax = 0, _lagN = 0, _lagWin = Date.now();   // TEMP v5.1.32: 拡張ホストが止まった時間(100msごとの時計の遅れ)を、解錠中だけ10秒ごとにまとめる
+      const _lagIv = setInterval(() => { const now = Date.now(), lag = now - _lt - 100; _lt = now; if (!_vaultKeys.size) { _lagMax = 0; _lagN = 0; _lagWin = now; return; }
+        if (lag > _lagMax) _lagMax = lag; if (lag > 50) _lagN++;
+        if (now - _lagWin >= 10000) { meosVaultPerf('[lag] 10s: max=' + _lagMax + 'ms over50ms=' + _lagN + 'x'); _lagMax = 0; _lagN = 0; _lagWin = now; } }, 100);
+      context.subscriptions.push({ dispose() { clearInterval(_lagIv); } }); }
     const iv = setInterval(() => {
       if (_vaultKeys.size && Date.now() - _vaultLastTouch >= meosAwayMs()) { meosVaultLockAll('idle ' + meosAwayMins()[meosAwaySlot() - 1] + ' min').catch(() => { }); }   // v5.1.19: 時間は🪑の席と同じ
       meosAwayCheck();   // v5.1.19: 🪑 離席(Mac 全体の無操作)
