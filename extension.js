@@ -17523,7 +17523,7 @@ async function meosAwayLeave(idle) {
         try { await vscode.window.showTextDocument(d); await vscode.commands.executeCommand('workbench.action.files.revert'); } catch (_) { }
       }
     }
-    _vaultKeys.clear();
+    _vaultKeys.clear(); _vaultKeyCache.clear();
     try { meosDbg('[away] ' + Math.round((idle || 0) / 1000) + 's 無操作 → 保存・施錠・終了'); } catch (_) { }
     await vscode.commands.executeCommand('workbench.action.quit');
   } finally { setTimeout(() => { _meosAwayBusy = false; }, 30000); }
@@ -17557,7 +17557,7 @@ function meosVaultDecryptText(text, keys) {
       if (!_vaultIsMarkerBody(lines, p)) continue;
       const pass = keys.get(p.id); if (!pass) continue;
       const t = lines[p.start + 1];
-      let plain; try { plain = meosDecryptText(t.slice(t.indexOf(_MEOS_ENC_PREFIX) + _MEOS_ENC_PREFIX.length).trim(), pass); } catch (_) { continue; }
+      let plain; try { plain = _vaultDecryptFast(t.slice(t.indexOf(_MEOS_ENC_PREFIX) + _MEOS_ENC_PREFIX.length).trim(), pass); } catch (_) { continue; }   // v5.1.35: 鍵を持っていれば作り直さない
       lines.splice(p.start + 1, 1, ...String(plain).split(/\r?\n/));
       changed = true;
     }
@@ -17566,51 +17566,79 @@ function meosVaultDecryptText(text, keys) {
   return lines.join(eol);
 }
 // 書く口: 鍵を持つ膜を、内側から順に暗号化し直す。守り①②③に掛かったら throw(=ディスクは前のまま)。
-function meosVaultEncryptText(text, keys, seen, diskText) {
+// ★★v5.1.35(10.18 am00:51 計測: 自動保存1回= 中央値0.9秒・うち暗号化+確かめ0.37秒(scryptは0.07秒だけ)・ディスク0.17秒。
+//   58回中28回は保存の途中で打ち続けて「保存しきれず」= VSCodium の控え(約1秒)に間に合わず、平文の控えが残っていた):
+//   重さの正体= 31.9万行から膜を探す(_vaultPairs)を1回の保存で約7回。→ **探すのは1回**・内側の膜から下の行から順に置き換える・
+//   確かめは暗号化した膜の分だけ(全体を復号し直さない)・鍵は合言葉ごとに1度だけ作って持つ(塩はその間同じ・IVは毎回新しい乱数)。
+//   守り①②④は、置き換える前の1回の探しで見る(鍵の無い膜の中身は暗号化で変わらないので、前に見ても後に見ても同じ)。
+const _vaultKeyCache = new Map();   // 合言葉 -> { salt, key }(メモリだけ。施錠で全部捨てる)
+function _vaultDerive(pass) {
+  let c = _vaultKeyCache.get(pass);
+  if (!c) { const crypto = require('crypto'); const salt = crypto.randomBytes(16); c = { salt, key: crypto.scryptSync(String(pass), salt, 32) }; _vaultKeyCache.set(pass, c); }
+  return c;
+}
+function _vaultEncryptFast(plain, pass) {
+  const crypto = require('crypto');
+  const c = _vaultDerive(pass), iv = crypto.randomBytes(12);
+  const ci = crypto.createCipheriv('aes-256-gcm', c.key, iv);
+  const ct = Buffer.concat([ci.update(String(plain), 'utf8'), ci.final()]);
+  return Buffer.concat([c.salt, iv, ci.getAuthTag(), ct]).toString('base64');   // 形は meosEncryptText と同じ(salt16/iv12/tag16+ct)
+}
+function _vaultDecryptFast(blobB64, pass) {
+  const c = _vaultKeyCache.get(pass);
+  const buf = Buffer.from(String(blobB64), 'base64');
+  if (!c || !c.salt.equals(buf.subarray(0, 16))) return meosDecryptText(blobB64, pass);   // 塩が違う(前の起動で書いた物)= 素直に作る
+  const crypto = require('crypto');
+  const d = crypto.createDecipheriv('aes-256-gcm', c.key, buf.subarray(16, 28));
+  d.setAuthTag(buf.subarray(28, 44));
+  return Buffer.concat([d.update(buf.subarray(44)), d.final()]).toString('utf8');
+}
+// ディスクの文字列から「暗号化されている膜の名前」を拾う(全部を行に割らず、印の所だけ見る)
+function _vaultLockedIds(text) {
+  const set = new Set(); const t = String(text || ''); let at = t.indexOf(_MEOS_ENC_PREFIX);
+  while (at >= 0) {
+    const ls = t.lastIndexOf('\n', at), pe = ls - (ls > 0 && t[ls - 1] === '\r' ? 1 : 0), ps = t.lastIndexOf('\n', Math.max(0, ls - 1));
+    if (ls > 0) { const op = parseOpenLine(t.slice(ps + 1, pe)); if (op) set.add(op.id); }
+    at = t.indexOf(_MEOS_ENC_PREFIX, at + _MEOS_ENC_PREFIX.length);
+  }
+  return set;
+}
+function meosVaultEncryptText(text, keys, seen, disk) {
   const eol = _vaultEol(text);
-  let lines = String(text).split(/\r?\n/);
-  const ids = new Set(_vaultPairs(lines).map(p => p.id));
+  const lines = String(text).split(/\r?\n/);
+  const pairs = _vaultPairs(lines);   // ★探すのは、この1回だけ
+  const ids = new Set(pairs.map(p => p.id));
   for (const id of (keys ? keys.keys() : [])) {
     if (!ids.has(id)) throw new Error('the unlocked membrane "' + id + '" is gone or renamed — not saved, so its plain text never reaches the disk. Undo the rename (or re-lock) and save again.');
   }
-  for (let guard = 0; guard < 64; guard++) {
-    const pairs = _vaultPairs(lines);
-    const todo = pairs.filter(p => keys && keys.has(p.id) && !_vaultIsMarkerBody(lines, p));
-    // 内側から: 中に「まだ暗号化していない鍵つきの膜」を含まない物を1つ選ぶ
-    const p = todo.find(q => !todo.some(r => r !== q && r.start > q.start && r.end < q.end));
-    if (!p) break;
-    const body = lines.slice(p.start + 1, p.end).join(eol);
-    const blob = meosEncryptText(body, keys.get(p.id));
-    lines.splice(p.start + 1, p.end - p.start - 1, _MEOS_ENC_PREFIX + blob);
+  const lockedOnDisk = disk instanceof Set ? disk : (disk ? _vaultLockedIds(disk) : new Set());
+  for (const p of pairs) {
+    if ((keys && keys.has(p.id)) || _vaultIsMarkerBody(lines, p) || p.end - p.start <= 1) continue;
+    // 守り①: 一度解錠した膜が、鍵なしで平文のまま(=施錠後のUndo・別の口からの編集)
+    if (seen && seen.has(p.id)) throw new Error('the membrane "' + p.id + '" is locked, but this editor still holds its plain text (e.g. after Undo) — not saved. Unlock it again 🔓 to edit, or revert the file.');
+    // ★守り④ v5.1.34: ディスク上で暗号化されている膜を、鍵なしで平文のまま(MeOS が入れ替わって鍵も控えも消えた)
+    if (lockedOnDisk.has(p.id)) throw new Error('the membrane "' + p.id + '" is encrypted on disk, but this editor holds its plain text without the key (MeOS was restarted or updated) — not saved. Revert the file (or close it without saving) and unlock it again 🔓.');
   }
-  // 守り①: 一度解錠した膜が、鍵なしで平文のまま(=施錠後のUndo・別の口からの編集)
-  if (seen && seen.size) {
-    for (const p of _vaultPairs(lines)) {
-      if (seen.has(p.id) && !(keys && keys.has(p.id)) && !_vaultIsMarkerBody(lines, p) && p.end - p.start > 1) {
-        throw new Error('the membrane "' + p.id + '" is locked, but this editor still holds its plain text (e.g. after Undo) — not saved. Unlock it again 🔓 to edit, or revert the file.');
-      }
-    }
+  // 鍵を持つ膜を、下の行から順に(=内側の膜が先)置き換える。置き換えより上の行番号は動かない。
+  const todo = pairs.filter(p => keys && keys.has(p.id) && !_vaultIsMarkerBody(lines, p)).sort((a, b) => b.start - a.start);
+  const edits = [], checks = [];
+  for (const p of todo) {
+    let end = p.end;
+    for (const e of edits) if (e.pos > p.start && e.pos < p.end) end -= e.delta;   // 内側で置き換えた分だけ、閉じの行が上がる
+    const body = lines.slice(p.start + 1, end).join(eol);
+    const pass = keys.get(p.id);
+    const blob = _vaultEncryptFast(body, pass);
+    const removed = end - p.start - 1;
+    lines.splice(p.start + 1, removed, _MEOS_ENC_PREFIX + blob);
+    edits.push({ pos: p.start + 1, delta: removed - 1 });
+    checks.push({ blob, body, pass, id: p.id });
   }
-  // ★守り④ v5.1.34(俊克「解錠中にアップデートしたけど、そのまま解錠中だった」): MeOS が入れ替わると鍵も控え(seen)も消えるのに、
-  //   画面には平文が残る= そのまま保存すると平文がディスクに出る。→ **ディスク上で暗号化されている膜**を、鍵なしで平文のまま書こうとしたら書かない。
-  //   ディスクを見て決めるので、覚え(メモリ)が消えていても効く。永久に平文へ戻したい時は、ふつうに開いた(file:)文書の🔓(旧来の解錠)で。
-  if (diskText) {
-    const dl = String(diskText).split(/\r?\n/), lockedOnDisk = new Set();
-    for (let i = 1; i < dl.length; i++) { if (dl[i].indexOf(_MEOS_ENC_PREFIX) >= 0) { const op = parseOpenLine(dl[i - 1] || ''); if (op) lockedOnDisk.add(op.id); } }
-    if (lockedOnDisk.size) {
-      for (const p of _vaultPairs(lines)) {
-        if (lockedOnDisk.has(p.id) && !(keys && keys.has(p.id)) && !_vaultIsMarkerBody(lines, p) && p.end - p.start > 1) {
-          throw new Error('the membrane "' + p.id + '" is encrypted on disk, but this editor holds its plain text without the key (MeOS was restarted or updated) — not saved. Revert the file (or close it without saving) and unlock it again 🔓.');
-        }
-      }
-    }
+  // 守り③: 暗号化した膜それぞれを復号し直し、元と一致しなければ書かない(中身が読めなくなる事故を、書く前に止める)
+  for (const c of checks) {
+    let back = null; try { back = _vaultDecryptFast(c.blob, c.pass); } catch (_) { back = null; }
+    if (back !== c.body) throw new Error('self-check failed for "' + c.id + '" (re-decrypting did not give back the same text) — not saved, the disk keeps the previous version.');
   }
-  const out = lines.join(eol);
-  // 守り③: 復号し直して元と一致しなければ書かない(暗号のバグ=中身が読めなくなる事故を、書く前に止める)
-  if (keys && keys.size && meosVaultDecryptText(out, keys) !== String(text).split(/\r?\n/).join(eol)) {
-    throw new Error('self-check failed (re-decrypting did not give back the same text) — not saved, the disk keeps the previous version.');
-  }
-  return out;
+  return lines.join(eol);
 }
 // ★★TEMP v5.1.32(俊克 10.18 am00:37「重さを測りましょう」): 解錠中の自動保存の重さを測る。書くのは時間(ms)と字数だけ(合言葉・中身は書かない)。
 //   書き先= globalStorage/vault-perf.txt。★理由が分かったら撤去する。
@@ -17618,6 +17646,7 @@ function meosVaultPerf(line) {
   try { const fs = require('fs'), path = require('path'); const dir = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(dir, { recursive: true });
     fs.appendFileSync(path.join(dir, 'vault-perf.txt'), new Date().toISOString() + ' ' + line + '\n'); } catch (_) { }
 }
+const _vaultDiskLocked = new Map();   // v5.1.35: fileUri -> { mtime, size, set }(最後に自分が書いたディスクの「暗号化されている膜」)
 class MeosVaultFs {
   constructor() { this._em = new vscode.EventEmitter(); this.onDidChangeFile = this._em.event; }
   watch() { return { dispose() { } }; }
@@ -17636,8 +17665,11 @@ class MeosVaultFs {
     const k = _vaultKeyOf(u);
     let out;
     const _p0 = Date.now();   // TEMP v5.1.32
-    let _disk = ''; try { _disk = Buffer.from(await vscode.workspace.fs.readFile(meosVaultFileUri(u))).toString('utf8'); } catch (_) { _disk = ''; }   // v5.1.34: 守り④はディスクを見る
-    try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultKeys.get(k), _vaultSeen.get(k), _disk); }
+    // v5.1.34: 守り④はディスクを見る / v5.1.35: 自分が最後に書いた時から変わっていなければ、その時の控えを使う(21MBを毎回読まない)
+    let _locked = null;
+    try { const st = await vscode.workspace.fs.stat(meosVaultFileUri(u)); const c = _vaultDiskLocked.get(k); if (c && c.mtime === st.mtime && c.size === st.size) _locked = c.set; } catch (_) { }
+    if (!_locked) { try { _locked = _vaultLockedIds(Buffer.from(await vscode.workspace.fs.readFile(meosVaultFileUri(u))).toString('utf8')); } catch (_) { _locked = new Set(); } }
+    try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultKeys.get(k), _vaultSeen.get(k), _locked); }
     catch (e) {
       const msg = 'MeOS 🔐: ' + (e && e.message ? e.message : String(e));
       try { vscode.window.showErrorMessage(msg); } catch (_) { }
@@ -17646,6 +17678,7 @@ class MeosVaultFs {
     const _p1 = Date.now();   // TEMP v5.1.32
     const _sc = _meosScryptMs; _meosScryptMs = 0;
     await vscode.workspace.fs.writeFile(meosVaultFileUri(u), Buffer.from(out, 'utf8'));
+    try { const st = await vscode.workspace.fs.stat(meosVaultFileUri(u)); _vaultDiskLocked.set(k, { mtime: st.mtime, size: st.size, set: _vaultLockedIds(out) }); } catch (_) { }   // v5.1.35
     try { const ks = _vaultKeys.get(k); meosVaultPerf('[write] encrypt+check=' + (_p1 - _p0) + 'ms (scrypt=' + _sc + 'ms) disk=' + (Date.now() - _p1) + 'ms keys=' + (ks ? ks.size : 0) + ' chars=' + (out ? out.length : 0)); } catch (_) { }
   }
   delete(u, o) { return vscode.workspace.fs.delete(meosVaultFileUri(u), o); }
@@ -17719,6 +17752,7 @@ async function meosVaultLock(fileKey, id) {
   if (_vaultDocsOf(fileKey).some(d => d.isDirty)) { vscode.window.showWarningMessage('MeOS 🔐: could not save before locking — the membranes stay unlocked. Save the file, then lock again.'); return false; }
   if (id) keys.delete(id); else keys.clear();
   if (!keys.size) _vaultKeys.delete(fileKey);
+  if (!_vaultKeys.size) _vaultKeyCache.clear();   // v5.1.35: 全部閉じたら、作った鍵も捨てる
   await _vaultReload(fileKey);
   try { updateMeDockMode(); } catch (_) { }
   return true;
@@ -17835,7 +17869,7 @@ function _vaultArmAutoSave(doc) {
       _vaultSaveTimers.delete(k);
       try {
         const ks = _vaultKeys.get(_vaultKeyOf(doc.uri));
-        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const _s0 = Date.now(); const ok = await doc.save(); meosVaultPerf('[autosave] total=' + (Date.now() - _s0) + 'ms ok=' + ok); /* TEMP v5.1.32 */ if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
+        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const _s0 = Date.now(); const ok = await doc.save(); meosVaultPerf('[autosave] total=' + (Date.now() - _s0) + 'ms ok=' + ok); /* TEMP v5.1.32 */ if (!doc.isClosed && doc.isDirty) _vaultArmAutoSave(doc); /* ★v5.1.35: 保存の途中で打ち続けて保存しきれなかった= 予約し直す(しないと次に打つまで平文の控えが残っていた) */ if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
       } catch (_) { }
     }, MEOS_VAULT_AUTOSAVE_MS));
   } catch (_) { }
