@@ -17623,8 +17623,8 @@ function meosVaultUnlockedPair(editor) {
 }
 // ★v5.1.1(俊克 10.17 am10:58「本文に表示している🔓をボタン化しよう…一旦暗号化したら、本文だけでオンオフできる」):
 //   本文のボタン= 札(インレイヒント)が押す物。絵は札の字そのもの(🔐/🔓)= 錠の状態が変わる時は行の中身も替わるので、札の字が変わってよい。
-//   ・施錠中= 🔒マーカー行の頭に🔐(押すと合言葉を訊いて解錠)。file: で開いていたら、先に入口で開き直してから解錠する。
-//   ・解錠中= 膜の開始行の名前の直後(' //' の手前)に🔓(押すと合言葉なしで、すぐ施錠)。
+//   ・施錠中= 🔒マーカー行の頭に🔓(v5.1.3〜・押すと合言葉を訊いて解錠)。file: で開いていたら、先に入口で開き直してから解錠する。
+//   ・解錠中= 膜の開始行の名前の直後(' //' の手前)に🔐(v5.1.3〜・押すと合言葉なしで、すぐ施錠)。
 //   当たりは「マウスで押してカーソルが札の桁に落ちた」= ⏰のボタンと同じ判定。Rawの帯の中は生の字を見せるので出さない。
 //   v5.1.2: 畳んで隠れた行には札も字も立てない(隠れた行の頭の物は畳みの境目=頭の行末に出て、⛔の蓋を崩す)。
 function meosVaultBtnSpot(doc, i) {
@@ -17646,7 +17646,7 @@ function meosVaultLineHints(doc, i) {
   const b = meosVaultBtnSpot(doc, i);
   if (!b) return null;
   try { if (meosModeAtLine(doc, i) === 'raw') return null; } catch (_) { }
-  return { col: b.col, label: b.kind === 'unlock' ? '🔐' : '🔓' };
+  return { col: b.col, label: b.kind === 'unlock' ? '🔓' : '🔐' };   // v5.1.3(俊克「押した時の動作で見せよう」): 施錠中=🔓(押すと開く)/解錠中=🔐(押すと閉じる)= Me Dockの🔐と同じ読み方
 }
 async function meosVaultBtnPress(editor, b) {
   if (b.kind === 'lock') {
