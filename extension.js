@@ -17809,7 +17809,7 @@ function _vaultArmAutoSave(doc) {
       _vaultSaveTimers.delete(k);
       try {
         const ks = _vaultKeys.get(_vaultKeyOf(doc.uri));
-        if (!doc.isClosed && doc.isDirty && ks && ks.size) await doc.save();
+        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const ok = await doc.save(); if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる
       } catch (_) { }
     }, MEOS_VAULT_AUTOSAVE_MS));
   } catch (_) { }
@@ -28483,7 +28483,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .title-file-jump.back .jf{position:relative;top:1px}   /* v4.1.102: 6→3→0 と降りて、素の位置から**1px だけ**下(俊克の目盛りで決めた最終値) */
 .title-file-jump:not(.here):hover{filter:brightness(1.06)}   /* v4.2.689(俊克「↩ボタンだけ回りに後光のように光っている。無しに」): 白い輪(box-shadow)を外す= 膨らむだけ */
 .title-file-ud{margin-left:10px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
-.title-file-ud .ud-dot{font-weight:800;margin-right:3px}
+.title-file-ud .ud-dot{font-weight:800;margin-right:3px;display:inline-block}.title-file-ud .ud-dot.ud-blink{animation:udBlink .45s ease-out}@keyframes udBlink{0%{transform:scale(1.9);color:#fff;text-shadow:0 0 6px #3fb950,0 0 12px #3fb950}100%{transform:scale(1);text-shadow:none}}   /* v5.1.29: 自動保存で書いた合図= ×が白く膨らんで緑に戻る */
 .title-file-ud [data-tip]::after{bottom:calc(100% + 3px);right:auto;left:0;font-size:12px}/* v4.0.365/367: 詰める＋読める大きさに */
 /* v4.0.367(俊克 改良2「Me Dockの更新日は、tipに更新日のコピーを付けよう」): tip(::after)は疑似要素so押せない。
    → **中身自身を押せる物にする**= 日付をクリックすれば「ファイル名 + 更新日時」that手に入る。 */
@@ -32541,7 +32541,8 @@ b.addEventListener('click',ev=>{ev.stopPropagation();slot=((slot-1+(ev.shiftKey?
 cr.addEventListener('click',ev=>{ev.stopPropagation();const on=!pop.classList.contains('on');pop.classList.toggle('on',on);if(on){paint();if(typeof hideTocTip==='function')hideTocTip();setTimeout(()=>{try{nm&&nm.focus();nm&&nm.select();}catch(_){}},0);}});   /* v5.1.26: 開いたら数字の欄へ= すぐ↑/↓で変えられる */
 pop.addEventListener('click',ev=>ev.stopPropagation());
 if(sl){sl.addEventListener('pointerdown',()=>{dragging=true;});sl.addEventListener('input',()=>{pos=Math.max(3,Math.min(60,Number(sl.value)||3));mins[slot-1]=clamp(pos);paint();send(false);});sl.addEventListener('change',()=>{dragging=false;pos=null;mins[slot-1]=clamp(sl.value);show();send(true);});window.addEventListener('pointerup',()=>{if(dragging){dragging=false;pos=null;paint();}});}
-if(nm){const commit=()=>{mins[slot-1]=clamp(nm.value);nm.value=String(mins[slot-1]);show();send(true);};nm.addEventListener('change',commit);nm.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();commit();}});}
+if(nm){const commit=()=>{mins[slot-1]=clamp(nm.value);nm.value=String(mins[slot-1]);show();send(true);};nm.addEventListener('change',commit);nm.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();commit();pop.classList.remove('on');}});}   /* v5.1.29(俊克「改行でスライダーが閉じない」): Enter= 確定して板を閉じる */
+if(sl)sl.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();pop.classList.remove('on');}});
 /* ★v5.1.28(俊克「ノブの動きがまだぎこちない。全体の長さは決まっているので、ノブを等速で動かす。それに合わせて値を変化させる」):
    キーの自動連打(間隔がばらつく)に乗るのをやめ、押している間は時計(requestAnimationFrame)で一定の速さで滑らせる。
    値はノブの位置を丸めた物。軽く押しただけなら1分。端から端まで約2.4秒(Shiftで倍速)。数字の欄でも、つまみの上でも効く。 */
@@ -33385,13 +33386,13 @@ setTimeout(function(){ if(_udc){_udc.setAttribute('data-tip',_orig);_udc.classLi
 return;}if(m&&m.type==='stampChips'){/* v4.0.367: Edit Me の入力枠の中をモザイクに見せる(下に敷いた字) */
 if(m.text!=null&&input&&String(m.text)!==input.value)return;/* v4.0.388: 今の値の写しでなければ塗らない */
 if(typeof window.__meosPaintNameTint==='function')window.__meosPaintNameTint(m.chips);
-return;}if(m&&m.type==='dockFileUD'){/* v4.0.363: ●=保存済 / ×=未保存 と、最後にディスクへ書いた時刻 */
+return;}if(m&&m.type==='udBlink'){/* ★v5.1.29(俊克「0.5s間隔で書き込んでいる事が分かるように、点を点滅させると良いかも」): 解錠中の自動保存で書いた時だけ、ヘッダーの×(保存済)を一瞬光らせる */window.__udBlinkUntil=Date.now()+450;var _bd=document.querySelector('#title-file-ud .ud-dot');if(_bd){_bd.classList.remove('ud-blink');void _bd.offsetWidth;_bd.classList.add('ud-blink');}return;}if(m&&m.type==='dockFileUD'){/* v4.0.363: ●=保存済 / ×=未保存 と、最後にディスクへ書いた時刻 */
 var _ud=document.getElementById('title-file-ud');
 if(_ud){while(_ud.firstChild)_ud.removeChild(_ud.firstChild);
 var _dot=document.createElement('span');_dot.className='ud-dot';
 /* v4.0.365(俊克「印が逆。**保存済みの×は緑色(安全)、未保存の●は橙色あるいは赤色(危険)**にすべき」)
    ●=未保存 は VS Code のタブと同じ向き= 体に入っている方に合わせる。×=もう書く物が無い(閉じてよい)。 */
-_dot.textContent=m.dirty?'\u25cf':'\u00d7';
+_dot.textContent=m.dirty?'\u25cf':'\u00d7';if(!m.dirty&&(window.__udBlinkUntil||0)>Date.now())_dot.classList.add('ud-blink');   /* v5.1.29: 光っている途中で作り直されても続ける */
 _dot.style.color=m.dirty?'#e0803a':'#3fb950';
 _dot.setAttribute('data-tip',m.dirty?'Unsaved changes (\u2318S to save)':'Saved');
 _ud.appendChild(_dot);
