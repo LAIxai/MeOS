@@ -41895,12 +41895,18 @@ function activate(context) {
     const _hidden = (sn, ln) => { if (!sn || !sn.length) return false; if (ln < sn[0][0] || ln > sn[sn.length - 1][1]) return false; return !sn.some(r => r[0] <= ln && ln <= r[1]); };
     // ★v5.0.0-28(俊克「⋯の上にフタを・⋯のアンチテーゼの意味で進入禁止⛔️に」): 畳んだ膜の頭の行末に⛔を重ねる(押しても VS Code の⋯には届かない)
     //   畳まれているかは見えている範囲の切れ目で知る= 切れ目の直前の行が膜の頭なら畳まれている
-    const _noEntry = vscode.window.createTextEditorDecorationType({ after: { contentText: '⛔', textDecoration: 'none; position: absolute; z-index: 20; width: 1.5em; text-align: center; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
+    // ★v5.1.9(俊克 10.17 バグ「起動直後や別の行で折り返した後、⛔が⋯の左にずれて⋯が見える」): 実機(VSCodium 1.135)のDOMを測って真因が確定=
+    //   Monaco は見えている行の装飾を集める時、画面の折り返し行が隠れた行より多いと近道(getDecorationsInRange の fast path)を通り、
+    //   **畳んで隠れた ▲行の装飾まで拾って畳みの境目(頭の行末と⋯の間)に描く**。▲行の after の空白2つ(rightEdgeSpace ' ' と nameRightVirtualSpace ' '+0.25ch)が
+    //   ⋯を約1.2字右へ押し、尻尾の頭に差した⛔(幅1.5em)からはみ出していた。折り返しの数で近道に入る/入らないが変わる= 起動直後や打って折り返した時だけずれた。
+    //   → ⛔を差した場所から測らず、**行の箱の右端に寄せる**(right:0)。行の箱(.view-line > span)は Monaco 自身が position:absolute にしていて、その右端= ⋯の右端。
+    //     境目に何が何字立っても⋯の上に乗る。
+    const _noEntry = vscode.window.createTextEditorDecorationType({ after: { contentText: '⛔', textDecoration: 'none; position: absolute; right: 0; z-index: 20; width: 1.5em; text-align: center; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
     context.subscriptions.push(_noEntry);
     // v5.0.0-33(俊克 改良1「その行だけRawにすると⋯の位置が変わるので、そこにも⛔でフタを」): 生の行では尻尾 ` * } -->` が見えている= ⋯は本当の行末の後ろ。
     //   ⛔は最後の字(>)の手前に差し、1字分だけ右へずらして⋯の上に置く(押しても行末の1字手前= VS Code は開かない)
-    const _noEntryRaw = vscode.window.createTextEditorDecorationType({ after: { contentText: '\u26d4', textDecoration: 'none; position: absolute; z-index: 20; width: 1.5em; margin-left: 1ch; text-align: center; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
-    context.subscriptions.push(_noEntryRaw);
+    const _noEntryRaw = vscode.window.createTextEditorDecorationType({ after: { contentText: '\u26d4', textDecoration: 'none; position: absolute; right: 0; z-index: 20; width: 1.5em; text-align: center; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
+    context.subscriptions.push(_noEntryRaw);   // v5.1.9: 生の行も行の箱の右端(=⋯)へ寄せる(1字右へずらす margin-left はやめた)
     let _neT = null;
     const _paintNoEntry = (ed) => {
       try {
