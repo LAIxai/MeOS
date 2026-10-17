@@ -38,7 +38,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_vault_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX };
+module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
@@ -101,6 +101,15 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
   await vfs.writeFile(VU, Buffer.from(view));
   ok(!/[^\r]\n/.test(disk()) && !disk().includes(SECRET_A), 'CRLFのまま暗号化して書く');
   ok((await vfs.readFile(VU)).toString() === view, 'CRLFでも往復で同じ');
+  // v5.1.1: 本文のボタンの場所(俊克の書き方= HTMLコメント包みの膜)
+  const L = ['<!-- {* ▼mCN=暗号テスト_20261017s105901JST // comment1 *} -->', T._MEOS_ENC_PREFIX + 'xxxx', '<!-- {* ▲mCN=暗号テスト_20261017s105901JST // comment2 *} -->'];
+  const fd = (scheme) => ({ uri: { scheme, path: P, toString: () => scheme + ':' + P }, lineCount: L.length, lineAt: (i) => ({ text: L[i] }) });
+  let b = T.meosVaultBtnSpot(fd('file'), 1);
+  ok(b && b.kind === 'unlock' && b.col === 0, '施錠中= マーカー行の頭に🔐(file: でも出る)');
+  ok(!T.meosVaultBtnSpot(fd('file'), 0), 'file: の開始行には🔓を出さない');
+  T._vaultKeys.set(KEY, new Map([['暗号テスト_20261017s105901JST', 'p']]));
+  b = T.meosVaultBtnSpot(fd('meos-vault'), 0);
+  ok(b && b.kind === 'lock' && L[0].slice(b.col, b.col + 3) === ' //', '解錠中= 開始行の名前の直後(\' //\' の手前)に🔓');
   console.log(fail ? ('\n' + fail + ' 項目 NG') : '\n全項目 PASS');
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

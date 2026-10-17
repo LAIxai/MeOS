@@ -17432,7 +17432,7 @@ async function copySelectionAutoWipe() {
 //   ★対象は「直接暗号化した膜」(開始+🔒マーカー1行+閉じの3行=isCurrentMembraneEncryptedと同じ形)。中から現れた膜も鍵があれば続けて開く。
 //   ★残る穴: VSCodeのHot Exit(未保存の控え)は平文でバックアップ用フォルダへ書かれ得る。→ 未保存の時間を短く(試作では未対策)。
 const MEOS_VAULT_SCHEME = 'meos-vault';
-const MEOS_VAULT_IDLE_MS = 30 * 60 * 1000;
+const MEOS_VAULT_IDLE_MS = 3 * 60 * 1000;   // ★v5.1.1(俊克 10.17 am10:58「テスト用に3分で自動施錠に」): 試しの間は3分。★リリース前に30分へ戻す
 const _vaultKeys = new Map();   // fileUri文字列 -> Map(膜名 -> 合言葉)
 const _vaultSeen = new Map();   // fileUri文字列 -> Set(このセッションで一度でも解錠した膜名)=守り①
 const _vaultGen = new Map();    // fileUri文字列 -> 世代(鍵が変わるたび+1=statのmtimeに足してVSCodeに読み直させる)
@@ -17621,6 +17621,47 @@ function meosVaultUnlockedPair(editor) {
     return hits[0] || null;
   } catch (_) { return null; }
 }
+// ★v5.1.1(俊克 10.17 am10:58「本文に表示している🔓をボタン化しよう…一旦暗号化したら、本文だけでオンオフできる」):
+//   本文のボタン= 札(インレイヒント)が押す物。絵は札の字そのもの(🔐/🔓)= 錠の状態が変わる時は行の中身も替わるので、札の字が変わってよい。
+//   ・施錠中= 🔒マーカー行の頭に🔐(押すと合言葉を訊いて解錠)。file: で開いていたら、先に入口で開き直してから解錠する。
+//   ・解錠中= 膜の開始行の名前の直後(' //' の手前)に🔓(押すと合言葉なしで、すぐ施錠)。
+//   当たりは「マウスで押してカーソルが札の桁に落ちた」= ⏰のボタンと同じ判定。Rawの帯の中は生の字を見せるので出さない。
+function meosVaultBtnSpot(doc, i) {
+  try {
+    const t = doc.lineAt(i).text || '';
+    const idx = t.indexOf(_MEOS_ENC_PREFIX);
+    if (idx >= 0) return { col: idx, kind: 'unlock' };
+    if (!meosIsVaultDoc(doc)) return null;
+    const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
+    if (!keys || !keys.size || !/[▼▽]/.test(t)) return null;
+    const op = parseOpenLine(t);
+    if (!op || !keys.has(op.id)) return null;
+    const ie = t.indexOf(op.id) + op.id.length;
+    const c = t.indexOf(' //', ie);
+    return { col: c >= 0 ? c : ie, kind: 'lock', id: op.id };
+  } catch (_) { return null; }
+}
+function meosVaultLineHints(doc, i) {
+  const b = meosVaultBtnSpot(doc, i);
+  if (!b) return null;
+  try { if (meosModeAtLine(doc, i) === 'raw') return null; } catch (_) { }
+  return { col: b.col, label: b.kind === 'unlock' ? '🔐' : '🔓' };
+}
+async function meosVaultBtnPress(editor, b) {
+  if (b.kind === 'lock') {
+    if (await meosVaultLock(_vaultKeyOf(editor.document.uri), b.id)) vscode.window.setStatusBarMessage('MeOS 🔐: locked again — the disk had the ciphertext all along.', 3000);
+    return;
+  }
+  let ed = editor;
+  if (!meosIsVaultDoc(ed.document)) {
+    if (ed.document.uri.scheme !== 'file') return;
+    await meosVaultOpen();
+    ed = vscode.window.activeTextEditor;
+    if (!ed || !meosIsVaultDoc(ed.document)) return;
+  }
+  await meosVaultUnlock(ed);
+}
+let _encSkinDeco = null;   // v5.1.1: 本文の🔐/🔓の札の灰色の地を消し、手の形にする(⏰の札と同じ作り・型は別=⏰の札を上書きしない)
 function meosVaultActivate(context) {
   try {
     if (!vscode.workspace.registerFileSystemProvider) return;
@@ -21697,6 +21738,8 @@ async function handleMembraneNameSelection(editor, selectionKind) {
   if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && editor.selection.isEmpty) {
     try {
       const _ln = editor.selection.active.line;
+      { const _vb = meosVaultLineHints(editor.document, _ln) && meosVaultBtnSpot(editor.document, _ln);   // ★v5.1.1: 本文の🔐(解錠)/🔓(施錠)
+        if (_vb && editor.selection.active.character === _vb.col) { await meosVaultBtnPress(editor, _vb); return; } }
       // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
       //   → [[feedback_go_get_the_measurement]]。⏰の行をマウスで押した時だけ。
       try {
@@ -27480,6 +27523,7 @@ function applyEncDecorations(editor) {
     const _inEncBand = (ln) => meosModeAtLine(doc, ln) === 'raw';   // v4.0.444: Rawの膜の中だけ生の暗号文
     const hideRanges = [];
     const labelRanges = [];
+    const skins = [];   // v5.1.1
     const seen = new Set();
     for (const vr of (editor.visibleRanges || [])) {
       const from = Math.max(0, vr.start.line - 1), to = Math.min(doc.lineCount - 1, vr.end.line + 1);
@@ -27489,11 +27533,21 @@ function applyEncDecorations(editor) {
         const idx = text.indexOf(_MEOS_ENC_PREFIX);
         if (idx < 0 || _inEncBand(i)) continue;
         hideRanges.push(new vscode.Range(i, idx, i, text.length)); // 🔒MeOS-enc:v1 + base64 を透明化
-        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: '🔐 Locked — press 🔓 to view', color: '#d2691e', fontWeight: '700' } } });
+        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: ' Locked — click 🔐 to open', color: '#d2691e', fontWeight: '700' } } });   // v5.1.1: 🔐は札(押す物)= 文は札の右に立つ
+        skins.push({ range: new vscode.Range(i, Math.max(0, idx - 1), i, Math.min(text.length, idx + 2)) });
+      }
+    }
+    // v5.1.1: 解錠中の膜の開始行の🔓(入口の文書だけ)
+    if (meosIsVaultDoc(doc) && _vaultKeys.has(_vaultKeyOf(doc.uri))) {
+      for (const i of seen) {
+        const b = meosVaultBtnSpot(doc, i);
+        if (b && b.kind === 'lock' && !_inEncBand(i)) { const tl = (doc.lineAt(i).text || '').length; skins.push({ range: new vscode.Range(i, Math.max(0, b.col - 1), i, Math.min(tl, b.col + 1)) }); }
       }
     }
     editor.setDecorations(encHideDecoration, hideRanges);
     editor.setDecorations(encLabelDecoration, labelRanges);
+    if (skins.length && !_encSkinDeco) _encSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (_encSkinDeco) editor.setDecorations(_encSkinDeco, skins);
   } catch (_) {}
 }
 // ★★v4.0.393(俊克 8/23 pm08:11「そもそも、なぜbs押下で、全ファイルをスキャンするの? それを止めようよ。
@@ -27572,7 +27626,7 @@ function updateMeDockMode() {
   meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn(), headNav: headNavStateForEditor(editor), markNav: markNavStateForEditor(editor), inMembrane: !!findCurrentPair(editor), refEdit, fmtCtx, fmtCur: fmtCtx ? fmtCtx.__cur : null, warn: (editor ? meosWarningEnds(editor.document) : []), tableWrap: meosTableWrapStateAtCursor(editor), tableAutoCalc: meosTableAutoCalc() });
   try { meosPostMewState(Math.max(0, meosMewLastCount), true); } catch (_) {} // v4.0.68: Me Dockが開き直した時に🐱の現状を必ず同期(件数の計算はしない=キャッシュを送るだけ)
   try { postMeDockImageMembrane(editor); } catch (_) {} // v3.2.0: 画像膜にカーソルが来たらMe Dockに画像ビューアをオーバーレイ(離れたら閉じる)
-  meDockPanel.webview.postMessage({ type: 'encState', onMembrane: state.mode === 'rename', encrypted: isCurrentMembraneEncrypted(editor) }); // v0.9.9994: Create/Set(rename=膜の上)に同期。膜の上=平文→🔐橙/暗号→🔓白/それ以外=灰
+  meDockPanel.webview.postMessage({ type: 'encState', onMembrane: state.mode === 'rename', encrypted: isCurrentMembraneEncrypted(editor), vaultUnlocked: !!meosVaultUnlockedPair(editor) }); // v0.9.9994: Create/Set(rename=膜の上)に同期。膜の上=平文→🔐橙/暗号→🔓白/それ以外=灰
   postFixedWorkingTocSnapshot();
   updateMeDockCurrentLineMarker();
   postMeDockAnchorState(editor);
@@ -29795,7 +29849,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
   <div class="top-buttons" id="top-buttons"><button class="cancel" id="refresh-btn" title="Time Stamp">↻</button><button class="cancel" id="reset-btn">Reset</button><button class="set" id="set-btn">${initial.mode==='rename'?'Set':'Create'}</button></div>
-  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><button class="enc-badge" id="enc-unlock" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye" id="enc-pass-eye" data-tip="Show / hide passphrase">👁</button><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
+  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye" id="enc-pass-eye" data-tip="Show / hide passphrase">👁</button><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
   <div class="nav-center" id="nav-center">
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
@@ -32248,7 +32302,9 @@ function hideEncPass(){if(encPassRow)encPassRow.style.display='none';if(encPassI
 }_encPendingOp='';}
 function submitEncPass(){const v=encPassInput?encPassInput.value:'';if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
 op:_encPendingOp,pass:v});hideEncPass();}
-const encLock=document.getElementById('enc-lock');if(encLock)encLock.addEventListener('click',()=>{if(encLock.classList.contains('enc-active'))showEncPass('encrypt');
+let _encVaultUnlocked=false; /* v5.1.1: 入口で解錠中の膜= 🔐は合言葉なしで、すぐ施錠 */
+const encLock=document.getElementById('enc-lock');if(encLock)encLock.addEventListener('click',()=>{if(!encLock.classList.contains('enc-active'))return;
+if(_encVaultUnlocked){hideEncPass();vscode.postMessage({type:'encryptMembrane'});return;}showEncPass('encrypt');
 }); /* v0.9.99915: アクティブ(平文膜の上)の時だけ入力枠を出す */
 const encUnlock=document.getElementById('enc-unlock');if(encUnlock)encUnlock.addEventListener('click',()=>{if(encUnlock.classList.contains('enc-active'))showEncPass('unlock');
 }); /* v0.9.99915: アクティブ(暗号膜の上)の時だけ */
@@ -32263,7 +32319,7 @@ const encCopy=document.getElementById('enc-copy');if(encCopy)encCopy.addEventLis
 // {* ▲mCN=dock_js_encrypt *}
 // {* ▼mCN=dock_js_github // GitHub接続ウィザードと🐙Octopush *}
 window.addEventListener('message',ev=>{const m=ev.data;if(m&&m.type==='encState'){const L=document.getElementById('enc-lock'),
-U=document.getElementById('enc-unlock');if(L)L.classList.toggle('enc-active',!!m.onMembrane&&!m.encrypted);if(U)U.classList.toggle('enc-active',!!m.onMembrane&&!!m.encrypted);
+U=document.getElementById('enc-unlock');_encVaultUnlocked=!!m.vaultUnlocked;if(L)L.classList.toggle('enc-active',!!m.onMembrane&&!m.encrypted);if(U)U.classList.toggle('enc-active',!!m.onMembrane&&!!m.encrypted);
 if(!m.onMembrane&&typeof hideEncPass==='function')hideEncPass();}}); /* v0.9.9994: 膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。v0.9.99915: 膜外へカーソルが出たら入力枠を消す */
 const ghWizard=document.getElementById('gh-wizard'),ghWizardHead=document.getElementById('gh-wizard-head'),ghWizardToggle=document.getElementById('gh-wizard-toggle'),
 ghWizardStatus=document.getElementById('gh-wizard-status'),ghProfileUrl=document.getElementById('gh-profile-url'),ghPatInput=document.getElementById('gh-pat-input'),
@@ -42641,7 +42697,8 @@ makeDecorations();
     { scheme: 'file', language: 'typescript' },
     { scheme: 'file', language: 'javascript' },
     { scheme: 'untitled' },
-    { scheme: 'file' }
+    { scheme: 'file' },
+    { scheme: 'meos-vault' }   // v5.1.1: 入口(🔐暗号の仮想化)で開いた文書にも、畳み/ホバー/札を
   ];
   // ★v4.2.483: ±1s の札(押す物)。見える絵は装飾で上に重ねる。古い VS Code に口が無くても起動は止めない
   try { if (vscode.languages.registerInlayHintsProvider) context.subscriptions.push(
@@ -42665,6 +42722,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
             for (const h of meosClockLineHints(_ed89, document, ln)) {
               out.push(new vscode.InlayHint(new vscode.Position(ln, h.col), h.label));
             }
+            { const _vh = meosVaultLineHints(document, ln); if (_vh) out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label)); }   // v5.1.1: 本文の🔐/🔓
           }
 
         } catch (_) { }
