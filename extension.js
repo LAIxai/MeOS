@@ -10392,7 +10392,7 @@ function meosRememberFolders() {
     if (JSON.stringify(L) !== JSON.stringify(old)) extensionContext.globalState.update('meosLastFolders', L); } catch (_) { }
 }
 function meosReopenFolderFor(editor) {
-  try { if ((vscode.workspace.workspaceFolders || []).length) return ''; const fp = editor && editor.document && editor.document.uri.scheme === 'file' ? editor.document.uri.fsPath : ''; if (!fp) return '';
+  try { if ((vscode.workspace.workspaceFolders || []).length) return ''; const fp = editor && editor.document ? meosDocFsPath(editor.document) : ''; if (!fp) return '';   // v5.1.7: 入口の文書も
     const L = extensionContext.globalState.get('meosLastFolders', []) || []; const path = require('path');
     return L.find(d => { const rel = path.relative(d, fp); return rel && !rel.startsWith('..') && !path.isAbsolute(rel); }) || ''; } catch (_) { return ''; }
 }
@@ -17140,11 +17140,11 @@ function resolveGithubDir() {
   if (githubChosenDir) return githubChosenDir;
   const path = require('path');
   const editor = (getMeDockTargetEditor ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
-  if (editor && editor.document.uri.scheme === 'file') {
+  if (editor && meosDocFsPath(editor.document)) {   // v5.1.7: 入口の文書も(Gitには file: の住所で訊く)
     try {
       const gitExt = vscode.extensions.getExtension('vscode.git');
       if (gitExt && gitExt.isActive) {
-        const repo = gitExt.exports.getAPI(1).getRepository(editor.document.uri);
+        const repo = gitExt.exports.getAPI(1).getRepository(vscode.Uri.file(meosDocFsPath(editor.document)));
         if (repo) return repo.rootUri.fsPath;
       }
     } catch (_) {}
@@ -27692,8 +27692,8 @@ function meosRecentList() {
 }
 function meosRecentPush(doc) {
   try {
-    if (!doc || doc.uri.scheme !== 'file' || !meosIsProseDoc(doc)) return;
-    const path = doc.uri.fsPath, name = String(path).split(/[\\/]/).pop();
+    if (!doc || !meosDocFsPath(doc) || !meosIsProseDoc(doc)) return;   // v5.1.7: 入口の文書も
+    const path = meosDocFsPath(doc), name = String(path).split(/[\\/]/).pop();
     const list = meosRecentList().filter(x => x.path !== path);
     list.unshift({ name, path });
     if (extensionContext) extensionContext.globalState.update(MEOS_RECENT_KEY, list.slice(0, MEOS_RECENT_MAX));
@@ -27741,7 +27741,7 @@ function meosRecentWithState() {
   // 留めた物は先頭に1つ(履歴に居なくても出す)。以降は履歴の順そのまま。
   const list = pin ? [pin].concat(base.filter(x => x.path !== pin.path)) : base;
   return list.map(it => {
-    const d = docs.find(x => { try { return x.uri.scheme === 'file' && x.uri.fsPath === it.path && !x.isClosed; } catch (_) { return false; } });
+    const d = docs.find(x => { try { return meosDocFsPath(x) === it.path && !x.isClosed; } catch (_) { return false; } });   // v5.1.7: 入口で開いていても同じファイル
     return { name: it.name, path: it.path, open: !!d, dirty: !!(d && d.isDirty), pinned: !!(pin && pin.path === it.path) };
   });
 }
@@ -27792,7 +27792,7 @@ function meosTabForPath(p) {
     for (const g of ((vscode.window.tabGroups && vscode.window.tabGroups.all) || [])) {
       for (const t of (g.tabs || [])) {
         const u = t && t.input && t.input.uri;
-        if (u && u.scheme === 'file' && u.fsPath === path) return t;
+        if (u && meosDocFsPath(u) === path) return t;   // v5.1.7: 入口のタブも同じファイル(file: で2つ目を開かない)
       }
     }
   } catch (_) { }
@@ -27827,8 +27827,9 @@ function postMeDockFile(editor, force, skipPush) {
   try {
     if (!meDockPanel) return;
     const doc = editor && editor.document;
-    const name = (doc && doc.uri.scheme === 'file') ? String(doc.uri.fsPath).split(/[\\/]/).pop() : (doc ? '(untitled)' : '');
-    const path = (doc && doc.uri.scheme === 'file') ? doc.uri.fsPath : '';
+    const _fp7 = meosDocFsPath(doc);   // v5.1.7: 入口(meos-vault:)の文書も名前と住所を出す
+    const name = _fp7 ? String(_fp7).split(/[\\/]/).pop() : (doc ? '(untitled)' : '');
+    const path = _fp7;
     // ★★v4.0.325: **積むのは「ファイルが変わった時」だけ**。force は「今の状態をもう一度送る」という意味しか
     //   持たせない＝ ×で外した直後に、状態の送り直しでそのまま戻ってくる事故が起きない（一覧を空にできる）。
     const changed = !(_meosLastDock.panel === meDockPanel && _meosLastDock.path === path);
@@ -27859,8 +27860,8 @@ function postMeDockFile(editor, force, skipPush) {
 //     未保存(×)の間も、UDは前回保存した時刻のまま＝ 「その時からの差分が手元にある」と読める。
 function meosDockUdLabel(doc) {
   try {
-    if (!doc || doc.uri.scheme !== 'file') return '';
-    const st = require('fs').statSync(doc.uri.fsPath);
+    const _fp = meosDocFsPath(doc); if (!_fp) return '';   // v5.1.7: 入口の文書も更新日を出す
+    const st = require('fs').statSync(_fp);
     return meosFormatStamp(new Date(st.mtime));
   } catch (_) { return ''; }
 }
@@ -34906,7 +34907,7 @@ function toggleMeDock(editorOverride) {
       try {
         const _ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
         const _doc = _ed && _ed.document;
-        const _nm = (_doc && _doc.uri.scheme === 'file') ? String(_doc.uri.fsPath).split(/[\\/]/).pop() : '';
+        const _nm = meosDocFsPath(_doc) ? String(meosDocFsPath(_doc)).split(/[\\/]/).pop() : '';   // v5.1.7
         const _ud = meosDockUdLabel(_doc);
         const _txt = (_nm ? _nm : '') + (_ud ? (_nm ? ' ' : '') + 'UD' + _ud : '');
         if (_txt) {
@@ -38648,6 +38649,17 @@ const _meosFcFolded = new Set();
 //   ②**熱い経路でログを書いた**(ログ自体が次の発火の燃料になる)。→ 両方塞ぐ。
 // ★併せて**同時に2回畳んでいた**(起動時の3連発が競合。ログに ok が2行出ていた)→ 進行中フラグで1回に。
 // ★教訓= **自分の出力が自分の入力に戻る所でログを書かない**。計測は熱い経路の外側に置く。
+// ★v5.1.7(俊克 pm00:13「Me Dockヘッダーに untitled と表示され、更新日が表示されていない」): 入口(meos-vault:)で開いた文書も
+//   ディスクの同じファイル= 名前・更新日・最近のファイル・最後の行などは file: と同じ道で引く。口は1つ(ここ)。file: でも入口でもなければ ''。
+function meosDocFsPath(x) {
+  try {
+    const u = x && x.uri ? x.uri : x;
+    if (!u) return '';
+    if (u.scheme === 'file') return u.fsPath;
+    if (u.scheme === 'meos-vault') return vscode.Uri.file(u.path).fsPath;
+  } catch (_) { }
+  return '';
+}
 function meosIsRealFileDoc(doc) {
   try { return !!doc && !doc.isClosed && (doc.uri.scheme === 'file' || doc.uri.scheme === 'untitled' || doc.uri.scheme === 'meos-vault'); } catch (_) { return false; }   // v5.1.5: 入口(🔐暗号の仮想化)で開いた文書も本物のファイル(FC行の自動畳み・バッジ等が走らなかった)
 }
@@ -41705,7 +41717,7 @@ function meosNoteLastLine(editor) {
   try {
     if (!_meosLastLineReady) return;                      // 戻す前は覚えない(自分で上書きしない)
     const doc = editor && editor.document;
-    if (!doc || doc.uri.scheme !== 'file' || !meosIsProseDoc(doc)) return;
+    if (!doc || !meosDocFsPath(doc) || !meosIsProseDoc(doc)) return;   // v5.1.7: 入口の文書も
     const m = meosLastLineMap();
     m[doc.uri.fsPath] = editor.selection.active.line;
     if (_meosLastLineTimer) return;                       // 書き出しは手が止まってから1回だけ
@@ -41731,7 +41743,7 @@ function meosRestoreLastLineOnStart(attempt) {
     const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor || (vscode.window.visibleTextEditors || [])[0];
     if (!ed || !ed.document) { if ((attempt || 0) < 10) setTimeout(() => meosRestoreLastLineOnStart((attempt || 0) + 1), 1500); else meosLastLineFinish('エディタが見つからない'); return; }
     const doc = ed.document;
-    if (doc.uri.scheme !== 'file' || !meosIsProseDoc(doc)) { meosLastLineFinish('散文のファイルでない'); return; }
+    if (!meosDocFsPath(doc) || !meosIsProseDoc(doc)) { meosLastLineFinish('散文のファイルでない'); return; }   // v5.1.7: 入口の文書も
     const ln = Math.max(0, Math.min(doc.lineCount - 1, Math.trunc(Number(meosLastLineMap()[doc.uri.fsPath]) || 0)));
     if (!(ln > 0)) { meosLastLineFinish('記憶が無い(または先頭) ' + doc.uri.fsPath); return; }   // 起動時に驚かせない
     const p = new vscode.Position(ln, 0);
