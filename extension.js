@@ -17400,7 +17400,14 @@ async function encryptCurrentMembrane(passArg) {
 async function unlockCurrentMembrane(passArg) {
   const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (!editor) return;
-  if (meosIsVaultDoc(editor.document)) return meosVaultUnlock(editor, passArg); // v5.1.0: 入口の中では見せかけの解錠(ディスクは暗号文のまま)
+  if (meosIsVaultDoc(editor.document)) {   // v5.1.0: 入口の中では見せかけの解錠(ディスクは暗号文のまま)
+    // v5.1.12: 本文の🔓から Me Dock の欄で待っていた解錠なら、押した膜へカーソルを戻してから開ける(2分以内)
+    const pa = _vaultPendingAsk; _vaultPendingAsk = null;
+    if (pa && passArg && pa.uri === editor.document.uri.toString() && Date.now() - pa.at < 120000 && pa.line < editor.document.lineCount) {
+      const pp = new vscode.Position(pa.line, 0); editor.selection = new vscode.Selection(pp, pp);
+    }
+    return meosVaultUnlock(editor, passArg);
+  }
   const doc = editor.document;
   let pair = null; try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
   if (!pair) { vscode.window.showInformationMessage('MeOS: Put the cursor inside an encrypted (🔒) membrane to unlock it.'); return; }
@@ -17697,8 +17704,18 @@ async function meosVaultBtnPress(editor, b, line) {
     const p1 = new vscode.Position(line + 1, 0);
     ed.selection = new vscode.Selection(p1, p1);
   }
+  // ★v5.1.12(俊克「本文の🔓を押したら、上部の入力欄でなく、Me Dockの合言葉欄(👁が右にある)で受けるように」):
+  //   Me Dock が見えていれば、その合言葉欄を開いて待つ(打った合言葉は encOp→unlockCurrentMembrane で戻る)。
+  //   押した膜は控えておく= 打っている間にカーソルが動いても、押した膜を開ける。Me Dock が無ければ上部の欄(meosAskPass)。
+  if (meDockPanel && meDockPanel.visible) {
+    _vaultPendingAsk = { uri: ed.document.uri.toString(), line: ed.selection.active.line, at: Date.now() };
+    try { meDockPanel.reveal(meDockPanel.viewColumn, false); } catch (_) { }
+    try { meDockPanel.webview.postMessage({ type: 'encAskPass', op: 'unlock' }); } catch (_) { }
+    return;
+  }
   await meosVaultUnlock(ed);
 }
+let _vaultPendingAsk = null;   // v5.1.12: Me Dock の合言葉欄で待っている解錠(押した膜の位置)
 let _encSkinDeco = null;   // v5.1.1: 本文の🔐/🔓の札の灰色の地を消し、手の形にする(⏰の札と同じ作り・型は別=⏰の札を上書きしない)
 let _vaultRedirectBusy = false;
 async function meosVaultRedirectFileTab(ed) {
@@ -32367,7 +32384,8 @@ let _encPendingOp='';
 function showEncPass(op){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':'🔓';if(encPassInput){encPassInput.type='password';
 encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — Enter to lock':'passphrase — Enter to unlock';
 }if(encPassRow)encPassRow.style.display='flex';setTimeout(()=>{try{encPassInput&&encPassInput.focus();}catch(_){}},0);}
-function hideEncPass(){if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';
+let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
+function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';
 }_encPendingOp='';}
 function submitEncPass(){const v=encPassInput?encPassInput.value:'';if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
 op:_encPendingOp,pass:v});hideEncPass();}
@@ -32389,7 +32407,8 @@ const encCopy=document.getElementById('enc-copy');if(encCopy)encCopy.addEventLis
 // {* ▼mCN=dock_js_github // GitHub接続ウィザードと🐙Octopush *}
 window.addEventListener('message',ev=>{const m=ev.data;if(m&&m.type==='encState'){const L=document.getElementById('enc-lock'),
 U=document.getElementById('enc-unlock');_encVaultUnlocked=!!m.vaultUnlocked;if(L)L.classList.toggle('enc-active',!!m.onMembrane&&!m.encrypted);if(U)U.classList.toggle('enc-active',!!m.onMembrane&&!!m.encrypted);
-if(!m.onMembrane&&typeof hideEncPass==='function')hideEncPass();}}); /* v0.9.9994: 膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。v0.9.99915: 膜外へカーソルが出たら入力枠を消す */
+if(!m.onMembrane&&!_encAskBody&&typeof hideEncPass==='function')hideEncPass();}
+if(m&&m.type==='encAskPass'){showEncPass(m.op||'unlock');_encAskBody=true;}}); /* v0.9.9994: 膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。v0.9.99915: 膜外へカーソルが出たら入力枠を消す */
 const ghWizard=document.getElementById('gh-wizard'),ghWizardHead=document.getElementById('gh-wizard-head'),ghWizardToggle=document.getElementById('gh-wizard-toggle'),
 ghWizardStatus=document.getElementById('gh-wizard-status'),ghProfileUrl=document.getElementById('gh-profile-url'),ghPatInput=document.getElementById('gh-pat-input'),
 ghPatLink=document.getElementById('gh-pat-link'),ghConnectBtn=document.getElementById('gh-connect-btn'),ghFolderName2=document.getElementById('gh-folder-name2'),
