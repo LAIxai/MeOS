@@ -17333,7 +17333,7 @@ function meosAskPass(prompt, placeHolder) {
     const ib = vscode.window.createInputBox();
     let done = false;
     const fin = (v) => { if (done) return; done = true; resolve(v); try { ib.dispose(); } catch (_) { } };
-    const eye = () => ({ iconPath: new vscode.ThemeIcon(ib.password ? 'eye' : 'eye-closed'), tooltip: ib.password ? 'Show the passphrase (lets you type kana/kanji)' : 'Hide the passphrase' });
+    const eye = () => ({ iconPath: new vscode.ThemeIcon(ib.password ? 'eye-closed' : 'eye'), tooltip: ib.password ? 'Hidden — click to show (lets you type kana/kanji)' : 'Shown — click to hide' });   // v5.1.11(俊克「目の意味が逆」): 絵は今の姿(伏せ字=閉じた目/見える=開いた目)
     ib.password = true; ib.ignoreFocusOut = true; ib.prompt = prompt || ''; ib.placeholder = placeHolder || '';
     ib.buttons = [eye()];
     ib.onDidTriggerButton(() => { ib.password = !ib.password; ib.buttons = [eye()]; });
