@@ -32385,22 +32385,27 @@ function showEncPass(op){_encPendingOp=op;if(encPassLabel)encPassLabel.textConte
 encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':'passphrase — click Go to unlock';
 }if(encPassRow)encPassRow.style.display='flex';setTimeout(()=>{try{encPassInput&&encPassInput.focus();}catch(_){}},0);}
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
+let _encOpenedBy='menu'; /* TEMP v5.1.14: 欄の開き方(menu=Me Dockのボタンをクリック/body=本文の🔓から知らせ) */
+function _encKLog(t,ev){try{vscode.postMessage({type:'encKeyLog',line:'['+_encOpenedBy+'] '+t+(ev?(' key='+ev.key+' code='+ev.code+' kc='+ev.keyCode+' comp='+ev.isComposing):'')+' type='+(encPassInput?encPassInput.type:'?')+' len='+(encPassInput?encPassInput.value.length:-1)+' docFocus='+document.hasFocus()+' active='+(document.activeElement?document.activeElement.id:'')});}catch(_){}}
 function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';
 }_encPendingOp='';}
 function submitEncPass(){const v=encPassInput?encPassInput.value:'';if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
 op:_encPendingOp,pass:v});hideEncPass();}
 let _encVaultUnlocked=false; /* v5.1.1: 入口で解錠中の膜= 🔐は合言葉なしで、すぐ施錠 */
 const encLock=document.getElementById('enc-lock');if(encLock)encLock.addEventListener('click',()=>{if(!encLock.classList.contains('enc-active'))return;
-if(_encVaultUnlocked){hideEncPass();vscode.postMessage({type:'encryptMembrane'});return;}showEncPass('encrypt');
+if(_encVaultUnlocked){hideEncPass();vscode.postMessage({type:'encryptMembrane'});return;}showEncPass('encrypt');_encOpenedBy='menu';_encKLog('open');
 }); /* v0.9.99915: アクティブ(平文膜の上)の時だけ入力枠を出す */
 const encUnlock=document.getElementById('enc-unlock');if(encUnlock)encUnlock.addEventListener('click',()=>{if(encUnlock.classList.contains('enc-active'))showEncPass('unlock');
 }); /* v0.9.99915: アクティブ(暗号膜の上)の時だけ */
-if(encPassGo)encPassGo.addEventListener('click',submitEncPass);
+if(encPassGo)encPassGo.addEventListener('click',()=>{_encKLog('goClick');submitEncPass();});
 if(encPassX)encPassX.addEventListener('click',hideEncPass);
 if(encPassEye)encPassEye.addEventListener('click',()=>{if(encPassInput){encPassInput.type=(encPassInput.type==='password')?'text':'password';
 encPassInput.focus();}});
 if(encPassInput)encPassInput.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!ev.isComposing){ev.preventDefault();
-hideEncPass();}}); /* v5.1.13(俊克「変換の確定でGoが実行されてしまうので、Goはクリックのみに」): Enterでは送らない(かな漢字の確定もEnter) */
+hideEncPass();}});
+if(encPassInput){encPassInput.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.keyCode===229||ev.isComposing)_encKLog('keydown',ev);});
+encPassInput.addEventListener('keyup',ev=>{if(ev.key==='Enter')_encKLog('keyup',ev);});
+encPassInput.addEventListener('compositionstart',()=>_encKLog('compStart'));encPassInput.addEventListener('compositionend',()=>_encKLog('compEnd'));} /* TEMP v5.1.14 */ /* v5.1.13(俊克「変換の確定でGoが実行されてしまうので、Goはクリックのみに」): Enterでは送らない(かな漢字の確定もEnter) */
 const encCopy=document.getElementById('enc-copy');if(encCopy)encCopy.addEventListener('click',()=>vscode.postMessage({type:'copySecretAutoWipe'}));
  /* v0.9.99910: 📋 Copy & auto-clear */
 // {* ▲mCN=dock_js_encrypt *}
@@ -32408,7 +32413,7 @@ const encCopy=document.getElementById('enc-copy');if(encCopy)encCopy.addEventLis
 window.addEventListener('message',ev=>{const m=ev.data;if(m&&m.type==='encState'){const L=document.getElementById('enc-lock'),
 U=document.getElementById('enc-unlock');_encVaultUnlocked=!!m.vaultUnlocked;if(L)L.classList.toggle('enc-active',!!m.onMembrane&&!m.encrypted);if(U)U.classList.toggle('enc-active',!!m.onMembrane&&!!m.encrypted);
 if(!m.onMembrane&&!_encAskBody&&typeof hideEncPass==='function')hideEncPass();}
-if(m&&m.type==='encAskPass'){showEncPass(m.op||'unlock');_encAskBody=true;}}); /* v0.9.9994: 膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。v0.9.99915: 膜外へカーソルが出たら入力枠を消す */
+if(m&&m.type==='encAskPass'){showEncPass(m.op||'unlock');_encAskBody=true;_encOpenedBy='body';_encKLog('open');}}); /* v0.9.9994: 膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。v0.9.99915: 膜外へカーソルが出たら入力枠を消す */
 const ghWizard=document.getElementById('gh-wizard'),ghWizardHead=document.getElementById('gh-wizard-head'),ghWizardToggle=document.getElementById('gh-wizard-toggle'),
 ghWizardStatus=document.getElementById('gh-wizard-status'),ghProfileUrl=document.getElementById('gh-profile-url'),ghPatInput=document.getElementById('gh-pat-input'),
 ghPatLink=document.getElementById('gh-pat-link'),ghConnectBtn=document.getElementById('gh-connect-btn'),ghFolderName2=document.getElementById('gh-folder-name2'),
@@ -34765,6 +34770,13 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'mewSignVisible') { await meosMewSignVisible(); try { updateMeDockMode(); } catch (_) {} return; } // v4.0.67: Me Dockの🐱
     if (message && message.type === 'encryptMembrane') { await encryptCurrentMembrane(); return; }
     if (message && message.type === 'unlockMembrane') { await unlockCurrentMembrane(); return; }
+    // ★★TEMP v5.1.14(俊克 pm02:15「👁に切り替えて漢字変換でGoにならなかった。今回なぜ変わったのか」): 合言葉欄に届いたキーを測る。
+    //   書くのはキーの種類・変換中か・欄の字数だけ(合言葉の中身は書かない)。書き先= globalStorage/enc-keylog.txt。★理由が分かったら撤去する。
+    if (message && message.type === 'encKeyLog') {
+      try { const fs = require('fs'), path = require('path'); const dir = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(dir, { recursive: true });
+        fs.appendFileSync(path.join(dir, 'enc-keylog.txt'), new Date().toISOString() + ' ' + String(message.line || '').slice(0, 300) + '\n'); } catch (_) { }
+      return;
+    }
     if (message && message.type === 'encOp') { if (message.op === 'encrypt') { await encryptCurrentMembrane(message.pass || ''); } else if (message.op === 'unlock') { await unlockCurrentMembrane(message.pass || ''); } return; } // v0.9.99914: Me Dockパス入力からの施錠/解錠
     if (message && message.type === 'copySecretAutoWipe') { await copySelectionAutoWipe(); return; }
     if (message && message.type === 'githubCommitPush') { await githubCommitPush(); return; }
