@@ -32382,7 +32382,7 @@ let _encPendingOp='';
 // {* ▲mCN=dock_js_format *}
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
 function showEncPass(op){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':'🔓';if(encPassInput){encPassInput.type='password';
-encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — Enter to lock':'passphrase — Enter to unlock';
+encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':'passphrase — click Go to unlock';
 }if(encPassRow)encPassRow.style.display='flex';setTimeout(()=>{try{encPassInput&&encPassInput.focus();}catch(_){}},0);}
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
 function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';
@@ -32399,8 +32399,8 @@ if(encPassGo)encPassGo.addEventListener('click',submitEncPass);
 if(encPassX)encPassX.addEventListener('click',hideEncPass);
 if(encPassEye)encPassEye.addEventListener('click',()=>{if(encPassInput){encPassInput.type=(encPassInput.type==='password')?'text':'password';
 encPassInput.focus();}});
-if(encPassInput)encPassInput.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();submitEncPass();}else if(ev.key==='Escape'){ev.preventDefault();
-hideEncPass();}});
+if(encPassInput)encPassInput.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!ev.isComposing){ev.preventDefault();
+hideEncPass();}}); /* v5.1.13(俊克「変換の確定でGoが実行されてしまうので、Goはクリックのみに」): Enterでは送らない(かな漢字の確定もEnter) */
 const encCopy=document.getElementById('enc-copy');if(encCopy)encCopy.addEventListener('click',()=>vscode.postMessage({type:'copySecretAutoWipe'}));
  /* v0.9.99910: 📋 Copy & auto-clear */
 // {* ▲mCN=dock_js_encrypt *}
