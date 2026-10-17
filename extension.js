@@ -27629,6 +27629,23 @@ function applyEncDecorations(editor) {
       const b = meosVaultLineHints(doc, i, editor) && meosVaultBtnSpot(doc, i);
       if (b && (b.kind === 'lock' || b.head)) { const tl = (doc.lineAt(i).text || '').length; skins.push({ range: new vscode.Range(i, Math.max(0, b.col - 1), i, Math.min(tl, b.col + 1)) }); }
     }
+    // ★v5.1.16(俊克 pm02:47「スクロールする時、暗号化してある部分に暗号化されたコードがちらっと見えることがある」):
+    //   隠すのが見えている行だけ= スクロールで入ってきた行は、次の描き直し(デバウンス)までの一瞬だけ生の暗号文だった。
+    //   → 隠す(字を0幅にする)だけは見えている範囲の上下500行まで先に掛けておく。字(Locked…)は今まで通り見えている行だけ
+    //   (隠れた行に字を立てると畳みの境目に出て⛔を押す= v5.1.2)。隠す装飾は字を足さないので、畳んだ所に掛かっても無害。
+    try {
+      const M = 500;
+      for (const vr of (editor.visibleRanges || [])) {
+        const from = Math.max(0, vr.start.line - M), to = Math.min(doc.lineCount - 1, vr.end.line + M);
+        for (let i = from; i <= to; i++) {
+          if (seen.has(i)) continue; seen.add(i);
+          const text = doc.lineAt(i).text || '';
+          const idx = text.indexOf(_MEOS_ENC_PREFIX);
+          if (idx < 0 || _inEncBand(i)) continue;
+          hideRanges.push(new vscode.Range(i, idx, i, text.length));
+        }
+      }
+    } catch (_) { }
     editor.setDecorations(encHideDecoration, hideRanges);
     editor.setDecorations(encLabelDecoration, labelRanges);
     if (skins.length && !_encSkinDeco) _encSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
