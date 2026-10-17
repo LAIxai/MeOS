@@ -17626,6 +17626,7 @@ function meosVaultUnlockedPair(editor) {
 //   ・施錠中= 🔒マーカー行の頭に🔐(押すと合言葉を訊いて解錠)。file: で開いていたら、先に入口で開き直してから解錠する。
 //   ・解錠中= 膜の開始行の名前の直後(' //' の手前)に🔓(押すと合言葉なしで、すぐ施錠)。
 //   当たりは「マウスで押してカーソルが札の桁に落ちた」= ⏰のボタンと同じ判定。Rawの帯の中は生の字を見せるので出さない。
+//   v5.1.2: 畳んで隠れた行には札も字も立てない(隠れた行の頭の物は畳みの境目=頭の行末に出て、⛔の蓋を崩す)。
 function meosVaultBtnSpot(doc, i) {
   try {
     const t = doc.lineAt(i).text || '';
@@ -27526,14 +27527,17 @@ function applyEncDecorations(editor) {
     const skins = [];   // v5.1.1
     const seen = new Set();
     for (const vr of (editor.visibleRanges || [])) {
-      const from = Math.max(0, vr.start.line - 1), to = Math.min(doc.lineCount - 1, vr.end.line + 1);
+      // ★v5.1.2(俊克 バグ1「⛔シールの場所が崩れる事がある」): 前後1行広げて見ていたので、畳んで隠れたマーカー行にも
+      //   「Locked…」の字を立てていた= 隠れた行の頭の字は畳みの境目(頭の行の行末)に出て「⋯」を右へ押し、行末の⛔が字に被った。
+      //   → 見えている行だけ(visibleRanges は畳んだ所で切れている)。
+      const from = Math.max(0, vr.start.line), to = Math.min(doc.lineCount - 1, vr.end.line);
       for (let i = from; i <= to; i++) {
         if (seen.has(i)) continue; seen.add(i);
         const text = doc.lineAt(i).text || '';
         const idx = text.indexOf(_MEOS_ENC_PREFIX);
         if (idx < 0 || _inEncBand(i)) continue;
         hideRanges.push(new vscode.Range(i, idx, i, text.length)); // 🔒MeOS-enc:v1 + base64 を透明化
-        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: ' Locked — click 🔐 to open', color: '#d2691e', fontWeight: '700' } } });   // v5.1.1: 🔐は札(押す物)= 文は札の右に立つ
+        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: ' Locked — click 🔓 to open', color: '#d2691e', fontWeight: '700' } } });   // v5.1.1: 🔐は札(押す物)= 文は札の右に立つ
         skins.push({ range: new vscode.Range(i, Math.max(0, idx - 1), i, Math.min(text.length, idx + 2)) });
       }
     }
@@ -42722,7 +42726,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
             for (const h of meosClockLineHints(_ed89, document, ln)) {
               out.push(new vscode.InlayHint(new vscode.Position(ln, h.col), h.label));
             }
-            { const _vh = meosVaultLineHints(document, ln); if (_vh) out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label)); }   // v5.1.1: 本文の🔐/🔓
+            { const _vh = meosVaultLineHints(document, ln); if (_vh && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label)); }   // v5.1.1: 本文の🔐/🔓
           }
 
         } catch (_) { }
