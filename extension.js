@@ -17431,6 +17431,9 @@ async function copySelectionAutoWipe() {
 //     ②鍵を持つ膜が名前を変えられ/消えて見つからない時は書かない ③暗号化した結果を復号し直して元と一致しなければ書かない。
 //   ★対象は「直接暗号化した膜」(開始+🔒マーカー1行+閉じの3行=isCurrentMembraneEncryptedと同じ形)。中から現れた膜も鍵があれば続けて開く。
 //   ★残る穴: VSCodeのHot Exit(未保存の控え)は平文でバックアップ用フォルダへ書かれ得る。→ 未保存の時間を短く(試作では未対策)。
+//   ★v5.1.6(俊克 pm00:04「ファイルが開かなくなっちゃったよ」): 入口のタブを開き直す時に MeOS がまだ入口を登録していなかった
+//     (renderer.log「Unable to resolve resource meos-vault:…」= 新しい版を入れた0.3秒後)。→ package.json に onFileSystem:meos-vault
+//     = VSCode は入口のファイルを開く前に MeOS を起こして待つ("*" だけでは待たない)。
 const MEOS_VAULT_SCHEME = 'meos-vault';
 const MEOS_VAULT_IDLE_MS = 3 * 60 * 1000;   // ★v5.1.1(俊克 10.17 am10:58「テスト用に3分で自動施錠に」): 試しの間は3分。★リリース前に30分へ戻す
 const _vaultKeys = new Map();   // fileUri文字列 -> Map(膜名 -> 合言葉)
