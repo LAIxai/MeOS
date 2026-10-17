@@ -89,6 +89,10 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
   ok(!(await vfs.readFile(VU)).toString().includes(SECRET_A), '施錠後に読む= 暗号文の姿');
   threw = false; try { await vfs.writeFile(VU, Buffer.from(view)); } catch (_) { threw = true; }
   ok(threw && disk() === before, '守り① 施錠後に平文が書かれそうになったら書かない');
+  // v5.1.34 守り④: MeOS が入れ替わった(鍵も控えも消えた)のに、画面に平文が残っている
+  T._vaultSeen.delete(KEY);
+  threw = false; try { await vfs.writeFile(VU, Buffer.from(view)); } catch (_) { threw = true; }
+  ok(threw && disk() === before, '守り④ 入れ替わりで鍵も控えも無いのに平文を書こうとしたら書かない(ディスクを見て決める)');
   // 鍵なし・平文の膜なし= そのまま書ける(普通の編集)
   const plainEdit = disk().replace('after', 'after (edited while locked)');
   await vfs.writeFile(VU, Buffer.from(plainEdit));

@@ -17566,7 +17566,7 @@ function meosVaultDecryptText(text, keys) {
   return lines.join(eol);
 }
 // 書く口: 鍵を持つ膜を、内側から順に暗号化し直す。守り①②③に掛かったら throw(=ディスクは前のまま)。
-function meosVaultEncryptText(text, keys, seen) {
+function meosVaultEncryptText(text, keys, seen, diskText) {
   const eol = _vaultEol(text);
   let lines = String(text).split(/\r?\n/);
   const ids = new Set(_vaultPairs(lines).map(p => p.id));
@@ -17588,6 +17588,20 @@ function meosVaultEncryptText(text, keys, seen) {
     for (const p of _vaultPairs(lines)) {
       if (seen.has(p.id) && !(keys && keys.has(p.id)) && !_vaultIsMarkerBody(lines, p) && p.end - p.start > 1) {
         throw new Error('the membrane "' + p.id + '" is locked, but this editor still holds its plain text (e.g. after Undo) — not saved. Unlock it again 🔓 to edit, or revert the file.');
+      }
+    }
+  }
+  // ★守り④ v5.1.34(俊克「解錠中にアップデートしたけど、そのまま解錠中だった」): MeOS が入れ替わると鍵も控え(seen)も消えるのに、
+  //   画面には平文が残る= そのまま保存すると平文がディスクに出る。→ **ディスク上で暗号化されている膜**を、鍵なしで平文のまま書こうとしたら書かない。
+  //   ディスクを見て決めるので、覚え(メモリ)が消えていても効く。永久に平文へ戻したい時は、ふつうに開いた(file:)文書の🔓(旧来の解錠)で。
+  if (diskText) {
+    const dl = String(diskText).split(/\r?\n/), lockedOnDisk = new Set();
+    for (let i = 1; i < dl.length; i++) { if (dl[i].indexOf(_MEOS_ENC_PREFIX) >= 0) { const op = parseOpenLine(dl[i - 1] || ''); if (op) lockedOnDisk.add(op.id); } }
+    if (lockedOnDisk.size) {
+      for (const p of _vaultPairs(lines)) {
+        if (lockedOnDisk.has(p.id) && !(keys && keys.has(p.id)) && !_vaultIsMarkerBody(lines, p) && p.end - p.start > 1) {
+          throw new Error('the membrane "' + p.id + '" is encrypted on disk, but this editor holds its plain text without the key (MeOS was restarted or updated) — not saved. Revert the file (or close it without saving) and unlock it again 🔓.');
+        }
       }
     }
   }
@@ -17622,7 +17636,8 @@ class MeosVaultFs {
     const k = _vaultKeyOf(u);
     let out;
     const _p0 = Date.now();   // TEMP v5.1.32
-    try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultKeys.get(k), _vaultSeen.get(k)); }
+    let _disk = ''; try { _disk = Buffer.from(await vscode.workspace.fs.readFile(meosVaultFileUri(u))).toString('utf8'); } catch (_) { _disk = ''; }   // v5.1.34: 守り④はディスクを見る
+    try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultKeys.get(k), _vaultSeen.get(k), _disk); }
     catch (e) {
       const msg = 'MeOS 🔐: ' + (e && e.message ? e.message : String(e));
       try { vscode.window.showErrorMessage(msg); } catch (_) { }
@@ -17897,6 +17912,17 @@ function meosVaultActivate(context) {
     _vaultFs = new MeosVaultFs();
     context.subscriptions.push(vscode.workspace.registerFileSystemProvider(MEOS_VAULT_SCHEME, _vaultFs, { isCaseSensitive: true }));
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultOpen', () => meosVaultOpen()));
+    // ★v5.1.34: 起きた(入れ替わった)直後= 鍵は無い。開いている入口の文書を読み直して施錠した姿へ戻す(画面に残った平文は見せかけでさえない)。
+    //   未保存の書きかけがある文書は戻せない(戻すと書きかけが消える)ので知らせる= 守り④が平文の保存は止める。
+    setTimeout(async () => {
+      try {
+        const docs = (vscode.workspace.textDocuments || []).filter(d => meosIsVaultDoc(d) && !d.isClosed);
+        const keysSeen = new Set();
+        for (const d of docs) { const k = _vaultKeyOf(d.uri); if (keysSeen.has(k)) continue; keysSeen.add(k); await _vaultReload(k); }
+        const dirty = docs.filter(d => d.isDirty);
+        if (dirty.length) vscode.window.showWarningMessage('MeOS 🔐: MeOS restarted, so every membrane is locked again. ' + dirty.length + ' vault file(s) still show unsaved plain text — revert them (or close without saving), then unlock again 🔓.');
+      } catch (_) { }
+    }, 1500);
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultLockAll', () => meosVaultLockAll('now')));
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) { _vaultTouch(); _vaultArmAutoSave(e.document); } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) _vaultTouch(); }));
