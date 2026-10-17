@@ -17820,7 +17820,7 @@ function _vaultArmAutoSave(doc) {
       _vaultSaveTimers.delete(k);
       try {
         const ks = _vaultKeys.get(_vaultKeyOf(doc.uri));
-        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const _s0 = Date.now(); const ok = await doc.save(); meosVaultPerf('[autosave] total=' + (Date.now() - _s0) + 'ms ok=' + ok);   // TEMP v5.1.32 if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
+        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const _s0 = Date.now(); const ok = await doc.save(); meosVaultPerf('[autosave] total=' + (Date.now() - _s0) + 'ms ok=' + ok); /* TEMP v5.1.32 */ if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
       } catch (_) { }
     }, MEOS_VAULT_AUTOSAVE_MS));
   } catch (_) { }
