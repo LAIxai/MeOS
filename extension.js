@@ -17632,20 +17632,30 @@ function meosVaultBtnSpot(doc, i) {
     const t = doc.lineAt(i).text || '';
     const idx = t.indexOf(_MEOS_ENC_PREFIX);
     if (idx >= 0) return { col: idx, kind: 'unlock' };
-    if (!meosIsVaultDoc(doc)) return null;
-    const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
-    if (!keys || !keys.size || !/[▼▽]/.test(t)) return null;
+    if (!/[▼▽]/.test(t)) return null;
     const op = parseOpenLine(t);
-    if (!op || !keys.has(op.id)) return null;
+    if (!op) return null;
     const ie = t.indexOf(op.id) + op.id.length;
     const c = t.indexOf(' //', ie);
-    return { col: c >= 0 ? c : ie, kind: 'lock', id: op.id };
+    const col = c >= 0 ? c : ie;
+    // ★v5.1.5(俊克 改良1「文字カーソルが暗号化した膜の外にいる時も🔓/🔐を。▼▲ボタンと同様」): 開始行にも錠のボタン。
+    //   施錠中= 直接暗号化した膜(開始+🔒マーカー1行+閉じ)の開始行に🔓。外から見ても暗号化していると分かる
+    //   (マーカー行はファイルに平文で書いてある=隠しても秘密は増えない・ケルクホフス)。畳んでいても見える。
+    if (i + 2 < doc.lineCount && (doc.lineAt(i + 1).text || '').indexOf(_MEOS_ENC_PREFIX) >= 0) {
+      const cl = parseCloseLine(doc.lineAt(i + 2).text || '');
+      if (cl && cl.id === op.id) return { col, kind: 'unlock', head: true };
+    }
+    if (!meosIsVaultDoc(doc)) return null;
+    const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
+    if (!keys || !keys.has(op.id)) return null;
+    return { col, kind: 'lock', id: op.id };
   } catch (_) { return null; }
 }
-function meosVaultLineHints(doc, i) {
+function meosVaultLineHints(doc, i, editor) {
   const b = meosVaultBtnSpot(doc, i);
   if (!b) return null;
   try { if (meosModeAtLine(doc, i) === 'raw') return null; } catch (_) { }
+  try { if (editor && (b.kind === 'lock' || b.head) && meosShowsRawLineStable(editor, i)) return null; } catch (_) { }   // v5.1.5: 開始行がカーソルで生の字になっている時は出さない(⏰の札と同じ)
   return { col: b.col, label: b.kind === 'unlock' ? '🔓' : '🔐' };   // v5.1.3(俊克「押した時の動作で見せよう」): 施錠中=🔓(押すと開く)/解錠中=🔐(押すと閉じる)= Me Dockの🔐と同じ読み方
 }
 async function meosVaultBtnPress(editor, b) {
@@ -21739,7 +21749,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
   if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && editor.selection.isEmpty) {
     try {
       const _ln = editor.selection.active.line;
-      { const _vb = meosVaultLineHints(editor.document, _ln) && meosVaultBtnSpot(editor.document, _ln);   // ★v5.1.1: 本文の🔐(解錠)/🔓(施錠)
+      { const _vb = meosVaultLineHints(editor.document, _ln, editor) && meosVaultBtnSpot(editor.document, _ln);   // v5.1.5: 前から生の字だった行(カーソルが居た)は押せない= 文字としてのクリック   // ★v5.1.1: 本文の🔐(解錠)/🔓(施錠)
         if (_vb && editor.selection.active.character === _vb.col) { await meosVaultBtnPress(editor, _vb); return; } }
       // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
       //   → [[feedback_go_get_the_measurement]]。⏰の行をマウスで押した時だけ。
@@ -27537,16 +27547,14 @@ function applyEncDecorations(editor) {
         const idx = text.indexOf(_MEOS_ENC_PREFIX);
         if (idx < 0 || _inEncBand(i)) continue;
         hideRanges.push(new vscode.Range(i, idx, i, text.length)); // 🔒MeOS-enc:v1 + base64 を透明化
-        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: ' Locked — click 🔓 to open', color: '#d2691e', fontWeight: '700' } } });   // v5.1.1: 🔐は札(押す物)= 文は札の右に立つ
+        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: ' Locked — click 🔓 to open', color: '#d2691e', fontWeight: '700', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } } });   // v5.1.1: 🔐は札(押す物)= 文は札の右に立つ
         skins.push({ range: new vscode.Range(i, Math.max(0, idx - 1), i, Math.min(text.length, idx + 2)) });
       }
     }
-    // v5.1.1: 解錠中の膜の開始行の🔓(入口の文書だけ)
-    if (meosIsVaultDoc(doc) && _vaultKeys.has(_vaultKeyOf(doc.uri))) {
-      for (const i of seen) {
-        const b = meosVaultBtnSpot(doc, i);
-        if (b && b.kind === 'lock' && !_inEncBand(i)) { const tl = (doc.lineAt(i).text || '').length; skins.push({ range: new vscode.Range(i, Math.max(0, b.col - 1), i, Math.min(tl, b.col + 1)) }); }
-      }
+    // v5.1.1: 開始行の錠のボタン(解錠中=🔐 / v5.1.5: 施錠中=🔓も)の札の地を消す
+    for (const i of seen) {
+      const b = meosVaultLineHints(doc, i, editor) && meosVaultBtnSpot(doc, i);
+      if (b && (b.kind === 'lock' || b.head)) { const tl = (doc.lineAt(i).text || '').length; skins.push({ range: new vscode.Range(i, Math.max(0, b.col - 1), i, Math.min(tl, b.col + 1)) }); }
     }
     editor.setDecorations(encHideDecoration, hideRanges);
     editor.setDecorations(encLabelDecoration, labelRanges);
@@ -38638,7 +38646,7 @@ const _meosFcFolded = new Set();
 // ★併せて**同時に2回畳んでいた**(起動時の3連発が競合。ログに ok が2行出ていた)→ 進行中フラグで1回に。
 // ★教訓= **自分の出力が自分の入力に戻る所でログを書かない**。計測は熱い経路の外側に置く。
 function meosIsRealFileDoc(doc) {
-  try { return !!doc && !doc.isClosed && (doc.uri.scheme === 'file' || doc.uri.scheme === 'untitled'); } catch (_) { return false; }
+  try { return !!doc && !doc.isClosed && (doc.uri.scheme === 'file' || doc.uri.scheme === 'untitled' || doc.uri.scheme === 'meos-vault'); } catch (_) { return false; }   // v5.1.5: 入口(🔐暗号の仮想化)で開いた文書も本物のファイル(FC行の自動畳み・バッジ等が走らなかった)
 }
 let _meosFcFolding = false; // 進行中(起動時の3連発が競合して二重に畳むのを防ぐ)
 // ★★★v4.0.466: **畳んだ物は、しばらく覚えておく**。可視範囲は畳んだ直後には古いままso、
@@ -42726,7 +42734,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
             for (const h of meosClockLineHints(_ed89, document, ln)) {
               out.push(new vscode.InlayHint(new vscode.Position(ln, h.col), h.label));
             }
-            { const _vh = meosVaultLineHints(document, ln); if (_vh && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label)); }   // v5.1.1: 本文の🔐/🔓
+            { const _vh = meosVaultLineHints(document, ln, _ed89); if (_vh && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label)); }   // v5.1.1: 本文の🔐/🔓
           }
 
         } catch (_) { }
