@@ -17717,6 +17717,26 @@ async function meosVaultBtnPress(editor, b, line) {
 }
 let _vaultPendingAsk = null;   // v5.1.12: Me Dock の合言葉欄で待っている解錠(押した膜の位置)
 let _encSkinDeco = null;   // v5.1.1: 本文の🔐/🔓の札の灰色の地を消し、手の形にする(⏰の札と同じ作り・型は別=⏰の札を上書きしない)
+// ★v5.1.17(俊克 pm02:56「暗号を解錠している間は、5秒入力なかったら、自動保存すればいい。自動保存は好きじゃないけど、このケースでは必要」):
+//   VSCodium は未保存の文書を控え(Backups フォルダ)へ丸ごと写す= 解錠中は平文が控えに残る。保存すれば控えは消える。
+//   → 解錠中の膜を持つ入口の文書だけ、打つのを止めて5秒で保存(書く口が暗号化し直す)。施錠中や普通のファイルは今まで通り自動保存しない。
+const MEOS_VAULT_AUTOSAVE_MS = 5000;
+const _vaultSaveTimers = new Map();   // 文書uri -> タイマー
+function _vaultArmAutoSave(doc) {
+  try {
+    const k = doc.uri.toString();
+    const old = _vaultSaveTimers.get(k); if (old) clearTimeout(old);
+    const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
+    if (!keys || !keys.size) { _vaultSaveTimers.delete(k); return; }
+    _vaultSaveTimers.set(k, setTimeout(async () => {
+      _vaultSaveTimers.delete(k);
+      try {
+        const ks = _vaultKeys.get(_vaultKeyOf(doc.uri));
+        if (!doc.isClosed && doc.isDirty && ks && ks.size) await doc.save();
+      } catch (_) { }
+    }, MEOS_VAULT_AUTOSAVE_MS));
+  } catch (_) { }
+}
 let _vaultRedirectBusy = false;
 async function meosVaultRedirectFileTab(ed) {
   if (_vaultRedirectBusy || !ed || !ed.document || ed.document.uri.scheme !== 'file') return;
@@ -17749,7 +17769,7 @@ function meosVaultActivate(context) {
     context.subscriptions.push(vscode.workspace.registerFileSystemProvider(MEOS_VAULT_SCHEME, _vaultFs, { isCaseSensitive: true }));
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultOpen', () => meosVaultOpen()));
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultLockAll', () => meosVaultLockAll('now')));
-    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) _vaultTouch(); }));
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) { _vaultTouch(); _vaultArmAutoSave(e.document); } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) _vaultTouch(); }));
     // ★v5.1.8(俊克 pm00:45「ほとんどずっと、Finderの日記ファイルをWクリックしたものを使っている」):
     //   入口のタブが開いているのに Finder から同じ日記を開くと、file: のタブがもう1つできる= 2つの口から同じファイルを書く
