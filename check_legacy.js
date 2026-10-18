@@ -37,7 +37,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_legacy_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, meosLegacyComment, meosLegacyShortPeriod, meosLegacyNext, meosLegacyParsePeriod, meosLegacyParseSpec, meosLegacyAddSpec, meosLegacySpecOf, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
+module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, meosLegacyComment, meosLegacyShortPeriod, meosLegacyNext, meosLegacyParsePeriod, meosLegacyParseSpec, meosLegacyAddSpec, meosLegacySpecOf, meosAwayClosedNote, setCtx: (c) => { extensionContext = c; }, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
 meosRingFor = function (n, ms) { (global.__rings = global.__rings || []).push([n, ms]); };
 meosStopRinging = function () { (global.__rings = global.__rings || []).push(['stop']); };
 `);
@@ -128,6 +128,17 @@ ok(T.meosLegacyLeft(90 * 1000) === '2 min' && T.meosLegacyLeft(400 * 86400000) =
   T.setKey(K); T.setDocs([doc]);
   const nx = T.meosLegacyNext();
   ok(nx && nx.label === '🏦🔄1y' && nx.title === '1年タイマー:鍵を表示', '次の遺産膜= 🏦🔄1y と膜名(呼び名が無い時) 実際=' + JSON.stringify(nx));
+}
+// ⑧ 離席で閉じた知らせ(v5.1.50)
+{
+  const st = new Map(); const at = new Date(2026, 9, 18, 20, 13, 0).getTime();
+  T.setCtx({ globalState: { get: (k, d) => (st.has(k) ? st.get(k) : d), update: (k, v) => { if (v === undefined) st.delete(k); else st.set(k, v); return Promise.resolve(); } } });
+  ok(T.meosAwayClosedNote() === '', '閉じた記録が無ければ何も出さない');
+  st.set('meosAwayClosed', { at, slot: 3, mins: 30 });
+  const nt = T.meosAwayClosedNote();
+  ok(nt.indexOf('Closed after 30 min untouched') >= 0 && nt.indexOf('2026.10.18(S)pm08:13') >= 0 && nt.indexOf('💺') === 0, '知らせ= 💺 Closed after 30 min untouched — 2026.10.18(S)pm08:13 実際=' + nt);
+  st.set('meosAwayClosed', { at: Date.now() - 8 * 86400000, slot: 3, mins: 30 });
+  ok(T.meosAwayClosedNote() === '', '1週間より古い記録は出さない');
 }
 // ⑥ 先鐘(v5.1.40): 1分前・30秒前・10秒前、期限で止める
 {
