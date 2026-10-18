@@ -13770,7 +13770,8 @@ function meosHelperWrite(text, menu, owner, anchor) {
     const ep = String(process.execPath || ''), ai = ep.indexOf('.app/');
     const st = { owner: (owner === undefined ? process.pid : owner), app: ai > 0 ? ep.slice(0, ai + 4) : '', appName: meosAppName(), scheme: vscode.env.uriScheme || 'vscodium',
       text: text || null, anchor: !!anchor, menu: menu || [], alarms: meosHelperAlarms(), sound: meosHelperSound(),
-      tagGo: { view: _meosTagView, items: (_meosTagItemsLast.items || []).slice(0, 300) } };   // v4.2.342: 閉じている間のTag&Go
+      tagGo: { view: _meosTagView, items: (_meosTagItemsLast.items || []).slice(0, 300) },   // v4.2.342: 閉じている間のTag&Go
+      folders: (extensionContext && extensionContext.globalState.get('meosLastFolders', [])) || [] };   // v5.1.63: 閉じている時の warp はフォルダごと開く
     const key = JSON.stringify(st);
     if (key === _meosHelper.last) return;
     fs.mkdirSync(dir, { recursive: true });

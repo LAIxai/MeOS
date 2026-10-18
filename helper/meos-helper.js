@@ -78,7 +78,16 @@ function run(argv) {
   //   URL で VSCodium を起こすと、いつものフォルダの窓を戻さず空の窓で開く= 日記はディスクの版で開き、書きかけの控え(Hot Exit)が戻らない。
   //   → 閉じている時は、まずアプリをふつうに起こし(フォルダの窓と控えが戻る)、MeOS が生きたのを見て2.5秒後に warp を送る。90秒起きなければ URL で送る。
   let pendingWarp = null;   // { url, at, seen }
-  const openWarp = (u) => { if (ownerAlive(owner)) { openUrl(u); return; } pendingWarp = { url: u, at: Date.now(), seen: 0 }; try { hlog('warp: アプリを先に起こす'); } catch (e) {} openApp(); };
+  // ★v5.1.63(俊克「それでも、Reopen folderボタンが点滅しているのはなぜ?」): アプリをふつうに起こしても、VSCodium は「最後に使った窓」を戻す。
+  //   一度 URL でフォルダなしの窓が開くと、それが最後の窓として残り(storage.json の lastActiveWindow に folder が無い)、以後も空の窓が戻っていた。
+  //   → 行き先のファイルを含むフォルダ(拡張が覚えた meosLastFolders)を VSCodium で開く= どの窓が記録されていても、フォルダの窓と控えが戻る。
+  let folders = [];
+  const folderFor = (u) => { try { const m = /[?&]uri=([^&]*)/.exec(u); if (!m) return ''; let p = decodeURIComponent(m[1]); p = p.replace(/^[a-z-]+:(\/\/)?/, ''); p = decodeURIComponent(p);
+    if (p.charAt(0) !== '/') p = '/' + p; return folders.find(d => d && (p + '').indexOf(d.replace(/\/+$/, '') + '/') === 0) || ''; } catch (e) { return ''; } };
+  const openFolder = (d) => { try { if (appPath && d) return !!$.NSWorkspace.sharedWorkspace.openFileWithApplication($(d), $(appPath)); } catch (e) {} return false; };
+  const openWarp = (u) => { if (ownerAlive(owner)) { openUrl(u); return; } pendingWarp = { url: u, at: Date.now(), seen: 0 };
+    const d = folderFor(u); try { hlog('warp: ' + (d ? 'フォルダごと起こす ' + d : 'アプリを先に起こす')); } catch (e) {}
+    if (!(d && openFolder(d))) openApp(); };
   const pendingWarpStep = (now) => { if (!pendingWarp) return;
     if (ownerAlive(owner)) { if (!pendingWarp.seen) pendingWarp.seen = now; if (now - pendingWarp.seen >= 2500) { const u = pendingWarp.url; pendingWarp = null; openUrl(u); } }
     else if (now - pendingWarp.at > 90000) { const u = pendingWarp.url; pendingWarp = null; openUrl(u); } };
@@ -480,6 +489,7 @@ function run(argv) {
       if (st.sound) sound = st.sound;
       if (Array.isArray(st.alarms)) alarms = st.alarms.map(a => (adv[a.id] ? Object.assign({}, a, adv[a.id]) : a));
       owner = st.owner || 0;
+      if (Array.isArray(st.folders)) folders = st.folders;   // v5.1.63
     }
     const now = Date.now();
     try { pendingWarpStep(now); } catch (e) {}   // v5.1.62
