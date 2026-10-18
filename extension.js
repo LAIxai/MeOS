@@ -33129,7 +33129,7 @@ let _encPendingOp='';
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
 function showEncPass(op,period){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='legacy')?'🏦':(op==='legacyContinue')?'🔄':'🔓';
 /* v5.1.40(俊克 改良1「期間指定もMe Dock内に」): 🏦/🔄の時は長さの選び欄を出す。🔄(延長)は合言葉が要らないので入力欄と👁を隠す */
-{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){const ps=String(period||'')||'1y';const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value=ps;f.classList.add('on');}if(y)y.textContent='= '+elpSayT(ps);
+{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){const ps=String(period||'')||'1y';const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value=ps;f.classList.add('on');}if(y)y.textContent='→ '+elpDue(elpParse(ps));
 if(op==='legacyContinue'&&f)setTimeout(function(){try{f.focus();f.select();}catch(_){}},0);}}   /* v5.1.47(俊克 改良1「私は単純に入力枠にして、38dのように文字で直接指定するつもりで話していた」): 札をやめ入力枠1つ。今の長さ(無ければ 1y)を入れて開き、🔄の時はそのまま打ち替えられるよう選んでおく */
 const nc=(op==='legacyContinue');if(encPassInput)encPassInput.style.display=nc?'none':'';if(encPassEye)encPassEye.style.display=nc?'none':'';}
 if(encPassInput){encPassInput.type='password';_encEyeSync();
@@ -33165,9 +33165,11 @@ const ELP_U={s:1000,m:60000,h:3600000,d:86400000,w:604800000,y:31536000000};   /
 function elpParse(t){t=String(t||'').split(' ').join('');if(!t)return 0;if(/^[0-9]+$/.test(t))return Number(t)*60000;if(!/^([0-9]+[smhdwySMHDWY])+$/.test(t))return 0;let ms=0;t.replace(/([0-9]+)([a-zA-Z])/g,function(a,n,u){ms+=Number(n)*(ELP_U[u.toLowerCase()]||0);return a;});return ms;}
 function elpSay(ms){const N={y:'year',w:'week',d:'day',h:'hour',m:'min',s:'sec'};let n=ms,o=[];['y','w','d','h','m','s'].forEach(function(u){const q=Math.floor(n/ELP_U[u]);if(q>0){o.push(q+' '+N[u]+(q>1&&u!=='m'&&u!=='s'?'s':''));n-=q*ELP_U[u];}});return o.join(' ');}
 function elpSayT(t){t=String(t||'').split(' ').join('');if(/^[0-9]+$/.test(t))return elpSay(Number(t)*60000);const N={y:'year',w:'week',d:'day',h:'hour',m:'min',s:'sec'};const o=[];t.replace(/([0-9]+)([a-zA-Z])/g,function(a,n,u){u=u.toLowerCase();const q=Number(n);o.push(q+' '+N[u]+(q>1&&u!=='m'&&u!=='s'?'s':''));return a;});return o.join(' ');}   /* 打った順・打った単位のまま読む(1m10d = 1 min 10 days) */
+/* ★v5.1.48(俊克 改良1「期間指定は、右にわざわざ出すなら、絶対年月日/時刻を出した方が親切だよね?」): 右には「いつ鍵が出るか」を家の日時の書き方で(2026.11.25(W)pm06:45・曜日は S-M-T-W-t-F-s) */
+function elpDue(ms){const d=new Date(Date.now()+ms);const p=function(n){return (n<10?'0':'')+n;};const h=d.getHours();return d.getFullYear()+'.'+p(d.getMonth()+1)+'.'+p(d.getDate())+'('+('SMTWtFs'.charAt(d.getDay()))+')'+(h<12?'am':'pm')+p(h%12===0&&h>=12?12:h%12)+':'+p(d.getMinutes());}
 function elpFreeOff(){const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value='';f.classList.remove('on');}if(y)y.textContent='';}
 {const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say'),lp=document.getElementById('enc-legacy-period');
-if(f)f.addEventListener('input',function(){const ms=elpParse(f.value);const okv=ms>=60000;f.classList.toggle('on',okv);if(lp)lp.querySelectorAll('.elp').forEach(function(x){x.classList.toggle('on',false);});if(y)y.textContent=f.value?(okv?('= '+elpSayT(f.value)):'?'):'';});
+if(f)f.addEventListener('input',function(){const ms=elpParse(f.value);const okv=ms>=60000;f.classList.toggle('on',okv);if(lp)lp.querySelectorAll('.elp').forEach(function(x){x.classList.toggle('on',false);});if(y)y.textContent=f.value?(okv?('→ '+elpDue(ms)):'?'):'';});
 if(f)f.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();submitEncPass();}else if(ev.key==='Escape'){hideEncPass();}});}
 if(encPassX)encPassX.addEventListener('click',hideEncPass);
 function _encEyeSync(){if(!encPassEye||!encPassInput)return;const off=encPassInput.type==='password';encPassEye.classList.toggle('enc-eye-off',off);
