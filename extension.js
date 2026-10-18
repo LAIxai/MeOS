@@ -4696,6 +4696,7 @@ function meosPairBadgeAt(document, pair) {
 function meosClockBadgeRow(document, pair) {
   try {
     if (!document || !pair) return -1;
+    { const _lg = meosLegacyBadgeRowFor(document, pair.end); if (_lg >= 0) return _lg; }   // v5.1.37: 🏛 遺産膜の表示の置き場も畳まない(⏰の数字と同じ置き場・同じ1つの判定)
     let e = Math.min(document.lineCount - 1, pair.end), badge = -1;
     while (e + 1 < document.lineCount) {
       const t = document.lineAt(e + 1).text;
@@ -15058,6 +15059,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
     if (meosClockDirUpDeco) editor.setDecorations(meosClockDirUpDeco, dirUp);
     if (meosClockCycNowDeco) editor.setDecorations(meosClockCycNowDeco, cycNow);
+    meosLegacyDecorate(editor);   // v5.1.37: 🏛 遺産膜の顔も同じ描き直しに乗せる
   } catch (_) { }
 }
 function meosTickTimerLines() {
@@ -17960,6 +17962,312 @@ function meosVaultActivate(context) {
     context.subscriptions.push({ dispose() { clearInterval(iv); } });
   } catch (e) { try { console.error('MeOS vault activate failed', e); } catch (_) { } }
 }
+// {* ▼mCN=0880_LEGACY // v5.1.37 🏛 デジタル遺産膜(期限が来たら、親膜のバッジに鍵を表示する) (📊⊕0+0D0W) *}
+// ★★★v5.1.37(俊克 2026.10.18 am09:03「今朝、目が覚めて、寝床の中でひらめいた」→ am09:13「中から鍵を教えてくれるってことだよ」
+//   → am09:47「デジタル遺産膜は、こういう形態にしよう」→ am10:05「ユーザが指定した鍵をメタタグに入れて、それをキーチェーンで暗号化」
+//   → am10:11「MeOSが現在時刻をネットで調べればいい」→ am10:13「この線で実装してみようよ」):
+//   ★★★**金庫が、期限の日に自分の鍵を扉に書き出す**。🔐膜の合言葉を、期限(既定1年)と一緒に包んで mMETA(16進のメタタグ)に刻む(遺伝子)。
+//     期限までは親膜のバッジ行に「あと何日で鍵が出るか」、期限が来たら**合言葉そのもの**を出す。
+//     MeOS は中身を勝手に開けない= 見せるのは鍵だけ・開けるのは人(長い入院で金庫が開いてしまうことはない)。
+//     効き目= ①年を取って合言葉を忘れても、それを見れば開けられる ②本人が死んでも、遺族が見て開けられる。
+//   ★包む鍵(MeOSの鍵)は context.secrets= macOS キーチェーン / Windows 資格情報マネージャー / Linux Secret Service。
+//     ファイルだけが外へ出ても開かない。その機械(と、そのバックアップ)で MeOS を開いた時だけ読める(俊克「当事者が普通の状態でアクセスしているケースだけで十分」)。
+//   ★遺伝子は本物1つ＋偽物10個(同じ長さの乱数)を混ぜて並べる(俊克「偽の鍵を10個くらい埋込んでおけば、さらに強固になる」)。
+//     MeOS は全部を試し、GCM の認証が通った1つだけを本物とする。
+//   ★期限は**包みの中の日付だけ**を信じる(本文の字を書き換えても早送りできない)。
+//     機械の時計が期限を過ぎたら、ネット(HTTPS の Date)で2か所以上の時刻が揃うのを確かめてから鍵を出す(時計を進める抜け道を塞ぐ)。
+//     ネットに届かなければ「つないでください」と出し、鍵は出さない。一度確かめた期限は、その窓が閉じるまで覚える(時は戻らない)。
+//   ★継続ボタン= 新しい期限(今＋同じ長さ)で包み直す。合言葉は打ち直さなくてよい(MeOSが包みを開けて包み直す)。
+const MEOS_LEGACY_SECRET = 'meos.legacy.key';
+const MEOS_LEGACY_DECOYS = 10;
+const MEOS_LEGACY_NET_HOSTS = ['www.apple.com', 'www.cloudflare.com', 'www.google.com'];
+const MEOS_LEGACY_PERIODS = [
+  { label: '1 year', ms: 365 * 86400000 },
+  { label: '6 months', ms: 182 * 86400000 },
+  { label: '1 day', ms: 86400000 },
+  { label: '2 minutes (to try it)', ms: 2 * 60000 },
+];
+const _meosLegacyRowCache = new WeakMap();   // doc -> { version, rows: Map(行 -> {name, close}), closes: Map(閉じ膜の行 -> バッジ行) }
+const _meosLegacyOpened = new Map();         // 'uri name' -> { sig, obj }(開けた包み。メモリだけ)
+const _meosLegacyNetDue = new Set();         // 'uri name due' = ネットで期限を確かめた物(時は戻らない)
+const _meosLegacyNetAsk = new Map();         // 'uri name due' -> 最後に訊いた時刻(10分に1回まで)
+let _meosLegacyNetBusy = false, _meosLegacyNetOffline = false;
+let meosLegacyHideDeco = null, meosLegacyLabelDeco = null, meosLegacyKeyDeco = null;
+let _meosLegacyKeyMem = null;                // MeOSの鍵(一度読んだら窓が閉じるまで持つ)
+
+async function meosLegacyMasterKey(create) {
+  if (_meosLegacyKeyMem) return _meosLegacyKeyMem;
+  if (!extensionContext || !extensionContext.secrets) return null;
+  let b64 = null; try { b64 = await extensionContext.secrets.get(MEOS_LEGACY_SECRET); } catch (_) { b64 = null; }
+  if (!b64 && create) {
+    b64 = require('crypto').randomBytes(32).toString('base64');
+    await extensionContext.secrets.store(MEOS_LEGACY_SECRET, b64);
+  }
+  if (!b64) return null;
+  _meosLegacyKeyMem = Buffer.from(b64, 'base64');
+  return _meosLegacyKeyMem;
+}
+// 包む= iv12 | tag16 | 暗号文 を16進で。中身= { v, n:膜名, k:合言葉, d:期限ms, t:長さms, s:掛けた時刻ms }
+function meosLegacySeal(key, obj) {
+  const crypto = require('crypto');
+  const iv = crypto.randomBytes(12);
+  const ci = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const ct = Buffer.concat([ci.update(JSON.stringify(obj), 'utf8'), ci.final()]);
+  return Buffer.concat([iv, ci.getAuthTag(), ct]).toString('hex');
+}
+function meosLegacyUnseal(key, hex) {
+  try {
+    const crypto = require('crypto');
+    const buf = Buffer.from(String(hex || ''), 'hex');
+    if (buf.length < 29) return null;
+    const d = crypto.createDecipheriv('aes-256-gcm', key, buf.subarray(0, 12));
+    d.setAuthTag(buf.subarray(12, 28));
+    const o = JSON.parse(Buffer.concat([d.update(buf.subarray(28)), d.final()]).toString('utf8'));
+    return (o && typeof o === 'object') ? o : null;
+  } catch (_) { return null; }
+}
+// 本物1つ＋偽物(同じ長さの乱数)を混ぜて並べる
+function meosLegacyGenes(key, obj) {
+  const crypto = require('crypto');
+  const real = meosLegacySeal(key, obj);
+  const out = [real];
+  for (let i = 0; i < MEOS_LEGACY_DECOYS; i++) out.push(crypto.randomBytes(real.length / 2).toString('hex'));
+  for (let i = out.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); const t = out[i]; out[i] = out[j]; out[j] = t; }
+  return out;
+}
+// 遺伝子の並びから本物を探す(膜名も合っている物だけ= 別の膜へ写しても開かない)
+function meosLegacyRead(key, genes, name) {
+  if (!key || !Array.isArray(genes)) return null;
+  for (const g of genes) { const o = meosLegacyUnseal(key, g); if (o && o.n === name && o.k && Number(o.d) > 0) return o; }
+  return null;
+}
+// ネットの時刻の多数決: tolMs 以内で揃う物が2つ以上ある塊の真ん中。揃わなければ null
+function meosLegacyNetAgree(list, tolMs) {
+  const v = (list || []).filter(x => typeof x === 'number' && isFinite(x)).sort((a, b) => a - b);
+  let best = null;
+  for (let i = 0; i < v.length; i++) {
+    const grp = v.filter(x => Math.abs(x - v[i]) <= tolMs);
+    if (grp.length >= 2 && (!best || grp.length > best.length)) best = grp;
+  }
+  return best ? best[Math.floor(best.length / 2)] : null;
+}
+function meosLegacyNetDateOnce(host) {
+  return new Promise(res => {
+    try {
+      const req = require('https').request({ host, method: 'HEAD', path: '/', timeout: 6000 }, r => {
+        const d = Date.parse((r.headers && r.headers.date) || ''); try { r.resume(); } catch (_) { } res(isFinite(d) ? d : null);
+      });
+      req.on('timeout', () => { try { req.destroy(); } catch (_) { } res(null); });
+      req.on('error', () => res(null));
+      req.end();
+    } catch (_) { res(null); }
+  });
+}
+async function meosLegacyNetNow() {
+  const t0 = Date.now();
+  const got = await Promise.all(MEOS_LEGACY_NET_HOSTS.map(meosLegacyNetDateOnce));
+  const agreed = meosLegacyNetAgree(got, 5 * 60000);
+  if (agreed == null) return null;
+  return agreed + (Date.now() - t0);   // 訊いている間に過ぎた分を足す
+}
+// mMETA の遺伝子(膜名 -> 並び)
+function meosLegacyMeta(doc) {
+  let d = null; try { d = getHyperTocData(doc); } catch (_) { d = null; }
+  return (d && d.legacy && typeof d.legacy === 'object') ? d.legacy : {};
+}
+async function meosLegacyMetaWrite(doc, mutate) {
+  const data = await ensureHyperTocData(doc);
+  if (!data) return false;
+  const lg = Object.assign({}, (data.legacy && typeof data.legacy === 'object') ? data.legacy : {});
+  mutate(lg);
+  if (Object.keys(lg).length) data.legacy = lg; else delete data.legacy;
+  try { data.clock = meosClockMeta(doc); } catch (_) { }   // ⏰の書きかけを落とさない(meosFlushClockMetaWrite と同じ形)
+  return await writeHyperTocToSource(doc, data);
+}
+// 遺産膜ごとの「表示する行」= 親膜(無ければ自分)の閉じ膜の下のバッジ行。バッジ行が無ければ閉じ膜の行。
+function meosLegacyRows(doc) {
+  const empty = { rows: new Map(), closes: new Map() };
+  try {
+    if (!doc || !doc.lineCount) return empty;
+    const c = _meosLegacyRowCache.get(doc);
+    if (c && c.version === doc.version) return c.value;
+    const names = Object.keys(meosLegacyMeta(doc));
+    let value = empty;
+    if (names.length) {
+      value = { rows: new Map(), closes: new Map() };
+      const pairs = collectPairs(doc, { excludeIndex: false }) || [];
+      for (const name of names) {
+        const p = pairs.find(q => q.id === name);
+        if (!p) continue;
+        let parent = null;
+        for (const q of pairs) if (q !== p && q.start < p.start && q.end > p.end && (!parent || q.start > parent.start)) parent = q;
+        const tgt = parent || p;
+        let row = -1;
+        for (let k = tgt.end + 1; k < doc.lineCount && k <= tgt.end + 8; k++) {
+          const t = doc.lineAt(k).text;
+          if (meosIsPairBadgeSpec(t)) { row = k; break; }
+          if (!meosIsSpecLine(t)) break;
+        }
+        if (row >= 0) value.closes.set(tgt.end, row);
+        value.rows.set(row >= 0 ? row : tgt.end, { name, close: tgt.end, badge: row >= 0 });
+      }
+    }
+    _meosLegacyRowCache.set(doc, { version: doc.version, value });
+    return value;
+  } catch (_) { return empty; }
+}
+// meosClockBadgeRow から訊く口: この閉じ膜のバッジ行は、遺産膜の表示の置き場か(=畳まない)
+function meosLegacyBadgeRowFor(doc, closeLine) {
+  try { const r = meosLegacyRows(doc).closes.get(closeLine); return (typeof r === 'number') ? r : -1; } catch (_) { return -1; }
+}
+function meosLegacyLeft(ms) {
+  if (ms >= 2 * 86400000) return Math.ceil(ms / 86400000) + ' days';
+  if (ms >= 3600000) return Math.floor(ms / 3600000) + ' h ' + Math.floor((ms % 3600000) / 60000) + ' min';
+  if (ms >= 60000) return Math.ceil(ms / 60000) + ' min';
+  return Math.max(1, Math.ceil(ms / 1000)) + ' s';
+}
+// 1つの遺産膜の今の顔: { text, key }(key=true なら合言葉を出している)
+function meosLegacyFace(doc, name, genes, key) {
+  const uri = doc.uri.toString(), lk = uri + ' ' + name;
+  if (!key) return { text: '🏛 Digital legacy — this machine does not hold its key' };
+  const sig = (genes || []).join('').length + ':' + String((genes || [])[0] || '').slice(0, 16);
+  let m = _meosLegacyOpened.get(lk);
+  if (!m || m.sig !== sig) { m = { sig, obj: meosLegacyRead(key, genes, name) }; _meosLegacyOpened.set(lk, m); }
+  const o = m.obj;
+  if (!o) return { text: '🏛 Digital legacy — its key cannot be read on this machine' };
+  const due = Number(o.d), now = Date.now(), dk = lk + ' ' + due;
+  if (_meosLegacyNetDue.has(dk)) return { text: '🔑 ' + o.k, key: true };
+  if (now < due) return { text: '🏛 Key shows in ' + meosLegacyLeft(due - now) };
+  // 機械の時計は過ぎた= ネットで確かめる(10分に1回まで)
+  const last = _meosLegacyNetAsk.get(dk) || 0;
+  if (!_meosLegacyNetBusy && now - last > 10 * 60000) {
+    _meosLegacyNetAsk.set(dk, now); _meosLegacyNetBusy = true;
+    meosLegacyNetNow().then(net => {
+      _meosLegacyNetBusy = false;
+      _meosLegacyNetOffline = (net == null);
+      if (net != null && net >= due) _meosLegacyNetDue.add(dk);
+      meosDbg('[legacy] net=' + (net == null ? 'none' : new Date(net).toISOString()) + ' due=' + new Date(due).toISOString());
+      try { for (const ed of (vscode.window.visibleTextEditors || [])) meosLegacyDecorate(ed); } catch (_) { }
+    }).catch(() => { _meosLegacyNetBusy = false; _meosLegacyNetOffline = true; });
+    return { text: '🏛 Checking the time on the Internet…' };
+  }
+  if (_meosLegacyNetBusy) return { text: '🏛 Checking the time on the Internet…' };
+  if (_meosLegacyNetOffline) return { text: '🏛 Due — connect to the Internet to show the key' };
+  return { text: '🏛 Not due yet by Internet time' };
+}
+// 描く: バッジ行の中身を隠して、行頭に顔を出す(⏰がバッジ行に数字を出すのと同じ作り)。生を見せている行には描かない。
+function meosLegacyDecorate(editor) {
+  try {
+    if (!editor || !editor.document) return;
+    const doc = editor.document;
+    const lr = meosLegacyRows(doc);
+    const hide = [], labels = [], keys = [];
+    if (lr.rows.size) {
+      const meta = meosLegacyMeta(doc), key = _meosLegacyKeyMem;
+      for (const [row, info] of lr.rows) {
+        let raw = false; try { raw = meosShowsRawLine(editor, row); } catch (_) { raw = false; }
+        if (raw) continue;
+        const f = meosLegacyFace(doc, info.name, meta[info.name], key);
+        const len = doc.lineAt(row).text.length;
+        if (info.badge && len) hide.push(new vscode.Range(row, 0, row, len));
+        const at = info.badge ? 0 : len;
+        (f.key ? keys : labels).push({ range: new vscode.Range(row, at, row, at), renderOptions: { after: { contentText: (info.badge ? '' : '  ') + f.text } } });
+      }
+    }
+    if (!meosLegacyHideDeco) meosLegacyHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (!meosLegacyLabelDeco) meosLegacyLabelDeco = vscode.window.createTextEditorDecorationType({ after: { color: '#b07d2b', fontWeight: '700' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (!meosLegacyKeyDeco) meosLegacyKeyDeco = vscode.window.createTextEditorDecorationType({ after: { color: '#16a34a', fontWeight: '800' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosLegacyHideDeco, hide);
+    editor.setDecorations(meosLegacyLabelDeco, labels);
+    editor.setDecorations(meosLegacyKeyDeco, keys);
+  } catch (_) { }
+}
+// カーソルの所の🔐膜(自分が🔐、または中の🔐がちょうど1つ)
+function meosLegacyLockedPairAt(editor) {
+  const doc = editor.document;
+  let cur = null; try { cur = findCurrentPair(editor); } catch (_) { cur = null; }
+  if (!cur) return null;
+  const isLocked = (p) => p.end - p.start === 2 && (doc.lineAt(p.start + 1).text || '').indexOf(_MEOS_ENC_PREFIX) >= 0;
+  if (isLocked(cur)) return cur;
+  const inner = (collectPairs(doc, { excludeIndex: false }) || []).filter(p => p.start > cur.start && p.end < cur.end && isLocked(p));
+  return inner.length === 1 ? inner[0] : null;
+}
+// カーソルの所の遺産膜の名前(遺産膜そのもの、またはその親の中)
+function meosLegacyNameAt(editor) {
+  const doc = editor.document, line = editor.selection.active.line;
+  const lr = meosLegacyRows(doc);
+  const pairs = collectPairs(doc, { excludeIndex: false }) || [];
+  for (const info of lr.rows.values()) {
+    const p = pairs.find(q => q.id === info.name);
+    if (!p) continue;
+    const parent = pairs.find(q => q.end === info.close) || p;
+    const from = Math.min(p.start, parent.start), to = Math.max(info.close, info.badge ? info.close + 8 : info.close);
+    if (line >= from && line <= to) return info.name;
+  }
+  return null;
+}
+async function meosLegacyArm() {
+  const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document;
+  const p = meosLegacyLockedPairAt(editor);
+  if (!p) { vscode.window.showInformationMessage('MeOS 🏛: Put the cursor in a locked 🔐 membrane (or in the membrane that holds one).'); return; }
+  const blob = (doc.lineAt(p.start + 1).text || '').slice((doc.lineAt(p.start + 1).text || '').indexOf(_MEOS_ENC_PREFIX) + _MEOS_ENC_PREFIX.length).trim();
+  const pass = await meosAskPass('Passphrase of this locked membrane — MeOS seals it and shows it on the badge when the day comes', 'passphrase');
+  if (!pass) return;
+  try { meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS 🏛: That passphrase does not open this membrane — nothing was sealed.'); return; }
+  const pick = await vscode.window.showQuickPick(MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, ms: x.ms })), { placeHolder: 'Show the key after… (Continue adds the same length again)' });
+  if (!pick) return;
+  let key; try { key = await meosLegacyMasterKey(true); } catch (e) { key = null; }
+  if (!key) { vscode.window.showErrorMessage('MeOS 🏛: This machine has no place to keep a secret (keychain) — nothing was sealed.'); return; }
+  const now = Date.now();
+  const genes = meosLegacyGenes(key, { v: 1, n: p.id, k: pass, d: now + pick.ms, t: pick.ms, s: now });
+  const ok = await meosLegacyMetaWrite(doc, lg => { lg[p.id] = genes; });
+  try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
+  _meosLegacyOpened.delete(doc.uri.toString() + ' ' + p.id);
+  meosLegacyDecorate(editor);
+  if (ok) vscode.window.setStatusBarMessage('MeOS 🏛: Digital legacy set — the key shows on the badge in ' + meosLegacyLeft(pick.ms) + '. Save the file (⌘S).', 6000);
+  else vscode.window.showErrorMessage('MeOS 🏛: Could not write into the file’s metadata.');
+}
+async function meosLegacyContinue() {
+  const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document;
+  const name = meosLegacyNameAt(editor);
+  if (!name) { vscode.window.showInformationMessage('MeOS 🏛: Put the cursor in a digital legacy membrane (or the membrane that holds it).'); return; }
+  const key = await meosLegacyMasterKey(false);
+  const o = key ? meosLegacyRead(key, meosLegacyMeta(doc)[name], name) : null;
+  if (!o) { vscode.window.showErrorMessage('MeOS 🏛: This machine cannot read the sealed key — nothing changed.'); return; }
+  const now = Date.now(), t = Number(o.t) || MEOS_LEGACY_PERIODS[0].ms;
+  const genes = meosLegacyGenes(key, Object.assign({}, o, { d: now + t, s: now }));
+  const ok = await meosLegacyMetaWrite(doc, lg => { lg[name] = genes; });
+  _meosLegacyOpened.delete(doc.uri.toString() + ' ' + name);
+  meosLegacyDecorate(editor);
+  if (ok) vscode.window.setStatusBarMessage('MeOS 🏛: Continued — the key shows in ' + meosLegacyLeft(t) + ' from now. Save the file (⌘S).', 6000);
+}
+async function meosLegacyRemove() {
+  const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document;
+  const name = meosLegacyNameAt(editor);
+  if (!name) { vscode.window.showInformationMessage('MeOS 🏛: Put the cursor in a digital legacy membrane (or the membrane that holds it).'); return; }
+  const yes = await vscode.window.showWarningMessage('Remove the digital legacy of “' + name + '”? The membrane stays locked 🔐; only the sealed key is removed.', { modal: true }, 'Remove');
+  if (yes !== 'Remove') return;
+  await meosLegacyMetaWrite(doc, lg => { delete lg[name]; });
+  _meosLegacyOpened.delete(doc.uri.toString() + ' ' + name);
+  meosLegacyDecorate(editor);
+}
+function meosLegacyActivate(context) {
+  try {
+    context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.legacyArm', () => meosLegacyArm()));
+    context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.legacyContinue', () => meosLegacyContinue()));
+    context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.legacyRemove', () => meosLegacyRemove()));
+    meosLegacyMasterKey(false).then(() => { try { for (const ed of (vscode.window.visibleTextEditors || [])) meosLegacyDecorate(ed); } catch (_) { } }).catch(() => { });
+    const iv = setInterval(() => { try { for (const ed of (vscode.window.visibleTextEditors || [])) if (meosLegacyRows(ed.document).rows.size) meosLegacyDecorate(ed); } catch (_) { } }, 5000);
+    context.subscriptions.push({ dispose() { clearInterval(iv); } });
+  } catch (e) { try { console.error('MeOS legacy activate failed', e); } catch (_) { } }
+}
+// {* ▲mCN=0880_LEGACY // end *}
 const RAW_TRIGGERS = ['かかか', 'kakaka']; // v0.9.725: 日本語『かかか』＋ローマ字 kakaka どちらでもRawをトグル(IMEオフ/欧米人も可)
 const MEDOCK_TRIGGERS = ['みみみ', 'mememe']; // v0.9.930: 魔法の呪文2『みみみ』/mimimi=Me Dockの開閉トグル(俊克 6/17: 視界を広げてエディタに集中→再び呪文で戻す)
 const HEAD_PREV_TRIGGERS = ['よよよ', 'YOYOYO']; // v0.9.932: 魔法の呪文3(大/大文字)=前の見出しへ(↑)
@@ -42832,6 +43140,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.encryptMembrane', () => encryptCurrentMembrane())); // v0.9.999
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.unlockMembrane', () => unlockCurrentMembrane())); // v0.9.999
   meosVaultActivate(context); // v5.1.0: 🔐暗号の仮想化(meos-vault: の入口)
+  meosLegacyActivate(context); // v5.1.37: 🏛 デジタル遺産膜
   // v0.9.973: Cmd+S連動 auto push — githubAutoSyncがONの時だけ発火
   // v0.9.987: ワンショット化(俊克 6/22 pm10:17)。🐙を点けてCmd+Sで1回push→直後に自動でオフへ戻す。
   // =「Push when you say so」を1タップ1pushで体現。点けっぱなしで以降の保存まで送られる事故を防ぐ。
