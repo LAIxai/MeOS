@@ -13896,6 +13896,7 @@ function meosMenuBarSet(text, menu, opts) {
   try {
     if (process.platform !== 'darwin') return;
     if (!meosRealHost()) return;   // v4.2.519: 検査から本物のメニューバーに触らない
+    { const _sf = meosAwayMenuSuffix(); if (_sf) { const _b = text ? String(text) : ''; text = (_b.length > 33 ? _b.slice(0, 32) + '\u2026' : _b) + (_b ? '  ' : '') + _sf; } }   // v5.1.51: 離席の残り(💺28m)を末尾に。字が長い時は本体を詰めて残りは必ず見せる
     if (_meosVHOff) { try { if (_meosMb && _meosMb.proc) require('fs').writeFileSync(_meosMb.state, JSON.stringify({ quit: true })); if (_meosMb) _meosMb.last = null; } catch (_) { } return; }   // v4.2.364
     if (meosHelperOn()) {   // v4.2.310: 持ち主はヘルパー= 写しを書くだけ
       meosHelperEnsure();
@@ -17528,6 +17529,20 @@ async function meosAwaySetMins(slot, min) {
 }
 const _meosAwayStartedAt = Date.now();   // 起こされた直後(⏰で V-helper が起こした等)に、すぐ閉じないため
 let _meosAwayBusy = false;
+// ★v5.1.51(俊克 pm09:50「この離席タイマーも、メニューバーに表示しようよ。メニューをクリックしたら、その時点で初期化するので、
+//   基本は、メニューバーに表示されるのを見れば、後何分後に落とされるのかが分る」):
+//   15秒ごとに測る無操作の時間(ioreg)を控え、メニューバーの字の末尾に「💺28m」と添える(添える口は meosMenuBarSet の1か所)。
+//   分が変わった時だけメニューバーを描き直す(⏰が無い時は離席の残りだけが出る)。
+let _meosAwayIdle = null;   // { ms: 測った無操作の長さ, at: 測った時刻 }
+let _meosAwayShown = '';
+function meosAwayLeft() {
+  if (!_meosAwayIdle) return -1;
+  return Math.max(0, meosAwayMs() - (_meosAwayIdle.ms + (Date.now() - _meosAwayIdle.at)));
+}
+function meosAwayMenuSuffix() {
+  const left = meosAwayLeft(); if (left < 0) return '';
+  return MEOS_AWAY_GLYPHS[meosAwaySlot() - 1] + (left < 60000 ? '<1m' : Math.ceil(left / 60000) + 'm');
+}
 function meosAwayCheck() {
   if (!meosRealHost() || process.platform !== 'darwin' || _meosAwayBusy) return;   // 検査の台では本物の機械に触らない
   try {
@@ -17536,6 +17551,8 @@ function meosAwayCheck() {
         if (err || !out) return;
         const m = /"HIDIdleTime"\s*=\s*(\d+)/.exec(String(out)); if (!m) return;
         const idle = Math.min(Number(m[1]) / 1e6, Date.now() - _meosAwayStartedAt);
+        _meosAwayIdle = { ms: idle, at: Date.now() };   // v5.1.51
+        { const sf = meosAwayMenuSuffix(); if (sf !== _meosAwayShown) { _meosAwayShown = sf; try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { } } }   // 分が変わった時だけ
         if (idle >= meosAwayMs()) meosAwayLeave(idle).catch(() => { });
       } catch (_) { }
     });
@@ -17555,7 +17572,7 @@ async function meosAwayLeave(idle) {
         try { await vscode.window.showTextDocument(d); await vscode.commands.executeCommand('workbench.action.files.revert'); } catch (_) { }
       }
     }
-    _vaultKeys.clear(); _vaultKeyCache.clear();
+    _vaultKeys.clear(); _vaultKeyCache.clear(); _meosAwayIdle = null;   // v5.1.51
     try { meosDbg('[away] ' + Math.round((idle || 0) / 1000) + 's 無操作 → 保存・施錠・終了'); } catch (_) { }
     try { await extensionContext.globalState.update('meosAwayClosed', { at: Date.now(), slot: meosAwaySlot(), mins: meosAwayMins()[meosAwaySlot() - 1] }); } catch (_) { }   // v5.1.50: 次に開いた時に一度だけ知らせる
     await vscode.commands.executeCommand('workbench.action.quit');
@@ -44214,6 +44231,7 @@ function deactivate() {
   try { if (_meosTimerBar) { _meosTimerBar.dispose(); _meosTimerBar = null; } } catch (_) { }
   try { if (_meosTimerTitle) { _meosTimerTitle.dispose(); _meosTimerTitle = null; } } catch (_) { }
   try { if (_meosTimerMore) { _meosTimerMore.dispose(); _meosTimerMore = null; } } catch (_) { }
+  _meosAwayIdle = null;   // v5.1.51: 閉じる時は離席の残りも添えない(閉じた後に「💺28m」だけが残らないように)
   try { meosMenuBarSet(null); } catch (_) { }   // v4.2.205: メニューバーの係も終わらせる
   try { disposeDecorations(); } catch (_) { }
   try { for (const d of disposables) d.dispose(); } catch (_) { }

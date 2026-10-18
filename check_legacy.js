@@ -37,7 +37,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_legacy_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, meosLegacyComment, meosLegacyShortPeriod, meosLegacyNext, meosLegacyParsePeriod, meosLegacyParseSpec, meosLegacyAddSpec, meosLegacySpecOf, meosAwayClosedNote, setCtx: (c) => { extensionContext = c; }, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
+module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, meosLegacyComment, meosLegacyShortPeriod, meosLegacyNext, meosLegacyParsePeriod, meosLegacyParseSpec, meosLegacyAddSpec, meosLegacySpecOf, meosAwayClosedNote, meosAwayMenuSuffix, setAwayIdle: (v) => { _meosAwayIdle = v; }, setCtx: (c) => { extensionContext = c; }, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
 meosRingFor = function (n, ms) { (global.__rings = global.__rings || []).push([n, ms]); };
 meosStopRinging = function () { (global.__rings = global.__rings || []).push(['stop']); };
 `);
@@ -139,6 +139,11 @@ ok(T.meosLegacyLeft(90 * 1000) === '2 min' && T.meosLegacyLeft(400 * 86400000) =
   ok(nt.indexOf('Closed after 30 min untouched') >= 0 && nt.indexOf('2026.10.18(S)pm08:13') >= 0 && nt.indexOf('💺') === 0, '知らせ= 💺 Closed after 30 min untouched — 2026.10.18(S)pm08:13 実際=' + nt);
   st.set('meosAwayClosed', { at: Date.now() - 8 * 86400000, slot: 3, mins: 30 });
   ok(T.meosAwayClosedNote() === '', '1週間より古い記録は出さない');
+  st.set('meosAwaySlot', 3);   // 💺 30分
+  T.setAwayIdle(null); ok(T.meosAwayMenuSuffix() === '', '無操作を測る前は、メニューバーに添えない(v5.1.51)');
+  T.setAwayIdle({ ms: 2 * 60000 + 5000, at: Date.now() }); ok(T.meosAwayMenuSuffix() === '💺28m', '2分5秒触らない= 💺28m 実際=' + T.meosAwayMenuSuffix());
+  T.setAwayIdle({ ms: 29 * 60000 + 30000, at: Date.now() }); ok(T.meosAwayMenuSuffix() === '💺<1m', '残り1分を切ったら 💺<1m');
+  T.setAwayIdle(null);
 }
 // ⑥ 先鐘(v5.1.40): 1分前・30秒前・10秒前、期限で止める
 {
