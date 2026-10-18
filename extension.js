@@ -15103,6 +15103,9 @@ function meosUpdateTimerBar() {
       //   先鐘の間は、鳴っている時計そのものがまだ数えている(best)。同じ時計の時だけ残り時間を添える(別の時計の数字を混ぜない)。
       let _left = '';
       try { const _bsc = best ? _meosPseudoScopes.get(best.k) : null; if (_bsc && meosClockSayName(_bsc) === _meosRingName) _left = ' ' + meosMmSs(meosClockFaceMs(best.until, _bsc)); } catch (_) { }
+      // ★v5.1.42(俊克 改良2「メニューバーの表示が『2分後』となっているが、通常のタイマーのように残り秒数を出した方がいい」):
+      //   遺産膜の先鐘は⏰の時計(_meosPseudoUntil)に居ないので、残りが空のまま名前だけ出ていた → 鳴らしている遺産膜の期限から引く
+      try { if (!_left && _meosLegacyRingDk && _meosLegacyRingName === _meosRingName && _meosLegacyRingDue > 0) _left = ' ' + meosMmSs(Math.max(0, _meosLegacyRingDue - Date.now())); } catch (_) { }
       _meosTimerBar.text = '\u23f0 ' + _note + _left + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
       meosMenuBarSet('\u23f0' + (_meosRingAnchor ? '\u2693\ufe0f' : '') + ' ' + _note + _left + (_meosRingName ? (' ' + _meosRingName) : ''), [{ id: 'stop', title: 'Stop the bell' }], { anchor: _meosRingAnchor });   // v4.2.205/207/209/211 / v4.2.325: ⚓の鐘も青
       _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
@@ -18323,9 +18326,10 @@ async function meosLegacyRemove() {
 //   期限が来たら(鍵が出る時)止める。🔄で延長したら、その場で止める。⏰の元栓(Stop all)が閉じている間は鳴らさない。
 const _meosLegacyBellDone = new Map();   // 'uri name due' -> 次に鳴らす印の番号
 let _meosLegacyRingDk = null;            // 今鳴らしている遺産膜
+let _meosLegacyRingDue = 0, _meosLegacyRingName = '';   // v5.1.42: メニューバーに残りを出すための期限と名前
 function meosLegacyStopBell(prefix) {
   if (!_meosLegacyRingDk || (prefix && _meosLegacyRingDk.indexOf(prefix) !== 0)) return;
-  _meosLegacyRingDk = null; try { meosStopRinging(); } catch (_) { }
+  _meosLegacyRingDk = null; _meosLegacyRingDue = 0; _meosLegacyRingName = ''; try { meosStopRinging(); } catch (_) { }
 }
 function meosLegacyBellTick() {
   try {
@@ -18347,7 +18351,8 @@ function meosLegacyBellTick() {
         while (j < MEOS_BELL_MARKS.length && left <= MEOS_BELL_MARKS[j][0] + 600) {
           if (left >= MEOS_BELL_MARKS[j][0] - 1500 && !(typeof meosClocksAreOff === 'function' && meosClocksAreOff())) {   // その印の時= 鳴らす(開いた時もう過ぎていた印は鳴らさない)
             _meosRingAnchor = false; _meosBellOverride = '';
-            meosRingFor('🏦 ' + tocChildDisplayName(info.name), MEOS_BELL_MARKS[j][1] || Math.max(500, left));
+            _meosLegacyRingName = '🏦 ' + tocChildDisplayName(info.name); _meosLegacyRingDue = due;
+            meosRingFor(_meosLegacyRingName, MEOS_BELL_MARKS[j][1] || Math.max(500, left));
             _meosLegacyRingDk = dk;
             try { meosUpdateTimerBar(); } catch (_) { }
           }
@@ -30279,7 +30284,7 @@ color:#ffffff;z-index:4;padding:0}
 .enc-pass-input:focus{border-color:#d2691e;outline:none}
 .enc-pass-eye,.enc-pass-go,.enc-pass-x{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;cursor:var(--meos-hand);border:1px solid rgba(127,127,127,.35);background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground)}
 .enc-pass-go{background:#1a7f37;border-color:#116329;color:#fff}
-.enc-legacy-period{font-size:12px;padding:2px 4px;border:1px solid rgba(138,109,59,.8);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}   /* v5.1.40: 🏦の長さ */
+.enc-legacy-period{cursor:var(--meos-hand);font-size:12px;padding:2px 4px;border:1px solid rgba(138,109,59,.8);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}   /* v5.1.40: 🏦の長さ */
 .enc-pass-go:hover{background:#2da44e}
 .enc-pass-eye:hover,.enc-pass-x:hover{filter:brightness(1.1)}
 /* v5.1.15(俊克「👁の形が変わらないので、変えるように」): 伏せ字の間は目に斜線(上部の欄の閉じた目と同じ読み方)=今の姿 */.enc-pass-eye{position:relative}.enc-pass-eye.enc-eye-off::after{content:'';position:absolute;left:18%;right:18%;top:50%;height:2px;margin-top:-1px;background:#e05a4f;transform:rotate(-40deg);border-radius:1px;pointer-events:none}
