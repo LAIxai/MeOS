@@ -15166,6 +15166,21 @@ function meosUpdateTimerBar() {
       meosTickTimerLines();
       return;
     }
+    // ★v5.1.43: 遺産膜の期限が⏰の一番近い1本より早ければ、こちらが「次の予定」
+    { let _lg = null; try { _lg = meosLegacyNext(); } catch (_) { _lg = null; }
+      if (_lg && (!best || _lg.due <= best.until)) {
+        if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.03);
+        const _lft = _lg.due - Date.now(), _warn = _lft <= 60000;
+        const _txt = _lg.label + (_warn ? ' ' + meosMmSs(Math.max(0, _lft)) : '') + (_lg.title ? ' ' + _lg.title : '');   // 1分前からは残りも
+        _meosTimerBar.text = _txt;
+        meosMenuBarSet(_txt, meosMenuBarClockItems(), {});
+        _meosTimerBar.tooltip = 'MeOS 🏦: the next one is a digital legacy — its key shows on the badge ' + (_warn ? 'in ' + meosLegacyLeft(_lft) : 'in ' + meosLegacyLeft(_lft)) + '. Press 🔄 on the badge to continue.';
+        _meosTimerBar.command = 'lai-membrane.pseudoTimer';
+        try { _meosTimerBar.backgroundColor = _warn ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined; _meosTimerBar.color = _warn ? undefined : '#b07d2b'; } catch (_) { }
+        _subHide(); _meosTimerBar.show();
+        if (best) meosScheduleTimerTick();
+        return;
+      } }
     if (!best) {
       if (_meosTimerTick) { clearInterval(_meosTimerTick); _meosTimerTick = null; }
       _subHide();   // v4.2.205: ⏰が全部止んだ後もタイトルと+Nが残っていた
@@ -18270,6 +18285,7 @@ async function meosLegacyArm(passArg, periodArg) {
   try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
   _meosLegacyOpened.delete(doc.uri.toString() + ' ' + p.id);
   meosLegacyDecorate(editor); try { _meosNudgeHintsEv.fire(); } catch (_) { }   // v5.1.38: 🔄の札も
+  try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { }   // v5.1.43: メニューバーも
   if (ok) vscode.window.setStatusBarMessage('MeOS 🏦: Digital legacy set — the key shows on the badge in ' + meosLegacyLeft(pick.ms) + '. Save the file (⌘S).', 6000);
   else vscode.window.showErrorMessage('MeOS 🏦: Could not write into the file’s metadata.');
 }
@@ -18295,6 +18311,7 @@ async function meosLegacyContinue(nameArg, editorArg, periodArg) {
   const ok = await meosLegacyMetaWrite(doc, lg => { lg[name] = genes; });
   _meosLegacyOpened.delete(doc.uri.toString() + ' ' + name);
   meosLegacyDecorate(editor); try { _meosNudgeHintsEv.fire(); } catch (_) { }   // v5.1.38: 🔄の札も
+  try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { }   // v5.1.43: メニューバーも
   if (ok) vscode.window.setStatusBarMessage('MeOS 🏦: Continued — the key shows in ' + meosLegacyLeft(t) + ' from now. Save the file (⌘S).', 6000);
 }
 // v5.1.40: 🔄を押した= Me Dock が見えていれば、合言葉欄の行に長さの選び欄を出して待つ(🔓を押した時と同じ流れ= v5.1.12)。無ければ上の選び欄
@@ -18320,6 +18337,7 @@ async function meosLegacyRemove() {
   await meosLegacyMetaWrite(doc, lg => { delete lg[name]; });
   _meosLegacyOpened.delete(doc.uri.toString() + ' ' + name);
   meosLegacyDecorate(editor); try { _meosNudgeHintsEv.fire(); } catch (_) { }   // v5.1.38: 🔄の札も
+  try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { }   // v5.1.43: メニューバーも
 }
 // ★v5.1.40(俊克 改良2「通常のタイマーと同様に、1分前からアラーム音を鳴らそうよ」＋「1分前からタイムアップの間に気づいたら、🔄ボタンを押して延長」):
 //   ⏰の先鐘と同じ印(MEOS_BELL_MARKS= 1分前に3秒・30秒前に5秒・10秒前から期限まで)で鳴らす。鳴らす口も⏰と同じ meosRingFor。
@@ -18346,6 +18364,7 @@ function meosLegacyBellTick() {
         if (!m.obj) continue;
         const due = Number(m.obj.d), left = due - now, dk = lk + ' ' + due;
         if (left <= 0) { if (_meosLegacyRingDk === dk) meosLegacyStopBell(); continue; }
+        if (left <= 61000) { try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { } }   // v5.1.43: 最後の1分はメニューバーの残りを毎秒
         if (left > MEOS_BELL_MARKS[0][0] + 600) continue;
         let j = _meosLegacyBellDone.get(dk) || 0;
         while (j < MEOS_BELL_MARKS.length && left <= MEOS_BELL_MARKS[j][0] + 600) {
@@ -18363,13 +18382,58 @@ function meosLegacyBellTick() {
     }
   } catch (_) { }
 }
+// ★v5.1.43(俊克 改良1「🔑などを表示しているバッジに、//コメントを書いて、それを使って、メニューバーは『🏦🔄1y コメント』のように表示して、
+//   1分前以降は、残り時間も付けるようにすればいいでしょ。もちろん、次の予定がこれなら、常時表示しておく」):
+//   ★バッジ行の `// …` が遺産膜の呼び名(無ければ膜名)。🔄の後ろは延長の長さ(1y/6m/1d/2m)。
+//   ★次の予定= ⏰の一番近い1本(best)と比べて、遺産膜の期限の方が早ければ、メニューバーと最下段はこちらを出す。
+function meosLegacyComment(doc, row) {
+  try {
+    const t = doc.lineAt(row).text || '';
+    const e = t.lastIndexOf('-->'), b = t.indexOf('(📊');
+    const i = t.indexOf('//', b >= 0 ? b : 0);
+    if (i < 0 || e < 0 || i > e) return '';
+    return t.slice(i + 2, e).trim();
+  } catch (_) { return ''; }
+}
+function meosLegacyShortPeriod(ms) {
+  const n = Number(ms) || 0;
+  if (n === 365 * 86400000) return '1y';
+  if (n === 182 * 86400000) return '6m';
+  if (n === 86400000) return '1d';
+  if (n === 2 * 60000) return '2m';
+  return meosLegacyLeft(n).replace(/ /g, '');
+}
+// 開いている文書の中で、期限がまだ来ていない一番近い遺産膜= { due, name, label }
+function meosLegacyNext() {
+  const key = _meosLegacyKeyMem; if (!key) return null;
+  const now = Date.now(); let best = null;
+  for (const doc of (vscode.workspace.textDocuments || [])) {
+    let lr; try { lr = meosLegacyRows(doc); } catch (_) { continue; }
+    if (!lr.rows.size) continue;
+    const meta = meosLegacyMeta(doc);
+    for (const [row, info] of lr.rows) {
+      const lk = doc.uri.toString() + ' ' + info.name, genes = meta[info.name];
+      const sig = (genes || []).join('').length + ':' + String((genes || [])[0] || '').slice(0, 16);
+      let m = _meosLegacyOpened.get(lk);
+      if (!m || m.sig !== sig) { m = { sig, obj: meosLegacyRead(key, genes, info.name) }; _meosLegacyOpened.set(lk, m); }
+      if (!m.obj) continue;
+      const due = Number(m.obj.d);
+      if (!(due > now) || (best && best.due <= due)) continue;
+      const cm = info.badge ? meosLegacyComment(doc, row) : '';
+      best = { due, name: info.name, label: '🏦🔄' + meosLegacyShortPeriod(m.obj.t), title: cm || tocChildDisplayName(info.name) };
+    }
+  }
+  return best;
+}
 function meosLegacyActivate(context) {
   try {
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.legacyArm', () => meosLegacyArm()));
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.legacyContinue', () => meosLegacyContinue()));
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.legacyRemove', () => meosLegacyRemove()));
     meosLegacyMasterKey(false).then(() => { try { for (const ed of (vscode.window.visibleTextEditors || [])) meosLegacyDecorate(ed); } catch (_) { } }).catch(() => { });
-    const iv = setInterval(() => { try { for (const ed of (vscode.window.visibleTextEditors || [])) if (meosLegacyRows(ed.document).rows.size) meosLegacyDecorate(ed); } catch (_) { } }, 5000);
+    let _lgShown = '';
+    const iv = setInterval(() => { try { for (const ed of (vscode.window.visibleTextEditors || [])) if (meosLegacyRows(ed.document).rows.size) meosLegacyDecorate(ed); } catch (_) { }
+      try { const n = meosLegacyNext(); const sig = n ? n.due + ' ' + n.label + ' ' + n.title : ''; if (sig !== _lgShown) { _lgShown = sig; if (!meosIsRinging()) meosUpdateTimerBar(); } } catch (_) { } }, 5000);   // v5.1.43: 次の遺産膜が替わったらメニューバーも
     const ivb = setInterval(meosLegacyBellTick, 1000);   // v5.1.40: 先鐘(遺産膜の無いファイルでは1行で抜ける)
     context.subscriptions.push({ dispose() { clearInterval(iv); clearInterval(ivb); } });
   } catch (e) { try { console.error('MeOS legacy activate failed', e); } catch (_) { } }
@@ -30284,7 +30348,9 @@ color:#ffffff;z-index:4;padding:0}
 .enc-pass-input:focus{border-color:#d2691e;outline:none}
 .enc-pass-eye,.enc-pass-go,.enc-pass-x{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;cursor:var(--meos-hand);border:1px solid rgba(127,127,127,.35);background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground)}
 .enc-pass-go{background:#1a7f37;border-color:#116329;color:#fff}
-.enc-legacy-period{cursor:var(--meos-hand);font-size:12px;padding:2px 4px;border:1px solid rgba(138,109,59,.8);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}   /* v5.1.40: 🏦の長さ */
+.enc-legacy-period{display:inline-flex;gap:3px;flex:none}   /* v5.1.40: 🏦の長さ / v5.1.43: OSのリスト(↖になる)をやめ4つの札に */
+.enc-legacy-period .elp{cursor:var(--meos-hand);font-size:11px;font-weight:700;padding:3px 6px;border-radius:5px;border:1px solid rgba(138,109,59,.6);background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground)}
+.enc-legacy-period .elp.on{background:#8a6d3b;border-color:#5c4624;color:#fff}
 .enc-pass-go:hover{background:#2da44e}
 .enc-pass-eye:hover,.enc-pass-x:hover{filter:brightness(1.1)}
 /* v5.1.15(俊克「👁の形が変わらないので、変えるように」): 伏せ字の間は目に斜線(上部の欄の閉じた目と同じ読み方)=今の姿 */.enc-pass-eye{position:relative}.enc-pass-eye.enc-eye-off::after{content:'';position:absolute;left:18%;right:18%;top:50%;height:2px;margin-top:-1px;background:#e05a4f;transform:rotate(-40deg);border-radius:1px;pointer-events:none}
@@ -30579,7 +30645,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
   <div class="top-buttons" id="top-buttons"><button class="cancel" id="refresh-btn" title="Time Stamp">↻</button><button class="cancel" id="reset-btn">Reset</button><button class="set" id="set-btn">${initial.mode==='rename'?'Set':'Create'}</button></div>
-  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><span class="enc-away s1" id="enc-away">↻</span><button class="enc-away-caret s1" id="enc-away-caret">15</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="ww-pop enc-away-pop s1" id="enc-away-pop"><span class="enc-away-lab" id="enc-away-lab"></span><span class="ww-bar"><span class="ww-track" id="enc-away-track"></span><input type="range" class="ww-slider" id="enc-away-slider" min="3" max="60" step="any"/></span><input class="ww-num" id="enc-away-num" inputmode="numeric" spellcheck="false"/><span class="enc-away-unit">m</span></div><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye enc-eye-off" id="enc-pass-eye" data-tip="Hidden — click to show (lets you type kana/kanji)">👁</button><select class="enc-legacy-period" id="enc-legacy-period" style="display:none" data-tip="Show the key after…"><option value="31536000000">1 year</option><option value="15724800000">6 months</option><option value="86400000">1 day</option><option value="120000">2 min (try)</option></select><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
+  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><span class="enc-away s1" id="enc-away">↻</span><button class="enc-away-caret s1" id="enc-away-caret">15</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="ww-pop enc-away-pop s1" id="enc-away-pop"><span class="enc-away-lab" id="enc-away-lab"></span><span class="ww-bar"><span class="ww-track" id="enc-away-track"></span><input type="range" class="ww-slider" id="enc-away-slider" min="3" max="60" step="any"/></span><input class="ww-num" id="enc-away-num" inputmode="numeric" spellcheck="false"/><span class="enc-away-unit">m</span></div><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye enc-eye-off" id="enc-pass-eye" data-tip="Hidden — click to show (lets you type kana/kanji)">👁</button><span class="enc-legacy-period" id="enc-legacy-period" style="display:none"><button class="elp" data-ms="31536000000" data-tip="Show the key after 1 year">1y</button><button class="elp" data-ms="15724800000" data-tip="Show the key after 6 months">6m</button><button class="elp" data-ms="86400000" data-tip="Show the key after 1 day">1d</button><button class="elp" data-ms="120000" data-tip="Show the key after 2 minutes (to try it)">2m</button></span><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
   <div class="nav-center" id="nav-center">
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
@@ -33027,7 +33093,7 @@ let _encPendingOp='';
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
 function showEncPass(op,period){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='legacy')?'🏦':(op==='legacyContinue')?'🔄':'🔓';
 /* v5.1.40(俊克 改良1「期間指定もMe Dock内に」): 🏦/🔄の時は長さの選び欄を出す。🔄(延長)は合言葉が要らないので入力欄と👁を隠す */
-{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){sel.value=(period&&sel.querySelector('option[value="'+period+'"]'))?String(period):'31536000000';}}
+{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){const want=(period&&sel.querySelector('.elp[data-ms="'+period+'"]'))?String(period):'31536000000';sel.querySelectorAll('.elp').forEach(b=>b.classList.toggle('on',b.dataset.ms===want));}}
 const nc=(op==='legacyContinue');if(encPassInput)encPassInput.style.display=nc?'none':'';if(encPassEye)encPassEye.style.display=nc?'none':'';}
 if(encPassInput){encPassInput.type='password';_encEyeSync();
 encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
@@ -33035,7 +33101,7 @@ encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase 
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
 function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';_encEyeSync();
 }_encPendingOp='';}
-function submitEncPass(){const v=encPassInput?encPassInput.value:'';const _sel=document.getElementById('enc-legacy-period');const _per=_sel?Number(_sel.value):0;
+function submitEncPass(){const v=encPassInput?encPassInput.value:'';const _sel=document.getElementById('enc-legacy-period');const _on=_sel?_sel.querySelector('.elp.on'):null;const _per=_on?Number(_on.dataset.ms):0;
 if(_encPendingOp==='legacyContinue'){vscode.postMessage({type:'encOp',op:'legacyContinue',period:_per});hideEncPass();return;}   /* v5.1.40: 🔄= 長さだけ */
 if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
 op:_encPendingOp,pass:v,period:(_encPendingOp==='legacy')?_per:0});hideEncPass();}
@@ -33054,6 +33120,7 @@ if(_encVaultUnlocked){hideEncPass();vscode.postMessage({type:'encryptMembrane'})
 const encUnlock=document.getElementById('enc-unlock');if(encUnlock)encUnlock.addEventListener('click',()=>{if(encUnlock.classList.contains('enc-active'))showEncPass('unlock');
 }); /* v0.9.99915: アクティブ(暗号膜の上)の時だけ */
 if(encPassGo)encPassGo.addEventListener('click',submitEncPass);
+{const _lp=document.getElementById('enc-legacy-period');if(_lp)_lp.addEventListener('click',ev=>{const b=ev.target&&ev.target.closest?ev.target.closest('.elp'):null;if(!b)return;ev.preventDefault();_lp.querySelectorAll('.elp').forEach(x=>x.classList.toggle('on',x===b));});}   /* v5.1.43: 長さの札は押した1つだけ点く(Goで決める) */
 if(encPassX)encPassX.addEventListener('click',hideEncPass);
 function _encEyeSync(){if(!encPassEye||!encPassInput)return;const off=encPassInput.type==='password';encPassEye.classList.toggle('enc-eye-off',off);
 encPassEye.setAttribute('data-tip',off?'Hidden — click to show (lets you type kana/kanji)':'Shown — click to hide');} /* v5.1.15: 目の形=今の姿 */
