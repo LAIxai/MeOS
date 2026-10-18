@@ -44289,16 +44289,10 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
 //     → [[feedback_measure_before_you_generalize]]。親プロセスを1回見れば、最初に分かった。
 // ★ただし**この片付けそのものは残す**= deactivate that setInterval を1つも止めないのは、
 //   見立てとは別に本当の穴(入れ替えの度に拍that1つ残る)。自分で点けた物は、自分で消してから去る。
-// ★v5.1.64(俊克 10.19 am08:07 確かめ= 解錠中に Restart Extensions で MeOS を止めて「い」を打つと、VSCodium の控え(Backups/)に膜が平文で入った):
-//   止まった MeOS は 0.5秒の自動保存を打てない= 打った字は未保存のまま、VSCodium 自身が平文を控えへ書く(ディスクは守り④で暗号文のまま)。
-//   → 去る前に施錠する(保存→鍵を捨てる→入口を読み直す= エディターは暗号文に戻る)。止まった後に打っても、もう平文は無い。
-//   待つのは最長3秒(閉じるのを長く止めない)。落ちた時は deactivate が呼ばれないので、起きる時の守り(meosVaultActivate)が受ける。
+// ★v5.1.64 で入れた「去る前に施錠」は v5.1.65 で取り除いた(10.19 am08:55 実測= 効かない):
+//   Restart Extensions は画面側との連絡を先に切ってから deactivate を呼ぶ→ 保存・読み直しの頼みは全部 Canceled、28ms で終わった。
+//   拡張の側から、止まる瞬間にエディターの平文を消すことはできない。守りは起きる時(meosVaultActivate の「Discard unsaved edits」)だけ。
 function deactivate() {
-  let locked = Promise.resolve();
-  try { if (_vaultKeys.size) locked = Promise.race([meosVaultLockAll('MeOS stopped').catch(() => 0), new Promise(r => setTimeout(r, 3000))]); } catch (_) { }
-  return locked.then(() => meosDeactivateRest(), () => meosDeactivateRest());
-}
-function meosDeactivateRest() {
   try { meosHelperHandOff(); } catch (_) { }   // v4.2.310: 時計を片付ける**前に**、予定の表をヘルパーへ渡す
   try { meosStopRinging(); } catch (_) { }
   try { for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); } } catch (_) { }
