@@ -37,7 +37,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_legacy_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue };
+module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let fail = 0;
@@ -104,6 +104,12 @@ const gp = T.meosLegacyGenes(K, past);
 T._meosLegacyNetDue.add('file:///legacy.md ' + NAME + ' ' + past.d);
 const f2 = T.meosLegacyFace(doc, NAME, gp, K);
 ok(f2.key && f2.text.indexOf(obj.k) >= 0, '期限が来てネットでも確かめた= 合言葉を出す(' + f2.text + ')');
+T._meosLegacyNetAsk.set('file:///legacy.md ' + NAME + ' ' + past.d, Date.now());
+const f3 = T.meosLegacyFace(doc, NAME, gp, K);
+ok(!f3.key && /checking the time/.test(f3.text), '確かめ始めて3秒は「確かめています」を残す(v5.1.38)');
+const bs = T.meosLegacyBtnSpot(doc, 9, null);
+ok(bs && bs.col === 1 && bs.label === '🔄', '🔄の札は親膜のバッジ行の桁1(v5.1.38)');
+ok(T.meosLegacyBtnSpot(doc, 6, null) === null && T.meosLegacyBtnSpot(doc, 8, null) === null, '他の行には🔄を出さない');
 ok(T.meosLegacyLeft(90 * 1000) === '2 min' && T.meosLegacyLeft(400 * 86400000) === '400 days', '残りの書き方');
 console.log(fail ? ('\nNG ' + fail) : '\nALL PASS');
 process.exit(fail ? 1 : 0);
