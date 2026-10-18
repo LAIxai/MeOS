@@ -18000,11 +18000,11 @@ function meosVaultActivate(context) {
 const MEOS_LEGACY_SECRET = 'meos.legacy.key';
 const MEOS_LEGACY_DECOYS = 10;
 const MEOS_LEGACY_NET_HOSTS = ['www.apple.com', 'www.cloudflare.com', 'www.google.com'];
-const MEOS_LEGACY_PERIODS = [
-  { label: '1 year', ms: 365 * 86400000 },
-  { label: '26 weeks (about 6 months)', ms: 182 * 86400000 },
-  { label: '1 day', ms: 86400000 },
-  { label: '2 minutes (to try it)', ms: 2 * 60000 },
+const MEOS_LEGACY_PERIODS = [   // v5.1.45: 長さは字(spec)で持つ= 1年未満は日数(182d)・どうしても月なら大文字 M
+  { label: '1 year (1y)', spec: '1y' },
+  { label: '182 days — about 6 months (182d)', spec: '182d' },
+  { label: '1 day (1d)', spec: '1d' },
+  { label: '2 minutes — to try it (2m)', spec: '2m' },
 ];
 const _meosLegacyRowCache = new WeakMap();   // doc -> { version, rows: Map(行 -> {name, close}), closes: Map(閉じ膜の行 -> バッジ行) }
 const _meosLegacyOpened = new Map();         // 'uri name' -> { sig, obj }(開けた包み。メモリだけ)
@@ -18266,10 +18266,15 @@ function meosLegacyNameAt(editor) {
   return null;
 }
 async function meosLegacyAskPeriod(cur) {
-  const v = await vscode.window.showInputBox({ prompt: 'Length — s/m/h/d/w/y (m = minutes, as in ⏰). Join them: 1y2w3d. A plain number is minutes.', value: cur ? meosLegacyShortPeriod(cur) : '', ignoreFocusOut: true,
-    validateInput: (t) => { const ms = meosLegacyParsePeriod(t); return ms >= 60000 ? null : 'Write it like 1y, 26w, 10d, 3h, 90m (at least 1 minute)'; } });
-  const ms = meosLegacyParsePeriod(v);
-  return ms >= 60000 ? { ms } : null;
+  const v = await vscode.window.showInputBox({ prompt: 'Length — y / d / h / m / s (m = minutes, as in ⏰). Under a year, use days (182d). Months only as capital M (5M). Join them: 1y30d.', value: cur || '', ignoreFocusOut: true,
+    validateInput: (t) => { const ms = meosLegacyParsePeriod(t); return ms >= 60000 ? null : 'Write it like 1y, 182d, 10d, 3h, 90m, 5M (at least 1 minute)'; } });
+  const p = meosLegacyParseSpec(v);
+  return (p && meosLegacyParsePeriod(v) >= 60000) ? { spec: p.spec } : null;
+}
+function meosLegacyPickOf(periodArg) {   // Me Dock から来た長さ(字)。古い形(ms の数)も受ける
+  if (typeof periodArg === 'string' && meosLegacyParsePeriod(periodArg) >= 60000) return { spec: meosLegacyParseSpec(periodArg).spec };
+  if (Number(periodArg) > 0) return { spec: meosLegacyShortPeriod(Number(periodArg)) };
+  return null;
 }
 async function meosLegacyArm(passArg, periodArg) {
   const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
@@ -18281,19 +18286,20 @@ async function meosLegacyArm(passArg, periodArg) {
   const pass = (typeof passArg === 'string' && passArg) ? passArg : await meosAskPass('Passphrase of this locked membrane — MeOS seals it and shows it on the badge when the day comes', 'passphrase');   // v5.1.38: Me Dock の🏦(合言葉欄)から来た時はそれを使う
   if (!pass) return;
   try { meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS 🏦: That passphrase does not open this membrane — nothing was sealed.'); return; }
-  let pick = (Number(periodArg) > 0) ? { ms: Number(periodArg) } : await vscode.window.showQuickPick(MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, ms: x.ms })).concat([{ label: 'Type a length… (e.g. 1y2w, 10d, 90m)', ms: -1 }]), { placeHolder: 'Show the key after… (Continue adds the same length again)' });   // v5.1.40: Me Dock で選んだ長さ
-  if (pick && pick.ms === -1) pick = await meosLegacyAskPeriod();   // v5.1.44
+  let pick = meosLegacyPickOf(periodArg) || await vscode.window.showQuickPick(MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, spec: x.spec })).concat([{ label: 'Type a length… (e.g. 1y, 182d, 10d, 90m, 5M)', spec: '' }]), { placeHolder: 'Show the key after… (Continue adds the same length again)' });   // v5.1.40: Me Dock で選んだ長さ
+  if (pick && !pick.spec) pick = await meosLegacyAskPeriod();   // v5.1.44
   if (!pick) return;
   let key; try { key = await meosLegacyMasterKey(true); } catch (e) { key = null; }
   if (!key) { vscode.window.showErrorMessage('MeOS 🏦: This machine has no place to keep a secret (keychain) — nothing was sealed.'); return; }
   const now = Date.now();
-  const genes = meosLegacyGenes(key, { v: 1, n: p.id, k: pass, d: now + pick.ms, t: pick.ms, s: now });
+  const due = meosLegacyAddSpec(now, pick.spec);
+  const genes = meosLegacyGenes(key, { v: 1, n: p.id, k: pass, d: due, t: due - now, p: pick.spec, s: now });   // v5.1.45: 長さは字(p)でも持つ
   const ok = await meosLegacyMetaWrite(doc, lg => { lg[p.id] = genes; });
   try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
   _meosLegacyOpened.delete(doc.uri.toString() + ' ' + p.id);
   meosLegacyDecorate(editor); try { _meosNudgeHintsEv.fire(); } catch (_) { }   // v5.1.38: 🔄の札も
   try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { }   // v5.1.43: メニューバーも
-  if (ok) vscode.window.setStatusBarMessage('MeOS 🏦: Digital legacy set — the key shows on the badge in ' + meosLegacyLeft(pick.ms) + '. Save the file (⌘S).', 6000);
+  if (ok) vscode.window.setStatusBarMessage('MeOS 🏦: Digital legacy set — the key shows on the badge in ' + meosLegacyLeft(due - now) + '. Save the file (⌘S).', 6000);
   else vscode.window.showErrorMessage('MeOS 🏦: Could not write into the file’s metadata.');
 }
 async function meosLegacyContinue(nameArg, editorArg, periodArg) {
@@ -18306,18 +18312,18 @@ async function meosLegacyContinue(nameArg, editorArg, periodArg) {
   const o = key ? meosLegacyRead(key, meosLegacyMeta(doc)[name], name) : null;
   if (!o) { vscode.window.showErrorMessage('MeOS 🏦: This machine cannot read the sealed key — nothing changed.'); return; }
   // v5.1.38: 延長の前に長さを選び直せる(今の長さが一番上= Enter だけなら今までどおり)
-  const cur = Number(o.t) || MEOS_LEGACY_PERIODS[0].ms;
-  const items = MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, ms: x.ms, description: x.ms === cur ? 'same as now' : '' }));
-  if (!MEOS_LEGACY_PERIODS.some(x => x.ms === cur)) items.unshift({ label: meosLegacyShortPeriod(cur), ms: cur, description: 'same as now' });   // v5.1.44: 自分で書いた長さも一番上に
-  items.sort((a, b) => (b.ms === cur) - (a.ms === cur));
-  items.push({ label: 'Type a length… (e.g. 1y2w, 10d, 90m)', ms: -1 });
+  const cur = meosLegacySpecOf(o) || MEOS_LEGACY_PERIODS[0].spec;
+  const items = MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, spec: x.spec, description: x.spec === cur ? 'same as now' : '' }));
+  if (!MEOS_LEGACY_PERIODS.some(x => x.spec === cur)) items.unshift({ label: cur, spec: cur, description: 'same as now' });   // v5.1.44: 自分で書いた長さも一番上に
+  items.sort((a, b) => (b.spec === cur) - (a.spec === cur));
+  items.push({ label: 'Type a length… (e.g. 1y, 182d, 10d, 90m, 5M)', spec: '' });
   // ★v5.1.40(俊克 改良1「期間指定もMe Dock内に表示しようよ」): Me Dock から来た時は、そこで選んだ長さ(periodArg)。無ければ上の選び欄
-  let pick = (Number(periodArg) > 0) ? { ms: Number(periodArg) } : await vscode.window.showQuickPick(items, { placeHolder: 'Continue 🔄 — hide the key again for…' });
-  if (pick && pick.ms === -1) pick = await meosLegacyAskPeriod(cur);   // v5.1.44
+  let pick = meosLegacyPickOf(periodArg) || await vscode.window.showQuickPick(items, { placeHolder: 'Continue 🔄 — hide the key again for…' });
+  if (pick && !pick.spec) pick = await meosLegacyAskPeriod(cur);   // v5.1.44
   if (!pick) return;
   meosLegacyStopBell(doc.uri.toString() + ' ' + name + ' ');   // v5.1.40: 鳴っていたら止める
-  const now = Date.now(), t = pick.ms;
-  const genes = meosLegacyGenes(key, Object.assign({}, o, { d: now + t, t, s: now }));
+  const now = Date.now(), due = meosLegacyAddSpec(now, pick.spec), t = due - now;
+  const genes = meosLegacyGenes(key, Object.assign({}, o, { d: due, t, p: pick.spec, s: now }));   // v5.1.45
   const ok = await meosLegacyMetaWrite(doc, lg => { lg[name] = genes; });
   _meosLegacyOpened.delete(doc.uri.toString() + ' ' + name);
   meosLegacyDecorate(editor); try { _meosNudgeHintsEv.fire(); } catch (_) { }   // v5.1.38: 🔄の札も
@@ -18328,7 +18334,7 @@ async function meosLegacyContinue(nameArg, editorArg, periodArg) {
 let _meosLegacyPendingAsk = null;
 async function meosLegacyContinueAsk(name, editor) {
   if (meDockPanel && meDockPanel.visible) {
-    let cur = 0; try { const o = meosLegacyRead(_meosLegacyKeyMem, meosLegacyMeta(editor.document)[name], name); cur = o ? Number(o.t) : 0; } catch (_) { }
+    let cur = ''; try { const o = meosLegacyRead(_meosLegacyKeyMem, meosLegacyMeta(editor.document)[name], name); cur = o ? meosLegacySpecOf(o) : ''; } catch (_) { }   // v5.1.45: 長さは字で渡す
     _meosLegacyPendingAsk = { uri: editor.document.uri.toString(), name };
     try { meDockPanel.reveal(meDockPanel.viewColumn, false); } catch (_) { }
     try { meDockPanel.webview.postMessage({ type: 'encAskPass', op: 'legacyContinue', period: cur }); } catch (_) { }
@@ -18407,22 +18413,39 @@ function meosLegacyComment(doc, row) {
 }
 // ★v5.1.44(俊克 改良1「何か思い出したいことを定期的に確認する手段にも使えるよね? 期間指定は任意の文字指定で、1yや1m10dのように」):
 //   単位は⏰の周期と同じ1つの表(MEOS_CYCLE_UNIT= s/m/h/d/w/y・m は**分**)。並べれば足し算(1y2w3d)・数字だけなら分(⏰の `05`=5分と同じ)。
-//   ★月は無い(v4.1.58: 月は長さが毎月違うので足し算の単位にしない)。「1か月半」なら 6w3d のように書く。
-function meosLegacyParsePeriod(str) {
+// ★v5.1.45(俊克「1年未満は月(month)を使わずに、365dのようにしていたでしょ? だから、今回もそうしようよ。どうしても月で書きたければ、5Mのように大文字指定に」):
+//   ★書き戻す時は w を使わず日数(182d)。★大文字 M だけは**月**= 暦どおりに足す(1/31 + 1M = 2月の末日)。他の字は大文字でも小文字と同じ。
+//   ★長さは字(spec)のまま包みに入れる(p)= 月は長さが毎回違うので、ミリ秒にすると嘘になる。継続もその字から足し直す。
+//   ★⏰の周期では大文字 M はまだ分(meosCycleMs は字を小文字にする)= 2つの記法の食い違いは俊克に伝えて保留(v5.1.45)。
+function meosLegacyParseSpec(str) {
   const t = String(str || '').replace(/[ \t]+/g, '');
-  if (!t) return 0;
-  if (/^[0-9]+$/.test(t)) return Number(t) * 60000;
-  if (!/^(?:[0-9]+[smhdwySMHDWY])+$/.test(t)) return 0;
-  let ms = 0;
-  t.replace(/([0-9]+)([a-zA-Z])/g, (a, n, u) => { ms += Number(n) * (MEOS_CYCLE_UNIT[u.toLowerCase()] || 0); return a; });
-  return ms;
+  if (!t) return null;
+  if (/^[0-9]+$/.test(t)) return { months: 0, ms: Number(t) * 60000, spec: t + 'm' };
+  if (!/^(?:[0-9]+[smhdwySMHDWY])+$/.test(t)) return null;
+  let months = 0, ms = 0;
+  t.replace(/([0-9]+)([a-zA-Z])/g, (a, n, u) => { if (u === 'M') months += Number(n); else ms += Number(n) * (MEOS_CYCLE_UNIT[u.toLowerCase()] || 0); return a; });
+  return { months, ms, spec: t };
 }
-// 長さを同じ書き方で書き戻す(大きい単位から貪欲に= 182d → 26w / 1y2w3d)
+// 起点に長さを足した時刻(月は暦どおり・日が無ければその月の末日)
+function meosLegacyAddSpec(from, spec) {
+  const p = meosLegacyParseSpec(spec); if (!p) return 0;
+  const d = new Date(from);
+  if (p.months) {
+    const day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + p.months);
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(day, last));
+  }
+  return d.getTime() + p.ms;
+}
+// 長さの目安(ms)= 月は30日として(1分以上か・残りの表示に使うだけ。期限は meosLegacyAddSpec で決める)
+function meosLegacyParsePeriod(str) { const p = meosLegacyParseSpec(str); return p ? p.months * 30 * 86400000 + p.ms : 0; }
+// ミリ秒を字に書き戻す(y と d と h/m/s= 1年未満は日数)
 function meosLegacyShortPeriod(ms) {
   let n = Math.max(0, Math.round(Number(ms) || 0)), out = '';
-  for (const u of ['y', 'w', 'd', 'h', 'm', 's']) { const k = MEOS_CYCLE_UNIT[u], q = Math.floor(n / k); if (q > 0) { out += q + u; n -= q * k; } }
+  for (const u of ['y', 'd', 'h', 'm', 's']) { const k = MEOS_CYCLE_UNIT[u], q = Math.floor(n / k); if (q > 0) { out += q + u; n -= q * k; } }
   return out || '0s';
 }
+// 包みの長さの字(v5.1.45 より前の包みは t(ms) から書き戻す)
+function meosLegacySpecOf(o) { return (o && o.p) ? String(o.p) : meosLegacyShortPeriod(o && o.t); }
 // 開いている文書の中で、期限がまだ来ていない一番近い遺産膜= { due, name, label }
 function meosLegacyNext() {
   const key = _meosLegacyKeyMem; if (!key) return null;
@@ -18440,7 +18463,7 @@ function meosLegacyNext() {
       const due = Number(m.obj.d);
       if (!(due > now) || (best && best.due <= due)) continue;
       const cm = info.badge ? meosLegacyComment(doc, row) : '';
-      best = { due, name: info.name, label: '🏦🔄' + meosLegacyShortPeriod(m.obj.t), title: cm || tocChildDisplayName(info.name) };
+      best = { due, name: info.name, label: '🏦🔄' + meosLegacySpecOf(m.obj), title: cm || tocChildDisplayName(info.name) };
     }
   }
   return best;
@@ -30668,7 +30691,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
   <div class="top-buttons" id="top-buttons"><button class="cancel" id="refresh-btn" title="Time Stamp">↻</button><button class="cancel" id="reset-btn">Reset</button><button class="set" id="set-btn">${initial.mode==='rename'?'Set':'Create'}</button></div>
-  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><span class="enc-away s1" id="enc-away">↻</span><button class="enc-away-caret s1" id="enc-away-caret">15</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="ww-pop enc-away-pop s1" id="enc-away-pop"><span class="enc-away-lab" id="enc-away-lab"></span><span class="ww-bar"><span class="ww-track" id="enc-away-track"></span><input type="range" class="ww-slider" id="enc-away-slider" min="3" max="60" step="any"/></span><input class="ww-num" id="enc-away-num" inputmode="numeric" spellcheck="false"/><span class="enc-away-unit">m</span></div><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye enc-eye-off" id="enc-pass-eye" data-tip="Hidden — click to show (lets you type kana/kanji)">👁</button><span class="enc-legacy-period" id="enc-legacy-period" style="display:none"><button class="elp" data-ms="31536000000" data-tip="Show the key after 1 year">1y</button><button class="elp" data-ms="15724800000" data-tip="Show the key after 26 weeks (about 6 months)">26w</button><button class="elp" data-ms="86400000" data-tip="Show the key after 1 day">1d</button><button class="elp" data-ms="120000" data-tip="Show the key after 2 minutes (to try it)">2m</button><input class="elp-free" id="enc-legacy-free" type="text" spellcheck="false" placeholder="1y2w" data-tip="Your own length — s/m/h/d/w/y, joined like 1y2w3d (m = minutes, as in ⏰). A plain number is minutes."/><span class="elp-say" id="enc-legacy-say"></span></span><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
+  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><span class="enc-away s1" id="enc-away">↻</span><button class="enc-away-caret s1" id="enc-away-caret">15</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="ww-pop enc-away-pop s1" id="enc-away-pop"><span class="enc-away-lab" id="enc-away-lab"></span><span class="ww-bar"><span class="ww-track" id="enc-away-track"></span><input type="range" class="ww-slider" id="enc-away-slider" min="3" max="60" step="any"/></span><input class="ww-num" id="enc-away-num" inputmode="numeric" spellcheck="false"/><span class="enc-away-unit">m</span></div><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye enc-eye-off" id="enc-pass-eye" data-tip="Hidden — click to show (lets you type kana/kanji)">👁</button><span class="enc-legacy-period" id="enc-legacy-period" style="display:none"><button class="elp" data-spec="1y" data-tip="Show the key after 1 year">1y</button><button class="elp" data-spec="182d" data-tip="Show the key after 182 days (about 6 months)">182d</button><button class="elp" data-spec="1d" data-tip="Show the key after 1 day">1d</button><button class="elp" data-spec="2m" data-tip="Show the key after 2 minutes (to try it)">2m</button><input class="elp-free" id="enc-legacy-free" type="text" spellcheck="false" placeholder="1y30d" data-tip="Your own length — y / d / h / m / s (m = minutes, as in ⏰). Under a year, use days (182d). Months only as capital M (5M). Join them: 1y30d."/><span class="elp-say" id="enc-legacy-say"></span></span><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
   <div class="nav-center" id="nav-center">
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
@@ -33116,8 +33139,8 @@ let _encPendingOp='';
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
 function showEncPass(op,period){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='legacy')?'🏦':(op==='legacyContinue')?'🔄':'🔓';
 /* v5.1.40(俊克 改良1「期間指定もMe Dock内に」): 🏦/🔄の時は長さの選び欄を出す。🔄(延長)は合言葉が要らないので入力欄と👁を隠す */
-{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){elpFreeOff();const has=!!(period&&sel.querySelector('.elp[data-ms="'+period+'"]'));const want=has?String(period):(period?'':'31536000000');sel.querySelectorAll('.elp').forEach(b=>b.classList.toggle('on',b.dataset.ms===want));
-if(period&&!has){const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');let ms=Number(period),t='';['y','w','d','h','m','s'].forEach(function(u){const q=Math.floor(ms/ELP_U[u]);if(q>0){t+=q+u;ms-=q*ELP_U[u];}});if(f){f.value=t;f.classList.add('on');}if(y)y.textContent='= '+elpSay(Number(period));}}}
+{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){elpFreeOff();const ps=String(period||'');const has=!!(ps&&sel.querySelector('.elp[data-spec="'+ps+'"]'));const want=has?ps:(ps?'':'1y');sel.querySelectorAll('.elp').forEach(b=>b.classList.toggle('on',b.dataset.spec===want));
+if(ps&&!has){const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value=ps;f.classList.add('on');}if(y)y.textContent='= '+elpSayT(ps);}}}   /* v5.1.45: 長さは字(spec)で受ける */
 const nc=(op==='legacyContinue');if(encPassInput)encPassInput.style.display=nc?'none':'';if(encPassEye)encPassEye.style.display=nc?'none':'';}
 if(encPassInput){encPassInput.type='password';_encEyeSync();
 encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
@@ -33127,10 +33150,10 @@ function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display=
 }_encPendingOp='';}
 function submitEncPass(){const v=encPassInput?encPassInput.value:'';const _sel=document.getElementById('enc-legacy-period');const _on=_sel?_sel.querySelector('.elp.on'):null;const _fr=document.getElementById('enc-legacy-free');const _fms=_fr?elpParse(_fr.value):0;
 if(_fr&&_fr.value&&_fms<60000&&(_encPendingOp==='legacy'||_encPendingOp==='legacyContinue')){_fr.focus();return;}   /* v5.1.44: 読めない長さではGoしない */
-const _per=(_fms>=60000)?_fms:(_on?Number(_on.dataset.ms):0);
+const _per=(_fms>=60000)?String(_fr.value).split(' ').join(''):(_on?String(_on.dataset.spec||''):'');   /* v5.1.45: 長さは字のまま node へ(月は node が暦どおりに足す) */
 if(_encPendingOp==='legacyContinue'){vscode.postMessage({type:'encOp',op:'legacyContinue',period:_per});hideEncPass();return;}   /* v5.1.40: 🔄= 長さだけ */
 if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
-op:_encPendingOp,pass:v,period:(_encPendingOp==='legacy')?_per:0});hideEncPass();}
+op:_encPendingOp,pass:v,period:(_encPendingOp==='legacy')?_per:''});hideEncPass();}
 let _encVaultUnlocked=false; /* v5.1.1: 入口で解錠中の膜= 🔐は合言葉なしで、すぐ施錠 */
 const encLock=document.getElementById('enc-lock');
 /* ★v5.1.38(俊克 改良1「Me Dockの🔐をOpt押しにすると、🏦ボタンに切り替わるようにしよう」): Opt を添えて乗せている間は🏦= デジタル遺産を掛ける。
@@ -33148,10 +33171,10 @@ const encUnlock=document.getElementById('enc-unlock');if(encUnlock)encUnlock.add
 if(encPassGo)encPassGo.addEventListener('click',submitEncPass);
 {const _lp=document.getElementById('enc-legacy-period');if(_lp)_lp.addEventListener('click',ev=>{const b=ev.target&&ev.target.closest?ev.target.closest('.elp'):null;if(!b)return;ev.preventDefault();_lp.querySelectorAll('.elp').forEach(x=>x.classList.toggle('on',x===b));elpFreeOff();});}   /* v5.1.43: 長さの札は押した1つだけ点く(Goで決める) */
 /* ★v5.1.44(俊克 改良1「期間指定は任意の文字指定で、1yや1m10dのように」): 自分で書く欄。単位は⏰と同じ(m=分・月は無い)。打つたびに読み上げる(= 10 days 1 min)= 思った長さと違えばGoの前に分かる */
-const ELP_U={s:1000,m:60000,h:3600000,d:86400000,w:604800000,y:31536000000};
-function elpParse(t){t=String(t||'').split(' ').join('');if(!t)return 0;if(/^[0-9]+$/.test(t))return Number(t)*60000;if(!/^([0-9]+[smhdwySMHDWY])+$/.test(t))return 0;let ms=0;t.replace(/([0-9]+)([a-zA-Z])/g,function(a,n,u){ms+=Number(n)*(ELP_U[u.toLowerCase()]||0);return a;});return ms;}
+const ELP_U={s:1000,m:60000,h:3600000,d:86400000,w:604800000,y:31536000000};   /* v5.1.45: 大文字 M だけは月(目安30日= 期限は node が暦どおりに足す) */
+function elpParse(t){t=String(t||'').split(' ').join('');if(!t)return 0;if(/^[0-9]+$/.test(t))return Number(t)*60000;if(!/^([0-9]+[smhdwySMHDWY])+$/.test(t))return 0;let ms=0;t.replace(/([0-9]+)([a-zA-Z])/g,function(a,n,u){ms+=Number(n)*(u==='M'?2592000000:(ELP_U[u.toLowerCase()]||0));return a;});return ms;}
 function elpSay(ms){const N={y:'year',w:'week',d:'day',h:'hour',m:'min',s:'sec'};let n=ms,o=[];['y','w','d','h','m','s'].forEach(function(u){const q=Math.floor(n/ELP_U[u]);if(q>0){o.push(q+' '+N[u]+(q>1&&u!=='m'&&u!=='s'?'s':''));n-=q*ELP_U[u];}});return o.join(' ');}
-function elpSayT(t){t=String(t||'').split(' ').join('');if(/^[0-9]+$/.test(t))return elpSay(Number(t)*60000);const N={y:'year',w:'week',d:'day',h:'hour',m:'min',s:'sec'};const o=[];t.replace(/([0-9]+)([a-zA-Z])/g,function(a,n,u){u=u.toLowerCase();const q=Number(n);o.push(q+' '+N[u]+(q>1&&u!=='m'&&u!=='s'?'s':''));return a;});return o.join(' ');}   /* 打った順・打った単位のまま読む(1m10d = 1 min 10 days) */
+function elpSayT(t){t=String(t||'').split(' ').join('');if(/^[0-9]+$/.test(t))return elpSay(Number(t)*60000);const N={y:'year',w:'week',d:'day',h:'hour',m:'min',s:'sec',M:'month'};const o=[];t.replace(/([0-9]+)([a-zA-Z])/g,function(a,n,u){u=(u==='M')?'M':u.toLowerCase();const q=Number(n);o.push(q+' '+N[u]+(q>1&&u!=='m'&&u!=='s'?'s':''));return a;});return o.join(' ');}   /* 打った順・打った単位のまま読む(1m10d = 1 min 10 days) */
 function elpFreeOff(){const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value='';f.classList.remove('on');}if(y)y.textContent='';}
 {const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say'),lp=document.getElementById('enc-legacy-period');
 if(f)f.addEventListener('input',function(){const ms=elpParse(f.value);const okv=ms>=60000;f.classList.toggle('on',okv);if(lp)lp.querySelectorAll('.elp').forEach(function(x){x.classList.toggle('on',false);});if(y)y.textContent=f.value?(okv?('= '+elpSayT(f.value)):'?'):'';});
