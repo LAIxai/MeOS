@@ -17996,7 +17996,7 @@ const _meosLegacyNetAsk = new Map();         // 'uri name due' -> 最後に訊�
 //   ネットは0.1〜0.3秒で答えるので「確かめています」が一瞬で消えていた。→ 訊き始めてから3秒は、その字を出したままにする。
 const MEOS_LEGACY_CHECK_HOLD_MS = 3000;
 let _meosLegacyNetBusy = false, _meosLegacyNetOffline = false;
-let meosLegacyHideDeco = null, meosLegacyLabelDeco = null, meosLegacyKeyDeco = null, meosLegacySkinDeco = null;
+let meosLegacyHideDeco = null, meosLegacyHide2Deco = null, meosLegacyLabelDeco = null, meosLegacyKeyDeco = null, meosLegacySkinDeco = null;
 let _meosLegacyKeyMem = null;                // MeOSの鍵(一度読んだら窓が閉じるまで持つ)
 
 async function meosLegacyMasterKey(create) {
@@ -18169,7 +18169,7 @@ function meosLegacyDecorate(editor) {
     if (!editor || !editor.document) return;
     const doc = editor.document;
     const lr = meosLegacyRows(doc);
-    const hide = [], labels = [], keys = [];
+    const hide = [], hide2 = [], labels = [], keys = [];
     if (lr.rows.size) {
       const meta = meosLegacyMeta(doc), key = _meosLegacyKeyMem;
       for (const [row, info] of lr.rows) {
@@ -18177,7 +18177,9 @@ function meosLegacyDecorate(editor) {
         if (raw) continue;
         const f = meosLegacyFace(doc, info.name, meta[info.name], key);
         const len = doc.lineAt(row).text.length;
-        if (info.badge && len) hide.push(new vscode.Range(row, 0, row, len));
+        const _b41 = info.badge ? meosLegacyBtnSpot(doc, row, editor) : null;   // v5.1.41: 札の所で隠す範囲を2つに割る(後ろ半分は別の型)
+        if (_b41 && _b41.col > 0 && _b41.col < len) { hide.push(new vscode.Range(row, 0, row, _b41.col)); hide2.push(new vscode.Range(row, _b41.col, row, len)); }
+        else if (info.badge && len) hide.push(new vscode.Range(row, 0, row, len));
         const at = info.badge ? 0 : len;
         (f.key ? keys : labels).push({ range: new vscode.Range(row, at, row, at), renderOptions: { after: { contentText: (info.badge ? '' : '  ') + f.text } } });
       }
@@ -18186,11 +18188,13 @@ function meosLegacyDecorate(editor) {
     if (!meosLegacyLabelDeco) meosLegacyLabelDeco = vscode.window.createTextEditorDecorationType({ after: { color: '#b07d2b', fontWeight: '700' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (!meosLegacyKeyDeco) meosLegacyKeyDeco = vscode.window.createTextEditorDecorationType({ after: { color: '#16a34a', fontWeight: '800' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosLegacyHideDeco, hide);
+    if (!meosLegacyHide2Deco) meosLegacyHide2Deco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosLegacyHide2Deco, hide2);   // v5.1.41
     editor.setDecorations(meosLegacyLabelDeco, labels);
     editor.setDecorations(meosLegacyKeyDeco, keys);
     // v5.1.38: 🔄の札の灰色の地を消し、手の形にする(⏰の札と同じ作り・型は別)
     const skins = [];
-    for (const row of lr.rows.keys()) { const b = meosLegacyBtnSpot(doc, row, editor); if (b) skins.push({ range: new vscode.Range(row, Math.max(0, b.col - 1), row, b.col) }); }
+    for (const row of lr.rows.keys()) { const b = meosLegacyBtnSpot(doc, row, editor); if (b) { const _l = doc.lineAt(row).text.length; skins.push({ range: new vscode.Range(row, Math.max(0, b.col - 1), row, Math.min(_l, b.col + 1)) }); } }
     if (!meosLegacySkinDeco) meosLegacySkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosLegacySkinDeco, skins);
   } catch (_) { }
@@ -18200,16 +18204,23 @@ function meosLegacyDecorate(editor) {
 //   顔は行頭(桁0)に after で立つので、札は桁1(隠した字の中)= 顔のすぐ右に見える。期限前の「あと何日」の右にも出す(毎年の継続もここで押せる)。
 //   バッジ行の無い膜(閉じ膜の行の末尾に顔を出す形)には出さない。
 // ★v5.1.40(俊克 改良3「🔄ボタンが出てこないよ」): 札を桁1(隠したバッジの字の内側)に置いていた=
-//   **隠した範囲の内側に差し込んだ物は、字と一緒に幅0になる**(⏰の v4.1.150 に書いてある落とし穴そのもの)。
-//   → 札は行末(隠した範囲の向こう側)へ。⏰の周回数を行末に置いたのと同じ所。
+//   **隠した範囲の内側に差し込んだ物は、字と一緒に幅0になる**(⏰の v4.1.150 に書いてある落とし穴そのもの)。→ v5.1.40 は行末へ(→ v5.1.41 でコメントの内側へ)。
+// ★v5.1.41(俊克 バグ1「🔄ボタンが出るようになったが、ポインターか選択指に変わらないし、押せない。コメント文の外側、つまり、本文の中にあるのも良くないよね?」):
+//   ①押せない= 押した瞬間にその行が生の字になり、「生の行には札を出さない」で札が消えていた → 🔐の本文ボタンと同じ meosShowsRawLineStable
+//     (前から生の字だった行だけ外す)。Raw の見え方では出さない(meosModeAtLine)。
+//   ②置き場= コメントの**内側**(`-->` の直前)へ。隠す範囲は札の所で2つに割り、別々の型で隠す(1つの範囲の内側だと札も幅0= v5.1.40の前の穴)。
+//   ③手の形= 札を跨ぐ範囲に、手の形と透明の地の型(⏰の札と同じ作り)。
 function meosLegacyBtnSpot(doc, i, editor) {
   try {
     const info = meosLegacyRows(doc).rows.get(i);
     if (!info || !info.badge) return null;
-    const len = (doc.lineAt(i).text || '').length;
-    if (len < 3) return null;
-    if (editor) { try { if (meosShowsRawLine(editor, i)) return null; } catch (_) { } }
-    return { col: len, name: info.name, label: '🔄' };
+    const t = doc.lineAt(i).text || '';
+    let c = t.lastIndexOf('-->');
+    if (c < 2) return null;
+    while (c > 1 && t.charAt(c - 1) === ' ') c--;
+    try { if (meosModeAtLine(doc, i) === 'raw') return null; } catch (_) { }
+    if (editor) { try { if (meosShowsRawLineStable(editor, i)) return null; } catch (_) { } }
+    return { col: c, name: info.name, label: '🔄' };
   } catch (_) { return null; }
 }
 // カーソルの所の🔐膜(自分が🔐、または中の🔐がちょうど1つ)

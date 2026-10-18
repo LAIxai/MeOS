@@ -110,7 +110,7 @@ T._meosLegacyNetAsk.set('file:///legacy.md ' + NAME + ' ' + past.d, Date.now());
 const f3 = T.meosLegacyFace(doc, NAME, gp, K);
 ok(!f3.key && /checking the time/.test(f3.text), '確かめ始めて3秒は「確かめています」を残す(v5.1.38)');
 const bs = T.meosLegacyBtnSpot(doc, 9, null);
-ok(bs && bs.col === lines[9].length && bs.label === '🔄', '🔄の札は親膜のバッジ行の行末= 隠した字の外(v5.1.40)');
+ok(bs && bs.col === lines[9].lastIndexOf(' -->') && bs.label === '🔄', '🔄の札はコメントの内側= `-->` の直前の空白の前(v5.1.41)');
 ok(T.meosLegacyBtnSpot(doc, 6, null) === null && T.meosLegacyBtnSpot(doc, 8, null) === null, '他の行には🔄を出さない');
 ok(T.meosLegacyLeft(90 * 1000) === '2 min' && T.meosLegacyLeft(400 * 86400000) === '400 days', '残りの書き方');
 // ⑥ 先鐘(v5.1.40): 1分前・30秒前・10秒前、期限で止める
