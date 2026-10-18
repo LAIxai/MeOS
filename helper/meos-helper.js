@@ -74,6 +74,14 @@ function run(argv) {
   const stopBell = () => { ringing = null; ringNext = 0; if (bellTimer) { bellTimer.invalidate; bellTimer = null; } };
   const ownerAlive = (pid) => pid > 0 && $.kill(pid, 0) === 0;
   let owner = 0;
+  // ★v5.1.62(俊克 バグ1「VSCmが閉じているときに…ワープすると…さっき書き込んでいたものがない。Reopen Folderで…最後に書き込んでいた通りの状態」):
+  //   URL で VSCodium を起こすと、いつものフォルダの窓を戻さず空の窓で開く= 日記はディスクの版で開き、書きかけの控え(Hot Exit)が戻らない。
+  //   → 閉じている時は、まずアプリをふつうに起こし(フォルダの窓と控えが戻る)、MeOS が生きたのを見て2.5秒後に warp を送る。90秒起きなければ URL で送る。
+  let pendingWarp = null;   // { url, at, seen }
+  const openWarp = (u) => { if (ownerAlive(owner)) { openUrl(u); return; } pendingWarp = { url: u, at: Date.now(), seen: 0 }; try { hlog('warp: アプリを先に起こす'); } catch (e) {} openApp(); };
+  const pendingWarpStep = (now) => { if (!pendingWarp) return;
+    if (ownerAlive(owner)) { if (!pendingWarp.seen) pendingWarp.seen = now; if (now - pendingWarp.seen >= 2500) { const u = pendingWarp.url; pendingWarp = null; openUrl(u); } }
+    else if (now - pendingWarp.at > 90000) { const u = pendingWarp.url; pendingWarp = null; openUrl(u); } };
   // ★v5.0.0-47(俊克 2026.10.14 pm01:55「システムの自動起動タイマーを組み込もう。何世代前から設定できなくなった。今は毎朝手で電源ボタンを押している」
   //   → pm02:09 iMac M3 で `pmset schedule wakeorpoweron` によりシステム終了から自動起動できた(実測)):
   //   ★🌅 Wake = Mac の毎日の起動(または起こす)時刻。住まいは macOS(pmset)= ここは覚えず、毎回 `pmset -g sched` を読んで出す(突き合わせ)。
@@ -249,8 +257,8 @@ function run(argv) {
         if (lastPass.prev) adv[lastPass.id] = lastPass.prev; else delete adv[lastPass.id];
         try { $.NSFileManager.defaultManager.removeItemAtPathError($(dir + '/passed.json'), null); } catch (e) {}
         lastPass = null; return; }
-      if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openUrl(warpUrl(it, false)); return; }   // v4.2.342: Tag&Go の行
-      const a = alarms[parseInt(id.slice(2), 10)]; if (a) { stopBell(); openUrl(warpUrl(a, false)); }
+      if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openWarp(warpUrl(it, false)); return; }   // v4.2.342: Tag&Go の行   // v5.1.62: 閉じていればアプリを先に
+      const a = alarms[parseInt(id.slice(2), 10)]; if (a) { stopBell(); openWarp(warpUrl(a, false)); }
       return;
     }
     try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}
@@ -260,7 +268,7 @@ function run(argv) {
   let optTarget = null, tagRows = [];   // v4.2.337: 札に出ている時計(拡張が居ない時)
   const optWarp = () => {
     if (ownerAlive(owner)) { try { $(JSON.stringify({ id: 'optwarp', t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} openApp(); return; }
-    if (optTarget) { stopBell(); openUrl(warpUrl(optTarget, false)); } else openApp();
+    if (optTarget) { stopBell(); openWarp(warpUrl(optTarget, false)); } else openApp();
   };
   // ★v4.2.337(俊克「Optクリックでメニューバーをクリックすると、VSCmを起動する。あるいは、今表示している膜にワープする」):
   //   メニューが開く直前に Opt を見て、押されていればメニューを畳み、札に出ている膜へワープする。
@@ -474,6 +482,7 @@ function run(argv) {
       owner = st.owner || 0;
     }
     const now = Date.now();
+    try { pendingWarpStep(now); } catch (e) {}   // v5.1.62
     if (ownerAlive(owner)) {
       // 拡張が居る= 数えるのも鳴らすのも拡張。こちらは写しを受け取り、出すだけ。
       if (ringing) stopBell();                           // 起こした VSCodium が鐘を引き継いだ
@@ -509,7 +518,7 @@ function run(argv) {
         if (cyc0) { stopBell(); try { const f = sound.whistle || sound.file; if (f) $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(sound.vol || 2), f])); } catch (e) {} }
         else ringing = { name: a.name || '', until: now + 5 * 60000, anchor: !!a.anchor };   // v4.2.336: 周期の時刻ちょうどは笛(ピーーー)   // v4.2.332: 周期は3秒の合図だけ(拡張の笛と同じ長さ)   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
         ringNext = 0;
-        if (!a.anchor) openUrl(warpUrl(a, true));        // VSCodium を起こして膜へ(鐘は拡張が引き継ぐ)。⚓停泊中は鳴らすだけ(v4.2.312)
+        if (!a.anchor) openWarp(warpUrl(a, true));        // VSCodium を起こして膜へ(鐘は拡張が引き継ぐ)。⚓停泊中は鳴らすだけ(v4.2.312)
       }
       if (ringing && now >= ringing.until) stopBell();
       // ★v4.2.335(俊克「VSCmを閉じている時に、鳴動がゆっくりだったのはなぜか?」): 見回り(0.5秒)のついでに鳴らしていたので、
