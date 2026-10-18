@@ -17541,7 +17541,30 @@ function meosAwayLeft() {
 }
 function meosAwayMenuSuffix() {
   const left = meosAwayLeft(); if (left < 0) return '';
-  return MEOS_AWAY_GLYPHS[meosAwaySlot() - 1] + (left < 60000 ? '<1m' : Math.ceil(left / 60000) + 'm');
+  const g = MEOS_AWAY_GLYPHS[meosAwaySlot() - 1];
+  if (left < 60000) { const sec = Math.ceil(left / 1000); return g + '0:' + (sec < 10 ? '0' : '') + sec; }   // v5.1.52: 最後の1分は秒(🪑0:42)
+  return g + Math.ceil(left / 60000) + 'm';
+}
+// ★v5.1.52(俊克 改良2「メニューバーの表示を1分前からは残り秒数を表示しよう。と同時に、アラームを鳴らそうよ。鳴らなかったよ」):
+//   ①最後の75秒は無操作を1秒ごとに測る(ふだんは15秒ごと)= 秒の表示と鐘の時刻が合う。触ればすぐ数え直しが見える。
+//   ②鐘は⏰・🏦と同じ印(MEOS_BELL_MARKS= 1分前3秒・30秒前5秒・10秒前から閉じるまで)・同じ口(meosRingFor)。
+//   ③触って残りが戻ったら、自分の鐘は止める。閉じる時も自分の鐘は止めてから閉じる(「鳴っている最中は閉じない」に自分で引っかからない)。
+let _meosAwayFast = null, _meosAwayBellIdx = 0, _meosAwayRinging = false;
+function meosAwayBellStep(left) {
+  if (left < 0) return;
+  if (left > MEOS_BELL_MARKS[0][0] + 600) {                       // 触った= 戻った
+    if (_meosAwayRinging) { _meosAwayRinging = false; try { meosStopRinging(); } catch (_) { } }
+    _meosAwayBellIdx = 0; return;
+  }
+  let j = _meosAwayBellIdx;
+  while (j < MEOS_BELL_MARKS.length && left <= MEOS_BELL_MARKS[j][0] + 600) {
+    if (left > 0 && left >= MEOS_BELL_MARKS[j][0] - 1500) {
+      try { if (!meosIsRinging() || _meosAwayRinging) { _meosRingAnchor = false; _meosBellOverride = '';
+        meosRingFor(MEOS_AWAY_GLYPHS[meosAwaySlot() - 1] + ' Away — VSCodium closes', MEOS_BELL_MARKS[j][1] || Math.max(500, left)); _meosAwayRinging = true; } } catch (_) { }
+    }
+    j++;
+  }
+  _meosAwayBellIdx = j;
 }
 function meosAwayCheck() {
   if (!meosRealHost() || process.platform !== 'darwin' || _meosAwayBusy) return;   // 検査の台では本物の機械に触らない
@@ -17552,6 +17575,9 @@ function meosAwayCheck() {
         const m = /"HIDIdleTime"\s*=\s*(\d+)/.exec(String(out)); if (!m) return;
         const idle = Math.min(Number(m[1]) / 1e6, Date.now() - _meosAwayStartedAt);
         _meosAwayIdle = { ms: idle, at: Date.now() };   // v5.1.51
+        { const _l52 = meosAwayLeft(); meosAwayBellStep(_l52);   // v5.1.52: 先鐘
+          if (_l52 >= 0 && _l52 <= 75000 && !_meosAwayFast) _meosAwayFast = setInterval(meosAwayCheck, 1000);
+          else if ((_l52 < 0 || _l52 > 75000) && _meosAwayFast) { clearInterval(_meosAwayFast); _meosAwayFast = null; } }
         { const sf = meosAwayMenuSuffix(); if (sf !== _meosAwayShown) { _meosAwayShown = sf; try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { } } }   // 分が変わった時だけ
         if (idle >= meosAwayMs()) meosAwayLeave(idle).catch(() => { });
       } catch (_) { }
@@ -17560,6 +17586,7 @@ function meosAwayCheck() {
 }
 async function meosAwayLeave(idle) {
   if (_meosAwayBusy) return;
+  if (_meosAwayRinging) { _meosAwayRinging = false; try { meosStopRinging(); } catch (_) { } }   // v5.1.52: 自分の先鐘は止めてから閉じる
   try { if (meosIsRinging()) return; } catch (_) { }   // 鳴っている最中は終了しない(鳴り終わってから次の見張りで)
   _meosAwayBusy = true;
   try {
@@ -17573,6 +17600,7 @@ async function meosAwayLeave(idle) {
       }
     }
     _vaultKeys.clear(); _vaultKeyCache.clear(); _meosAwayIdle = null;   // v5.1.51
+    if (_meosAwayFast) { clearInterval(_meosAwayFast); _meosAwayFast = null; }   // v5.1.52
     try { meosDbg('[away] ' + Math.round((idle || 0) / 1000) + 's 無操作 → 保存・施錠・終了'); } catch (_) { }
     try { await extensionContext.globalState.update('meosAwayClosed', { at: Date.now(), slot: meosAwaySlot(), mins: meosAwayMins()[meosAwaySlot() - 1] }); } catch (_) { }   // v5.1.50: 次に開いた時に一度だけ知らせる
     await vscode.commands.executeCommand('workbench.action.quit');
@@ -33217,7 +33245,7 @@ const encCopy=document.getElementById('enc-copy');if(encCopy)encCopy.addEventLis
 let slot=2,mins=[3,15,30];const G=['🪑','🛋️','💺'],N=['1','2','3'],NT=['①','②','③']; /* 右肩=数字/tipと板=丸囲み(字そのもの= この箱の中では逆斜線の書き方が潰れる) */
 const clamp=v=>Math.max(3,Math.min(60,Math.round(Number(v)||15)));
 let pos=null,dragging=false;function paint(){const v=mins[slot-1],pv=(pos!=null?pos:v);if(lab)lab.textContent=NT[slot-1]+G[slot-1];if(sl&&!dragging)sl.value=String(pv);if(tr)tr.style.setProperty('--ww-fill',((pv-3)/57*100).toFixed(2)+'%');if(nm&&document.activeElement!==nm)nm.value=String(v);pop.classList.remove('s0','s1','s2');pop.classList.add('s'+(slot-1));}
-const pad2=v=>(v<10?'0':'')+v;function show(){b.textContent='↻';cr.textContent=pad2(mins[slot-1]);[b,cr].forEach(el=>{el.classList.remove('s0','s1','s2');el.classList.add('s'+(slot-1));});b.setAttribute('data-tip','Away seats | Click to cycle '+NT[0]+G[0]+' '+mins[0]+'m → '+NT[1]+G[1]+' '+mins[1]+'m → '+NT[2]+G[2]+' '+mins[2]+'m (Shift+Click backwards).');cr.setAttribute('data-tip','Away '+NT[slot-1]+G[slot-1]+' '+mins[slot-1]+' min | When the Mac is untouched this long, MeOS saves, locks every membrane and quits VSCodium. Click to change the minutes (drag, type, or ↑/↓).');paint();}
+const pad2=v=>(v<10?'0':'')+v;function show(){b.textContent='↻';cr.textContent=G[slot-1]+pad2(mins[slot-1]);   /* v5.1.52(俊克「🪑03 → 🛋️15 →💺30のように。メニューバーの表示と結びつき易く」) */[b,cr].forEach(el=>{el.classList.remove('s0','s1','s2');el.classList.add('s'+(slot-1));});b.setAttribute('data-tip','Away seats | Click to cycle '+NT[0]+G[0]+' '+mins[0]+'m → '+NT[1]+G[1]+' '+mins[1]+'m → '+NT[2]+G[2]+' '+mins[2]+'m (Shift+Click backwards).');cr.setAttribute('data-tip','Away '+NT[slot-1]+G[slot-1]+' '+mins[slot-1]+' min | When the Mac is untouched this long, MeOS saves, locks every membrane and quits VSCodium. Click to change the minutes (drag, type, or ↑/↓).');paint();}
 let last=0,localAt=0;const send=(force)=>{localAt=Date.now();const now=Date.now();if(!force&&now-last<70)return;last=now;vscode.postMessage({type:'awayMins',slot:slot,min:mins[slot-1]});};   /* v5.1.27: 自分で動かした時刻を控える */
 [b,cr,pop].forEach(el=>{el.addEventListener('pointerdown',ev=>{ev.stopPropagation();});});
 b.addEventListener('click',ev=>{ev.stopPropagation();slot=((slot-1+(ev.shiftKey?2:1))%3)+1;show();vscode.postMessage({type:'awaySlot',slot:slot});});
@@ -44232,6 +44260,7 @@ function deactivate() {
   try { if (_meosTimerTitle) { _meosTimerTitle.dispose(); _meosTimerTitle = null; } } catch (_) { }
   try { if (_meosTimerMore) { _meosTimerMore.dispose(); _meosTimerMore = null; } } catch (_) { }
   _meosAwayIdle = null;   // v5.1.51: 閉じる時は離席の残りも添えない(閉じた後に「💺28m」だけが残らないように)
+  try { if (_meosAwayFast) { clearInterval(_meosAwayFast); _meosAwayFast = null; } } catch (_) { }   // v5.1.52
   try { meosMenuBarSet(null); } catch (_) { }   // v4.2.205: メニューバーの係も終わらせる
   try { disposeDecorations(); } catch (_) { }
   try { for (const d of disposables) d.dispose(); } catch (_) { }

@@ -37,7 +37,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_legacy_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, meosLegacyComment, meosLegacyShortPeriod, meosLegacyNext, meosLegacyParsePeriod, meosLegacyParseSpec, meosLegacyAddSpec, meosLegacySpecOf, meosAwayClosedNote, meosAwayMenuSuffix, setAwayIdle: (v) => { _meosAwayIdle = v; }, setCtx: (c) => { extensionContext = c; }, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
+module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, meosLegacyComment, meosLegacyShortPeriod, meosLegacyNext, meosLegacyParsePeriod, meosLegacyParseSpec, meosLegacyAddSpec, meosLegacySpecOf, meosAwayClosedNote, meosAwayMenuSuffix, meosAwayBellStep, setAwayIdle: (v) => { _meosAwayIdle = v; }, setCtx: (c) => { extensionContext = c; }, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
 meosRingFor = function (n, ms) { (global.__rings = global.__rings || []).push([n, ms]); };
 meosStopRinging = function () { (global.__rings = global.__rings || []).push(['stop']); };
 `);
@@ -142,7 +142,14 @@ ok(T.meosLegacyLeft(90 * 1000) === '2 min' && T.meosLegacyLeft(400 * 86400000) =
   st.set('meosAwaySlot', 3);   // 💺 30分
   T.setAwayIdle(null); ok(T.meosAwayMenuSuffix() === '', '無操作を測る前は、メニューバーに添えない(v5.1.51)');
   T.setAwayIdle({ ms: 2 * 60000 + 5000, at: Date.now() }); ok(T.meosAwayMenuSuffix() === '💺28m', '2分5秒触らない= 💺28m 実際=' + T.meosAwayMenuSuffix());
-  T.setAwayIdle({ ms: 29 * 60000 + 30000, at: Date.now() }); ok(T.meosAwayMenuSuffix() === '💺<1m', '残り1分を切ったら 💺<1m');
+  T.setAwayIdle({ ms: 29 * 60000 + 18000, at: Date.now() }); ok(T.meosAwayMenuSuffix() === '💺0:42', '残り1分を切ったら秒(💺0:42・v5.1.52) 実際=' + T.meosAwayMenuSuffix());
+  global.__rings = [];
+  for (let l = 75000; l >= 0; l -= 1000) T.meosAwayBellStep(l);
+  const ar = global.__rings.filter(x => x[0] !== 'stop');
+  ok(ar.length === 3 && ar[0][1] === 3000 && ar[1][1] === 5000 && ar[2][1] >= 9000, '離席の先鐘= 1分前3秒・30秒前5秒・10秒前から(v5.1.52) 実際=' + JSON.stringify(ar.map(x => x[1])));
+  global.__rings = [];
+  T.meosAwayBellStep(50000); T.meosAwayBellStep(180000);
+  ok(global.__rings.length && global.__rings[global.__rings.length - 1][0] === 'stop', '触って残りが戻ったら、自分の鐘を止める');
   T.setAwayIdle(null);
 }
 // ⑥ 先鐘(v5.1.40): 1分前・30秒前・10秒前、期限で止める
