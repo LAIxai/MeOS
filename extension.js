@@ -18002,7 +18002,7 @@ const MEOS_LEGACY_DECOYS = 10;
 const MEOS_LEGACY_NET_HOSTS = ['www.apple.com', 'www.cloudflare.com', 'www.google.com'];
 const MEOS_LEGACY_PERIODS = [
   { label: '1 year', ms: 365 * 86400000 },
-  { label: '6 months', ms: 182 * 86400000 },
+  { label: '26 weeks (about 6 months)', ms: 182 * 86400000 },
   { label: '1 day', ms: 86400000 },
   { label: '2 minutes (to try it)', ms: 2 * 60000 },
 ];
@@ -18265,6 +18265,12 @@ function meosLegacyNameAt(editor) {
   }
   return null;
 }
+async function meosLegacyAskPeriod(cur) {
+  const v = await vscode.window.showInputBox({ prompt: 'Length — s/m/h/d/w/y (m = minutes, as in ⏰). Join them: 1y2w3d. A plain number is minutes.', value: cur ? meosLegacyShortPeriod(cur) : '', ignoreFocusOut: true,
+    validateInput: (t) => { const ms = meosLegacyParsePeriod(t); return ms >= 60000 ? null : 'Write it like 1y, 26w, 10d, 3h, 90m (at least 1 minute)'; } });
+  const ms = meosLegacyParsePeriod(v);
+  return ms >= 60000 ? { ms } : null;
+}
 async function meosLegacyArm(passArg, periodArg) {
   const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (!editor) return;
@@ -18275,7 +18281,8 @@ async function meosLegacyArm(passArg, periodArg) {
   const pass = (typeof passArg === 'string' && passArg) ? passArg : await meosAskPass('Passphrase of this locked membrane — MeOS seals it and shows it on the badge when the day comes', 'passphrase');   // v5.1.38: Me Dock の🏦(合言葉欄)から来た時はそれを使う
   if (!pass) return;
   try { meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS 🏦: That passphrase does not open this membrane — nothing was sealed.'); return; }
-  const pick = (Number(periodArg) > 0) ? { ms: Number(periodArg) } : await vscode.window.showQuickPick(MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, ms: x.ms })), { placeHolder: 'Show the key after… (Continue adds the same length again)' });   // v5.1.40: Me Dock で選んだ長さ
+  let pick = (Number(periodArg) > 0) ? { ms: Number(periodArg) } : await vscode.window.showQuickPick(MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, ms: x.ms })).concat([{ label: 'Type a length… (e.g. 1y2w, 10d, 90m)', ms: -1 }]), { placeHolder: 'Show the key after… (Continue adds the same length again)' });   // v5.1.40: Me Dock で選んだ長さ
+  if (pick && pick.ms === -1) pick = await meosLegacyAskPeriod();   // v5.1.44
   if (!pick) return;
   let key; try { key = await meosLegacyMasterKey(true); } catch (e) { key = null; }
   if (!key) { vscode.window.showErrorMessage('MeOS 🏦: This machine has no place to keep a secret (keychain) — nothing was sealed.'); return; }
@@ -18301,9 +18308,12 @@ async function meosLegacyContinue(nameArg, editorArg, periodArg) {
   // v5.1.38: 延長の前に長さを選び直せる(今の長さが一番上= Enter だけなら今までどおり)
   const cur = Number(o.t) || MEOS_LEGACY_PERIODS[0].ms;
   const items = MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, ms: x.ms, description: x.ms === cur ? 'same as now' : '' }));
+  if (!MEOS_LEGACY_PERIODS.some(x => x.ms === cur)) items.unshift({ label: meosLegacyShortPeriod(cur), ms: cur, description: 'same as now' });   // v5.1.44: 自分で書いた長さも一番上に
   items.sort((a, b) => (b.ms === cur) - (a.ms === cur));
+  items.push({ label: 'Type a length… (e.g. 1y2w, 10d, 90m)', ms: -1 });
   // ★v5.1.40(俊克 改良1「期間指定もMe Dock内に表示しようよ」): Me Dock から来た時は、そこで選んだ長さ(periodArg)。無ければ上の選び欄
-  const pick = (Number(periodArg) > 0) ? { ms: Number(periodArg) } : await vscode.window.showQuickPick(items, { placeHolder: 'Continue 🔄 — hide the key again for…' });
+  let pick = (Number(periodArg) > 0) ? { ms: Number(periodArg) } : await vscode.window.showQuickPick(items, { placeHolder: 'Continue 🔄 — hide the key again for…' });
+  if (pick && pick.ms === -1) pick = await meosLegacyAskPeriod(cur);   // v5.1.44
   if (!pick) return;
   meosLegacyStopBell(doc.uri.toString() + ' ' + name + ' ');   // v5.1.40: 鳴っていたら止める
   const now = Date.now(), t = pick.ms;
@@ -18395,13 +18405,23 @@ function meosLegacyComment(doc, row) {
     return t.slice(i + 2, e).trim();
   } catch (_) { return ''; }
 }
+// ★v5.1.44(俊克 改良1「何か思い出したいことを定期的に確認する手段にも使えるよね? 期間指定は任意の文字指定で、1yや1m10dのように」):
+//   単位は⏰の周期と同じ1つの表(MEOS_CYCLE_UNIT= s/m/h/d/w/y・m は**分**)。並べれば足し算(1y2w3d)・数字だけなら分(⏰の `05`=5分と同じ)。
+//   ★月は無い(v4.1.58: 月は長さが毎月違うので足し算の単位にしない)。「1か月半」なら 6w3d のように書く。
+function meosLegacyParsePeriod(str) {
+  const t = String(str || '').replace(/[ \t]+/g, '');
+  if (!t) return 0;
+  if (/^[0-9]+$/.test(t)) return Number(t) * 60000;
+  if (!/^(?:[0-9]+[smhdwySMHDWY])+$/.test(t)) return 0;
+  let ms = 0;
+  t.replace(/([0-9]+)([a-zA-Z])/g, (a, n, u) => { ms += Number(n) * (MEOS_CYCLE_UNIT[u.toLowerCase()] || 0); return a; });
+  return ms;
+}
+// 長さを同じ書き方で書き戻す(大きい単位から貪欲に= 182d → 26w / 1y2w3d)
 function meosLegacyShortPeriod(ms) {
-  const n = Number(ms) || 0;
-  if (n === 365 * 86400000) return '1y';
-  if (n === 182 * 86400000) return '6m';
-  if (n === 86400000) return '1d';
-  if (n === 2 * 60000) return '2m';
-  return meosLegacyLeft(n).replace(/ /g, '');
+  let n = Math.max(0, Math.round(Number(ms) || 0)), out = '';
+  for (const u of ['y', 'w', 'd', 'h', 'm', 's']) { const k = MEOS_CYCLE_UNIT[u], q = Math.floor(n / k); if (q > 0) { out += q + u; n -= q * k; } }
+  return out || '0s';
 }
 // 開いている文書の中で、期限がまだ来ていない一番近い遺産膜= { due, name, label }
 function meosLegacyNext() {
@@ -30351,6 +30371,9 @@ color:#ffffff;z-index:4;padding:0}
 .enc-legacy-period{display:inline-flex;gap:3px;flex:none}   /* v5.1.40: 🏦の長さ / v5.1.43: OSのリスト(↖になる)をやめ4つの札に */
 .enc-legacy-period .elp{cursor:var(--meos-hand);font-size:11px;font-weight:700;padding:3px 6px;border-radius:5px;border:1px solid rgba(138,109,59,.6);background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground)}
 .enc-legacy-period .elp.on{background:#8a6d3b;border-color:#5c4624;color:#fff}
+.enc-legacy-period .elp-free{width:5.2em;font-size:11px;padding:3px 5px;border-radius:5px;border:1px solid rgba(138,109,59,.6);background:var(--vscode-input-background);color:var(--vscode-input-foreground)}   /* v5.1.44: 自分で書く長さ */
+.enc-legacy-period .elp-free.on{border-color:#8a6d3b;box-shadow:0 0 0 1px #8a6d3b}
+.enc-legacy-period .elp-say{align-self:center;font-size:10px;color:#b07d2b;white-space:nowrap}
 .enc-pass-go:hover{background:#2da44e}
 .enc-pass-eye:hover,.enc-pass-x:hover{filter:brightness(1.1)}
 /* v5.1.15(俊克「👁の形が変わらないので、変えるように」): 伏せ字の間は目に斜線(上部の欄の閉じた目と同じ読み方)=今の姿 */.enc-pass-eye{position:relative}.enc-pass-eye.enc-eye-off::after{content:'';position:absolute;left:18%;right:18%;top:50%;height:2px;margin-top:-1px;background:#e05a4f;transform:rotate(-40deg);border-radius:1px;pointer-events:none}
@@ -30645,7 +30668,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
   <div class="top-buttons" id="top-buttons"><button class="cancel" id="refresh-btn" title="Time Stamp">↻</button><button class="cancel" id="reset-btn">Reset</button><button class="set" id="set-btn">${initial.mode==='rename'?'Set':'Create'}</button></div>
-  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><span class="enc-away s1" id="enc-away">↻</span><button class="enc-away-caret s1" id="enc-away-caret">15</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="ww-pop enc-away-pop s1" id="enc-away-pop"><span class="enc-away-lab" id="enc-away-lab"></span><span class="ww-bar"><span class="ww-track" id="enc-away-track"></span><input type="range" class="ww-slider" id="enc-away-slider" min="3" max="60" step="any"/></span><input class="ww-num" id="enc-away-num" inputmode="numeric" spellcheck="false"/><span class="enc-away-unit">m</span></div><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye enc-eye-off" id="enc-pass-eye" data-tip="Hidden — click to show (lets you type kana/kanji)">👁</button><span class="enc-legacy-period" id="enc-legacy-period" style="display:none"><button class="elp" data-ms="31536000000" data-tip="Show the key after 1 year">1y</button><button class="elp" data-ms="15724800000" data-tip="Show the key after 6 months">6m</button><button class="elp" data-ms="86400000" data-tip="Show the key after 1 day">1d</button><button class="elp" data-ms="120000" data-tip="Show the key after 2 minutes (to try it)">2m</button></span><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
+  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><span class="enc-away s1" id="enc-away">↻</span><button class="enc-away-caret s1" id="enc-away-caret">15</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="ww-pop enc-away-pop s1" id="enc-away-pop"><span class="enc-away-lab" id="enc-away-lab"></span><span class="ww-bar"><span class="ww-track" id="enc-away-track"></span><input type="range" class="ww-slider" id="enc-away-slider" min="3" max="60" step="any"/></span><input class="ww-num" id="enc-away-num" inputmode="numeric" spellcheck="false"/><span class="enc-away-unit">m</span></div><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye enc-eye-off" id="enc-pass-eye" data-tip="Hidden — click to show (lets you type kana/kanji)">👁</button><span class="enc-legacy-period" id="enc-legacy-period" style="display:none"><button class="elp" data-ms="31536000000" data-tip="Show the key after 1 year">1y</button><button class="elp" data-ms="15724800000" data-tip="Show the key after 26 weeks (about 6 months)">26w</button><button class="elp" data-ms="86400000" data-tip="Show the key after 1 day">1d</button><button class="elp" data-ms="120000" data-tip="Show the key after 2 minutes (to try it)">2m</button><input class="elp-free" id="enc-legacy-free" type="text" spellcheck="false" placeholder="1y2w" data-tip="Your own length — s/m/h/d/w/y, joined like 1y2w3d (m = minutes, as in ⏰). A plain number is minutes."/><span class="elp-say" id="enc-legacy-say"></span></span><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
   <div class="nav-center" id="nav-center">
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
@@ -33093,7 +33116,8 @@ let _encPendingOp='';
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
 function showEncPass(op,period){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='legacy')?'🏦':(op==='legacyContinue')?'🔄':'🔓';
 /* v5.1.40(俊克 改良1「期間指定もMe Dock内に」): 🏦/🔄の時は長さの選び欄を出す。🔄(延長)は合言葉が要らないので入力欄と👁を隠す */
-{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){const want=(period&&sel.querySelector('.elp[data-ms="'+period+'"]'))?String(period):'31536000000';sel.querySelectorAll('.elp').forEach(b=>b.classList.toggle('on',b.dataset.ms===want));}}
+{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){elpFreeOff();const has=!!(period&&sel.querySelector('.elp[data-ms="'+period+'"]'));const want=has?String(period):(period?'':'31536000000');sel.querySelectorAll('.elp').forEach(b=>b.classList.toggle('on',b.dataset.ms===want));
+if(period&&!has){const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');let ms=Number(period),t='';['y','w','d','h','m','s'].forEach(function(u){const q=Math.floor(ms/ELP_U[u]);if(q>0){t+=q+u;ms-=q*ELP_U[u];}});if(f){f.value=t;f.classList.add('on');}if(y)y.textContent='= '+elpSay(Number(period));}}}
 const nc=(op==='legacyContinue');if(encPassInput)encPassInput.style.display=nc?'none':'';if(encPassEye)encPassEye.style.display=nc?'none':'';}
 if(encPassInput){encPassInput.type='password';_encEyeSync();
 encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
@@ -33101,7 +33125,9 @@ encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase 
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
 function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';_encEyeSync();
 }_encPendingOp='';}
-function submitEncPass(){const v=encPassInput?encPassInput.value:'';const _sel=document.getElementById('enc-legacy-period');const _on=_sel?_sel.querySelector('.elp.on'):null;const _per=_on?Number(_on.dataset.ms):0;
+function submitEncPass(){const v=encPassInput?encPassInput.value:'';const _sel=document.getElementById('enc-legacy-period');const _on=_sel?_sel.querySelector('.elp.on'):null;const _fr=document.getElementById('enc-legacy-free');const _fms=_fr?elpParse(_fr.value):0;
+if(_fr&&_fr.value&&_fms<60000&&(_encPendingOp==='legacy'||_encPendingOp==='legacyContinue')){_fr.focus();return;}   /* v5.1.44: 読めない長さではGoしない */
+const _per=(_fms>=60000)?_fms:(_on?Number(_on.dataset.ms):0);
 if(_encPendingOp==='legacyContinue'){vscode.postMessage({type:'encOp',op:'legacyContinue',period:_per});hideEncPass();return;}   /* v5.1.40: 🔄= 長さだけ */
 if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
 op:_encPendingOp,pass:v,period:(_encPendingOp==='legacy')?_per:0});hideEncPass();}
@@ -33120,7 +33146,16 @@ if(_encVaultUnlocked){hideEncPass();vscode.postMessage({type:'encryptMembrane'})
 const encUnlock=document.getElementById('enc-unlock');if(encUnlock)encUnlock.addEventListener('click',()=>{if(encUnlock.classList.contains('enc-active'))showEncPass('unlock');
 }); /* v0.9.99915: アクティブ(暗号膜の上)の時だけ */
 if(encPassGo)encPassGo.addEventListener('click',submitEncPass);
-{const _lp=document.getElementById('enc-legacy-period');if(_lp)_lp.addEventListener('click',ev=>{const b=ev.target&&ev.target.closest?ev.target.closest('.elp'):null;if(!b)return;ev.preventDefault();_lp.querySelectorAll('.elp').forEach(x=>x.classList.toggle('on',x===b));});}   /* v5.1.43: 長さの札は押した1つだけ点く(Goで決める) */
+{const _lp=document.getElementById('enc-legacy-period');if(_lp)_lp.addEventListener('click',ev=>{const b=ev.target&&ev.target.closest?ev.target.closest('.elp'):null;if(!b)return;ev.preventDefault();_lp.querySelectorAll('.elp').forEach(x=>x.classList.toggle('on',x===b));elpFreeOff();});}   /* v5.1.43: 長さの札は押した1つだけ点く(Goで決める) */
+/* ★v5.1.44(俊克 改良1「期間指定は任意の文字指定で、1yや1m10dのように」): 自分で書く欄。単位は⏰と同じ(m=分・月は無い)。打つたびに読み上げる(= 10 days 1 min)= 思った長さと違えばGoの前に分かる */
+const ELP_U={s:1000,m:60000,h:3600000,d:86400000,w:604800000,y:31536000000};
+function elpParse(t){t=String(t||'').split(' ').join('');if(!t)return 0;if(/^[0-9]+$/.test(t))return Number(t)*60000;if(!/^([0-9]+[smhdwySMHDWY])+$/.test(t))return 0;let ms=0;t.replace(/([0-9]+)([a-zA-Z])/g,function(a,n,u){ms+=Number(n)*(ELP_U[u.toLowerCase()]||0);return a;});return ms;}
+function elpSay(ms){const N={y:'year',w:'week',d:'day',h:'hour',m:'min',s:'sec'};let n=ms,o=[];['y','w','d','h','m','s'].forEach(function(u){const q=Math.floor(n/ELP_U[u]);if(q>0){o.push(q+' '+N[u]+(q>1&&u!=='m'&&u!=='s'?'s':''));n-=q*ELP_U[u];}});return o.join(' ');}
+function elpSayT(t){t=String(t||'').split(' ').join('');if(/^[0-9]+$/.test(t))return elpSay(Number(t)*60000);const N={y:'year',w:'week',d:'day',h:'hour',m:'min',s:'sec'};const o=[];t.replace(/([0-9]+)([a-zA-Z])/g,function(a,n,u){u=u.toLowerCase();const q=Number(n);o.push(q+' '+N[u]+(q>1&&u!=='m'&&u!=='s'?'s':''));return a;});return o.join(' ');}   /* 打った順・打った単位のまま読む(1m10d = 1 min 10 days) */
+function elpFreeOff(){const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value='';f.classList.remove('on');}if(y)y.textContent='';}
+{const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say'),lp=document.getElementById('enc-legacy-period');
+if(f)f.addEventListener('input',function(){const ms=elpParse(f.value);const okv=ms>=60000;f.classList.toggle('on',okv);if(lp)lp.querySelectorAll('.elp').forEach(function(x){x.classList.toggle('on',false);});if(y)y.textContent=f.value?(okv?('= '+elpSayT(f.value)):'?'):'';});
+if(f)f.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();submitEncPass();}else if(ev.key==='Escape'){hideEncPass();}});}
 if(encPassX)encPassX.addEventListener('click',hideEncPass);
 function _encEyeSync(){if(!encPassEye||!encPassInput)return;const off=encPassInput.type==='password';encPassEye.classList.toggle('enc-eye-off',off);
 encPassEye.setAttribute('data-tip',off?'Hidden — click to show (lets you type kana/kanji)':'Shown — click to hide');} /* v5.1.15: 目の形=今の姿 */
@@ -38591,10 +38626,15 @@ function meosDefBlocks(document) {
     //     ＝ 見えている必要が無くなった物なので、名前(FC)が変わり、畳みの仲間に戻る。判定はUFCの一言だけ。
     const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t) && !meosIsUnfoldingSpecLine(t);
     const isDef = (t) => isSpec(t) || (!!t && t.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(t));
+    // ★v5.1.44(俊克 質問1「以下のcode表示が何も表示しないのはなぜ? code…部分をクリックすると、Rawデータとしては見えるけど」):
+    //   ``` の中に書いた `<!-- Mew!FC … -->` を、本物のFCとして畳んでいた= 板には `code ⋯` だけが残った。
+    //   **囲いの中は、ぜんぶ文字**(⏰の拾い読み・膜の対と同じ約束= [[feedback_quoted_notation_must_be_inert]])→ 囲いの中の行は塊にしない。
+    let _fence = null; try { _fence = meosIsProseDoc(document) ? meosFenceLines(document) : null; } catch (_) { _fence = null; }
+    const inFence = (i) => !!(_fence && _fence.has(i));
     for (let ln = 1; ln < n; ln++) {
-      if (!isDef(lines[ln])) continue;
+      if (inFence(ln) || !isDef(lines[ln])) continue;
       let e = ln, fc = isSpec(lines[ln]);
-      while (e + 1 < n && isDef(lines[e + 1])) { e++; if (isSpec(lines[e])) fc = true; }
+      while (e + 1 < n && !inFence(e + 1) && isDef(lines[e + 1])) { e++; if (isSpec(lines[e])) fc = true; }
       // v4.0.140(俊克 改良1): 頭は**空行を飛ばして**本文行に付ける。畳むと空行も一緒に消える=空白地帯が本当に消える。
       //   (俊克「空行を削除すれば、基準の文字列についた折畳みマークで畳める」= 空行を消さなくても済むようにした)
       let head = ln - 1;

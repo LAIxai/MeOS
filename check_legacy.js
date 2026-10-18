@@ -37,7 +37,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_legacy_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, meosLegacyComment, meosLegacyShortPeriod, meosLegacyNext, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
+module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, meosLegacyComment, meosLegacyShortPeriod, meosLegacyNext, meosLegacyParsePeriod, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
 meosRingFor = function (n, ms) { (global.__rings = global.__rings || []).push([n, ms]); };
 meosStopRinging = function () { (global.__rings = global.__rings || []).push(['stop']); };
 `);
@@ -118,7 +118,11 @@ ok(T.meosLegacyLeft(90 * 1000) === '2 min' && T.meosLegacyLeft(400 * 86400000) =
   const L = ['<!-- Mew!FC mCN (📊⊕0+0D-2Y) // A銀行 -->', '<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->'];
   const d = { lineAt: (i) => ({ text: L[i] }) };
   ok(T.meosLegacyComment(d, 0) === 'A銀行' && T.meosLegacyComment(d, 1) === '', 'バッジの // の後ろが呼び名');
-  ok(T.meosLegacyShortPeriod(365 * 86400000) === '1y' && T.meosLegacyShortPeriod(120000) === '2m', '長さの短い書き方(1y/2m)');
+  ok(T.meosLegacyShortPeriod(365 * 86400000) === '1y' && T.meosLegacyShortPeriod(120000) === '2m' && T.meosLegacyShortPeriod(182 * 86400000) === '26w', '長さの短い書き方(1y/2m/26w)');
+  const P = T.meosLegacyParsePeriod;
+  ok(P('1y2w3d') === (365 + 14 + 3) * 86400000 && P('1m10d') === 10 * 86400000 + 60000 && P('90') === 90 * 60000, '自分で書く長さ= ⏰と同じ単位(m=分)・並べて足す・数字だけは分(v5.1.44)');
+  ok(P('1mo') === 0 && P('abc') === 0 && P('') === 0, '読めない物は0(月の mo は無い)');
+  ok(T.meosLegacyShortPeriod(P('1y2w3d')) === '1y2w3d', '書いた長さが同じ形で戻る');
   T.setKey(K); T.setDocs([doc]);
   const nx = T.meosLegacyNext();
   ok(nx && nx.label === '🏦🔄1y' && nx.title === '1年タイマー:鍵を表示', '次の遺産膜= 🏦🔄1y と膜名(呼び名が無い時) 実際=' + JSON.stringify(nx));

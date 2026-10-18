@@ -11,7 +11,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mf_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={displayColumns,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure};\n');
+ +'\nmodule.exports.__t={displayColumns,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure,meosDefBlocks};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 const displayCols=(t)=>X.displayColumns(t);
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
@@ -144,5 +144,14 @@ console.log('⑨ 見出しの中のインラインコードは板にしない(v4
  ok(/if \(!_head299\) \{ MEOS_CODE_VER_RE/.test(S9), '  版番号の橙も見出しの中では出さない(色thatぶつかる)', true);
  ok(/if \(isFile0\) files\.push\(R\(ln, s, cs\)\);/.test(S9),
     '★見出しの中でも📄の札は出す= ファイルの道筋だと読める(v4.2.303 俊克 バグ1)', true);
+}
+console.log('⑩ 囲いの中のFC行は畳まない(v5.1.44 俊克 質問1)');
+{
+ const L10=['# t','以下のcode','```','<!-- Mew!FC mCN (📊⊕0+0D-2Y) // A銀行 -->','','```','本文','<!-- Mew!FC (白/red) -->'];
+ const d10={uri:{toString:()=>'file:///f10.md',fsPath:'/f10.md',scheme:'file'},languageId:'markdown',lineCount:L10.length,
+  lineAt:n=>({text:L10[n],range:new stub.Range(n,0,n,L10[n].length)}),getText:()=>L10.join('\n'),eol:1,fileName:'/f10.md',isClosed:false,version:1};
+ const bl=X.meosDefBlocks(d10);
+ ok(!bl.some(b=>b.start<=3&&3<=b.end&&b.end>=3&&b.end<=5), '★囲いの中のFC行(4行目)は塊にならない', bl);
+ ok(bl.some(b=>b.end===7), '  囲いの外のFC行(8行目)は今までどおり塊になる', bl);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
