@@ -1,4 +1,4 @@
-// 開発用ツール(vsix除外): 🏛 デジタル遺産膜(v5.1.37)を確かめる。
+// 開発用ツール(vsix除外): 🏦 デジタル遺産膜(v5.1.37)を確かめる。
 //   extension.js を**そのまま**読み込み、包む/開ける・偽の遺伝子・ネット時刻の多数決・表示する行・顔の字を見る。
 // 使い方:  node src/check_legacy.js
 const fs = require('fs'); const path = require('path'); const Module = require('module');

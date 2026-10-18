@@ -4696,7 +4696,7 @@ function meosPairBadgeAt(document, pair) {
 function meosClockBadgeRow(document, pair) {
   try {
     if (!document || !pair) return -1;
-    { const _lg = meosLegacyBadgeRowFor(document, pair.end); if (_lg >= 0) return _lg; }   // v5.1.37: 🏛 遺産膜の表示の置き場も畳まない(⏰の数字と同じ置き場・同じ1つの判定)
+    { const _lg = meosLegacyBadgeRowFor(document, pair.end); if (_lg >= 0) return _lg; }   // v5.1.37: 🏦 遺産膜の表示の置き場も畳まない(⏰の数字と同じ置き場・同じ1つの判定)
     let e = Math.min(document.lineCount - 1, pair.end), badge = -1;
     while (e + 1 < document.lineCount) {
       const t = document.lineAt(e + 1).text;
@@ -15059,7 +15059,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
     if (meosClockDirUpDeco) editor.setDecorations(meosClockDirUpDeco, dirUp);
     if (meosClockCycNowDeco) editor.setDecorations(meosClockCycNowDeco, cycNow);
-    meosLegacyDecorate(editor);   // v5.1.37: 🏛 遺産膜の顔も同じ描き直しに乗せる
+    meosLegacyDecorate(editor);   // v5.1.37: 🏦 遺産膜の顔も同じ描き直しに乗せる
   } catch (_) { }
 }
 function meosTickTimerLines() {
@@ -17962,10 +17962,11 @@ function meosVaultActivate(context) {
     context.subscriptions.push({ dispose() { clearInterval(iv); } });
   } catch (e) { try { console.error('MeOS vault activate failed', e); } catch (_) { } }
 }
-// {* ▼mCN=0880_LEGACY // v5.1.37 🏛 デジタル遺産膜(期限が来たら、親膜のバッジに鍵を表示する) (📊⊕0+0D0W) *}
+// {* ▼mCN=0880_LEGACY // v5.1.37 🏦 デジタル遺産膜(期限が来たら、親膜のバッジに鍵を表示する) (📊⊕0+0D0W) *}
 // ★★★v5.1.37(俊克 2026.10.18 am09:03「今朝、目が覚めて、寝床の中でひらめいた」→ am09:13「中から鍵を教えてくれるってことだよ」
 //   → am09:47「デジタル遺産膜は、こういう形態にしよう」→ am10:05「ユーザが指定した鍵をメタタグに入れて、それをキーチェーンで暗号化」
 //   → am10:11「MeOSが現在時刻をネットで調べればいい」→ am10:13「この線で実装してみようよ」):
+//   ★v5.1.39(俊克「🏛よりも、銀行マーク🏦の方が、貸金庫のような感じで良いんじゃないか?」): 印を🏛→🏦(貸金庫)に。
 //   ★★★**金庫が、期限の日に自分の鍵を扉に書き出す**。🔐膜の合言葉を、期限(既定1年)と一緒に包んで mMETA(16進のメタタグ)に刻む(遺伝子)。
 //     期限までは親膜のバッジ行に「あと何日で鍵が出るか」、期限が来たら**合言葉そのもの**を出す。
 //     MeOS は中身を勝手に開けない= 見せるのは鍵だけ・開けるのは人(長い入院で金庫が開いてしまうことはない)。
@@ -18132,18 +18133,18 @@ function meosLegacyLeft(ms) {
 // 1つの遺産膜の今の顔: { text, key }(key=true なら合言葉を出している)
 function meosLegacyFace(doc, name, genes, key) {
   const uri = doc.uri.toString(), lk = uri + ' ' + name;
-  if (!key) return { text: '🏛 Digital legacy — this machine does not hold its key' };
+  if (!key) return { text: '🏦 Digital legacy — this machine does not hold its key' };
   const sig = (genes || []).join('').length + ':' + String((genes || [])[0] || '').slice(0, 16);
   let m = _meosLegacyOpened.get(lk);
   if (!m || m.sig !== sig) { m = { sig, obj: meosLegacyRead(key, genes, name) }; _meosLegacyOpened.set(lk, m); }
   const o = m.obj;
-  if (!o) return { text: '🏛 Digital legacy — its key cannot be read on this machine' };
+  if (!o) return { text: '🏦 Digital legacy — its key cannot be read on this machine' };
   const due = Number(o.d), now = Date.now(), dk = lk + ' ' + due;
   if (_meosLegacyNetDue.has(dk)) {
-    if (now - (_meosLegacyNetAsk.get(dk) || 0) < MEOS_LEGACY_CHECK_HOLD_MS) return { text: '🏛 Time\'s up — checking the time on the Internet…' };   // v5.1.38: 3秒は読ませる
+    if (now - (_meosLegacyNetAsk.get(dk) || 0) < MEOS_LEGACY_CHECK_HOLD_MS) return { text: '🏦 Time\'s up — checking the time on the Internet…' };   // v5.1.38: 3秒は読ませる
     return { text: '🔑 ' + o.k, key: true };
   }
-  if (now < due) return { text: '🏛 Key shows in ' + meosLegacyLeft(due - now) };
+  if (now < due) return { text: '🏦 Key shows in ' + meosLegacyLeft(due - now) };
   // 機械の時計は過ぎた= ネットで確かめる(10分に1回まで)
   const last = _meosLegacyNetAsk.get(dk) || 0;
   if (!_meosLegacyNetBusy && now - last > 10 * 60000) {
@@ -18156,11 +18157,11 @@ function meosLegacyFace(doc, name, genes, key) {
       const redraw = () => { try { for (const ed of (vscode.window.visibleTextEditors || [])) meosLegacyDecorate(ed); } catch (_) { } };
       redraw(); setTimeout(redraw, Math.max(0, MEOS_LEGACY_CHECK_HOLD_MS - (Date.now() - now)) + 50);   // v5.1.38: 3秒たったら鍵へ
     }).catch(() => { _meosLegacyNetBusy = false; _meosLegacyNetOffline = true; });
-    return { text: '🏛 Time\'s up — checking the time on the Internet…' };
+    return { text: '🏦 Time\'s up — checking the time on the Internet…' };
   }
-  if (_meosLegacyNetBusy) return { text: '🏛 Time\'s up — checking the time on the Internet…' };
-  if (_meosLegacyNetOffline) return { text: '🏛 Due — connect to the Internet to show the key' };
-  return { text: '🏛 Not due yet by Internet time' };
+  if (_meosLegacyNetBusy) return { text: '🏦 Time\'s up — checking the time on the Internet…' };
+  if (_meosLegacyNetOffline) return { text: '🏦 Due — connect to the Internet to show the key' };
+  return { text: '🏦 Not due yet by Internet time' };
 }
 // 描く: バッジ行の中身を隠して、行頭に顔を出す(⏰がバッジ行に数字を出すのと同じ作り)。生を見せている行には描かない。
 function meosLegacyDecorate(editor) {
@@ -18236,33 +18237,33 @@ async function meosLegacyArm(passArg) {
   if (!editor) return;
   const doc = editor.document;
   const p = meosLegacyLockedPairAt(editor);
-  if (!p) { vscode.window.showInformationMessage('MeOS 🏛: Put the cursor in a locked 🔐 membrane (or in the membrane that holds one).'); return; }
+  if (!p) { vscode.window.showInformationMessage('MeOS 🏦: Put the cursor in a locked 🔐 membrane (or in the membrane that holds one).'); return; }
   const blob = (doc.lineAt(p.start + 1).text || '').slice((doc.lineAt(p.start + 1).text || '').indexOf(_MEOS_ENC_PREFIX) + _MEOS_ENC_PREFIX.length).trim();
-  const pass = (typeof passArg === 'string' && passArg) ? passArg : await meosAskPass('Passphrase of this locked membrane — MeOS seals it and shows it on the badge when the day comes', 'passphrase');   // v5.1.38: Me Dock の🏛(合言葉欄)から来た時はそれを使う
+  const pass = (typeof passArg === 'string' && passArg) ? passArg : await meosAskPass('Passphrase of this locked membrane — MeOS seals it and shows it on the badge when the day comes', 'passphrase');   // v5.1.38: Me Dock の🏦(合言葉欄)から来た時はそれを使う
   if (!pass) return;
-  try { meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS 🏛: That passphrase does not open this membrane — nothing was sealed.'); return; }
+  try { meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS 🏦: That passphrase does not open this membrane — nothing was sealed.'); return; }
   const pick = await vscode.window.showQuickPick(MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, ms: x.ms })), { placeHolder: 'Show the key after… (Continue adds the same length again)' });
   if (!pick) return;
   let key; try { key = await meosLegacyMasterKey(true); } catch (e) { key = null; }
-  if (!key) { vscode.window.showErrorMessage('MeOS 🏛: This machine has no place to keep a secret (keychain) — nothing was sealed.'); return; }
+  if (!key) { vscode.window.showErrorMessage('MeOS 🏦: This machine has no place to keep a secret (keychain) — nothing was sealed.'); return; }
   const now = Date.now();
   const genes = meosLegacyGenes(key, { v: 1, n: p.id, k: pass, d: now + pick.ms, t: pick.ms, s: now });
   const ok = await meosLegacyMetaWrite(doc, lg => { lg[p.id] = genes; });
   try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
   _meosLegacyOpened.delete(doc.uri.toString() + ' ' + p.id);
   meosLegacyDecorate(editor); try { _meosNudgeHintsEv.fire(); } catch (_) { }   // v5.1.38: 🔄の札も
-  if (ok) vscode.window.setStatusBarMessage('MeOS 🏛: Digital legacy set — the key shows on the badge in ' + meosLegacyLeft(pick.ms) + '. Save the file (⌘S).', 6000);
-  else vscode.window.showErrorMessage('MeOS 🏛: Could not write into the file’s metadata.');
+  if (ok) vscode.window.setStatusBarMessage('MeOS 🏦: Digital legacy set — the key shows on the badge in ' + meosLegacyLeft(pick.ms) + '. Save the file (⌘S).', 6000);
+  else vscode.window.showErrorMessage('MeOS 🏦: Could not write into the file’s metadata.');
 }
 async function meosLegacyContinue(nameArg, editorArg) {
   const editor = editorArg || (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (!editor) return;
   const doc = editor.document;
   const name = nameArg || meosLegacyNameAt(editor);
-  if (!name) { vscode.window.showInformationMessage('MeOS 🏛: Put the cursor in a digital legacy membrane (or the membrane that holds it).'); return; }
+  if (!name) { vscode.window.showInformationMessage('MeOS 🏦: Put the cursor in a digital legacy membrane (or the membrane that holds it).'); return; }
   const key = await meosLegacyMasterKey(false);
   const o = key ? meosLegacyRead(key, meosLegacyMeta(doc)[name], name) : null;
-  if (!o) { vscode.window.showErrorMessage('MeOS 🏛: This machine cannot read the sealed key — nothing changed.'); return; }
+  if (!o) { vscode.window.showErrorMessage('MeOS 🏦: This machine cannot read the sealed key — nothing changed.'); return; }
   // v5.1.38: 延長の前に長さを選び直せる(今の長さが一番上= Enter だけなら今までどおり)
   const cur = Number(o.t) || MEOS_LEGACY_PERIODS[0].ms;
   const items = MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, ms: x.ms, description: x.ms === cur ? 'same as now' : '' }));
@@ -18274,14 +18275,14 @@ async function meosLegacyContinue(nameArg, editorArg) {
   const ok = await meosLegacyMetaWrite(doc, lg => { lg[name] = genes; });
   _meosLegacyOpened.delete(doc.uri.toString() + ' ' + name);
   meosLegacyDecorate(editor); try { _meosNudgeHintsEv.fire(); } catch (_) { }   // v5.1.38: 🔄の札も
-  if (ok) vscode.window.setStatusBarMessage('MeOS 🏛: Continued — the key shows in ' + meosLegacyLeft(t) + ' from now. Save the file (⌘S).', 6000);
+  if (ok) vscode.window.setStatusBarMessage('MeOS 🏦: Continued — the key shows in ' + meosLegacyLeft(t) + ' from now. Save the file (⌘S).', 6000);
 }
 async function meosLegacyRemove() {
   const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (!editor) return;
   const doc = editor.document;
   const name = meosLegacyNameAt(editor);
-  if (!name) { vscode.window.showInformationMessage('MeOS 🏛: Put the cursor in a digital legacy membrane (or the membrane that holds it).'); return; }
+  if (!name) { vscode.window.showInformationMessage('MeOS 🏦: Put the cursor in a digital legacy membrane (or the membrane that holds it).'); return; }
   const yes = await vscode.window.showWarningMessage('Remove the digital legacy of “' + name + '”? The membrane stays locked 🔐; only the sealed key is removed.', { modal: true }, 'Remove');
   if (yes !== 'Remove') return;
   await meosLegacyMetaWrite(doc, lg => { delete lg[name]; });
@@ -22364,7 +22365,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         if (_vb && editor.selection.active.character === _vb.col) { if (!_vb.head && _vb.kind === 'lock') { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); } await meosVaultBtnPress(editor, _vb, _ln); return; }   // v5.1.31: 解錠中の🔐も⏰のボタンと同じく、押した行を生の字にしない
         const _ch = meosAwayChairSpot(editor.document, _ln, editor);   // v5.1.19: 🪑を押した= 🪑→🛋️→💺 を巡る(全体で1つの設定)
         if (_ch && editor.selection.active.character === _ch.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosAwaySetSlot(meosAwaySlot() % 3 + 1); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }
-        const _lb = meosLegacyBtnSpot(editor.document, _ln, editor);   // v5.1.38: 🏛 遺産膜の🔄= 長さを選んで延長
+        const _lb = meosLegacyBtnSpot(editor.document, _ln, editor);   // v5.1.38: 🏦 遺産膜の🔄= 長さを選んで延長
         if (_lb && editor.selection.active.character === _lb.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosLegacyContinue(_lb.name, editor); return; } }   // ★v5.1.31(俊克「🪑をクリックするとRawに切り替わってしまう」): ⏰のボタンと同じ= 抑止を掛けて行頭へ寄せる
       // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
       //   → [[feedback_go_get_the_measurement]]。⏰の行をマウスで押した時だけ。
@@ -30216,7 +30217,7 @@ color:#ffffff;z-index:4;padding:0}
 #enc-copy:hover{background:#3a93d0;border-color:#1f5f8f}
 #enc-lock.enc-active{background:#d2691e;border-color:#a0500f;color:#fff;opacity:1}
 #enc-lock.enc-active:hover{background:#e07b2a;border-color:#a0500f}
-#enc-lock.enc-legacy{background:#8a6d3b;border-color:#5c4624;color:#fff;opacity:1;filter:none}   /* v5.1.38: Opt で🏛(デジタル遺産)の面 */
+#enc-lock.enc-legacy{background:#8a6d3b;border-color:#5c4624;color:#fff;opacity:1;filter:none}   /* v5.1.38: Opt で🏦(デジタル遺産)の面 */
 .enc-lockunit{position:relative;display:inline-flex}
 /* v5.1.19: 🪑 離席の席 ①②③(Ⓣの⓪〜③と同じ作り= 右肩の数字・乗せると右に▾) */.enc-away{position:absolute;top:-7px;right:-7px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:7;cursor:var(--meos-hand)}.enc-away-caret{display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;line-height:1;min-width:24px;padding:0 5px;border:1px solid var(--meos-frame);border-left:none;border-radius:0 6px 6px 0;color:var(--vscode-foreground);cursor:var(--meos-hand)}.enc-away-caret:hover{filter:brightness(1.15)}.enc-away-caret.s0{background:color-mix(in srgb,var(--vscode-editor-background) 66%,#e0564a 34%);border-color:#a8453c}.enc-away-caret.s1{background:color-mix(in srgb,var(--vscode-editor-background) 66%,#4a86e0 34%);border-color:#3a69ad}.enc-away-caret.s2{background:color-mix(in srgb,var(--vscode-editor-background) 66%,#3fa85c 34%);border-color:#2f7f45}.enc-away.s0{background:#c24a3e}.enc-away.s1{background:#3a74c8}.enc-away.s2{background:#2f8f4c}   /* v5.1.26(俊克「▼を設定した時間を表示する2桁ボタンに・右肩を↻に」): 折り返し幅と同じ並び= 値のボタン(押すと板)+右肩の↻(席を巡る)・席の色(①赤②青③緑) */.enc-lockunit:hover .enc-away-caret{opacity:1;visibility:visible;transition:opacity .12s ease 0s,visibility 0s}.enc-lockunit{transition:scale .15s ease;transform-origin:15% 100%;align-items:stretch}   /* v5.1.27(俊克「最初に拡大した時、下が切れる。上側に拡大」): 軸を下端に= 上へ伸びる(行の下は Current Me の箱の端で切れる) */#enc-lock.enc-btn{padding:1px 5px;font-size:15px;border-radius:6px 0 0 6px;background:var(--vscode-button-secondaryBackground,#3a3a3a);border-color:rgba(210,140,0,.55);opacity:.9}#enc-lock.enc-btn.enc-active{background:#d2691e;border-color:#a0500f;opacity:1}#enc-lock.enc-btn.enc-active:hover{background:#e07b2a}   /* v5.1.23(俊克「🔐を囲む四角が大き過ぎ・半透明で分り難い・境界を真っ直ぐ」): 小さく・不透明な地・▾と接する右側は角を立てる */.enc-lockunit:hover{scale:2;z-index:50}   /* v5.1.22(俊克「Ⓣボタンと同じように全部を同時に拡大」「▼は🔐の外枠の右にくっつく形」): 🔐・右肩の数字・▾をまとめて2倍(Ⓣのタイルと同じ)。▾は🔐の枠の右端に1px重ねて付ける */.enc-away-pop{position:static;margin-top:4px;border-radius:9px;box-shadow:none;white-space:nowrap;flex:0 0 auto;gap:7px;padding:5px 9px}.enc-away-pop .ww-bar{width:120px}.enc-away-pop .ww-slider{width:120px}.enc-away-pop .ww-num{width:38px}   /* Me Dock の幅に収める(台で確認) */   /* 浮かせない= Current Me の箱(.cur-box)は overflow:hidden で、浮かせた板は切れる(台で確認)→ 合言葉の欄と同じく行の下に流れの中で開く */.enc-away-lab{font-size:13px}.enc-away-unit{font-size:11px;opacity:.8}.enc-away-pop.s0{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#e0564a 28%);border-color:#a8453c}.enc-away-pop.s1{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#4a86e0 28%);border-color:#3a69ad}.enc-away-pop.s2{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#3fa85c 28%);border-color:#2f7f45}   /* v5.1.25(俊克「値の変更は折り返し幅と同様に」): ▾で開く板= 折り返し幅の板(.ww-pop/つまみ/数字)をそのまま使う・席ごとに色(①赤②青③緑= 折り返しの3枠と同じ) */
 .enc-badge{position:absolute;top:-7px;right:-8px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;padding:0;margin:0;border:1px solid transparent;border-radius:50%;background:var(--vscode-badge-background,#3a3a3a);cursor:var(--meos-hand);filter:grayscale(1) brightness(.85);z-index:6}
@@ -32948,7 +32949,7 @@ encPassEye=document.getElementById('enc-pass-eye'),encPassGo=document.getElement
 let _encPendingOp='';
 // {* ▲mCN=dock_js_format *}
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
-function showEncPass(op){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='legacy')?'🏛':'🔓';if(encPassInput){encPassInput.type='password';_encEyeSync();
+function showEncPass(op){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='legacy')?'🏦':'🔓';if(encPassInput){encPassInput.type='password';_encEyeSync();
 encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
 }if(encPassRow)encPassRow.style.display='flex';setTimeout(()=>{try{encPassInput&&encPassInput.focus();}catch(_){}},0);}
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
@@ -32958,12 +32959,12 @@ function submitEncPass(){const v=encPassInput?encPassInput.value:'';if(!v){hideE
 op:_encPendingOp,pass:v});hideEncPass();}
 let _encVaultUnlocked=false; /* v5.1.1: 入口で解錠中の膜= 🔐は合言葉なしで、すぐ施錠 */
 const encLock=document.getElementById('enc-lock');
-/* ★v5.1.38(俊克 改良1「Me Dockの🔐をOpt押しにすると、🏛ボタンに切り替わるようにしよう」): Opt を添えて乗せている間は🏛= デジタル遺産を掛ける。
-   面の替え方はハイライトの🔗と同じ fmtAltWatch(押す前に面が名乗る)。押すと合言葉欄(🏛)を開く= 中の🔐膜の合言葉。
+/* ★v5.1.38(俊克 改良1「Me Dockの🔐をOpt押しにすると、🏦ボタンに切り替わるようにしよう」): Opt を添えて乗せている間は🏦= デジタル遺産を掛ける。
+   面の替え方はハイライトの🔗と同じ fmtAltWatch(押す前に面が名乗る)。押すと合言葉欄(🏦)を開く= 中の🔐膜の合言葉。
    掛けられるのは、🔐膜の中、または外膜の開始膜/閉じ膜の上(中の🔐膜が1つだけの時)= 判定は node(meosLegacyLockedPairAt)。 */
 const _encLockTip=encLock?(encLock.getAttribute('data-tip')||''):'';
-const _encLegacyAlt=fmtAltWatch(encLock,function(){if(!encLock)return;const on=!!(_encLegacyAlt&&_encLegacyAlt.on());encLock.textContent=on?'🏛':'🔐';encLock.classList.toggle('enc-legacy',on);
-encLock.setAttribute('data-tip',on?'Digital Legacy 🏛 | Seal the passphrase of the 🔐 membrane here; its key shows on the outer membrane badge when the time is up (1 year etc.). Put the cursor in the 🔐 membrane, or on the opening/closing line of the membrane that holds it.':_encLockTip);});
+const _encLegacyAlt=fmtAltWatch(encLock,function(){if(!encLock)return;const on=!!(_encLegacyAlt&&_encLegacyAlt.on());encLock.textContent=on?'🏦':'🔐';encLock.classList.toggle('enc-legacy',on);
+encLock.setAttribute('data-tip',on?'Digital Legacy 🏦 | Seal the passphrase of the 🔐 membrane here; its key shows on the outer membrane badge when the time is up (1 year etc.). Put the cursor in the 🔐 membrane, or on the opening/closing line of the membrane that holds it.':_encLockTip);});
 if(encLock)encLock.addEventListener('click',(ev)=>{if((ev&&ev.altKey)||(_encLegacyAlt&&_encLegacyAlt.on())){hideEncPass();showEncPass('legacy');_encAskBody=true;return;}
 if(!encLock.classList.contains('enc-active'))return;
 if(_encVaultUnlocked){hideEncPass();vscode.postMessage({type:'encryptMembrane'});return;}showEncPass('encrypt');
@@ -43182,7 +43183,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.encryptMembrane', () => encryptCurrentMembrane())); // v0.9.999
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.unlockMembrane', () => unlockCurrentMembrane())); // v0.9.999
   meosVaultActivate(context); // v5.1.0: 🔐暗号の仮想化(meos-vault: の入口)
-  meosLegacyActivate(context); // v5.1.37: 🏛 デジタル遺産膜
+  meosLegacyActivate(context); // v5.1.37: 🏦 デジタル遺産膜
   // v0.9.973: Cmd+S連動 auto push — githubAutoSyncがONの時だけ発火
   // v0.9.987: ワンショット化(俊克 6/22 pm10:17)。🐙を点けてCmd+Sで1回push→直後に自動でオフへ戻す。
   // =「Push when you say so」を1タップ1pushで体現。点けっぱなしで以降の保存まで送られる事故を防ぐ。
@@ -43441,7 +43442,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
             }
             { const _vh = meosVaultLineHints(document, ln, _ed89); if (_vh && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) { out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label));
               const _ch = meosAwayChairSpot(document, ln, _ed89); if (_ch) out.push(new vscode.InlayHint(new vscode.Position(ln, _ch.col), '\u3000')); } }   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
-            { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏛 遺産膜の🔄
+            { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
           }
 
         } catch (_) { }
