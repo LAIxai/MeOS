@@ -384,11 +384,12 @@ function run(argv) {
   let lastAnchor = null, lastIdle = null;
   // ★v4.2.363: 常駐の係は、⏰が無い時も消えない= 灰色の ⏰ で居る(そこからアプリの起動/終了ができる)。
   const gray = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x6b / 255, 0x72 / 255, 0x80 / 255, 1);
+  // v5.1.60(俊克「⚓の青い札の時は、椅子の部分との境目に細い白い線を」): ⚓の青と🪑の水色が近いので、⚓の時だけ境目に1ptの白
   // v5.1.57(俊克「メニューバーの背景色を椅子の部分だけ色を変えよう」): 末尾の離席の残り(🪑3m / 🪑0:42)だけ席の色の地に(Me Dock の↻の丸と同じ色)
   const SEATS = [[String.fromCodePoint(0x1FA91), 0x2f, 0x9c, 0xcc], [String.fromCodePoint(0x1F6CB) + String.fromCharCode(0xFE0F), 0xc2, 0x4a, 0x3e], [String.fromCodePoint(0x1F4BA), 0xc4, 0x95, 0x1a]];
   const seatPart = (t) => { t = String(t); for (const s of SEATS) { const i = t.lastIndexOf(s[0]); if (i < 0) continue; const tail = t.slice(i + s[0].length); if (/^([0-9]+m|<1m|0:[0-9][0-9])$/.test(tail)) return { at: i, rgb: s }; } return null; };
-  const fillSeat = (t, font, PX, W, H) => { try { const sp = seatPart(t); if (!sp) return; const pre = String(t).slice(0, sp.at); const x0 = pre.replace(/ +$/, '') ? Math.max(0, PX + styled(pre, font, true).size.width - 4) : 0;
-    $.NSColor.colorWithSRGBRedGreenBlueAlpha(sp.rgb[1] / 255, sp.rgb[2] / 255, sp.rgb[3] / 255, 1).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, 0, W - x0, H), 5, 5).fill; if (x0 > 0) $.NSBezierPath.fillRect($.NSMakeRect(x0, 0, 6, H)); } catch (e) {} };   // v5.1.58(俊克「色の境界線をラウンドではなく、直線に」): 境目は直線・右の端だけ札と同じ丸み
+  const fillSeat = (t, font, PX, W, H, line) => { try { const sp = seatPart(t); if (!sp) return; const pre = String(t).slice(0, sp.at); const x0 = pre.replace(/ +$/, '') ? Math.max(0, PX + styled(pre, font, true).size.width - 4) : 0;
+    $.NSColor.colorWithSRGBRedGreenBlueAlpha(sp.rgb[1] / 255, sp.rgb[2] / 255, sp.rgb[3] / 255, 1).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, 0, W - x0, H), 5, 5).fill; if (x0 > 0) $.NSBezierPath.fillRect($.NSMakeRect(x0, 0, 6, H)); if (line && x0 > 0) { $.NSColor.whiteColor.setFill; $.NSBezierPath.fillRect($.NSMakeRect(x0, 0, 1, H)); } } catch (e) {} };   // v5.1.58(俊克「色の境界線をラウンドではなく、直線に」): 境目は直線・右の端だけ札と同じ丸み
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
@@ -421,7 +422,7 @@ function run(argv) {
       img.lockFocus;
       (idle ? gray : (anchor ? blue : (myScheme === 'vscode' ? purple : orange))).setFill;
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
-      if (!idle) fillSeat(t, font, PX, W, H);   // v5.1.57
+      if (!idle) fillSeat(t, font, PX, W, H, !!anchor);   // v5.1.57
       drawStyled(t, font, PX, (H - sz.height) / 2);
       img.unlockFocus;
       img.template = false;
