@@ -37,7 +37,9 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_legacy_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot };
+module.exports.__t = { meosLegacySeal, meosLegacyUnseal, meosLegacyGenes, meosLegacyRead, meosLegacyNetAgree, meosLegacyRows, meosLegacyBadgeRowFor, meosClockBadgeRow, meosLegacyFace, meosLegacyLeft, encodeHyperTocLine, meosEncryptText, _MEOS_ENC_PREFIX, _meosLegacyNetDue, _meosLegacyNetAsk, meosLegacyBtnSpot, meosLegacyBellTick, setKey: (k) => { _meosLegacyKeyMem = k; }, setDocs: (d) => { vscode.workspace.textDocuments = d; } };
+meosRingFor = function (n, ms) { (global.__rings = global.__rings || []).push([n, ms]); };
+meosStopRinging = function () { (global.__rings = global.__rings || []).push(['stop']); };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let fail = 0;
@@ -108,8 +110,25 @@ T._meosLegacyNetAsk.set('file:///legacy.md ' + NAME + ' ' + past.d, Date.now());
 const f3 = T.meosLegacyFace(doc, NAME, gp, K);
 ok(!f3.key && /checking the time/.test(f3.text), '確かめ始めて3秒は「確かめています」を残す(v5.1.38)');
 const bs = T.meosLegacyBtnSpot(doc, 9, null);
-ok(bs && bs.col === 1 && bs.label === '🔄', '🔄の札は親膜のバッジ行の桁1(v5.1.38)');
+ok(bs && bs.col === lines[9].length && bs.label === '🔄', '🔄の札は親膜のバッジ行の行末= 隠した字の外(v5.1.40)');
 ok(T.meosLegacyBtnSpot(doc, 6, null) === null && T.meosLegacyBtnSpot(doc, 8, null) === null, '他の行には🔄を出さない');
 ok(T.meosLegacyLeft(90 * 1000) === '2 min' && T.meosLegacyLeft(400 * 86400000) === '400 days', '残りの書き方');
+// ⑥ 先鐘(v5.1.40): 1分前・30秒前・10秒前、期限で止める
+{
+  const realNow = Date.now; let fake = realNow();
+  Date.now = () => fake;
+  const due = fake + 61000;
+  const gb = T.meosLegacyGenes(K, Object.assign({}, obj, { d: due }));
+  const meta2 = { tabs: meta.tabs, activeIdx: 0, legacy: { [NAME]: gb } };
+  const lines2 = lines.slice(); lines2[12] = T.encodeHyperTocLine(meta2, { languageId: 'markdown' });
+  const doc2 = { version: 7, uri: { toString: () => 'file:///bell.md', scheme: 'file', path: '/bell.md' }, languageId: 'markdown', lineCount: lines2.length, lineAt: (i) => ({ text: lines2[i] }), getText: () => lines2.join('\n') };
+  T.setKey(K); T.setDocs([doc2]); global.__rings = [];
+  for (let t = 0; t <= 62; t++) { fake = due - 61000 + t * 1000; T.meosLegacyBellTick(); }
+  const r = global.__rings.filter(x => x[0] !== 'stop');
+  ok(r.length === 3, '鳴るのは3回(1分前・30秒前・10秒前) 実際=' + JSON.stringify(r.map(x => x[1])));
+  ok(r[0] && r[0][1] === 3000 && r[1] && r[1][1] === 5000 && r[2] && r[2][1] >= 9000, '長さは3秒・5秒・期限まで');
+  ok(global.__rings[global.__rings.length - 1][0] === 'stop', '期限で止める');
+  Date.now = realNow;
+}
 console.log(fail ? ('\nNG ' + fail) : '\nALL PASS');
 process.exit(fail ? 1 : 0);
