@@ -12785,6 +12785,7 @@ function meosArmClockFcFor(doc) {
   try {
     if (_meosClocksOff) return 0;                                 // ★v4.2.58: 元栓that閉じている間は1本も掛けない
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
+    if (meosClockVaultTwin(doc)) return 0;                        // ★v5.1.64: 入口で開いている日記の file: 側では掛けない
     const uri = doc.uri.toString();
     let n = 0, _seen = 0; const _seenKeys = new Set();
     const _unread = new Set();   // v4.2.34: この走査で落とした行
@@ -13194,11 +13195,37 @@ function meosArmClockFcFor(doc) {
     return n;
   } catch (_) { return 0; }
 }
+// ★v5.1.64(俊克 10.19 am08:24「再起動したら、メニューバーが重複している。2つの同じ項目の2つ目は、ファイルの先頭に飛ぶ」):
+//   同じ日記が入口(meos-vault:)と file: の2つの住所で開くと、⏰も2つの住所で掛かっていた(file: のタブは入口へ移して閉じるが、⏰は残った)。
+//   2つ目は file: へ飛ぶので、入口へ移し替えられる時に位置を失って先頭に出た。
+//   → ⏰の住所は1つ= 入口が開いていれば入口だけ。file: 側は掛けず、入口が掛かる時に file: 側の残りを外す。
+function meosClockVaultTwin(doc) {
+  try {
+    if (meosIsVaultDoc(doc)) { meosClockDropUri(vscode.Uri.file(doc.uri.path).toString()); return false; }
+    if (doc.uri.scheme !== 'file') return false;
+    const vu = meosVaultUriOf(doc.uri).toString();
+    if (!(vscode.workspace.textDocuments || []).some(d => !d.isClosed && d.uri.toString() === vu)) return false;
+    meosClockDropUri(doc.uri.toString());
+    return true;
+  } catch (_) { return false; }
+}
+function meosClockDropUri(uri) {
+  let n = 0;
+  for (const [k, sc] of Array.from(_meosPseudoScopes)) {
+    if (!sc || sc.uri !== uri) continue;
+    try { meosClearPseudoTimer(k); } catch (_) { }
+    _meosPseudoScopes.delete(k); _meosPseudoUntil.delete(k); n++;
+  }
+  _meosClockLoaded.delete(uri);
+  if (n) { try { meosDbg('[armClock] file: 側の⏰を外した(入口が開いている) n=' + n); } catch (_) { } try { meosUpdateTimerBar(); } catch (_) { } }
+  return n;
+}
 // 開いた時に、書いてある予定を仕掛け直す。一度だけ(同じファイルを何度開いても二重にしない)。
 async function meosLoadClocksFor(doc) {
   try {
     if (_meosClocksOff) return;                                   // ★v4.2.58: 開き直しても、閉じている間は掛け直さない
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return;
+    if (meosClockVaultTwin(doc)) return;                          // ★v5.1.64: 同上(file: 側は読まない)
     const uri = doc.uri.toString();
     if (_meosClockLoaded.has(uri)) return;
     _meosClockLoaded.add(uri);
@@ -18023,7 +18050,18 @@ function meosVaultActivate(context) {
         const keysSeen = new Set();
         for (const d of docs) { const k = _vaultKeyOf(d.uri); if (keysSeen.has(k)) continue; keysSeen.add(k); await _vaultReload(k); }
         const dirty = docs.filter(d => d.isDirty);
-        if (dirty.length) vscode.window.showWarningMessage('MeOS 🔐: MeOS restarted, so every membrane is locked again. ' + dirty.length + ' vault file(s) still show unsaved plain text — revert them (or close without saving), then unlock again 🔓.');
+        // ★v5.1.64: 書きかけの平文は VSCodium の控えに入っている(ディスクには書かれない)。知らせるだけでは控えに残る&膜はボタンの無い
+        //   「ふつうの膜」に見える(10.19 am08:16 俊克「膜に暗号ボタンが消えていた」)→ 捨てる道をその場に出す(モーダル)。
+        if (dirty.length) {
+          const pick = await vscode.window.showWarningMessage('MeOS 🔐: MeOS restarted while ' + dirty.length + ' vault file(s) had unsaved edits. They may hold unlocked plain text, which VSCodium keeps in its own backup (never on disk). Discard the unsaved edits and show the locked file?', { modal: true }, 'Discard unsaved edits');
+          if (pick === 'Discard unsaved edits') {
+            for (const d of dirty) {
+              if (d.isClosed || !d.isDirty) continue;
+              try { await vscode.window.showTextDocument(d); await vscode.commands.executeCommand('workbench.action.files.revert'); } catch (_) { }
+            }
+            for (const k of keysSeen) { try { await _vaultReload(k); } catch (_) { } }
+          }
+        }
       } catch (_) { }
     }, 1500);
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultLockAll', () => meosVaultLockAll('now')));
@@ -44251,7 +44289,16 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
 //     → [[feedback_measure_before_you_generalize]]。親プロセスを1回見れば、最初に分かった。
 // ★ただし**この片付けそのものは残す**= deactivate that setInterval を1つも止めないのは、
 //   見立てとは別に本当の穴(入れ替えの度に拍that1つ残る)。自分で点けた物は、自分で消してから去る。
+// ★v5.1.64(俊克 10.19 am08:07 確かめ= 解錠中に Restart Extensions で MeOS を止めて「い」を打つと、VSCodium の控え(Backups/)に膜が平文で入った):
+//   止まった MeOS は 0.5秒の自動保存を打てない= 打った字は未保存のまま、VSCodium 自身が平文を控えへ書く(ディスクは守り④で暗号文のまま)。
+//   → 去る前に施錠する(保存→鍵を捨てる→入口を読み直す= エディターは暗号文に戻る)。止まった後に打っても、もう平文は無い。
+//   待つのは最長3秒(閉じるのを長く止めない)。落ちた時は deactivate が呼ばれないので、起きる時の守り(meosVaultActivate)が受ける。
 function deactivate() {
+  let locked = Promise.resolve();
+  try { if (_vaultKeys.size) locked = Promise.race([meosVaultLockAll('MeOS stopped').catch(() => 0), new Promise(r => setTimeout(r, 3000))]); } catch (_) { }
+  return locked.then(() => meosDeactivateRest(), () => meosDeactivateRest());
+}
+function meosDeactivateRest() {
   try { meosHelperHandOff(); } catch (_) { }   // v4.2.310: 時計を片付ける**前に**、予定の表をヘルパーへ渡す
   try { meosStopRinging(); } catch (_) { }
   try { for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); } } catch (_) { }
