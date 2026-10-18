@@ -43385,6 +43385,10 @@ function activate(context) {
         const sc = { uri: q.get('uri') || '', key: q.get('key') || '', name: q.get('name') || '' };
         if (!sc.uri || !sc.key) return;
         meosDbg('[helper] warp ' + sc.key + (q.get('bell') === '1' ? ' (bell)' : ''));
+        // ★v5.1.59(俊克 バグ1「Tag&Goに表示している文字…ワープして確認すると、現場と異なる」): 閉じている VSCodium を起こした時、
+        //   warp が先に飛び、その1.6秒後に起動の「最後に居た行へ戻す」が上書きしていた(ログ: warp 15:55:35.32 → 行221344へ戻した 35.95)。
+        //   行き先を決めたのは warp なので、まだ戻していなければ戻すのを取りやめる。
+        if (!_meosLastLineDone) meosLastLineFinish('warp が先 → 戻さない (' + sc.key + ')');
         await meosJumpToScope(sc, q.get('bell') === '1');
         if (q.get('bell') === '1' && !meosIsRinging()) meosStartRinging(sc.name);
       } catch (_) { }
