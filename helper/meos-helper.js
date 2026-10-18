@@ -388,7 +388,7 @@ function run(argv) {
   const SEATS = [[String.fromCodePoint(0x1FA91), 0x2f, 0x9c, 0xcc], [String.fromCodePoint(0x1F6CB) + String.fromCharCode(0xFE0F), 0xc2, 0x4a, 0x3e], [String.fromCodePoint(0x1F4BA), 0xc4, 0x95, 0x1a]];
   const seatPart = (t) => { t = String(t); for (const s of SEATS) { const i = t.lastIndexOf(s[0]); if (i < 0) continue; const tail = t.slice(i + s[0].length); if (/^([0-9]+m|<1m|0:[0-9][0-9])$/.test(tail)) return { at: i, rgb: s }; } return null; };
   const fillSeat = (t, font, PX, W, H) => { try { const sp = seatPart(t); if (!sp) return; const pre = String(t).slice(0, sp.at); const x0 = pre.replace(/ +$/, '') ? Math.max(0, PX + styled(pre, font, true).size.width - 4) : 0;
-    $.NSColor.colorWithSRGBRedGreenBlueAlpha(sp.rgb[1] / 255, sp.rgb[2] / 255, sp.rgb[3] / 255, 1).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, 0, W - x0, H), 5, 5).fill; } catch (e) {} };
+    $.NSColor.colorWithSRGBRedGreenBlueAlpha(sp.rgb[1] / 255, sp.rgb[2] / 255, sp.rgb[3] / 255, 1).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, 0, W - x0, H), 5, 5).fill; if (x0 > 0) $.NSBezierPath.fillRect($.NSMakeRect(x0, 0, 6, H)); } catch (e) {} };   // v5.1.58(俊克「色の境界線をラウンドではなく、直線に」): 境目は直線・右の端だけ札と同じ丸み
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
