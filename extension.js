@@ -42198,6 +42198,7 @@ function meosApplyQuoteDecorations(editor) {
   } catch (_) { }
 }
 // {* ▲mCN=4283_QUOTE // *}
+let fenceFoldDeco = null;   // v5.1.49: 畳まれた板の頭に「⇐ click ⋯ to unfold」
 function meosApplyCodeFenceDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
@@ -42214,12 +42215,21 @@ function meosApplyCodeFenceDecorations(editor) {
       fenceLangDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
         before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; position: absolute; left: ' + MEOS_FENCE_INDENT_COLS + 'ch; z-index: 2; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
     }
+    // ★v5.1.49(俊克「畳まれているときの『…』をMeOSからは見えないのか? 見えるなら、それにハイライトを付けたりできる」→「⇐ click ... to unfold」を赤文字で):
+    //   ⋯ そのものは VSCodium の部品で掴めない。畳まれた所は「見えている範囲の切れ目」で分かる(頭の行は見え、次の行は見えず、その先にまた見える範囲がある)。
+    //   → 板の頭(``` の行)が畳みの頭なら、⋯ の右に赤い字で知らせる。字は浮かせて ⋯ の右へずらす(行末に足すだけだと ⋯ より左に出る)。
+    if (!fenceFoldDeco) fenceFoldDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      after: { contentText: '\u21d0 click \u22ef to unfold', color: '#ff3b30', fontWeight: '800', textDecoration: 'none; position: absolute; margin-left: 2.6ch; white-space: nowrap; z-index: 2; font-size: 0.9em;' } });
+    const _vrs = (editor.visibleRanges || []);
+    const _seen = (ln) => _vrs.some(r => r.start.line <= ln && ln <= r.end.line);
+    const _foldHead = (ln) => _seen(ln) && !_seen(ln + 1) && _vrs.some(r => r.start.line > ln + 1);   // 次の行が隠れ、その先にまた見える= 畳まれている(画面の下端で切れているのとは違う)
     const paper = new Map();                                        // 型 → 置く行(予備の板と、字の側の紙)
-    const inks = [], ticks = [], langs = [], indents = [];
+    const inks = [], ticks = [], langs = [], indents = [], folds = [];
     const put = () => {
       for (const t of _fencePaperCapTypes.values()) editor.setDecorations(t, paper.get(t) || []);
       editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs);
       editor.setDecorations(fenceIndentDeco, indents);
+      editor.setDecorations(fenceFoldDeco, folds);   // v5.1.49
     };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
@@ -42258,6 +42268,7 @@ function meosApplyCodeFenceDecorations(editor) {
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
             if (ln === b.open) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.lang || 'code' } } });
+            if (ln === b.open && b.close > b.open + 1 && _foldHead(ln)) folds.push(new vscode.Range(ln, t.length, ln, t.length));   // v5.1.49: 畳まれた板の頭
           } else if (t.length) inks.push(new vscode.Range(ln, 0, ln, t.length));
         }
       }

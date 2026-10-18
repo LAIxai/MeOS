@@ -11,7 +11,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mf_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={displayColumns,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure,meosDefBlocks};\n');
+ +'\nmodule.exports.__t={displayColumns,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure,meosDefBlocks,getFoldDeco:()=>fenceFoldDeco};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 const displayCols=(t)=>X.displayColumns(t);
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
@@ -153,5 +153,21 @@ console.log('⑩ 囲いの中のFC行は畳まない(v5.1.44 俊克 質問1)');
  const bl=X.meosDefBlocks(d10);
  ok(!bl.some(b=>b.start<=3&&3<=b.end&&b.end>=3&&b.end<=5), '★囲いの中のFC行(4行目)は塊にならない', bl);
  ok(bl.some(b=>b.end===7), '  囲いの外のFC行(8行目)は今までどおり塊になる', bl);
+}
+console.log('⑪ 畳まれた板の頭に「⇐ click ⋯ to unfold」(v5.1.49)');
+{
+ const L11=['# t','x','```','a','b','```','after'];
+ const d11={uri:{toString:()=>'file:///f11.md',fsPath:'/f11.md',scheme:'file'},languageId:'markdown',lineCount:L11.length,
+  lineAt:n=>({text:L11[n],range:new stub.Range(n,0,n,L11[n].length)}),getText:()=>L11.join('\n'),eol:1,fileName:'/f11.md',isClosed:false,version:1};
+ const sv=new Map();
+ const ed=(vrs)=>({document:d11,visibleRanges:vrs,selection:{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true},
+  selections:[{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true}],setDecorations:(t,items)=>sv.set(t,items)});
+ X.meosApplyCodeFenceDecorations(ed([new stub.Range(0,0,2,0),new stub.Range(5,0,6,0)]));
+ const got=(sv.get(X.getFoldDeco())||[]).map(r=>r.start.line);
+ ok(got.join()==='2', '★畳まれた板(3〜5行目が隠れた)= 頭の行に印', got);
+ X.meosApplyCodeFenceDecorations(ed([new stub.Range(0,0,6,0)]));
+ ok(((sv.get(X.getFoldDeco())||[]).length)===0, '  開いていれば出さない', sv.get(X.getFoldDeco()));
+ X.meosApplyCodeFenceDecorations(ed([new stub.Range(0,0,2,0)]));
+ ok(((sv.get(X.getFoldDeco())||[]).length)===0, '  画面の下端で切れているだけなら出さない', sv.get(X.getFoldDeco()));
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
