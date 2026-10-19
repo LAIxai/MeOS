@@ -33320,7 +33320,9 @@ const _encLegacyAlt=fmtAltWatch(encLock,function(){if(!encLock)return;const sh=_
 if(sh){encLock.setAttribute('data-tip','Full defense 🛡️ | Only you can open it — 🏦 can never be set on it. Needs a long passphrase (20+ characters, or 4+ words; 🎲 makes one). On a 🛡️ membrane, click to take 🛡️ off.');return;}
 encLock.setAttribute('data-tip',on?'Digital Legacy 🏦 | Seal the passphrase of the 🔐 membrane here; its key shows on the outer membrane badge when the time is up (1 year etc.). Put the cursor in the 🔐 membrane, or on the opening/closing line of the membrane that holds it.':_encLockTip);});
 if(_encLegacyAlt)_encLegacyAlt.redraw=function(){try{fmtAltRedrawAll();}catch(_){}};
-if(encLock){encLock.addEventListener('mouseenter',()=>{_encOver=true;_encRedraw();});encLock.addEventListener('mouseleave',()=>{_encOver=false;_encRedraw();});}
+function _encCtrlSync(ev){const c=!!(ev&&ev.ctrlKey);if(c!==_encCtrlDown){_encCtrlDown=c;_encRedraw();}}   /* v5.1.73(俊克 pm02:45 バグ1「Ctrlを押しても🛡️にならない」): 真因= キーの合図は Me Dock に焦点が無いと来ない。Opt(fmtAltSync)と同じくマウスの合図の ctrlKey で見る */
+window.__encCtrl=function(on){on=!!on;if(on!==_encCtrlDown){_encCtrlDown=on;_encRedraw();}};   /* V-helper の修飾キーの見張り(modsSet)からも= 止まったまま押しても面が替わる */
+if(encLock){encLock.addEventListener('mouseenter',(ev)=>{_encOver=true;_encCtrlSync(ev);_encRedraw();});encLock.addEventListener('mousemove',_encCtrlSync);encLock.addEventListener('mouseleave',()=>{_encOver=false;_encRedraw();});}
 document.addEventListener('keydown',function(ev){if(ev.key==='Control'&&!_encCtrlDown){_encCtrlDown=true;_encRedraw();}});document.addEventListener('keyup',function(ev){if(ev.key==='Control'&&_encCtrlDown){_encCtrlDown=false;_encRedraw();}});window.addEventListener('blur',function(){if(_encCtrlDown){_encCtrlDown=false;_encRedraw();}});
 let _encShieldAt=0;function _encShieldGo(){const n=Date.now();if(n-_encShieldAt<500)return;_encShieldAt=n;hideEncPass();vscode.postMessage({type:'encShield'});}
 if(encLock)encLock.addEventListener('contextmenu',(ev)=>{if(ev&&ev.ctrlKey){ev.preventDefault();ev.stopPropagation();_encShieldGo();}});   /* v5.1.72: Mac の Ctrl+クリックは右クリックとして来る= ここで受ける */
@@ -34409,7 +34411,7 @@ const BTN_SEL='button,a,input,select,textarea,[data-tip],[data-tip-html],.md-til
 /* ★v4.2.739(俊克 改良1「cmdで黄・さらにshiftを同時押しすると青に= 最後に押した色に。同時に押していることを確かめられる」): 押した順を覚え、一番最後に押したキーの色(Opt も含む) */
 const MODS={Shift:false,Control:false,Meta:false,Alt:false};let MORD=[];
 let SSIDE='L';function sideSet(l,r,prevL,prevR){if(r&&!prevR)SSIDE='R';else if(l&&!prevL)SSIDE='L';else if(r&&!l)SSIDE='R';else if(l&&!r)SSIDE='L';}let __sl=false,__sr=false;
-function modsSet(st){for(const k of ['Shift','Control','Meta','Alt']){const on=!!st[k],i=MORD.indexOf(k);if(on&&i<0)MORD.push(k);if(!on&&i>=0)MORD.splice(i,1);MODS[k]=on;}const top=MORD[MORD.length-1]||'';try{optOn(top==='Alt');}catch(_){}modsShow();try{if(window.__mergeLab)window.__mergeLab(MODS.Shift,MODS.Meta);}catch(_){}}
+function modsSet(st){for(const k of ['Shift','Control','Meta','Alt']){const on=!!st[k],i=MORD.indexOf(k);if(on&&i<0)MORD.push(k);if(!on&&i>=0)MORD.splice(i,1);MODS[k]=on;}try{if(window.__encCtrl)window.__encCtrl(MODS.Control);}catch(_){}const top=MORD[MORD.length-1]||'';try{optOn(top==='Alt');}catch(_){}modsShow();try{if(window.__mergeLab)window.__mergeLab(MODS.Shift,MODS.Meta);}catch(_){}}
 /* ★v4.2.738(俊克 ②「V-helper に Mac のキーを見張らせる」): ポインターが Me Dock の上に在る間だけ見張りを頼む・知らせが来たら、動かさなくても色を替える */
 let __hov=false;function hoverSet(v){if(v===__hov)return;__hov=v;try{vscode.postMessage({type:'dockHover',on:v});}catch(_){}}
 document.addEventListener('pointermove',()=>hoverSet(true),true);document.documentElement.addEventListener('mouseleave',()=>hoverSet(false));
