@@ -22730,7 +22730,7 @@ async function meosClockRestartFromNow(doc, key, line) {
     //   → 走らせた直後に、その行の畳みをその場で開く。
     try { const ed = vscode.window.visibleTextEditors.find(e => e.document === doc);
       if (ed) { const L = [line, Math.max(0, line - 1)]; try { for (const h of L) _meosFoldedAt48.delete(h); } catch (_) { }
-        await vscode.commands.executeCommand('editor.unfold', { selectionLines: L, levels: 1 });
+        await vscode.commands.executeCommand('editor.unfold', { selectionLines: [line], levels: 1, direction: 'up' });   // ★v5.1.90(俊克 am00:37「まだ直ってない」): 記録= 畳みの頭は膜の開始(158879)で、⏰の行はその中ほど。既定の向き(down)は「その行から始まる畳み」しか開かない→ up= その行を包む畳みを開く
         meosDbg('[play] ⌥ 畳みを開いた 行=' + (line + 1)); } } catch (_) { }
     return ok;
   } catch (_) { return false; }
