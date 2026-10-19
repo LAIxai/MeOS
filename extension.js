@@ -12023,6 +12023,65 @@ function meosClockSetTarget() {
 // ★v4.2.553(俊克「追加するか上書きするかが曖昧なので、SetとCreateの2つのボタンを。Setは、Resetの意味」):
 //   add===true(Create・①)= 常に足す(⏰行の上でもその膜の群の後ろへ) / add===false(Set)= ⏰行の上だけ・その行を書き直す /
 //   add 無し(Enter など古い道)= 今までどおりカーソルの場所が決める
+// ★★v5.1.92(俊克 10.20 am01:35〜02:01「⏰0y0d0h3mボタンは廃止。膜名『⏰0y0d0h3m_TS』というMeOS規定の膜をメタデータの手前に。メニューバーはそこへワープする案内。
+//   選ぶためにワープする。ここからコピーすれば他の膜にも貼れる= タイマーのデータベース」「特例膜ということで」):
+//   ・メニューバーの「⏰ Timers」を押した時、今の日記に無ければ mMETA の手前に作ってからワープ(消しても次に押せば作り直す)。
+//   ・中身= 待ち(FC・✓なし)の⏰を6本。▶️ で押した1本だけ走る(他は待ちのまま= 今までの「待ちの行の▶️」と同じ道)。
+//   ・特例: この膜の⏰の塊は畳まない(meosFcWantsOpen)/鳴り終えたら ✓ にせず待ちへ戻す(meosClockFcSet)。
+const MEOS_TIMER_DB_PREFIX = '⏰0y0d0h3m_';
+function meosIsTimerDbKey(key) { return String(key || '').indexOf(MEOS_TIMER_DB_PREFIX) === 0; }
+function meosTimerDbBlockAt(doc, line) {   // その行が⏰データベースの閉じ膜の直後の FC 群の中か
+  try {
+    for (let i = line; i >= 0 && i > line - 40; i--) {
+      const t = doc.lineAt(i).text || '';
+      if (/▲m?CN=/.test(t)) return t.indexOf('CN=' + MEOS_TIMER_DB_PREFIX) >= 0;
+      if (!/^\s*<!--\s*Mew!/.test(t) && t.trim() !== '') return false;
+    }
+  } catch (_) { }
+  return false;
+}
+function meosTimerDbText(eol) {
+  const d = new Date(), p = (x) => (x < 10 ? '0' : '') + x;
+  const id = MEOS_TIMER_DB_PREFIX + meosMembraneStamp(d);
+  const t = membraneCommentTemplateForLanguage('markdown', id, '', '', 0);
+  const day = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  const rows = [
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m ×1 // 1 hour -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->',
+    '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->'];
+  return { id, text: [t.open, 'Timer database — press ▶️ on a line to use it, or copy a line into another membrane. MeOS makes this membrane again if it is deleted.', t.close].join(eol) + eol + rows.join(eol) };
+}
+async function meosOpenTimerDb() {
+  try {
+    let ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+    if (!ed || ed.document.languageId !== 'markdown') ed = (vscode.window.visibleTextEditors || []).find(e => e.document.languageId === 'markdown') || ed;
+    if (!ed || ed.document.languageId !== 'markdown') { vscode.window.showInformationMessage('MeOS ⏰: open a diary (.md) first — the timer database lives in it.'); return; }
+    const doc = ed.document, all = doc.getText();
+    let at = all.indexOf('▼mCN=' + MEOS_TIMER_DB_PREFIX);
+    if (at < 0) {
+      const eol = _vaultEol(all);
+      const db = meosTimerDbText(eol);
+      const mm = all.indexOf('▼mCN=mMETA');
+      let pos;
+      if (mm >= 0) { const ln = doc.positionAt(mm).line; pos = new vscode.Position(ln, 0); await ed.edit(eb => eb.insert(pos, db.text + eol + eol)); }
+      else { const last = doc.lineCount - 1; pos = new vscode.Position(last, (doc.lineAt(last).text || '').length); await ed.edit(eb => eb.insert(pos, eol + eol + db.text + eol)); }
+      meosDbg('[timerDb] 作った ' + db.id);
+      at = doc.getText().indexOf('▼mCN=' + MEOS_TIMER_DB_PREFIX);
+    }
+    if (at < 0) return;
+    const line = doc.positionAt(at).line;
+    await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false });
+    const e2 = vscode.window.activeTextEditor || ed;
+    const tgt = new vscode.Position(Math.min(doc.lineCount - 1, line + 1), 0);
+    e2.selection = new vscode.Selection(tgt, tgt);
+    e2.revealRange(new vscode.Range(line, 0, Math.min(doc.lineCount - 1, line + 10), 0), vscode.TextEditorRevealType.InCenter);
+    try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [line], levels: 1, direction: 'up' }); } catch (_) { }
+    try { meosArmClockFcFor(doc); } catch (_) { } try { refresh(e2); } catch (_) { }
+  } catch (e) { try { meosDbg('[timerDb] err ' + (e && e.message)); } catch (_) { } }
+}
 async function meosClockSetTargetOrCreate(add) {
   let t = meosClockSetTarget() || {};
   if (add === false && typeof t.atLine !== 'number') return { refused: 'Set \u23f0 | Put the caret on a \u23f0 line to change it. To add a new one, press Create \u23f0.' };
@@ -12457,6 +12516,10 @@ function meosParseStampLoose(txt) {
 async function meosClockFcSet(doc, key, spec, atLine) {
   try {
     if (!doc || !doc.uri) return false;
+    // ★v5.1.92: ⏰のデータベース(特例膜)は、鳴り終えても ✓(済み)にせず「待ち」に戻す= 次も使える。起点も消して元の姿へ(暦の規則は起点が要るので残す)
+    try { if (meosIsTimerDbKey(key) && spec && spec.done) { spec = Object.assign({}, spec, { done: false, wait: true });
+      const _cal = Array.isArray(spec.cycle) && spec.cycle.some(t => /^[SMTWtFs]/.test(String(t)));
+      if (!_cal) { spec.when = ''; spec.whenSrc = ''; } } } catch (_) { }
     try { if (meosIsLaunchDKey(key)) meosLaunchDKick(doc, key, true); } catch (_) { }   // v5.0.0-60(俊克「Me Dockでタイマーを付けて修正したが、メニューバーが更新されない」): 書く口の全部から(違う時だけ macOS へ)
     spec = meosClockAdjustV(doc, key, spec, atLine);   // ★v4.2.77: 仮想の起点を消す/経過に変える
     // ★v4.2.91: タイトルは呼び手が運ばなくても残る= 名指しの行に書いてある物を、そのまま書き戻す。
@@ -13611,6 +13674,7 @@ function meosMenuBarPick(id) {
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
     if (id === 'helper') { const c = vscode.workspace.getConfiguration('laiMembrane'); c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); return; }   // v4.2.311 改良2
     if (id === 'tags') { meosOpenTagGo(); return; }
+    if (id === 'timers') { meosOpenTimerDb(); return; }   // v5.1.92
     if (id === 'launchd') { meosLaunchDOpen(); return; }   // v5.0.0-59: メニューバーの 🌅 Wake
     if (id === 'quitvhelper' || id === 'quithelper') { meosVHelperSet(false); return; }   // v4.2.364
     if (id === 'quitapp') { vscode.commands.executeCommand('workbench.action.quit'); return; }   // v4.2.363: Dock の「終了」と同じ(ヘルパーは残る)
@@ -13646,6 +13710,7 @@ function meosMenuBarTail() {
   const _rp = raw ? { pre: 'Raw ', pill: 'on', post: '\u2009/off   (kakaka)' } : { pre: 'Raw on/\u2009', pill: 'off', post: '   (kakaka)' };
   return [
     { sep: true }, { id: 'tags', title: 'Tag&Go' },   // v4.2.311: 1行だけ。押すと部屋を今の姿で開く
+    { id: 'timers', title: '\u23f0 Timers' },   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る)
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
     { sep: true }, { title: 'Spells', sub: [
       Object.assign({ id: 'raw', title: rt }, _rp), { id: 'dock', title: 'Me Dock open/close   (mememe)' },
@@ -29974,7 +30039,6 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .ww-split.s2 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#3fa85c 46%)}
 .ww-split.s2 .ww-pop{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#3fa85c 28%);border-color:#2f7f45}
 .ww-val{display:inline-block;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
-.os-btn{font-size:13px;padding:4px 9px}.ww-btn.os-btn{height:23px;box-sizing:border-box;display:inline-flex;align-items:center;font-size:14px;line-height:15px;padding:3px 8px;border:1px solid #94a3b8;border-radius:9px 5px 5px 9px;background:#ffffff;color:#1e293b}.ww-btn.os-btn:hover{background:#f1f5f9;border-color:#64748b;filter:none}   /* v5.1.82(俊克 pm08:56「Timed Meと同じ色、フォルムに統一しよう」): Timed Me の⏰(白地・濃い字・灰の縁・高さ23・左の角9/右の角5)と同じ姿 */.os-btn .os-t{display:inline-block;line-height:15px;white-space:nowrap}.os-btn sub{font-size:.8em;font-weight:700;opacity:.8;margin:0 1px 0 .5px;vertical-align:baseline;line-height:normal}   /* v5.1.85(俊克 pm11:25「y,d,hがまだ少し浮いている」): 真因= ボタンが inline-flex で、字の切れ端が1つずつ縦の真ん中に揃えられていた(小さい単位は高く見える)。1つの span に包んで、行の中のベースラインで揃える */.os-btn .os-n{color:#c05621}   /* v5.1.84(俊克 pm11:11 改良2「y,d,hのベースが少し高い。数字のベースと一致するくらいに。yは交点をベースラインにして下端をはみ出す。1.3倍。数値だけTimed Meと同じ赤み」): 単位は数字と同じベースライン(y の脚は下へ出る)・.62→.8em・数字は Timed Me が走っている時の字の色 #c05621 */   /* v5.1.79: 数字は大きく、単位(y/d/h)は小さく下付き= 直す数字に目が行く */
 .ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#e8c46a 16%);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}   /* v4.2.159(俊克「半透明になっちゃった。薄めのパステル色で」): 透かさない= 地の色に金を混ぜた不透明の色 */   /* v4.2.158(俊克「両方とも薄めの背景色を付けて区別しやすく」) */
 .ww-btn.on{border-bottom-left-radius:0;border-bottom-right-radius:0;background:color-mix(in srgb,var(--vscode-editor-background) 72%,#e8c46a 28%)}
 .ww-btn:hover{filter:brightness(1.15)}
@@ -30981,7 +31045,7 @@ color:#ffffff;z-index:4;padding:0}
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;Opt → 👻 comment out — hidden, not deleted. Caret on the line brings it back.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
-<span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Select lines separated by tabs or spaces (e.g. a table copied from a web page) → turns them into a table. Otherwise: align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><span class="fmt-lvl" id="fmt-table-wwcycle" data-tip="Wrap presets | Same as ↻ on the wrap button: click to cycle the three wrap widths — without leaving the table button.">↻</span><span class="fmt-lvl fmt-merge" id="fmt-table-merge" data-tip="Merge cells | Click = 🤝→ the cell at the cursor joins the cell on its right. Click again: 3, 4… cells. Shift+Click = 🤝↓ joins the cell below. Cmd+Click (Cmd+Shift+Click for 🤝↓) = one cell fewer; at 1 the mark goes."><span class="mg-pm mg-plus">+</span>🤝→</span><!-- v4.2.776(俊克「テーブルボタンの右腰に🤝→ボタン・Shift同時押下で🤝↓・↻と縦に並べて▼に接するように」) --><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span><span class="fmt-cell ww-cell"><span class="ww-split"><span class="ww-ring" id="ww-ring" data-tip="Wrap presets | Three widths you keep: click to cycle. Drag the bar to change the one you are on — it is remembered in that slot.">↻</span><button class="ww-btn" id="ww-btn" data-tip="Wrap width | Drag the bar or type a number. Columns, so a full-width character is 2."><span id="ww-btn-val" class="ww-val">80</span>↩️</button><div class="ww-pop" id="ww-pop"><span class="ww-bar"><span class="ww-track" id="ww-track"></span><input type="range" class="ww-slider" id="ww-slider" min="40" max="200" step="1"/></span><input class="ww-num" id="ww-num" inputmode="numeric" spellcheck="false"/></div></span></span><!-- v4.2.590(俊克「折り返しボタンをFormat MeのTableボタンの右に。テーブル機能の助けになり、フォーマットという意味でも」) --><span class="fmt-cell ww-cell os-cell"><button class="ww-btn os-btn" id="os-btn" data-tip="One-shot ⏰ | Rings once, 3 minutes from now. Written in the membrane as ⏰ ↻0y0d0h3m ×1 with the start time — change just the numbers in the FC (0y0d0h25m = 25 minutes, 0y0d1h0m = 1 hour, 0y7d0h0m = 7 days)."><span class="os-t">⏰<span class="os-n">0</span><sub>y</sub><span class="os-n">0</span><sub>d</sub><span class="os-n">0</span><sub>h</sub><span class="os-n">3</span>m</span></button></span><!-- v5.1.79(俊克 pm08:41「↻を廃止して、0y0d1hを書いた1つでいい。[⏰0y0d1h]と書けば一目瞭然」+「単位は下付き」) / v5.1.80(pm08:50「分もあったね。[⏰0y0d0h3m]。逆算タイマーで1番よく使うのは分」) / v5.1.81(pm08:53「mだけベースラインの通常サイズに」) --><!-- v5.1.77(俊克 10.19 pm06:59〜07:14「oneショットタイマーが1番便利。①ボタンをクリックして、あとはFCで調整」「折り返しボタンのようにして、⏰1h→⏰7d→⏰1yを↻で切り替え。FCでは数字だけを修正」) -->
+<span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Select lines separated by tabs or spaces (e.g. a table copied from a web page) → turns them into a table. Otherwise: align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><span class="fmt-lvl" id="fmt-table-wwcycle" data-tip="Wrap presets | Same as ↻ on the wrap button: click to cycle the three wrap widths — without leaving the table button.">↻</span><span class="fmt-lvl fmt-merge" id="fmt-table-merge" data-tip="Merge cells | Click = 🤝→ the cell at the cursor joins the cell on its right. Click again: 3, 4… cells. Shift+Click = 🤝↓ joins the cell below. Cmd+Click (Cmd+Shift+Click for 🤝↓) = one cell fewer; at 1 the mark goes."><span class="mg-pm mg-plus">+</span>🤝→</span><!-- v4.2.776(俊克「テーブルボタンの右腰に🤝→ボタン・Shift同時押下で🤝↓・↻と縦に並べて▼に接するように」) --><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span><span class="fmt-cell ww-cell"><span class="ww-split"><span class="ww-ring" id="ww-ring" data-tip="Wrap presets | Three widths you keep: click to cycle. Drag the bar to change the one you are on — it is remembered in that slot.">↻</span><button class="ww-btn" id="ww-btn" data-tip="Wrap width | Drag the bar or type a number. Columns, so a full-width character is 2."><span id="ww-btn-val" class="ww-val">80</span>↩️</button><div class="ww-pop" id="ww-pop"><span class="ww-bar"><span class="ww-track" id="ww-track"></span><input type="range" class="ww-slider" id="ww-slider" min="40" max="200" step="1"/></span><input class="ww-num" id="ww-num" inputmode="numeric" spellcheck="false"/></div></span></span><!-- v4.2.590(俊克「折り返しボタンをFormat MeのTableボタンの右に。テーブル機能の助けになり、フォーマットという意味でも」) --><!-- v5.1.92: Format Me の⏰0y0d0h3m は廃止(俊克 10.20 am01:48)= メニューバーの ⏰ Timers(⏰のデータベース膜)へ --><!-- v5.1.77(俊克 10.19 pm06:59〜07:14「oneショットタイマーが1番便利。①ボタンをクリックして、あとはFCで調整」「折り返しボタンのようにして、⏰1h→⏰7d→⏰1yを↻で切り替え。FCでは数字だけを修正」) -->
 <span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div><div class="mew-dup" id="mew-dup"><button class="mew-dup-x" id="mew-dup-x" data-tip="Close | Nothing is written. Esc does the same.">&#10005;</button><div class="mew-dup-title" id="mew-dup-title"></div><div class="mew-dup-body"><div>A clock is stored under its membrane&#8217;s name, so two timers under one name break both.</div><div>One timer under a repeated name is fine \u2014 nothing is competing for the key.</div><div>Renaming keeps every other membrane exactly as it is.</div></div><div class="mew-dup-line" id="mew-dup-row-clock"><span class="mew-dup-lbl" id="mew-dup-lbl-clock"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-clock" data-tip="Go and look at one of them. Press again for the next membrane with that name - shift-click steps back. The count reads name / how many names - which copy. Nothing is written, and the panel stays open.">&#128065; See one</button><button class="mew-dup-btn mew-dup-main" id="mew-dup-clock" data-tip="Rename only the membranes that carry a timer. Every other repeated name is left exactly as it is."></button></div><div class="mew-dup-line" id="mew-dup-row-all"><span class="mew-dup-lbl" id="mew-dup-lbl-all"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-all" data-tip="Go and look at one of the repeated names that has no timer, before deciding whether it was deliberate. Press again for the next - shift-click steps back. Nothing is written.">&#128065; See one</button><button class="mew-dup-btn" id="mew-dup-all" data-tip="Make every duplicate name unique, including the ones with no timer. A repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate."></button></div></div></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
@@ -33441,9 +33505,6 @@ hPaint();}
 const c1=document.getElementById('clk-one');if(c1)c1.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const d=new Date(Date.now()+3600000),p=x=>(x<10?'0':'')+x;
 vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),add:true,rep:false,up:false,dual:true,cycle:'',title:'One-shot timer 1h',tags:null,lock:false,anchor:false});});
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset',dir:ev.shiftKey?-1:1});});
-/* ★v5.1.79: Format Me の⏰= 一度だけのタイマー(v5.1.80: 既定は3分)。本文には ⏰ ↻0y0d0h3m ×1 と数え始めの日時を書く= FC では数字だけ直す(つないだ長さは足し算) */
-{const b=document.getElementById('os-btn');if(b)b.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const d=new Date(),p=x=>(x<10?'0':'')+x;
-vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),add:true,rep:true,up:false,dual:true,cycle:'0y0d0h3m ×1',title:'One-shot timer',tags:null,lock:false,anchor:false});});}
 
 {const tw=document.getElementById('fmt-table-wwcycle'),sp=document.querySelector('.ww-split');const sync=()=>{if(!tw||!sp)return;['s0','s1','s2'].forEach(c=>tw.classList.toggle(c,sp.classList.contains(c)));};sync();try{if(sp)new MutationObserver(sync).observe(sp,{attributes:true,attributeFilter:['class']});}catch(_){}/* v4.2.673: 枠の色を写す */if(tw)tw.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset',dir:ev.shiftKey?-1:1});});}   /* ★v4.2.671(俊克「テーブルボタンの右肩に、折り返しボタンと同じ機能の↻を。折り返しボタンの位置を探すことなく、テーブルボタンの中で作業ができる」): 折り返しの↻と同じ知らせを送る */
 {const tb=document.getElementById('th-btn'),tp=document.getElementById('th-pop'),tr=document.getElementById('th-ring'),tv=document.getElementById('th-btn-val');let thPicked=false,thTimer=null;
@@ -39300,6 +39361,7 @@ class MeosRawLineSet extends Set {
 //   置き去りにした ＝ 俊克のバグ1〜3は、その1つの穴から出ていた。
 //   ①Rawの膜の中の塊は開く ②Pseudoの膜の中は開かない ③通常の膜では、カーソルの居る塊だけ開く。
 function meosFcWantsOpen(doc, block, caretLine) {
+  if (meosTimerDbBlockAt(doc, block.start)) return true;   // ★v5.1.92: ⏰のデータベース(特例膜)の⏰は畳まない= 選べるように見せておく
   const m = meosModeAtLine(doc, block.start);
   if (m === 'raw') return true;
   if (m === 'pseudo') return false;
