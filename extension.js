@@ -17389,6 +17389,16 @@ function meosEncLineShield(t) { const s = String(t || ''); const i = s.indexOf(_
 function meosPassStrongEnough(p) { const s = String(p || '').trim(); const n = Array.from(s).length; if (n >= 20) return true; const parts = s.split(/[\s\-_.・,、]+/).filter(x => Array.from(x).length >= 2); return parts.length >= 4 && n >= 16; }
 const _vaultShield = new Map();   // fileUri文字列 -> Set(🛡️の膜名)
 function _vaultShieldOf(k) { if (!_vaultShield.has(k)) _vaultShield.set(k, new Set()); return _vaultShield.get(k); }
+// ★v5.1.84(俊克 pm11:11 テスト1「解錠中の膜を消した時、2つの警告パネルが出た。なぜ2つも? このパネルは本当に必要なのか?」):
+//   訊いていた理由は「名前を変えた膜が平文で書かれる」ことだけ。→ 名前替えを見分ければ、訊かなくていい。
+//   解錠中の膜の中身をメモリに覚えておき(エディターに出ている平文と同じ物)、消えた膜と同じ中身の「鍵の無い膜」が現れたら= 名前を変えた= 鍵を新しい名前へ移す。
+//   見つからなければ= 消した/切り取った= 鍵はメモリに残したまま書く(Undo や貼り付けで戻れば、その鍵で暗号化し直す)。
+//   ただし開始膜か閉じ膜に古い名前が残っている、または消えた膜の中身が地の文として残っている= 名前替えの途中・膜が壊れた= 書かない(自動保存は黙って待つ)。
+const _vaultBodyHash = new Map();   // fileUri文字列 -> Map(膜名 -> 中身の平文= 名前替え・壊れた膜を見分ける)
+function _vaultBodyHashOf(k) { if (!_vaultBodyHash.has(k)) _vaultBodyHash.set(k, new Map()); return _vaultBodyHash.get(k); }
+function _vaultHashBody(t) { return String(t).replace(/\r\n/g, '\n'); }
+function _vaultEscRe(x) { return String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function _vaultIdHalfAlive(text, id) { try { return new RegExp('[\u25bc\u25b2\u25bd\u25b3]m?CN=' + _vaultEscRe(id) + '(?=\\s|$|//|\\*|\\})', 'm').test(String(text)); } catch (_) { return false; } }
 // ★v5.1.10(俊克 pm01:27 質問1「パスワード欄で中身が見れるようにはできないのか? かな漢字変換ができないので、ペーストするしかない」):
 //   伏せ字の欄は OS がかな漢字変換を止める。→ 欄の右に👁ボタン(押すと見える欄=変換できる/もう一度押すと伏せ字)。始めは伏せ字。
 //   Me Dock の合言葉欄の👁と同じ考え。返り値は打った合言葉(Escなら undefined)= showInputBox と同じ。
@@ -17718,24 +17728,28 @@ function _vaultEol(text) { return /\r\n/.test(text) ? '\r\n' : '\n'; }
 function _vaultPairs(lines) { return collectMembraneStructure(_vaultFakeDoc(lines), { excludeIndex: false }).pairs; }
 function _vaultIsMarkerBody(lines, p) { return p.end - p.start === 2 && String(lines[p.start + 1] || '').indexOf(_MEOS_ENC_PREFIX) >= 0; }
 // 読む口: 鍵を持つ膜だけ平文へ。下の膜から開く(上の行番号がずれない)・中から現れた膜も繰り返し開く。
-function meosVaultDecryptText(text, keys, shield) {
+function meosVaultDecryptText(text, keys, shield, hashes) {
   if (!keys || !keys.size) return text;
   const eol = _vaultEol(text);
   const lines = String(text).split(/\r?\n/);
+  let lastPairs = null;
   for (let guard = 0; guard < 32; guard++) {
     let changed = false;
     const pairs = _vaultPairs(lines).slice().sort((a, b) => b.start - a.start);
+    lastPairs = pairs;
     for (const p of pairs) {
       if (!_vaultIsMarkerBody(lines, p)) continue;
       const pass = keys.get(p.id); if (!pass) continue;
       const t = lines[p.start + 1];
       let plain; try { plain = _vaultDecryptFast(t.slice(t.indexOf(_MEOS_ENC_PREFIX) + _MEOS_ENC_PREFIX.length).trim(), pass); } catch (_) { continue; }
-      if (shield && meosEncLineShield(t)) shield.add(p.id);   // v5.1.72: 🛡️は解錠中もメモリで覚える   // v5.1.35: 鍵を持っていれば作り直さない
+      if (shield && meosEncLineShield(t)) shield.add(p.id);   // v5.1.72: 🛡️は解錠中もメモリで覚える
       lines.splice(p.start + 1, 1, ...String(plain).split(/\r?\n/));
       changed = true;
     }
     if (!changed) break;
   }
+  // v5.1.84: 開き終えた姿(エディターに出る平文)で、鍵を持つ膜の中身を覚える= 名前替え・壊れた膜を見分ける(内側も開いた後の字)
+  if (hashes && lastPairs) { for (const p of lastPairs) if (keys.has(p.id) && !_vaultIsMarkerBody(lines, p) && p.end - p.start > 1) { try { hashes.set(p.id, _vaultHashBody(lines.slice(p.start + 1, p.end).join('\n'))); } catch (_) { } } }
   return lines.join(eol);
 }
 // 書く口: 鍵を持つ膜を、内側から順に暗号化し直す。守り①②③に掛かったら throw(=ディスクは前のまま)。
@@ -17776,13 +17790,33 @@ function _vaultLockedIds(text) {
   }
   return set;
 }
-function meosVaultEncryptText(text, keys, seen, disk, shield) {
+function meosVaultEncryptText(text, keys, seen, disk, shield, hashes) {
   const eol = _vaultEol(text);
   const lines = String(text).split(/\r?\n/);
   const pairs = _vaultPairs(lines);   // ★探すのは、この1回だけ
   const ids = new Set(pairs.map(p => p.id));
-  for (const id of (keys ? keys.keys() : [])) {
-    if (!ids.has(id)) throw new Error('the unlocked membrane "' + id + '" is gone or renamed — not saved, so its plain text never reaches the disk. Undo the rename (or re-lock) and save again.');
+  // ★v5.1.84: 消えた解錠膜= 名前替えの途中なら書かない / 同じ中身の鍵の無い膜が在れば鍵を移す / どちらでもなければ鍵を持ったまま書く
+  const missing = keys ? Array.from(keys.keys()).filter(id => !ids.has(id)) : [];
+  if (missing.length) {
+    if (hashes) {
+      for (const p of pairs) {
+        if ((keys && keys.has(p.id)) || _vaultIsMarkerBody(lines, p) || p.end - p.start <= 1) continue;
+        const h = _vaultHashBody(lines.slice(p.start + 1, p.end).join('\n'));
+        const from = missing.find(m => keys.has(m) && hashes.get(m) === h);
+        if (!from) continue;
+        keys.set(p.id, keys.get(from)); keys.delete(from);
+        if (seen) { seen.add(p.id); }
+        if (shield && shield.has(from)) { shield.delete(from); shield.add(p.id); }
+        hashes.set(p.id, h); hashes.delete(from);
+      }
+    }
+    const _norm = String(text).replace(/\r\n/g, '\n');
+    for (const id of missing) {
+      if (!keys.has(id)) continue;   // 名前替えで鍵が移った
+      const lb = hashes && hashes.get(id);
+      if (_vaultIdHalfAlive(text, id) || (lb && lb.trim() && _norm.indexOf(lb) >= 0))
+        throw new Error('MEOS_VAULT_WAIT the unlocked membrane "' + id + '" is being renamed or its lines were broken (its plain text is still in the file outside the membrane) — not saved, so the plain text never reaches the disk. Finish the rename (or Undo), then save.');
+    }
   }
   const lockedOnDisk = disk instanceof Set ? disk : (disk ? _vaultLockedIds(disk) : new Set());
   for (const p of pairs) {
@@ -17792,6 +17826,8 @@ function meosVaultEncryptText(text, keys, seen, disk, shield) {
     // ★守り④ v5.1.34: ディスク上で暗号化されている膜を、鍵なしで平文のまま(MeOS が入れ替わって鍵も控えも消えた)
     if (lockedOnDisk.has(p.id)) throw new Error('the membrane "' + p.id + '" is encrypted on disk, but this editor holds its plain text without the key (MeOS was restarted or updated) — not saved. Revert the file (or close it without saving) and unlock it again 🔓.');
   }
+  // v5.1.84: 書く前の姿(エディターの平文)で中身を覚える
+  if (hashes && keys) { for (const p of pairs) if (keys.has(p.id) && !_vaultIsMarkerBody(lines, p) && p.end - p.start > 1) hashes.set(p.id, _vaultHashBody(lines.slice(p.start + 1, p.end).join('\n'))); }
   // 鍵を持つ膜を、下の行から順に(=内側の膜が先)置き換える。置き換えより上の行番号は動かない。
   const todo = pairs.filter(p => keys && keys.has(p.id) && !_vaultIsMarkerBody(lines, p)).sort((a, b) => b.start - a.start);
   const edits = [], checks = [];
@@ -17826,7 +17862,7 @@ class MeosVaultFs {
   createDirectory(u) { return vscode.workspace.fs.createDirectory(meosVaultFileUri(u)); }
   async readFile(u) {
     const raw = Buffer.from(await vscode.workspace.fs.readFile(meosVaultFileUri(u))).toString('utf8');
-    return Buffer.from(meosVaultDecryptText(raw, _vaultKeys.get(_vaultKeyOf(u)), _vaultShieldOf(_vaultKeyOf(u))), 'utf8');
+    return Buffer.from(meosVaultDecryptText(raw, _vaultKeys.get(_vaultKeyOf(u)), _vaultShieldOf(_vaultKeyOf(u)), _vaultBodyHashOf(_vaultKeyOf(u))), 'utf8');
   }
   async writeFile(u, content) {
     const k = _vaultKeyOf(u);
@@ -17835,7 +17871,7 @@ class MeosVaultFs {
     let _locked = null;
     try { const st = await vscode.workspace.fs.stat(meosVaultFileUri(u)); const c = _vaultDiskLocked.get(k); if (c && c.mtime === st.mtime && c.size === st.size) _locked = c.set; } catch (_) { }
     if (!_locked) { try { _locked = _vaultLockedIds(Buffer.from(await vscode.workspace.fs.readFile(meosVaultFileUri(u))).toString('utf8')); } catch (_) { _locked = new Set(); } }
-    try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultKeys.get(k), _vaultSeen.get(k), _locked, _vaultShield.get(k)); }
+    try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultKeys.get(k), _vaultSeen.get(k), _locked, _vaultShield.get(k), _vaultBodyHashOf(k)); }
     catch (e) {
       const msg = 'MeOS 🔐: ' + (e && e.message ? e.message : String(e));
       try { vscode.window.showErrorMessage(msg); } catch (_) { }
@@ -18101,31 +18137,33 @@ let _encSkinDeco = null;   // v5.1.1: 本文の🔐/🔓の札の灰色の地を
 //   → 解錠中の膜を持つ入口の文書だけ、打つのを止めて5秒で保存(書く口が暗号化し直す)。施錠中や普通のファイルは今まで通り自動保存しない。
 const MEOS_VAULT_AUTOSAVE_MS = 500;   // v5.1.18(俊克「0.5秒、あるいはギリ0.9秒」): VSCodium が控えを作る約1秒より先に保存する(0.9秒は保存の所要時間で負け得る)
 const _vaultSaveTimers = new Map();   // 文書uri -> タイマー
-// ★v5.1.76: 自動保存が断られた時。解錠中の膜が文書から消えていたら、真ん中で1回だけ訊く。
-//   消した(要らない)= 鍵を忘れて保存する。名前を変えた/切り取った= Undo(そのまま保存すると、新しい名前の膜が平文で書かれ得る)。
-const _vaultMissingAsked = new Set();
-async function meosVaultSaveFailed(doc) {
+// ★v5.1.84: 自動保存の前に「名前替えの途中・膜が壊れた」かを軽く見る= 書く口に断られて VSCodium の失敗の知らせを出させない(黙って待つ)。
+//   v5.1.76 の真ん中の問い(鍵を忘れる/Undo)はやめた= 消したら鍵を持ったまま書く・名前を変えたら鍵が移る(書く口が見分ける)。
+function meosVaultWouldWait(doc) {
   try {
-    const fk = _vaultKeyOf(doc.uri), keys = _vaultKeys.get(fk);
-    if (!keys || !keys.size) return;
-    const ids = new Set((collectPairs(doc, { excludeIndex: false }) || []).map(p => p.id));
-    const missing = Array.from(keys.keys()).filter(id => !ids.has(id));
-    if (!missing.length) return;
-    const sig = fk + ' ' + missing.join(' | ');
-    if (_vaultMissingAsked.has(sig)) return;
-    _vaultMissingAsked.add(sig);
-    let pick;
-    try { pick = await vscode.window.showWarningMessage('MeOS 🔐: the unlocked membrane “' + missing.join('”, “') + '” is no longer in the file, so nothing was saved. Deleted it on purpose? MeOS forgets its key and saves. Renamed or cut it? Choose Undo — otherwise its plain text could reach the disk.', { modal: true }, 'Deleted — forget the key', 'Undo'); }
-    finally { _vaultMissingAsked.delete(sig); }
-    if (pick === 'Deleted — forget the key') {
-      for (const id of missing) { keys.delete(id); try { const sn = _vaultSeen.get(fk); if (sn) sn.delete(id); } catch (_) { } try { _vaultShieldOf(fk).delete(id); } catch (_) { } }
-      if (!keys.size) _vaultKeys.delete(fk);
-      try { await doc.save(); } catch (_) { }
-      try { updateMeDockMode(); } catch (_) { } try { meosTypeRepaint(); } catch (_) { }
-    } else if (pick === 'Undo') {
-      try { await vscode.window.showTextDocument(doc); await vscode.commands.executeCommand('undo'); } catch (_) { }
+    const k = _vaultKeyOf(doc.uri), keys = _vaultKeys.get(k);
+    if (!keys || !keys.size) return false;
+    const text = doc.getText();
+    const missing = [];
+    for (const id of keys.keys()) {
+      let n = 0; try { n = (text.match(new RegExp('[\u25bc\u25b2\u25bd\u25b3]m?CN=' + _vaultEscRe(id) + '(?=\\s|$|//|\\*|\\})', 'gm')) || []).length; } catch (_) { n = 2; }
+      if (n === 1) return true;          // 開始か閉じの片方だけ= 名前替えの途中
+      if (n === 0) missing.push(id);
     }
-  } catch (_) { }
+    if (!missing.length) return false;
+    const hashes = _vaultBodyHash.get(k) || new Map();
+    const norm = text.replace(/\r\n/g, '\n');
+    const lines = norm.split('\n');
+    let pairs = null;
+    for (const id of missing) {
+      const lb = hashes.get(id);
+      if (!lb || !lb.trim() || norm.indexOf(lb) < 0) continue;   // 中身も消えた= 消した(書いてよい)
+      if (!pairs) pairs = _vaultPairs(lines);
+      const renamed = pairs.some(p => !keys.has(p.id) && p.end - p.start > 1 && lines.slice(p.start + 1, p.end).join('\n') === lb);
+      if (!renamed) return true;          // 中身が地の文で残っている= 膜が壊れた
+    }
+    return false;
+  } catch (_) { return false; }
 }
 function _vaultArmAutoSave(doc) {
   try {
@@ -18137,8 +18175,8 @@ function _vaultArmAutoSave(doc) {
       _vaultSaveTimers.delete(k);
       try {
         const ks = _vaultKeys.get(_vaultKeyOf(doc.uri));
-        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const ok = await doc.save(); if (!ok) { meosVaultSaveFailed(doc); return; } /* ★v5.1.76(俊克 pm05:25 バグ1「暗号化した膜を手動で削除すると、右下にパネルが出たり消えたりを繰り返して操作できない」): 真因= 書く口が断った(解錠中の膜が消えた)のに、0.5秒ごとに予約し直して失敗の知らせを出し続けていた。失敗したら予約し直さない= 次に打った時に1回だけ試す */ if (!doc.isClosed && doc.isDirty) _vaultArmAutoSave(doc); /* ★v5.1.35: 保存の途中で打ち続けて保存しきれなかった= 予約し直す(しないと次に打つまで平文の控えが残っていた) */ if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
-      } catch (_) { try { meosVaultSaveFailed(doc); } catch (__) { } }   // v5.1.76: 投げて失敗した時も同じ(予約し直さない)
+        if (!doc.isClosed && doc.isDirty && ks && ks.size) { if (meosVaultWouldWait(doc)) return; /* v5.1.84: 名前替えの途中= 黙って待つ(次に打った時にまた見る) */ const ok = await doc.save(); if (!ok) return; /* ★v5.1.76(俊克 pm05:25 バグ1「暗号化した膜を手動で削除すると、右下にパネルが出たり消えたりを繰り返して操作できない」): 真因= 書く口が断った(解錠中の膜が消えた)のに、0.5秒ごとに予約し直して失敗の知らせを出し続けていた。失敗したら予約し直さない= 次に打った時に1回だけ試す */ if (!doc.isClosed && doc.isDirty) _vaultArmAutoSave(doc); /* ★v5.1.35: 保存の途中で打ち続けて保存しきれなかった= 予約し直す(しないと次に打つまで平文の控えが残っていた) */ if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
+      } catch (_) { }   // v5.1.76: 失敗しても予約し直さない
     }, MEOS_VAULT_AUTOSAVE_MS));
   } catch (_) { }
 }
@@ -29919,7 +29957,7 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .ww-split.s2 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#3fa85c 46%)}
 .ww-split.s2 .ww-pop{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#3fa85c 28%);border-color:#2f7f45}
 .ww-val{display:inline-block;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
-.os-btn{font-size:13px;padding:4px 9px}.ww-btn.os-btn{height:23px;box-sizing:border-box;display:inline-flex;align-items:center;font-size:14px;line-height:15px;padding:3px 8px;border:1px solid #94a3b8;border-radius:9px 5px 5px 9px;background:#ffffff;color:#1e293b}.ww-btn.os-btn:hover{background:#f1f5f9;border-color:#64748b;filter:none}   /* v5.1.82(俊克 pm08:56「Timed Meと同じ色、フォルムに統一しよう」): Timed Me の⏰(白地・濃い字・灰の縁・高さ23・左の角9/右の角5)と同じ姿 */.os-btn sub{font-size:.62em;font-weight:700;opacity:.8;margin:0 1px 0 .5px;vertical-align:-.25em;line-height:0}   /* v5.1.79: 数字は大きく、単位(y/d/h)は小さく下付き= 直す数字に目が行く */
+.os-btn{font-size:13px;padding:4px 9px}.ww-btn.os-btn{height:23px;box-sizing:border-box;display:inline-flex;align-items:center;font-size:14px;line-height:15px;padding:3px 8px;border:1px solid #94a3b8;border-radius:9px 5px 5px 9px;background:#ffffff;color:#1e293b}.ww-btn.os-btn:hover{background:#f1f5f9;border-color:#64748b;filter:none}   /* v5.1.82(俊克 pm08:56「Timed Meと同じ色、フォルムに統一しよう」): Timed Me の⏰(白地・濃い字・灰の縁・高さ23・左の角9/右の角5)と同じ姿 */.os-btn sub{font-size:.8em;font-weight:700;opacity:.8;margin:0 1px 0 .5px;vertical-align:baseline;line-height:0}.os-btn .os-n{color:#c05621}   /* v5.1.84(俊克 pm11:11 改良2「y,d,hのベースが少し高い。数字のベースと一致するくらいに。yは交点をベースラインにして下端をはみ出す。1.3倍。数値だけTimed Meと同じ赤み」): 単位は数字と同じベースライン(y の脚は下へ出る)・.62→.8em・数字は Timed Me が走っている時の字の色 #c05621 */   /* v5.1.79: 数字は大きく、単位(y/d/h)は小さく下付き= 直す数字に目が行く */
 .ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#e8c46a 16%);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}   /* v4.2.159(俊克「半透明になっちゃった。薄めのパステル色で」): 透かさない= 地の色に金を混ぜた不透明の色 */   /* v4.2.158(俊克「両方とも薄めの背景色を付けて区別しやすく」) */
 .ww-btn.on{border-bottom-left-radius:0;border-bottom-right-radius:0;background:color-mix(in srgb,var(--vscode-editor-background) 72%,#e8c46a 28%)}
 .ww-btn:hover{filter:brightness(1.15)}
@@ -30926,7 +30964,7 @@ color:#ffffff;z-index:4;padding:0}
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;Opt → 👻 comment out — hidden, not deleted. Caret on the line brings it back.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
-<span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Select lines separated by tabs or spaces (e.g. a table copied from a web page) → turns them into a table. Otherwise: align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><span class="fmt-lvl" id="fmt-table-wwcycle" data-tip="Wrap presets | Same as ↻ on the wrap button: click to cycle the three wrap widths — without leaving the table button.">↻</span><span class="fmt-lvl fmt-merge" id="fmt-table-merge" data-tip="Merge cells | Click = 🤝→ the cell at the cursor joins the cell on its right. Click again: 3, 4… cells. Shift+Click = 🤝↓ joins the cell below. Cmd+Click (Cmd+Shift+Click for 🤝↓) = one cell fewer; at 1 the mark goes."><span class="mg-pm mg-plus">+</span>🤝→</span><!-- v4.2.776(俊克「テーブルボタンの右腰に🤝→ボタン・Shift同時押下で🤝↓・↻と縦に並べて▼に接するように」) --><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span><span class="fmt-cell ww-cell"><span class="ww-split"><span class="ww-ring" id="ww-ring" data-tip="Wrap presets | Three widths you keep: click to cycle. Drag the bar to change the one you are on — it is remembered in that slot.">↻</span><button class="ww-btn" id="ww-btn" data-tip="Wrap width | Drag the bar or type a number. Columns, so a full-width character is 2."><span id="ww-btn-val" class="ww-val">80</span>↩️</button><div class="ww-pop" id="ww-pop"><span class="ww-bar"><span class="ww-track" id="ww-track"></span><input type="range" class="ww-slider" id="ww-slider" min="40" max="200" step="1"/></span><input class="ww-num" id="ww-num" inputmode="numeric" spellcheck="false"/></div></span></span><!-- v4.2.590(俊克「折り返しボタンをFormat MeのTableボタンの右に。テーブル機能の助けになり、フォーマットという意味でも」) --><span class="fmt-cell ww-cell os-cell"><button class="ww-btn os-btn" id="os-btn" data-tip="One-shot ⏰ | Rings once, 3 minutes from now. Written in the membrane as ⏰ ↻0y0d0h3m ×1 with the start time — change just the numbers in the FC (0y0d0h25m = 25 minutes, 0y0d1h0m = 1 hour, 0y7d0h0m = 7 days).">⏰0<sub>y</sub>0<sub>d</sub>0<sub>h</sub>3m</button></span><!-- v5.1.79(俊克 pm08:41「↻を廃止して、0y0d1hを書いた1つでいい。[⏰0y0d1h]と書けば一目瞭然」+「単位は下付き」) / v5.1.80(pm08:50「分もあったね。[⏰0y0d0h3m]。逆算タイマーで1番よく使うのは分」) / v5.1.81(pm08:53「mだけベースラインの通常サイズに」) --><!-- v5.1.77(俊克 10.19 pm06:59〜07:14「oneショットタイマーが1番便利。①ボタンをクリックして、あとはFCで調整」「折り返しボタンのようにして、⏰1h→⏰7d→⏰1yを↻で切り替え。FCでは数字だけを修正」) -->
+<span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Select lines separated by tabs or spaces (e.g. a table copied from a web page) → turns them into a table. Otherwise: align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><span class="fmt-lvl" id="fmt-table-wwcycle" data-tip="Wrap presets | Same as ↻ on the wrap button: click to cycle the three wrap widths — without leaving the table button.">↻</span><span class="fmt-lvl fmt-merge" id="fmt-table-merge" data-tip="Merge cells | Click = 🤝→ the cell at the cursor joins the cell on its right. Click again: 3, 4… cells. Shift+Click = 🤝↓ joins the cell below. Cmd+Click (Cmd+Shift+Click for 🤝↓) = one cell fewer; at 1 the mark goes."><span class="mg-pm mg-plus">+</span>🤝→</span><!-- v4.2.776(俊克「テーブルボタンの右腰に🤝→ボタン・Shift同時押下で🤝↓・↻と縦に並べて▼に接するように」) --><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span><span class="fmt-cell ww-cell"><span class="ww-split"><span class="ww-ring" id="ww-ring" data-tip="Wrap presets | Three widths you keep: click to cycle. Drag the bar to change the one you are on — it is remembered in that slot.">↻</span><button class="ww-btn" id="ww-btn" data-tip="Wrap width | Drag the bar or type a number. Columns, so a full-width character is 2."><span id="ww-btn-val" class="ww-val">80</span>↩️</button><div class="ww-pop" id="ww-pop"><span class="ww-bar"><span class="ww-track" id="ww-track"></span><input type="range" class="ww-slider" id="ww-slider" min="40" max="200" step="1"/></span><input class="ww-num" id="ww-num" inputmode="numeric" spellcheck="false"/></div></span></span><!-- v4.2.590(俊克「折り返しボタンをFormat MeのTableボタンの右に。テーブル機能の助けになり、フォーマットという意味でも」) --><span class="fmt-cell ww-cell os-cell"><button class="ww-btn os-btn" id="os-btn" data-tip="One-shot ⏰ | Rings once, 3 minutes from now. Written in the membrane as ⏰ ↻0y0d0h3m ×1 with the start time — change just the numbers in the FC (0y0d0h25m = 25 minutes, 0y0d1h0m = 1 hour, 0y7d0h0m = 7 days).">⏰<span class="os-n">0</span><sub>y</sub><span class="os-n">0</span><sub>d</sub><span class="os-n">0</span><sub>h</sub><span class="os-n">3</span>m</button></span><!-- v5.1.79(俊克 pm08:41「↻を廃止して、0y0d1hを書いた1つでいい。[⏰0y0d1h]と書けば一目瞭然」+「単位は下付き」) / v5.1.80(pm08:50「分もあったね。[⏰0y0d0h3m]。逆算タイマーで1番よく使うのは分」) / v5.1.81(pm08:53「mだけベースラインの通常サイズに」) --><!-- v5.1.77(俊克 10.19 pm06:59〜07:14「oneショットタイマーが1番便利。①ボタンをクリックして、あとはFCで調整」「折り返しボタンのようにして、⏰1h→⏰7d→⏰1yを↻で切り替え。FCでは数字だけを修正」) -->
 <span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div><div class="mew-dup" id="mew-dup"><button class="mew-dup-x" id="mew-dup-x" data-tip="Close | Nothing is written. Esc does the same.">&#10005;</button><div class="mew-dup-title" id="mew-dup-title"></div><div class="mew-dup-body"><div>A clock is stored under its membrane&#8217;s name, so two timers under one name break both.</div><div>One timer under a repeated name is fine \u2014 nothing is competing for the key.</div><div>Renaming keeps every other membrane exactly as it is.</div></div><div class="mew-dup-line" id="mew-dup-row-clock"><span class="mew-dup-lbl" id="mew-dup-lbl-clock"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-clock" data-tip="Go and look at one of them. Press again for the next membrane with that name - shift-click steps back. The count reads name / how many names - which copy. Nothing is written, and the panel stays open.">&#128065; See one</button><button class="mew-dup-btn mew-dup-main" id="mew-dup-clock" data-tip="Rename only the membranes that carry a timer. Every other repeated name is left exactly as it is."></button></div><div class="mew-dup-line" id="mew-dup-row-all"><span class="mew-dup-lbl" id="mew-dup-lbl-all"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-all" data-tip="Go and look at one of the repeated names that has no timer, before deciding whether it was deliberate. Press again for the next - shift-click steps back. Nothing is written.">&#128065; See one</button><button class="mew-dup-btn" id="mew-dup-all" data-tip="Make every duplicate name unique, including the ones with no timer. A repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate."></button></div></div></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
@@ -34564,7 +34602,7 @@ const BTN_SEL='button,a,input,select,textarea,[data-tip],[data-tip-html],.md-til
 /* ★v4.2.739(俊克 改良1「cmdで黄・さらにshiftを同時押しすると青に= 最後に押した色に。同時に押していることを確かめられる」): 押した順を覚え、一番最後に押したキーの色(Opt も含む) */
 const MODS={Shift:false,Control:false,Meta:false,Alt:false};let MORD=[];
 let SSIDE='L';function sideSet(l,r,prevL,prevR){if(r&&!prevR)SSIDE='R';else if(l&&!prevL)SSIDE='L';else if(r&&!l)SSIDE='R';else if(l&&!r)SSIDE='L';}let __sl=false,__sr=false;
-function modsSet(st){for(const k of ['Shift','Control','Meta','Alt']){const on=!!st[k],i=MORD.indexOf(k);if(on&&i<0)MORD.push(k);if(!on&&i>=0)MORD.splice(i,1);MODS[k]=on;}try{if(window.__encCtrl)window.__encCtrl(MODS.Control);}catch(_){}const top=MORD[MORD.length-1]||'';try{optOn(top==='Alt');}catch(_){}modsShow();try{if(window.__mergeLab)window.__mergeLab(MODS.Shift,MODS.Meta);}catch(_){}}
+function modsSet(st){for(const k of ['Shift','Control','Meta','Alt']){const on=!!st[k],i=MORD.indexOf(k);if(on&&i<0)MORD.push(k);if(!on&&i>=0)MORD.splice(i,1);MODS[k]=on;}try{if(window.__encCtrl)window.__encCtrl(MODS.Control);}catch(_){}try{if(!!MODS.Alt!==fmtAltDown){fmtAltDown=!!MODS.Alt;fmtAltRedrawAll();}}catch(_){}   /* v5.1.84(俊克 pm11:11 改良1「Ctrlは直ぐに🛡️になるが、Optはマウスを移動するまで🏦に変わらない」): Opt も V-helper の修飾キーの見張りから受ける */const top=MORD[MORD.length-1]||'';try{optOn(top==='Alt');}catch(_){}modsShow();try{if(window.__mergeLab)window.__mergeLab(MODS.Shift,MODS.Meta);}catch(_){}}
 /* ★v4.2.738(俊克 ②「V-helper に Mac のキーを見張らせる」): ポインターが Me Dock の上に在る間だけ見張りを頼む・知らせが来たら、動かさなくても色を替える */
 let __hov=false;function hoverSet(v){if(v===__hov)return;__hov=v;try{vscode.postMessage({type:'dockHover',on:v});}catch(_){}}
 document.addEventListener('pointermove',()=>hoverSet(true),true);document.documentElement.addEventListener('mouseleave',()=>hoverSet(false));

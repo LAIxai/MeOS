@@ -80,10 +80,27 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
   const innerA = T.meosDecryptText(blobA, 'passA');
   ok(innerA.includes('B_secret') && !innerA.includes(SECRET_B) && innerA.includes(T._MEOS_ENC_PREFIX), '外の暗号の中で、Bは自分の合言葉で暗号化されたまま');
   ok((await vfs.readFile(VU)).toString() === view, '二重でも往復で同じ中身');
-  // 守り②: 名前を変えた
-  const before = disk();
-  let threw = false; try { await vfs.writeFile(VU, Buffer.from(view.split('A_vault').join('A_renamed'))); } catch (_) { threw = true; }
-  ok(threw && disk() === before, '守り② 解錠中の膜の名前を変えたら書かない(ディスクは前のまま)');
+  // ★v5.1.84 守り②: 名前を変えた(開始と閉じの両方)= 鍵が新しい名前へ移り、暗号文で書く
+  let threw = false;
+  await vfs.writeFile(VU, Buffer.from(view.split('A_vault').join('A_renamed')));
+  ok(!disk().includes(SECRET_A) && disk().includes('A_renamed') && T._vaultKeys.get(KEY).has('A_renamed') && !T._vaultKeys.get(KEY).has('A_vault'), 'v5.1.84 守り② 名前を変えたら鍵が移り、新しい名前で暗号化して書く(平文は出ない)');
+  await vfs.writeFile(VU, Buffer.from(view));
+  ok(!disk().includes(SECRET_A) && T._vaultKeys.get(KEY).has('A_vault'), '  名前を戻すと鍵も戻る');
+  // 名前替えの途中(開始だけ変えた)= 中身が地の文になる= 書かない
+  let before = disk();
+  threw = false; try { await vfs.writeFile(VU, Buffer.from(view.replace('A_vault', 'A_half'))); } catch (_) { threw = true; }
+  ok(threw && disk() === before, 'v5.1.84 名前替えの途中(開始と閉じが合わない)は書かない(ディスクは前のまま)');
+  // 開始と閉じを別々の名前に(古い名前は残っていない)= 中身が地の文で残る= 書かない
+  threw = false; try { await vfs.writeFile(VU, Buffer.from(view.replace('A_vault', 'A_x').replace('A_vault', 'A_y'))); } catch (_) { threw = true; }
+  ok(threw && disk() === before, 'v5.1.84 開始と閉じが別の名前= 膜が壊れて中身が地の文= 書かない');
+  // 消した(開始から閉じまで)= 鍵を持ったまま書ける・貼り戻すとその鍵で暗号化
+  { const vl = view.split('\n'); const a = vl.findIndex(l => l.includes('▼mCN=A_vault')), b = vl.findIndex(l => l.includes('▲mCN=A_vault'));
+    const del = vl.slice(0, a).concat(vl.slice(b + 1)).join('\n');
+    threw = false; try { await vfs.writeFile(VU, Buffer.from(del)); } catch (_) { threw = true; }
+    ok(!threw && !disk().includes('A_vault') && !disk().includes(SECRET_A) && T._vaultKeys.get(KEY).has('A_vault'), 'v5.1.84 解錠中の膜を消した= 問わずに書く・鍵はメモリに残す');
+    await vfs.writeFile(VU, Buffer.from(view));
+    ok(disk().includes('A_vault') && !disk().includes(SECRET_A), '  Undo/貼り戻し= 残した鍵で暗号化して書く'); }
+  before = disk();
   // 施錠(鍵を捨てる)→ エディターに平文が残ったまま書こうとした(Undo等)
   T._vaultKeys.delete(KEY);
   ok(!(await vfs.readFile(VU)).toString().includes(SECRET_A), '施錠後に読む= 暗号文の姿');
