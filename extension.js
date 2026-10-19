@@ -29893,7 +29893,8 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .ww-split.s2 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#3fa85c 46%)}
 .ww-split.s2 .ww-pop{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#3fa85c 28%);border-color:#2f7f45}
 .ww-val{display:inline-block;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
-.os-btn{font-size:13px;padding:4px 9px}.os-val{display:inline-block;min-width:2.4ch;margin-left:2px;text-align:left;font-variant-numeric:tabular-nums}   /* v5.1.77: Format Me の⏰(一度だけ)= 折り返し幅と同じ作り・少し大きく */   /* v4.2.618(俊克「折り返しボタンの横幅を3桁の数字が入った時に固定。↻を連打しやすく」) */
+.os-btn{font-size:13px;padding:4px 9px}.os-val{display:inline-block;min-width:2.4ch;margin-left:2px;text-align:left;font-variant-numeric:tabular-nums}   /* v5.1.77: Format Me の⏰(一度だけ)= 折り返し幅と同じ作り・少し大きく */
+.os-split{transition:scale .15s ease;transform-origin:50% 100%}.os-split:hover{scale:2;z-index:50}.os-split .ww-ring:hover{scale:1}   /* v5.1.78(俊克 pm07:27「拡大はベースも一緒に。文字が隠れちゃうから」): ↻だけ2倍だと1hの字に被る→ 🔐の組と同じく、ボタンと↻をまとめて2倍(下端の真ん中を軸に上へ= 左右へ同じだけ広がる・Me Dock の右端で切れにくい) */   /* v4.2.618(俊克「折り返しボタンの横幅を3桁の数字が入った時に固定。↻を連打しやすく」) */
 .ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#e8c46a 16%);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}   /* v4.2.159(俊克「半透明になっちゃった。薄めのパステル色で」): 透かさない= 地の色に金を混ぜた不透明の色 */   /* v4.2.158(俊克「両方とも薄めの背景色を付けて区別しやすく」) */
 .ww-btn.on{border-bottom-left-radius:0;border-bottom-right-radius:0;background:color-mix(in srgb,var(--vscode-editor-background) 72%,#e8c46a 28%)}
 .ww-btn:hover{filter:brightness(1.15)}
