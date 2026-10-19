@@ -22716,7 +22716,7 @@ async function meosClockRestartFromNow(doc, key, line) {
     try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); _meosPauseFreeze.delete(lk); } catch (_) { }
     try { meosClockHoldSet(lk, null); } catch (_) { }
     const st = meosClockFcStamp(new Date());
-    await meosClockFcSet(doc, key, { when: st, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: st + 'p', tags: hit.tags, done: false }, line);
+    await meosClockFcSet(doc, key, { when: st, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: st + 'p', tags: hit.tags, done: false, wait: true }, line);   // ★v5.1.87: 待ち(FC)の姿で書く= 走らせる時に meosChainStartHere がもう一度 UFC へ書き直す(ふつうの▶️と同じ順)= その書き直しで数字が描かれる(v5.1.86 の描き直しは同じ版なので効かなかった)
     meosDbg('[play] ⌥ 今を起点に 行=' + (line + 1) + ' 膜=' + key + ' 起点=' + st);
     const ok = await meosChainStartHere(doc, key, line);
     // ★v5.1.86(俊克 pm11:47 改良1「Optクリックして、タイマー値の表示が出るまで7秒くらいかかる」): 真因(MeOS Debug の記録)= 起点の書き換えの直後に⏰の行を描いた時は
