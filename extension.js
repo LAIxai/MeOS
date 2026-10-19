@@ -18095,6 +18095,32 @@ let _encSkinDeco = null;   // v5.1.1: 本文の🔐/🔓の札の灰色の地を
 //   → 解錠中の膜を持つ入口の文書だけ、打つのを止めて5秒で保存(書く口が暗号化し直す)。施錠中や普通のファイルは今まで通り自動保存しない。
 const MEOS_VAULT_AUTOSAVE_MS = 500;   // v5.1.18(俊克「0.5秒、あるいはギリ0.9秒」): VSCodium が控えを作る約1秒より先に保存する(0.9秒は保存の所要時間で負け得る)
 const _vaultSaveTimers = new Map();   // 文書uri -> タイマー
+// ★v5.1.76: 自動保存が断られた時。解錠中の膜が文書から消えていたら、真ん中で1回だけ訊く。
+//   消した(要らない)= 鍵を忘れて保存する。名前を変えた/切り取った= Undo(そのまま保存すると、新しい名前の膜が平文で書かれ得る)。
+const _vaultMissingAsked = new Set();
+async function meosVaultSaveFailed(doc) {
+  try {
+    const fk = _vaultKeyOf(doc.uri), keys = _vaultKeys.get(fk);
+    if (!keys || !keys.size) return;
+    const ids = new Set((collectPairs(doc, { excludeIndex: false }) || []).map(p => p.id));
+    const missing = Array.from(keys.keys()).filter(id => !ids.has(id));
+    if (!missing.length) return;
+    const sig = fk + ' ' + missing.join(' | ');
+    if (_vaultMissingAsked.has(sig)) return;
+    _vaultMissingAsked.add(sig);
+    let pick;
+    try { pick = await vscode.window.showWarningMessage('MeOS 🔐: the unlocked membrane “' + missing.join('”, “') + '” is no longer in the file, so nothing was saved. Deleted it on purpose? MeOS forgets its key and saves. Renamed or cut it? Choose Undo — otherwise its plain text could reach the disk.', { modal: true }, 'Deleted — forget the key', 'Undo'); }
+    finally { _vaultMissingAsked.delete(sig); }
+    if (pick === 'Deleted — forget the key') {
+      for (const id of missing) { keys.delete(id); try { const sn = _vaultSeen.get(fk); if (sn) sn.delete(id); } catch (_) { } try { _vaultShieldOf(fk).delete(id); } catch (_) { } }
+      if (!keys.size) _vaultKeys.delete(fk);
+      try { await doc.save(); } catch (_) { }
+      try { updateMeDockMode(); } catch (_) { } try { meosTypeRepaint(); } catch (_) { }
+    } else if (pick === 'Undo') {
+      try { await vscode.window.showTextDocument(doc); await vscode.commands.executeCommand('undo'); } catch (_) { }
+    }
+  } catch (_) { }
+}
 function _vaultArmAutoSave(doc) {
   try {
     const k = doc.uri.toString();
@@ -18105,8 +18131,8 @@ function _vaultArmAutoSave(doc) {
       _vaultSaveTimers.delete(k);
       try {
         const ks = _vaultKeys.get(_vaultKeyOf(doc.uri));
-        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const ok = await doc.save(); if (!doc.isClosed && doc.isDirty) _vaultArmAutoSave(doc); /* ★v5.1.35: 保存の途中で打ち続けて保存しきれなかった= 予約し直す(しないと次に打つまで平文の控えが残っていた) */ if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
-      } catch (_) { }
+        if (!doc.isClosed && doc.isDirty && ks && ks.size) { const ok = await doc.save(); if (!ok) { meosVaultSaveFailed(doc); return; } /* ★v5.1.76(俊克 pm05:25 バグ1「暗号化した膜を手動で削除すると、右下にパネルが出たり消えたりを繰り返して操作できない」): 真因= 書く口が断った(解錠中の膜が消えた)のに、0.5秒ごとに予約し直して失敗の知らせを出し続けていた。失敗したら予約し直さない= 次に打った時に1回だけ試す */ if (!doc.isClosed && doc.isDirty) _vaultArmAutoSave(doc); /* ★v5.1.35: 保存の途中で打ち続けて保存しきれなかった= 予約し直す(しないと次に打つまで平文の控えが残っていた) */ if (ok) { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'udBlink' }); } catch (_) { } try { meosVaultFlashSaved(doc); } catch (_) { } } }   // v5.1.29: 書いたら Me Dock の × を一瞬光らせる / v5.1.30: 解錠中の膜の頭に auto-saved とガターの縦線も
+      } catch (_) { try { meosVaultSaveFailed(doc); } catch (__) { } }   // v5.1.76: 投げて失敗した時も同じ(予約し直さない)
     }, MEOS_VAULT_AUTOSAVE_MS));
   } catch (_) { }
 }
