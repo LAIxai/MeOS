@@ -22666,6 +22666,23 @@ function meosPlayTipHover(document, position) {
 // ★★v4.2.92: 最初から数え直す(Opt+クリック)。起点を持たない1本だけ= 本文の `v…` と覚えの起点を捨てて、
 //   ⏸ も外し、今から走らせる。★起点を書いてある1本は予定so動かさない(v4.2.65 改良2と同じ線)。
 //   ★やる事は「人が v を消して ▶️ を押す」(v4.2.90)と同じ= 道を2本にしない。
+// ★v5.1.83(俊克 10.19 pm09:12「▶️ボタンをOptクリックすると、現在時刻を起点に再起動できるようにしよう」):
+//   起点のある⏰は「時刻表を守る」ので、Opt+▶️ は今まで「ずらして再開」(Opt+⏸で止めた時)だけだった。
+//   止めた覚えが無い時の Opt+▶️ = 起点を今に書き直して走り直す(Format Me の⏰ ↻0y0d0h3m ×1 を何度でも使い回せる)。
+//   起点は f/p の対でも今の1つに替える(f の目標も捨てる= 今から数え直す)。
+async function meosClockRestartFromNow(doc, key, line) {
+  try {
+    let hit = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === line) hit = x;
+    if (!hit) return false;
+    const lk = doc.uri.toString() + ' ' + key;
+    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); _meosPauseFreeze.delete(lk); } catch (_) { }
+    try { meosClockHoldSet(lk, null); } catch (_) { }
+    const st = meosClockFcStamp(new Date());
+    await meosClockFcSet(doc, key, { when: st, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: st + 'p', tags: hit.tags, done: false }, line);
+    meosDbg('[play] ⌥ 今を起点に 行=' + (line + 1) + ' 膜=' + key + ' 起点=' + st);
+    return await meosChainStartHere(doc, key, line);
+  } catch (_) { return false; }
+}
 async function meosClockRestartHere(doc, key, line) {
   try {
     let hit = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === line) hit = x;
@@ -22887,6 +22904,10 @@ async function handleMembraneNameSelection(editor, selectionKind) {
               if (_ok68) { meosClockHoldSet(_lk68, { at: Date.now(), line: _ln }); meosShowPlayTip(editor, _ln, '\u23f8\ufe0f Held \u2014 press \u25b6\ufe0f to go on. The schedule moves back by the time it was held.'); }
             } else {
               const _hd68 = meosClockHoldOf(_lk68);
+              if (!_hd68) {   // ★v5.1.83: 止めた覚えが無い= 今を起点に走り直す
+                const _ok83 = await meosClockRestartFromNow(editor.document, _own92, _ln);
+                if (_ok83) meosShowPlayTip(editor, _ln, '\u25b6\ufe0f Started again \u2014 the start time is now.');
+              } else
               await meosChainStartHere(editor.document, _own92, _ln);
               if (_hd68) meosShowPlayTip(editor, _ln, '\u25b6\ufe0f Going on \u2014 the schedule moved back by ' + meosMmSs(Math.max(0, Date.now() - Number(_hd68.at))) + '.');
             }
