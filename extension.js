@@ -22718,7 +22718,13 @@ async function meosClockRestartFromNow(doc, key, line) {
     const st = meosClockFcStamp(new Date());
     await meosClockFcSet(doc, key, { when: st, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: st + 'p', tags: hit.tags, done: false }, line);
     meosDbg('[play] ⌥ 今を起点に 行=' + (line + 1) + ' 膜=' + key + ' 起点=' + st);
-    return await meosChainStartHere(doc, key, line);
+    const ok = await meosChainStartHere(doc, key, line);
+    // ★v5.1.86(俊克 pm11:47 改良1「Optクリックして、タイマー値の表示が出るまで7秒くらいかかる」): 真因(MeOS Debug の記録)= 起点の書き換えの直後に⏰の行を描いた時は
+    //   まだ走っていない(止めた所)で、走り出した後に描き直す者が居なかった(ふつうの▶️は走らせる時に行を書くので、その後に描かれる)。→ 走らせた直後に行と札を描き直す
+    try { const ed = vscode.window.visibleTextEditors.find(e => e.document === doc); if (ed) meosApplyTimerLineDecorations(ed); } catch (_) { }
+    try { _meosNudgeHintsEv.fire(); } catch (_) { } try { meosTickTimerLines(); } catch (_) { } try { meosUpdateTimerBar(); } catch (_) { }
+    meosDbg('[play] ⌥ 走らせて描き直した 行=' + (line + 1));
+    return ok;
   } catch (_) { return false; }
 }
 async function meosClockRestartHere(doc, key, line) {
