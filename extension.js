@@ -29898,7 +29898,7 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .ww-split.s2 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#3fa85c 46%)}
 .ww-split.s2 .ww-pop{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#3fa85c 28%);border-color:#2f7f45}
 .ww-val{display:inline-block;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
-.os-btn{font-size:13px;padding:4px 9px}.os-btn sub{font-size:.62em;font-weight:700;opacity:.8;margin:0 1px 0 .5px;vertical-align:-.25em;line-height:0}   /* v5.1.79: 数字は大きく、単位(y/d/h)は小さく下付き= 直す数字に目が行く */
+.os-btn{font-size:13px;padding:4px 9px}.ww-btn.os-btn{height:23px;box-sizing:border-box;display:inline-flex;align-items:center;font-size:14px;line-height:15px;padding:3px 8px;border:1px solid #94a3b8;border-radius:9px 5px 5px 9px;background:#ffffff;color:#1e293b}.ww-btn.os-btn:hover{background:#f1f5f9;border-color:#64748b;filter:none}   /* v5.1.82(俊克 pm08:56「Timed Meと同じ色、フォルムに統一しよう」): Timed Me の⏰(白地・濃い字・灰の縁・高さ23・左の角9/右の角5)と同じ姿 */.os-btn sub{font-size:.62em;font-weight:700;opacity:.8;margin:0 1px 0 .5px;vertical-align:-.25em;line-height:0}   /* v5.1.79: 数字は大きく、単位(y/d/h)は小さく下付き= 直す数字に目が行く */
 .ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#e8c46a 16%);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}   /* v4.2.159(俊克「半透明になっちゃった。薄めのパステル色で」): 透かさない= 地の色に金を混ぜた不透明の色 */   /* v4.2.158(俊克「両方とも薄めの背景色を付けて区別しやすく」) */
 .ww-btn.on{border-bottom-left-radius:0;border-bottom-right-radius:0;background:color-mix(in srgb,var(--vscode-editor-background) 72%,#e8c46a 28%)}
 .ww-btn:hover{filter:brightness(1.15)}
