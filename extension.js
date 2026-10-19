@@ -17434,9 +17434,17 @@ async function encryptCurrentMembrane(passArg, shield) {
   const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (!editor) return;
   { const vp = meosVaultUnlockedPair(editor); if (vp) { await meosVaultLock(_vaultKeyOf(editor.document.uri), vp.id); vscode.window.setStatusBarMessage('MeOS 🔐: locked again (same passphrase).', 3000); return; } } // v5.1.0: 解錠中の膜で🔐=今すぐ施錠
-  const info = _currentMembraneBodyInfo(editor);
+  let info = _currentMembraneBodyInfo(editor);
   if (!info) { vscode.window.showInformationMessage('MeOS: Put the cursor inside a membrane to encrypt it (🔒).'); return; }
-  if (info.empty || !String(info.text).trim()) { vscode.window.showInformationMessage('MeOS: This membrane has no contents to encrypt.'); return; }
+  // ★v5.1.74(俊克 pm03:28 改良1「空の膜は暗号化が拒否されるので、フェイクの膜を入れておけない。自動で何かを入れて暗号化したほうが良い」):
+  //   空(または空行だけ)なら (empty) の1行を入れてから暗号化する= 囮の膜を置ける。暗号文の長さで「短い」は分かるが「空」とまでは分からない。
+  if (info.empty || !String(info.text).trim()) {
+    const _pr = info.pair, _doc = editor.document;
+    if (info.empty) await editor.edit(eb => { eb.insert(new vscode.Position(_pr.start, (_doc.lineAt(_pr.start).text || '').length), _vaultEol(_doc.getText()) + '(empty)'); });
+    else await editor.edit(eb => { eb.replace(info.range, '(empty)'); });
+    info = _currentMembraneBodyInfo(editor);
+    if (!info || info.empty || !String(info.text).trim()) { vscode.window.showInformationMessage('MeOS: This membrane has no contents to encrypt.'); return; }
+  }
   // v0.9.99917: 「この膜自身が暗号化済み(3行=単一マーカー)」の時だけ拒否。暗号化した子膜を含むだけの外膜は施錠可=入れ子暗号(二重膜)が成立。
   if (isCurrentMembraneEncrypted(editor)) { vscode.window.showInformationMessage('MeOS: This membrane is already locked 🔐. Press 🔓 to unlock it first (enter the passphrase), then you can edit and re-lock.'); return; }
   // v0.9.99914: Me Dockのパス入力欄から渡された時(passArg)はそれを使う(👁表示切替が二重入力の代わり)。コマンドパレット等はshowInputBoxで2回確認。
@@ -17937,7 +17945,7 @@ function meosVaultBtnSpot(doc, i) {
   try {
     const t = doc.lineAt(i).text || '';
     const idx = t.indexOf(_MEOS_ENC_PREFIX);
-    if (idx >= 0) return { col: idx, kind: 'unlock' };
+    if (idx >= 0) return { col: idx + 2, kind: 'unlock', marker: true, typeCol: idx };   // ★v5.1.74: 暗号文の行= 左端(idx)は種類の札(🔐/🛡️/🏦・押すと次の種類)、その右(🔒の後 idx+2)から「-Locked — click 🔓 to open」= 押すと開く
     if (!/[▼▽]/.test(t)) return null;
     const op = parseOpenLine(t);
     if (!op) return null;
@@ -17962,6 +17970,7 @@ function meosVaultLineHints(doc, i, editor) {
   if (!b) return null;
   try { if (meosModeAtLine(doc, i) === 'raw') return null; } catch (_) { }
   try { if (editor && (b.kind === 'lock' || b.head) && meosShowsRawLineStable(editor, i)) return null; } catch (_) { }   // v5.1.5: 開始行がカーソルで生の字になっている時は出さない(⏰の札と同じ)
+  if (b.marker) return { col: b.typeCol, label: '', marker: true };   // v5.1.74: 暗号文の行は札を立てず、飾り(種類の絵+文)が押す物
   let _sh = false; try { _sh = b.kind !== 'unlock' && !!b.id && _vaultShieldOf(_vaultKeyOf(doc.uri)).has(b.id); } catch (_) { }   // v5.1.72: 🛡️の膜は🔐の代わりに🛡️(等価・押すと閉じる)
   return { col: b.col, label: b.kind === 'unlock' ? '🔓' : (_sh ? _MEOS_SHIELD : '🔐') };   // v5.1.3(俊克「押した時の動作で見せよう」): 施錠中=🔓(押すと開く)/解錠中=🔐(押すと閉じる)= Me Dockの🔐と同じ読み方
 }
@@ -17974,6 +17983,57 @@ function meosAwayChairSpot(doc, i, editor) {
     if (b.col + 1 > t.length) return null;
     return { col: b.col + 1 };
   } catch (_) { return null; }
+}
+// ★v5.1.74: 暗号文の行の種類= 🏦(遺伝子が有る)> 🛡️(行の頭の印)> 🔐。名前は1つ上の開始行から。
+function meosVaultMarkerType(doc, i, text, lgMeta) {
+  try {
+    const op = i > 0 ? parseOpenLine(doc.lineAt(i - 1).text || '') : null;
+    if (op && lgMeta && lgMeta[op.id]) return '🏦';
+  } catch (_) { }
+  return meosEncLineShield(text) ? _MEOS_SHIELD : '🔐';
+}
+// ★v5.1.74: 種類の絵を押した= 次の種類へ(🔐→🛡️→🏦→🔐)。要る物は Me Dock の欄で訊く(施錠したままで良い)。
+//   🔐→🛡️= その膜の合言葉(開けるか・長さ)/ 🛡️→🏦= 合言葉と期限(🏦の欄)/ 🏦→🔐= 確かめの一言(開ける道を消す)
+let _meosTypePending = null;   // { uri, id }
+async function meosVaultTypeCycle(editor, ln) {
+  const doc = editor.document;
+  const t = doc.lineAt(ln).text || '';
+  if (t.indexOf(_MEOS_ENC_PREFIX) < 0 || ln < 1) return;
+  const op = parseOpenLine(doc.lineAt(ln - 1).text || '');
+  if (!op) return;
+  const id = op.id;
+  let lg = {}; try { lg = meosLegacyMeta(doc) || {}; } catch (_) { lg = {}; }
+  _meosTypePending = { uri: doc.uri.toString(), id };
+  if (lg[id]) {
+    const yes = await vscode.window.showWarningMessage('Take 🏦 off “' + id + '”? It becomes a plain 🔐 membrane: the sealed key is removed, and nobody can open it without the passphrase.', { modal: true }, 'Take 🏦 off');
+    if (yes !== 'Take 🏦 off') return;
+    await meosLegacyMetaWrite(doc, m => { delete m[id]; });
+    try { _meosLegacyOpened.delete(doc.uri.toString() + ' ' + id); } catch (_) { }
+    try { meosLegacyDecorate(editor); } catch (_) { } try { _meosNudgeHintsEv.fire(); } catch (_) { } try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { } try { refresh(editor); } catch (_) { }
+    vscode.window.setStatusBarMessage('MeOS 🔐: 🏦 taken off — a plain 🔐 membrane again.', 5000);
+    return;
+  }
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'encAskPass', op: meosEncLineShield(t) ? 'legacyShield' : 'shieldLocked' }); } catch (_) { }
+}
+function _meosTypeTarget() {
+  const pd = _meosTypePending; if (!pd) return null;
+  const ed = (vscode.window.visibleTextEditors || []).find(e => e.document.uri.toString() === pd.uri);
+  if (!ed) return null;
+  const p = (collectPairs(ed.document, { excludeIndex: false }) || []).find(q => q.id === pd.id && q.end - q.start === 2 && (ed.document.lineAt(q.start + 1).text || '').indexOf(_MEOS_ENC_PREFIX) >= 0);
+  return p ? { ed, p, line: p.start + 1 } : null;
+}
+// 🔐→🛡️(施錠したまま): 合言葉で開けるか・長さが足りるかを確かめてから、行の頭に🛡️
+async function meosShieldOnLocked(pass) {
+  const tg = _meosTypeTarget(); if (!tg) { vscode.window.showInformationMessage('MeOS 🛡️: the membrane is no longer there.'); return; }
+  const t = tg.ed.document.lineAt(tg.line).text || '', idx = t.indexOf(_MEOS_ENC_PREFIX);
+  try { meosDecryptText(t.slice(idx + _MEOS_ENC_PREFIX.length).trim(), pass); } catch (_) { vscode.window.showErrorMessage('MeOS 🛡️: that passphrase does not open this membrane — nothing changed.'); return; }
+  if (!meosPassStrongEnough(pass)) { vscode.window.showWarningMessage('MeOS 🛡️: this passphrase is too short for 🛡️ — use 20+ characters, or 4+ words joined by - (🎲 makes one). Unlock it and re-encrypt it with a new passphrase first.'); return; }
+  if (meosEncLineShield(t)) return;
+  await tg.ed.edit(eb => { eb.insert(new vscode.Position(tg.line, idx), _MEOS_SHIELD); });
+  try { await tg.ed.document.save(); } catch (_) { }
+  try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
+  try { refresh(tg.ed); } catch (_) { }
+  vscode.window.setStatusBarMessage('MeOS 🛡️: full defense on — only you can open it, and 🏦 cannot be set on it.', 5000);
 }
 async function meosVaultBtnPress(editor, b, line) {
   if (b.kind === 'lock') {
@@ -18431,13 +18491,13 @@ function meosLegacyPickOf(periodArg) {   // Me Dock から来た長さ(字)。�
   if (Number(periodArg) > 0) return { spec: meosLegacyShortPeriod(Number(periodArg)) };
   return null;
 }
-async function meosLegacyArm(passArg, periodArg) {
+async function meosLegacyArm(passArg, periodArg, opts) {
   const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (!editor) return;
   const doc = editor.document;
   const p = meosLegacyLockedPairAt(editor);
   if (!p) { vscode.window.showInformationMessage('MeOS 🏦: Put the cursor in a locked 🔐 membrane (or in the membrane that holds one).'); return; }
-  if (meosEncLineShield(doc.lineAt(p.start + 1).text || '')) { vscode.window.showWarningMessage('MeOS 🛡️: this membrane has full defense 🛡️ — only its owner may open it, so 🏦 cannot be set. Ctrl+click 🔐 in Me Dock to take 🛡️ off first.'); return; }   // v5.1.72
+  if (!(opts && opts.fromShield) && meosEncLineShield(doc.lineAt(p.start + 1).text || '')) { vscode.window.showWarningMessage('MeOS 🛡️: this membrane has full defense 🛡️ — only its owner may open it, so 🏦 cannot be set. Ctrl+click 🔐 in Me Dock to take 🛡️ off first.'); return; }   // v5.1.72
   const blob = (doc.lineAt(p.start + 1).text || '').slice((doc.lineAt(p.start + 1).text || '').indexOf(_MEOS_ENC_PREFIX) + _MEOS_ENC_PREFIX.length).trim();
   const pass = (typeof passArg === 'string' && passArg) ? passArg : await meosAskPass('Passphrase of this locked membrane — MeOS seals it and shows it on the badge when the day comes', 'passphrase');   // v5.1.38: Me Dock の🏦(合言葉欄)から来た時はそれを使う
   if (!pass) return;
@@ -18451,6 +18511,10 @@ async function meosLegacyArm(passArg, periodArg) {
   const due = meosLegacyAddSpec(now, pick.spec);
   const genes = meosLegacyGenes(key, { v: 1, n: p.id, k: pass, d: due, t: due - now, p: pick.spec, s: now });   // v5.1.45: 長さは字(p)でも持つ
   const ok = await meosLegacyMetaWrite(doc, lg => { lg[p.id] = genes; });
+  if (ok && opts && opts.fromShield) {   // v5.1.74: 🛡️→🏦= 🏦が掛かったら🛡️の印を外す(開ける道を足したので、もう完全防衛ではない)
+    const ml = doc.lineAt(p.start + 1).text || '', mi = ml.indexOf(_MEOS_ENC_PREFIX);
+    if (meosEncLineShield(ml)) { await editor.edit(eb => { eb.replace(new vscode.Range(p.start + 1, 0, p.start + 1, mi), ''); }); try { await doc.save(); } catch (_) { } }
+  }
   try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
   _meosLegacyOpened.delete(doc.uri.toString() + ' ' + p.id);
   meosLegacyDecorate(editor); try { _meosNudgeHintsEv.fire(); } catch (_) { }   // v5.1.38: 🔄の札も
@@ -22690,7 +22754,8 @@ async function handleMembraneNameSelection(editor, selectionKind) {
     try {
       const _ln = editor.selection.active.line;
       { const _vb = meosVaultLineHints(editor.document, _ln, editor) && meosVaultBtnSpot(editor.document, _ln);   // v5.1.5: 前から生の字だった行(カーソルが居た)は押せない= 文字としてのクリック   // ★v5.1.1: 本文の🔐(解錠)/🔓(施錠)
-        if (_vb && editor.selection.active.character === _vb.col) { if (!_vb.head && _vb.kind === 'lock') { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); } await meosVaultBtnPress(editor, _vb, _ln); return; }   // v5.1.31: 解錠中の🔐も⏰のボタンと同じく、押した行を生の字にしない
+        if (_vb && _vb.marker && editor.selection.active.character <= _vb.typeCol) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosVaultTypeCycle(editor, _ln); return; }   // v5.1.74: 左端の種類の絵(隠した🛡️の字は幅0= その左に落ちても同じ)
+        if (_vb && (_vb.marker ? editor.selection.active.character >= _vb.col : editor.selection.active.character === _vb.col)) { if (!_vb.head && _vb.kind === 'lock') { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); } await meosVaultBtnPress(editor, _vb, _ln); return; }   // v5.1.31: 解錠中の🔐も⏰のボタンと同じく、押した行を生の字にしない
         const _ch = meosAwayChairSpot(editor.document, _ln, editor);   // v5.1.19: 🪑を押した= 🪑→🛋️→💺 を巡る(全体で1つの設定)
         if (_ch && editor.selection.active.character === _ch.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosAwaySetSlot(meosAwaySlot() % 3 + 1); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }
         const _lb = meosLegacyBtnSpot(editor.document, _ln, editor);   // v5.1.38: 🏦 遺産膜の🔄= 長さを選んで延長
@@ -28477,6 +28542,7 @@ function applyEncDecorations(editor) {
     const doc = editor.document;
     const _inEncBand = (ln) => meosModeAtLine(doc, ln) === 'raw';   // v4.0.444: Rawの膜の中だけ生の暗号文
     const hideRanges = [];
+    let _lgMeta = {}; try { _lgMeta = meosLegacyMeta(doc) || {}; } catch (_) { _lgMeta = {}; }   // v5.1.74: 🏦の膜(遺伝子の有る名前)
     const labelRanges = [];
     const skins = [];   // v5.1.1
     const chairs = [];   // v5.1.19
@@ -28491,8 +28557,12 @@ function applyEncDecorations(editor) {
         const text = doc.lineAt(i).text || '';
         const idx = text.indexOf(_MEOS_ENC_PREFIX);
         if (idx < 0 || _inEncBand(i)) continue;
-        hideRanges.push(new vscode.Range(i, idx, i, text.length)); // 🔒MeOS-enc:v1 + base64 を透明化
-        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: ' Locked — click 🔓 to open', color: '#d2691e', fontWeight: '700', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } } });   // v5.1.1: 🔐は札(押す物)= 文は札の右に立つ
+        const _hs = meosEncLineShield(text) ? Math.max(0, text.slice(0, idx).lastIndexOf(_MEOS_SHIELD)) : idx;   // v5.1.74: 🛡️の字も隠す(種類は左端の絵が言う)
+        hideRanges.push(new vscode.Range(i, _hs, i, text.length)); // 🔒MeOS-enc:v1 + base64 を透明化
+        // ★v5.1.74(俊克 pm03:28 改良2「🔐-Locked / 🛡️-Locked / 🏦-Locked。左端の記号を押すと🔐⇄🛡️⇄🏦を切り替え」+ pm03:53「暗号化の種類を示している」):
+        //   左端= 種類の絵(idx・押すと次の種類= Me Dock の🔐を Ctrl/Opt で🛡️/🏦にするのと同じ意味)。文は🔒の後(idx+2)に立てる= 押す桁が2つに分かれる。
+        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: meosVaultMarkerType(doc, i, text, _lgMeta), textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } } });
+        labelRanges.push({ range: new vscode.Range(i, idx + 2, i, idx + 2), renderOptions: { before: { contentText: '-Locked — click 🔓 to open', color: '#d2691e', fontWeight: '700', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } } });   // v5.1.1: 🔐は札(押す物)= 文は札の右に立つ
         skins.push({ range: new vscode.Range(i, Math.max(0, idx - 1), i, Math.min(text.length, idx + 2)) });
       }
     }
@@ -28516,7 +28586,7 @@ function applyEncDecorations(editor) {
           const text = doc.lineAt(i).text || '';
           const idx = text.indexOf(_MEOS_ENC_PREFIX);
           if (idx < 0 || _inEncBand(i)) continue;
-          hideRanges.push(new vscode.Range(i, idx, i, text.length));
+          hideRanges.push(new vscode.Range(i, meosEncLineShield(text) ? Math.max(0, text.slice(0, idx).lastIndexOf(_MEOS_SHIELD)) : idx, i, text.length));
         }
       }
     } catch (_) { }
@@ -33287,24 +33357,24 @@ encPassEye=document.getElementById('enc-pass-eye'),encPassGo=document.getElement
 let _encPendingOp='';
 // {* ▲mCN=dock_js_format *}
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
-function showEncPass(op,period){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='shield')?'🛡️':(op==='legacy')?'🏦':(op==='legacyContinue')?'🔄':'🔓';
+function showEncPass(op,period){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='shield'||op==='shieldLocked')?'🛡️':(op==='legacy'||op==='legacyShield')?'🏦':(op==='legacyContinue')?'🔄':'🔓';
 {const dc=document.getElementById('enc-pass-dice');if(dc)dc.style.display=(op==='encrypt'||op==='shield')?'':'none';}   /* v5.1.72: 🎲は新しい合言葉を決める時だけ */
 /* v5.1.40(俊克 改良1「期間指定もMe Dock内に」): 🏦/🔄の時は長さの選び欄を出す。🔄(延長)は合言葉が要らないので入力欄と👁を隠す */
-{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){const ps=String(period||'')||'1y';const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value=ps;f.classList.add('on');}if(y)y.textContent='→ '+elpDue(elpParse(ps));
+{const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyShield'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){const ps=String(period||'')||'1y';const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value=ps;f.classList.add('on');}if(y)y.textContent='→ '+elpDue(elpParse(ps));
 if(op==='legacyContinue'&&f)setTimeout(function(){try{f.focus();f.select();}catch(_){}},0);}}   /* v5.1.47(俊克 改良1「私は単純に入力枠にして、38dのように文字で直接指定するつもりで話していた」): 札をやめ入力枠1つ。今の長さ(無ければ 1y)を入れて開き、🔄の時はそのまま打ち替えられるよう選んでおく */
 const nc=(op==='legacyContinue');if(encPassInput)encPassInput.style.display=nc?'none':'';if(encPassEye)encPassEye.style.display=nc?'none':'';}
 if(encPassInput){encPassInput.type='password';_encEyeSync();
-encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='shield')?'long passphrase (20+ chars or 4+ words) — 🎲 makes one':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
+encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='shield')?'long passphrase (20+ chars or 4+ words) — 🎲 makes one':(op==='shieldLocked')?'passphrase of this 🔐 membrane — Go makes it 🛡️':(op==='legacyShield')?'passphrase of this 🛡️ membrane — Go makes it 🏦':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
 }if(encPassRow)encPassRow.style.display='flex';setTimeout(()=>{try{encPassInput&&encPassInput.focus();}catch(_){}},0);}
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
 function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';_encEyeSync();
 }_encPendingOp='';}
 function submitEncPass(){const v=encPassInput?encPassInput.value:'';const _sel=document.getElementById('enc-legacy-period');const _on=_sel?_sel.querySelector('.elp.on'):null;const _fr=document.getElementById('enc-legacy-free');const _fms=_fr?elpParse(_fr.value):0;
-if(_fr&&_fms<60000&&(_encPendingOp==='legacy'||_encPendingOp==='legacyContinue')){_fr.focus();return;}   /* v5.1.44: 読めない長さ(空も)ではGoしない */
+if(_fr&&_fms<60000&&(_encPendingOp==='legacy'||_encPendingOp==='legacyShield'||_encPendingOp==='legacyContinue')){_fr.focus();return;}   /* v5.1.44: 読めない長さ(空も)ではGoしない */
 const _per=(_fms>=60000)?String(_fr.value).split(' ').join(''):'';   /* v5.1.47: 長さは入力枠の字だけ */
 if(_encPendingOp==='legacyContinue'){vscode.postMessage({type:'encOp',op:'legacyContinue',period:_per});hideEncPass();return;}   /* v5.1.40: 🔄= 長さだけ */
 if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
-op:_encPendingOp,pass:v,period:(_encPendingOp==='legacy')?_per:''});hideEncPass();}
+op:_encPendingOp,pass:v,period:(_encPendingOp==='legacy'||_encPendingOp==='legacyShield')?_per:''});hideEncPass();}
 let _encVaultUnlocked=false; /* v5.1.1: 入口で解錠中の膜= 🔐は合言葉なしで、すぐ施錠 */
 const encLock=document.getElementById('enc-lock');
 /* ★v5.1.38(俊克 改良1「Me Dockの🔐をOpt押しにすると、🏦ボタンに切り替わるようにしよう」): Opt を添えて乗せている間は🏦= デジタル遺産を掛ける。
@@ -35756,7 +35826,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'unlockMembrane') { await unlockCurrentMembrane(); return; }
     if (message && message.type === 'awaySlot') { await meosAwaySetSlot(message.slot); return; }   // v5.1.19: 🔐の右肩 ①②③
     if (message && message.type === 'awayMins') { await meosAwaySetMins(message.slot, message.min); return; }   // v5.1.19: ▾で分を選ぶ
-    if (message && message.type === 'encOp') { if (message.op === 'encrypt') { await encryptCurrentMembrane(message.pass || ''); } else if (message.op === 'shield') { await encryptCurrentMembrane(message.pass || '', true); } else if (message.op === 'unlock') { await unlockCurrentMembrane(message.pass || ''); } else if (message.op === 'legacy') { await meosLegacyArm(message.pass || '', message.period); } else if (message.op === 'legacyContinue') { const _pa = _meosLegacyPendingAsk; _meosLegacyPendingAsk = null; const _ed = _pa && (vscode.window.visibleTextEditors || []).find(e => e.document.uri.toString() === _pa.uri); if (_pa && _ed) await meosLegacyContinue(_pa.name, _ed, message.period); } return; } // v0.9.99914: Me Dockパス入力からの施錠/解錠
+    if (message && message.type === 'encOp') { if (message.op === 'encrypt') { await encryptCurrentMembrane(message.pass || ''); } else if (message.op === 'shield') { await encryptCurrentMembrane(message.pass || '', true); } else if (message.op === 'shieldLocked') { await meosShieldOnLocked(message.pass || ''); } else if (message.op === 'legacyShield') { const _tg = _meosTypeTarget(); if (_tg) { try { await vscode.window.showTextDocument(_tg.ed.document, { viewColumn: _tg.ed.viewColumn }); const _p = new vscode.Position(_tg.line, 0); _tg.ed.selection = new vscode.Selection(_p, _p); } catch (_) { } await meosLegacyArm(message.pass || '', message.period, { fromShield: true }); } } else if (message.op === 'unlock') { await unlockCurrentMembrane(message.pass || ''); } else if (message.op === 'legacy') { await meosLegacyArm(message.pass || '', message.period); } else if (message.op === 'legacyContinue') { const _pa = _meosLegacyPendingAsk; _meosLegacyPendingAsk = null; const _ed = _pa && (vscode.window.visibleTextEditors || []).find(e => e.document.uri.toString() === _pa.uri); if (_pa && _ed) await meosLegacyContinue(_pa.name, _ed, message.period); } return; } // v0.9.99914: Me Dockパス入力からの施錠/解錠
     if (message && message.type === 'copySecretAutoWipe') { await copySelectionAutoWipe(); return; }
     if (message && message.type === 'githubCommitPush') { await githubCommitPush(); return; }
     if (message && message.type === 'openGithubPage') { await openGithubPage(); return; }
@@ -43839,7 +43909,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
             for (const h of meosClockLineHints(_ed89, document, ln)) {
               out.push(new vscode.InlayHint(new vscode.Position(ln, h.col), h.label));
             }
-            { const _vh = meosVaultLineHints(document, ln, _ed89); if (_vh && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) { out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label));
+            { const _vh = meosVaultLineHints(document, ln, _ed89); if (_vh && !_vh.marker && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) { out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label));
               const _ch = meosAwayChairSpot(document, ln, _ed89); if (_ch) out.push(new vscode.InlayHint(new vscode.Position(ln, _ch.col), '\u3000')); } }   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
             { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
           }

@@ -109,7 +109,9 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
   const L = ['<!-- {* ▼mCN=暗号テスト_20261017s105901JST // comment1 *} -->', T._MEOS_ENC_PREFIX + 'xxxx', '<!-- {* ▲mCN=暗号テスト_20261017s105901JST // comment2 *} -->'];
   const fd = (scheme) => ({ uri: { scheme, path: P, toString: () => scheme + ':' + P }, lineCount: L.length, lineAt: (i) => ({ text: L[i] }) });
   let b = T.meosVaultBtnSpot(fd('file'), 1);
-  ok(b && b.kind === 'unlock' && b.col === 0, '施錠中= マーカー行の頭に🔐(file: でも出る)');
+  ok(b && b.kind === 'unlock' && b.marker && b.typeCol === 0 && b.col === 2, 'v5.1.74 施錠中= マーカー行の頭(0)は種類の絵、🔒の後(2)を押すと開く(file: でも出る)');
+  { const L2 = [L[0], T._MEOS_SHIELD + L[1], L[2]]; const b2 = T.meosVaultBtnSpot({ uri: { scheme: 'file', path: P, toString: () => 'file:' + P }, lineCount: 3, lineAt: (i) => ({ text: L2[i] }) }, 1);
+    ok(b2 && b2.typeCol === T._MEOS_SHIELD.length && b2.col === T._MEOS_SHIELD.length + 2, 'v5.1.74 🛡️の行も同じ並び(種類の絵は🛡️の後・開くのは🔒の後)'); }
   b = T.meosVaultBtnSpot(fd('file'), 0);
   ok(b && b.kind === 'unlock' && b.head && L[0].slice(b.col, b.col + 3) === ' //', 'v5.1.5 施錠中の開始行にも🔓(外から分かる・file: でも)');
   T._vaultKeys.set(KEY, new Map([['暗号テスト_20261017s105901JST', 'p']]));
