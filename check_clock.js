@@ -1550,6 +1550,7 @@ console.log('⑬-2 v5.1.79 つないだ長さ= 足し算(0y0d1h・1d12h)/空白�
  {const x=c('↻0y0d1h ×1'); ok(x.cycle&&x.cycle.length===1&&x.cycle[0]==='0y0d1h'&&x.rounds===1, '★Format Me の⏰= ↻0y0d1h ×1 は「1時間を1回」', x.cycle);}
  {const x=c('↻1h 30m'); ok(x.cycle&&x.cycle.length===2&&x.cycle[0]==='1h'&&x.cycle[1]==='30m', '  空白で区切れば今まで通り順番の2歩', x.cycle);}
  ok(M('0y0d0h')===0, '  全部0= 長さ0(並びはそこで終わる・今まで通り)', M('0y0d0h'));
+ {const x=c('↻0y0d0h3m ×1'); ok(M('0y0d0h3m')===180000&&x.cycle&&x.cycle[0]==='0y0d0h3m'&&x.rounds===1, '★v5.1.80 Format Me の⏰の既定= ↻0y0d0h3m ×1 は「3分を1回」', x.cycle);}
 }
 console.log('⑬ 入れ子 ((30s 15s)×8 1m)×3 = 並びthatが一段上に居るだけ');
 {
