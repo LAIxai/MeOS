@@ -11992,6 +11992,8 @@ function meosClockLastLabel(t) {
 //   ★⏰行の後ろ(v4.2.344)は横に長すぎた。出す場所はバッジ行= 走っている時は直してから5秒だけ顔の代わりに / 止めている時はずっと。
 //   ★本文には書かない(表示であって記法ではない)。起点の決まっていない1本・済み・×N無しは 0。
 const MEOS_LAST_FLASH_MS = 5000;
+// ★v5.1.91(俊克 10.20 am00:52 のスクショ2枚で場所が分かった): Opt+▶️(今を起点に)は MeOS 自身が起点を書き直す= 人が直したのではない→ この5秒の「→ 鳴る時刻」を出さない。
+const _meosNoLastFlash = new Map();   // 'uri 膜名' -> この時刻まで「直したばかり」を数えない
 const _meosLastFlash = new Map();   // 膜+⏰行の位置 -> {sig, at}= 直した瞬間を覚える(開いただけでは光らない)
 // v4.2.383: 「この行の時計」(Read ⏰ がカーソルの⏰行を読む)= 席の1本を探す口(meosLiveClockFor)とは別の問い。行を名指しして探す。
 // v4.2.392: Set の書き先= {atLine, atKey}(書き直す)/{atKey}(その膜の群の最後に足す)/{refused}(場所が違う)。
@@ -14691,7 +14693,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _f = _meosLastFlash.get(_fk), _nw = Date.now();
               if (!_f) _meosLastFlash.set(_fk, { sig: _sg, at: 0 });
               else {
-                if (_f.sig !== _sg) { _f.sig = _sg; _f.at = _nw; }
+                if (_f.sig !== _sg) { _f.sig = _sg; const _nf = _meosNoLastFlash.get(uri + ' ' + (owner ? owner.id : '')); _f.at = (_nf && _nw < _nf) ? 0 : _nw; }   // v5.1.91: MeOS 自身の書き直し(Opt+▶️)は数えない
                 else if (_f.at && _rawHere && _nw - _f.at < MEOS_LAST_FLASH_MS) _f.at = _nw;   // 打っている間は数え始めない
                 _flash46 = !!_f.at && (_nw - _f.at < MEOS_LAST_FLASH_MS);
               }
@@ -22716,6 +22718,7 @@ async function meosClockRestartFromNow(doc, key, line) {
     try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); _meosPauseFreeze.delete(lk); } catch (_) { }
     try { meosClockHoldSet(lk, null); } catch (_) { }
     const st = meosClockFcStamp(new Date());
+    _meosNoLastFlash.set(doc.uri.toString() + ' ' + key, Date.now() + 3000);   // ★v5.1.91: この書き直しで「→ 鳴る時刻」の5秒を出さない(7秒の真因)
     await meosClockFcSet(doc, key, { when: st, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: st + 'p', tags: hit.tags, done: false }, line);   // ★v5.1.90: v5.1.87 の「待ち(FC)で書く」は外した= 推測(描き直しが無い)から入れた物で、FC にすると MeOS が畳む= 止めていた(⏸)行まで畳んで隠していた
     meosDbg('[play] ⌥ 今を起点に 行=' + (line + 1) + ' 膜=' + key + ' 起点=' + st);
     const ok = await meosChainStartHere(doc, key, line);
