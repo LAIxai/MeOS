@@ -22724,6 +22724,12 @@ async function meosClockRestartFromNow(doc, key, line) {
     try { const ed = vscode.window.visibleTextEditors.find(e => e.document === doc); if (ed) meosApplyTimerLineDecorations(ed); } catch (_) { }
     try { _meosNudgeHintsEv.fire(); } catch (_) { } try { meosTickTimerLines(); } catch (_) { } try { meosUpdateTimerBar(); } catch (_) { }
     meosDbg('[play] ⌥ 走らせて描き直した 行=' + (line + 1));
+    // ★v5.1.88 計測(俊克 10.20 am00:17「起点有り/無しでなぜそんな違いが出るのか」): Opt+▶️ の後10秒、毎秒「表に載っているか・顔の数字」を記録する(測ってから直す)
+    try { let _k = 0; const _lk = doc.uri.toString() + ' ' + key; const _iv = setInterval(() => { try {
+      _k++; const u = _meosPseudoUntil.get(_lk), sc = _meosPseudoScopes.get(_lk); let c = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === line) c = x;
+      const face = (u && c) ? meosClockFaceForLine(u, c, sc) : null;
+      meosDbg('[optProbe] +' + _k + 's 表=' + (u ? Math.round((u - Date.now()) / 1000) + 's先' : '無し') + ' 席=' + (sc ? 'あり' : '無し') + ' 行=' + (c ? (c.ufc ? 'UFC' : 'FC') + (c.off ? '⏸' : '') + ' when=' + c.when + ' pAt=' + (c.pAt || '-') : '見つからない') + ' 顔ms=' + (face == null ? '-' : Math.round(face)));
+    } catch (e) { meosDbg('[optProbe] err ' + (e && e.message)); } if (_k >= 10) clearInterval(_iv); }, 1000); } catch (_) { }
     return ok;
   } catch (_) { return false; }
 }
