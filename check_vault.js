@@ -38,7 +38,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_vault_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX };
+module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
@@ -116,6 +116,26 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
   L[1] = 'plain text now';
   b = T.meosVaultBtnSpot(fd('meos-vault'), 0);
   ok(b && b.kind === 'lock' && L[0].slice(b.col, b.col + 3) === ' //', '解錠中= 開始行の名前の直後(\' //\' の手前)に🔐(押すと閉じる)');
+  // ★v5.1.72 🛡️完全防衛: 印は暗号文の行の頭。解錠中はメモリが覚え、書く口が行の頭へ戻す
+  {
+    const P2 = '/shield.md', VU2 = { path: P2, scheme: 'meos-vault', toString: () => 'meos-vault:' + P2 }, K2 = 'file://' + P2;
+    const SEC = 'only-me 遺言 9876', PASS = 'kosu-mira-tefu-nobe-raki';
+    DISK.set(P2, Buffer.from('# s\n// {▼mCN=S_shield // x}\n' + T._MEOS_SHIELD + T._MEOS_ENC_PREFIX + T.meosEncryptText(SEC, PASS) + '\n// {▲mCN=S_shield //}\n'));
+    const d2 = () => DISK.get(P2).toString('utf8');
+    ok(T._vaultPairs(d2().split('\n')).length === 1, '🛡️付きでも膜を数える口が見つける(施錠中=3行)');
+    ok((await vfs.readFile(VU2)).toString() === d2(), '🛡️: 鍵なしで読む= ディスクのまま(🛡️も見える)');
+    T._vaultKeys.set(K2, new Map([['S_shield', PASS]])); T._vaultSeen.set(K2, new Set(['S_shield']));
+    let v2 = (await vfs.readFile(VU2)).toString();
+    ok(v2.includes(SEC) && !v2.includes(T._MEOS_SHIELD), '🛡️: 解錠すると平文(🛡️の行は平文に替わる)');
+    ok(!!(T._vaultShield.get(K2) && T._vaultShield.get(K2).has('S_shield')), '🛡️: 解錠中はメモリが🛡️を覚える');
+    await vfs.writeFile(VU2, Buffer.from(v2.replace(SEC, SEC + ' 追記')));
+    const ln = d2().split('\n').find(l => l.indexOf(T._MEOS_ENC_PREFIX) >= 0) || '';
+    ok(ln.indexOf(T._MEOS_SHIELD + T._MEOS_ENC_PREFIX) === 0 && !d2().includes('遺言'), '🛡️: 書くと行の頭に🛡️が戻り、ディスクに平文が無い');
+    ok(T.meosEncLineShield(ln) && !T.meosEncLineShield(T._MEOS_ENC_PREFIX + 'abc'), '🛡️の行かどうかを見分ける');
+    ok(T.meosDecryptText(ln.slice(ln.indexOf(T._MEOS_ENC_PREFIX) + T._MEOS_ENC_PREFIX.length).trim(), PASS).includes('追記'), '🛡️: 暗号は🔐と同じ(同じ合言葉で開く)');
+    ok(!T.meosPassStrongEnough('abc') && !T.meosPassStrongEnough('pass-word-ok') && T.meosPassStrongEnough(PASS) && T.meosPassStrongEnough('a'.repeat(20)) && T.meosPassStrongEnough('あいう-かきく-さしす-たちつ-なに'), '🛡️の合言葉の長さ(20字以上/言葉4つ以上で16字以上)');
+    T._vaultKeys.delete(K2);
+  }
   console.log(fail ? ('\n' + fail + ' 項目 NG') : '\n全項目 PASS');
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
