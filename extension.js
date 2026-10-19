@@ -22724,12 +22724,14 @@ async function meosClockRestartFromNow(doc, key, line) {
     try { const ed = vscode.window.visibleTextEditors.find(e => e.document === doc); if (ed) meosApplyTimerLineDecorations(ed); } catch (_) { }
     try { _meosNudgeHintsEv.fire(); } catch (_) { } try { meosTickTimerLines(); } catch (_) { } try { meosUpdateTimerBar(); } catch (_) { }
     meosDbg('[play] ⌥ 走らせて描き直した 行=' + (line + 1));
-    // ★v5.1.88 計測(俊克 10.20 am00:17「起点有り/無しでなぜそんな違いが出るのか」): Opt+▶️ の後10秒、毎秒「表に載っているか・顔の数字」を記録する(測ってから直す)
-    try { let _k = 0; const _lk = doc.uri.toString() + ' ' + key; const _iv = setInterval(() => { try {
-      _k++; const u = _meosPseudoUntil.get(_lk), sc = _meosPseudoScopes.get(_lk); let c = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === line) c = x;
-      const face = (u && c) ? meosClockFaceForLine(u, c, sc) : null;
-      meosDbg('[optProbe] +' + _k + 's 表=' + (u ? Math.round((u - Date.now()) / 1000) + 's先' : '無し') + ' 席=' + (sc ? 'あり' : '無し') + ' 行=' + (c ? (c.ufc ? 'UFC' : 'FC') + (c.off ? '⏸' : '') + ' when=' + c.when + ' pAt=' + (c.pAt || '-') : '見つからない') + ' 顔ms=' + (face == null ? '-' : Math.round(face)));
-    } catch (e) { meosDbg('[optProbe] err ' + (e && e.message)); } if (_k >= 10) clearInterval(_iv); }, 1000); } catch (_) { }
+    // ★★v5.1.89(俊克 10.20 am00:29「やはり7秒かかる」→ v5.1.88 の計測で決着): 時計も数字も押した1秒目から揃っていた(表=177s先・顔ms=177249)。
+    //   遅れていたのは**行が畳まれていて見えない**こと= 鳴り終えた一度きりは FC(済み✓)になり MeOS が畳む。Opt+▶️ で UFC に戻しても、
+    //   畳みが開くのは周期の畳み直し(約10秒後の [fcOpen])だった。目薬の v は止めても UFC(⏸)のまま= 畳まれないので、すぐ見えていた。
+    //   → 走らせた直後に、その行の畳みをその場で開く。
+    try { const ed = vscode.window.visibleTextEditors.find(e => e.document === doc);
+      if (ed) { const L = [line, Math.max(0, line - 1)]; try { for (const h of L) _meosFoldedAt48.delete(h); } catch (_) { }
+        await vscode.commands.executeCommand('editor.unfold', { selectionLines: L, levels: 1 });
+        meosDbg('[play] ⌥ 畳みを開いた 行=' + (line + 1)); } } catch (_) { }
     return ok;
   } catch (_) { return false; }
 }
