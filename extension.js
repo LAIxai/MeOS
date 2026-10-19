@@ -17988,13 +17988,20 @@ function meosAwayChairSpot(doc, i, editor) {
 function meosVaultMarkerType(doc, i, text, lgMeta) {
   try {
     const op = i > 0 ? parseOpenLine(doc.lineAt(i - 1).text || '') : null;
+    const pd = _meosTypePending;   // v5.1.75: 切り替えの途中= 押した時に次の絵を先に出す(取り消せば戻る)
+    if (op && pd && pd.next && pd.id === op.id && pd.uri === doc.uri.toString()) return pd.next;
     if (op && lgMeta && lgMeta[op.id]) return '🏦';
   } catch (_) { }
   return meosEncLineShield(text) ? _MEOS_SHIELD : '🔐';
 }
 // ★v5.1.74: 種類の絵を押した= 次の種類へ(🔐→🛡️→🏦→🔐)。要る物は Me Dock の欄で訊く(施錠したままで良い)。
 //   🔐→🛡️= その膜の合言葉(開けるか・長さ)/ 🛡️→🏦= 合言葉と期限(🏦の欄)/ 🏦→🔐= 確かめの一言(開ける道を消す)
-let _meosTypePending = null;   // { uri, id }
+let _meosTypePending = null;   // { uri, id, next, old }
+// ★v5.1.75(俊克 pm05:17 改良1「分り難い。切替用のボタンを直ぐに🛡️に変えた上で、Me Dockでパスワードを入れ直したほうが分かりやすい。解錠のために1回、かけ直すのにもう1回」):
+//   押したら絵を先に次の種類へ替え、要る物を Me Dock で訊く。✕で取り消せば絵は戻る。
+//   🔐→🛡️= ①今の合言葉(開けるか)②🛡️の新しい合言葉(長さ・🎲)で掛け直す。施錠したまま(エディターに平文は出ない)。
+function meosTypeRepaint() { try { for (const e of (vscode.window.visibleTextEditors || [])) refresh(e); } catch (_) { } }
+function meosTypeCancel() { if (!_meosTypePending) return; _meosTypePending = null; meosTypeRepaint(); }
 async function meosVaultTypeCycle(editor, ln) {
   const doc = editor.document;
   const t = doc.lineAt(ln).text || '';
@@ -18003,17 +18010,21 @@ async function meosVaultTypeCycle(editor, ln) {
   if (!op) return;
   const id = op.id;
   let lg = {}; try { lg = meosLegacyMeta(doc) || {}; } catch (_) { lg = {}; }
-  _meosTypePending = { uri: doc.uri.toString(), id };
-  if (lg[id]) {
+  const cur = lg[id] ? '🏦' : (meosEncLineShield(t) ? _MEOS_SHIELD : '🔐');
+  const next = cur === '🔐' ? _MEOS_SHIELD : cur === _MEOS_SHIELD ? '🏦' : '🔐';
+  _meosTypePending = { uri: doc.uri.toString(), id, next, old: '' };
+  meosTypeRepaint();
+  if (cur === '🏦') {
     const yes = await vscode.window.showWarningMessage('Take 🏦 off “' + id + '”? It becomes a plain 🔐 membrane: the sealed key is removed, and nobody can open it without the passphrase.', { modal: true }, 'Take 🏦 off');
-    if (yes !== 'Take 🏦 off') return;
+    if (yes !== 'Take 🏦 off') { meosTypeCancel(); return; }
     await meosLegacyMetaWrite(doc, m => { delete m[id]; });
     try { _meosLegacyOpened.delete(doc.uri.toString() + ' ' + id); } catch (_) { }
-    try { meosLegacyDecorate(editor); } catch (_) { } try { _meosNudgeHintsEv.fire(); } catch (_) { } try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { } try { refresh(editor); } catch (_) { }
+    _meosTypePending = null;
+    try { meosLegacyDecorate(editor); } catch (_) { } try { _meosNudgeHintsEv.fire(); } catch (_) { } try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { } meosTypeRepaint();
     vscode.window.setStatusBarMessage('MeOS 🔐: 🏦 taken off — a plain 🔐 membrane again.', 5000);
     return;
   }
-  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'encAskPass', op: meosEncLineShield(t) ? 'legacyShield' : 'shieldLocked' }); } catch (_) { }
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'encAskPass', op: cur === _MEOS_SHIELD ? 'legacyShield' : 'shieldOld' }); } catch (_) { }
 }
 function _meosTypeTarget() {
   const pd = _meosTypePending; if (!pd) return null;
@@ -18022,18 +18033,30 @@ function _meosTypeTarget() {
   const p = (collectPairs(ed.document, { excludeIndex: false }) || []).find(q => q.id === pd.id && q.end - q.start === 2 && (ed.document.lineAt(q.start + 1).text || '').indexOf(_MEOS_ENC_PREFIX) >= 0);
   return p ? { ed, p, line: p.start + 1 } : null;
 }
-// 🔐→🛡️(施錠したまま): 合言葉で開けるか・長さが足りるかを確かめてから、行の頭に🛡️
-async function meosShieldOnLocked(pass) {
-  const tg = _meosTypeTarget(); if (!tg) { vscode.window.showInformationMessage('MeOS 🛡️: the membrane is no longer there.'); return; }
+// 🔐→🛡️ ①今の合言葉で開けるかだけ確かめ、覚えておく(メモリ・この切り替えの間だけ)
+async function meosShieldStepOld(pass) {
+  const tg = _meosTypeTarget(); if (!tg) { meosTypeCancel(); vscode.window.showInformationMessage('MeOS 🛡️: the membrane is no longer there.'); return; }
   const t = tg.ed.document.lineAt(tg.line).text || '', idx = t.indexOf(_MEOS_ENC_PREFIX);
-  try { meosDecryptText(t.slice(idx + _MEOS_ENC_PREFIX.length).trim(), pass); } catch (_) { vscode.window.showErrorMessage('MeOS 🛡️: that passphrase does not open this membrane — nothing changed.'); return; }
-  if (!meosPassStrongEnough(pass)) { vscode.window.showWarningMessage('MeOS 🛡️: this passphrase is too short for 🛡️ — use 20+ characters, or 4+ words joined by - (🎲 makes one). Unlock it and re-encrypt it with a new passphrase first.'); return; }
-  if (meosEncLineShield(t)) return;
-  await tg.ed.edit(eb => { eb.insert(new vscode.Position(tg.line, idx), _MEOS_SHIELD); });
-  try { await tg.ed.document.save(); } catch (_) { }
+  try { meosDecryptText(t.slice(idx + _MEOS_ENC_PREFIX.length).trim(), pass); }
+  catch (_) { vscode.window.showErrorMessage('MeOS 🛡️: that passphrase does not open this membrane — try again.'); try { meDockPanel.webview.postMessage({ type: 'encAskPass', op: 'shieldOld' }); } catch (_) { } return; }
+  _meosTypePending.old = pass;
+  try { meDockPanel.webview.postMessage({ type: 'encAskPass', op: 'shieldNew' }); } catch (_) { }
+}
+// 🔐→🛡️ ②新しい長い合言葉で掛け直す(暗号文→平文→暗号文はメモリの中だけ・エディターに平文は出ない)
+async function meosShieldStepNew(pass) {
+  const tg = _meosTypeTarget(); const old = _meosTypePending && _meosTypePending.old;
+  if (!tg || !old) { meosTypeCancel(); return; }
+  if (!meosPassStrongEnough(pass)) { vscode.window.showWarningMessage('MeOS 🛡️: too short for 🛡️ — use 20+ characters, or 4+ words joined by - (🎲 makes one).'); try { meDockPanel.webview.postMessage({ type: 'encAskPass', op: 'shieldNew' }); } catch (_) { } return; }
+  const doc = tg.ed.document, t = doc.lineAt(tg.line).text || '', idx = t.indexOf(_MEOS_ENC_PREFIX);
+  let plain; try { plain = meosDecryptText(t.slice(idx + _MEOS_ENC_PREFIX.length).trim(), old); } catch (_) { meosTypeCancel(); vscode.window.showErrorMessage('MeOS 🛡️: could not open the membrane — nothing changed.'); return; }
+  let blob; try { blob = meosEncryptText(plain, pass); if (meosDecryptText(blob, pass) !== plain) throw new Error('self-check'); } catch (e) { meosTypeCancel(); vscode.window.showErrorMessage('MeOS 🛡️: encryption failed — nothing changed.'); return; }
+  plain = null;
+  await tg.ed.edit(eb => { eb.replace(new vscode.Range(tg.line, 0, tg.line, t.length), _MEOS_SHIELD + _MEOS_ENC_PREFIX + blob); });
+  _meosTypePending = null;
+  try { await doc.save(); } catch (_) { }
   try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
-  try { refresh(tg.ed); } catch (_) { }
-  vscode.window.setStatusBarMessage('MeOS 🛡️: full defense on — only you can open it, and 🏦 cannot be set on it.', 5000);
+  meosTypeRepaint();
+  vscode.window.setStatusBarMessage('MeOS 🛡️: re-locked with the new passphrase — full defense on. Only you can open it.', 6000);
 }
 async function meosVaultBtnPress(editor, b, line) {
   if (b.kind === 'lock') {
@@ -33357,23 +33380,25 @@ encPassEye=document.getElementById('enc-pass-eye'),encPassGo=document.getElement
 let _encPendingOp='';
 // {* ▲mCN=dock_js_format *}
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
-function showEncPass(op,period){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='shield'||op==='shieldLocked')?'🛡️':(op==='legacy'||op==='legacyShield')?'🏦':(op==='legacyContinue')?'🔄':'🔓';
-{const dc=document.getElementById('enc-pass-dice');if(dc)dc.style.display=(op==='encrypt'||op==='shield')?'':'none';}   /* v5.1.72: 🎲は新しい合言葉を決める時だけ */
+function showEncPass(op,period){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':(op==='shieldOld')?'🔓':(op==='shield'||op==='shieldNew')?'🛡️':(op==='legacy'||op==='legacyShield')?'🏦':(op==='legacyContinue')?'🔄':'🔓';
+{const dc=document.getElementById('enc-pass-dice');if(dc)dc.style.display=(op==='encrypt'||op==='shield'||op==='shieldNew')?'':'none';}   /* v5.1.72: 🎲は新しい合言葉を決める時だけ */
 /* v5.1.40(俊克 改良1「期間指定もMe Dock内に」): 🏦/🔄の時は長さの選び欄を出す。🔄(延長)は合言葉が要らないので入力欄と👁を隠す */
 {const sel=document.getElementById('enc-legacy-period');const lg=(op==='legacy'||op==='legacyShield'||op==='legacyContinue');if(sel){sel.style.display=lg?'':'none';if(lg){const ps=String(period||'')||'1y';const f=document.getElementById('enc-legacy-free'),y=document.getElementById('enc-legacy-say');if(f){f.value=ps;f.classList.add('on');}if(y)y.textContent='→ '+elpDue(elpParse(ps));
 if(op==='legacyContinue'&&f)setTimeout(function(){try{f.focus();f.select();}catch(_){}},0);}}   /* v5.1.47(俊克 改良1「私は単純に入力枠にして、38dのように文字で直接指定するつもりで話していた」): 札をやめ入力枠1つ。今の長さ(無ければ 1y)を入れて開き、🔄の時はそのまま打ち替えられるよう選んでおく */
 const nc=(op==='legacyContinue');if(encPassInput)encPassInput.style.display=nc?'none':'';if(encPassEye)encPassEye.style.display=nc?'none':'';}
 if(encPassInput){encPassInput.type='password';_encEyeSync();
-encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='shield')?'long passphrase (20+ chars or 4+ words) — 🎲 makes one':(op==='shieldLocked')?'passphrase of this 🔐 membrane — Go makes it 🛡️':(op==='legacyShield')?'passphrase of this 🛡️ membrane — Go makes it 🏦':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
+encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='shield')?'long passphrase (20+ chars or 4+ words) — 🎲 makes one':(op==='shieldOld')?'1/2 passphrase now — to open it':(op==='shieldNew')?'2/2 new long passphrase for 🛡️ — 🎲 makes one':(op==='legacyShield')?'passphrase of this 🛡️ membrane — Go makes it 🏦':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
 }if(encPassRow)encPassRow.style.display='flex';setTimeout(()=>{try{encPassInput&&encPassInput.focus();}catch(_){}},0);}
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
-function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';_encEyeSync();
+function hideEncPass(){if(!window.__encSub&&(_encPendingOp==='shieldOld'||_encPendingOp==='shieldNew'||_encPendingOp==='legacyShield'))vscode.postMessage({type:'encTypeCancel'});   /* v5.1.75: 種類の切り替えを✕/Escで止めた= 絵を戻す */
+_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';_encEyeSync();
 }_encPendingOp='';}
-function submitEncPass(){const v=encPassInput?encPassInput.value:'';const _sel=document.getElementById('enc-legacy-period');const _on=_sel?_sel.querySelector('.elp.on'):null;const _fr=document.getElementById('enc-legacy-free');const _fms=_fr?elpParse(_fr.value):0;
+function submitEncPass(){window.__encSub=true;try{_submitEncPass();}finally{window.__encSub=false;}}
+function _submitEncPass(){const v=encPassInput?encPassInput.value:'';const _sel=document.getElementById('enc-legacy-period');const _on=_sel?_sel.querySelector('.elp.on'):null;const _fr=document.getElementById('enc-legacy-free');const _fms=_fr?elpParse(_fr.value):0;
 if(_fr&&_fms<60000&&(_encPendingOp==='legacy'||_encPendingOp==='legacyShield'||_encPendingOp==='legacyContinue')){_fr.focus();return;}   /* v5.1.44: 読めない長さ(空も)ではGoしない */
 const _per=(_fms>=60000)?String(_fr.value).split(' ').join(''):'';   /* v5.1.47: 長さは入力枠の字だけ */
 if(_encPendingOp==='legacyContinue'){vscode.postMessage({type:'encOp',op:'legacyContinue',period:_per});hideEncPass();return;}   /* v5.1.40: 🔄= 長さだけ */
-if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
+if(!v){window.__encSub=false;hideEncPass();return;}vscode.postMessage({type:'encOp',
 op:_encPendingOp,pass:v,period:(_encPendingOp==='legacy'||_encPendingOp==='legacyShield')?_per:''});hideEncPass();}
 let _encVaultUnlocked=false; /* v5.1.1: 入口で解錠中の膜= 🔐は合言葉なしで、すぐ施錠 */
 const encLock=document.getElementById('enc-lock');
@@ -35821,12 +35846,13 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'mewReveal') { meosMewReveal(); return; } // v4.0.106: ↻=5秒だけ印を出す
     if (message && message.type === 'mewSignVisible') { await meosMewSignVisible(); try { updateMeDockMode(); } catch (_) {} return; } // v4.0.67: Me Dockの🐱
     if (message && message.type === 'encryptMembrane') { await encryptCurrentMembrane(); return; }
+    if (message && message.type === 'encTypeCancel') { meosTypeCancel(); return; }   // v5.1.75: ✕で取り消し= 絵を戻す
     if (message && message.type === 'encShield') { await meosShieldToggle(); return; }   // v5.1.72: 🔐を Ctrl+クリック
     if (message && message.type === 'vaultLockAll') { await meosVaultLockAll('UL'); try { updateMeDockMode(); } catch (_) { } return; }   // v5.1.66: Me Dock の UL
     if (message && message.type === 'unlockMembrane') { await unlockCurrentMembrane(); return; }
     if (message && message.type === 'awaySlot') { await meosAwaySetSlot(message.slot); return; }   // v5.1.19: 🔐の右肩 ①②③
     if (message && message.type === 'awayMins') { await meosAwaySetMins(message.slot, message.min); return; }   // v5.1.19: ▾で分を選ぶ
-    if (message && message.type === 'encOp') { if (message.op === 'encrypt') { await encryptCurrentMembrane(message.pass || ''); } else if (message.op === 'shield') { await encryptCurrentMembrane(message.pass || '', true); } else if (message.op === 'shieldLocked') { await meosShieldOnLocked(message.pass || ''); } else if (message.op === 'legacyShield') { const _tg = _meosTypeTarget(); if (_tg) { try { await vscode.window.showTextDocument(_tg.ed.document, { viewColumn: _tg.ed.viewColumn }); const _p = new vscode.Position(_tg.line, 0); _tg.ed.selection = new vscode.Selection(_p, _p); } catch (_) { } await meosLegacyArm(message.pass || '', message.period, { fromShield: true }); } } else if (message.op === 'unlock') { await unlockCurrentMembrane(message.pass || ''); } else if (message.op === 'legacy') { await meosLegacyArm(message.pass || '', message.period); } else if (message.op === 'legacyContinue') { const _pa = _meosLegacyPendingAsk; _meosLegacyPendingAsk = null; const _ed = _pa && (vscode.window.visibleTextEditors || []).find(e => e.document.uri.toString() === _pa.uri); if (_pa && _ed) await meosLegacyContinue(_pa.name, _ed, message.period); } return; } // v0.9.99914: Me Dockパス入力からの施錠/解錠
+    if (message && message.type === 'encOp') { if (message.op === 'encrypt') { await encryptCurrentMembrane(message.pass || ''); } else if (message.op === 'shield') { await encryptCurrentMembrane(message.pass || '', true); } else if (message.op === 'shieldOld') { await meosShieldStepOld(message.pass || ''); } else if (message.op === 'shieldNew') { await meosShieldStepNew(message.pass || ''); } else if (message.op === 'legacyShield') { const _tg = _meosTypeTarget(); if (_tg) { try { await vscode.window.showTextDocument(_tg.ed.document, { viewColumn: _tg.ed.viewColumn }); const _p = new vscode.Position(_tg.line, 0); _tg.ed.selection = new vscode.Selection(_p, _p); } catch (_) { } await meosLegacyArm(message.pass || '', message.period, { fromShield: true }); } _meosTypePending = null; meosTypeRepaint(); } else if (message.op === 'unlock') { await unlockCurrentMembrane(message.pass || ''); } else if (message.op === 'legacy') { await meosLegacyArm(message.pass || '', message.period); } else if (message.op === 'legacyContinue') { const _pa = _meosLegacyPendingAsk; _meosLegacyPendingAsk = null; const _ed = _pa && (vscode.window.visibleTextEditors || []).find(e => e.document.uri.toString() === _pa.uri); if (_pa && _ed) await meosLegacyContinue(_pa.name, _ed, message.period); } return; } // v0.9.99914: Me Dockパス入力からの施錠/解錠
     if (message && message.type === 'copySecretAutoWipe') { await copySelectionAutoWipe(); return; }
     if (message && message.type === 'githubCommitPush') { await githubCommitPush(); return; }
     if (message && message.type === 'openGithubPage') { await openGithubPage(); return; }
