@@ -1542,6 +1542,15 @@ console.log('\u246c \u23f0行も包みを消す(飾りの行は予定だけ)');
 
 // v4.1.157(俊克 9/6 pm00:11〜00:24): 入れ子は新しい構造ではない= 並びthat一段上に居るだけ。
 //   俊克「空白は順番と言うか、→ のような意味だよね。貴方の + と同等の意味だよ」
+console.log('⑬-2 v5.1.79 つないだ長さ= 足し算(0y0d1h・1d12h)/空白で区切れば順番');
+{
+ const P=X.meosClockFcParse, M=X.meosCycleMs;
+ const c=(sp)=>P('<!-- Mew!UFC ⏰ 2026-10-19 20:45 '+sp+' -->')||{};
+ ok(M('0y0d1h')===3600000 && M('1d12h')===36*3600000 && M('0y7d0h')===7*86400000, '★つないだ長さは足し算(0 も書ける)', [M('0y0d1h'),M('1d12h'),M('0y7d0h')]);
+ {const x=c('↻0y0d1h ×1'); ok(x.cycle&&x.cycle.length===1&&x.cycle[0]==='0y0d1h'&&x.rounds===1, '★Format Me の⏰= ↻0y0d1h ×1 は「1時間を1回」', x.cycle);}
+ {const x=c('↻1h 30m'); ok(x.cycle&&x.cycle.length===2&&x.cycle[0]==='1h'&&x.cycle[1]==='30m', '  空白で区切れば今まで通り順番の2歩', x.cycle);}
+ ok(M('0y0d0h')===0, '  全部0= 長さ0(並びはそこで終わる・今まで通り)', M('0y0d0h'));
+}
 console.log('⑬ 入れ子 ((30s 15s)×8 1m)×3 = 並びthatが一段上に居るだけ');
 {
  const P=X.meosClockFcParse, E=X.meosParseCycleExpr;
