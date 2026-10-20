@@ -154,6 +154,23 @@ console.log('⑭ 行頭に字が入った⏰の行も塊ごと運ぶ(v5.1.103)')
  ok(mv && mv.blockEnd===8, '動かす時も壊れた行と下の行まで一緒', mv);
 }
 
+console.log('⑯ 数字の無い鎖は周期に混ぜず、つながず、⚠️の元を持つ(v5.1.105)');
+{
+ const t='<!-- Mew!FC ⏰ 🔔/🔔 1. ↺↻(1m)×1 ⛓️⤴️ // 💧目薬 1.本目 -->', c=X.meosClockFcParse(t);
+ ok(c.chainBad===true && c.chainSrc==='⛓️⤴️' && c.cycleSrc==='(1m)×1' && c.rounds===1 && !c.chainDir, '★俊克の目薬の2行目= 周期は (1m)×1 のまま・鎖は「数字なし」と分かる', [c.chainBad,c.chainSrc,c.cycleSrc]);
+ const c2=X.meosClockFcParse('<!-- Mew!FC ⏰ ↺↻(10s)×1 ⛓️⤴️)×8 // r -->');
+ ok(c2.chainBad && c2.cycleSrc==='(10s)×1' && c2.rounds===1, '`)×8` だけ残っても周期の回数と読まない', [c2.cycleSrc,c2.rounds]);
+ const c3=X.meosClockFcParse('<!-- Mew!FC ⏰ ↺↻(10s)×1 ⛓️⤴️ 2 // r -->');
+ ok(!c3.chainBad && c3.chainN===2, '空白を挟んだ数字は正しく読む', [c3.chainBad,c3.chainN]);
+ const L=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 1. ↺↻8h 2026-09-28 16:59:58p ⛓️⤵️2 // 💧目薬の時間です -->', t]);
+ const d=mk('file:///eye.md',L); X.meosChainResetLoops(d,'H_1');
+ ok(X.meosChainNextRow(d,'H_1',4,true)===null, '数字の無い ⤴️ は戻らない(だから ⚠️ で知らせる)', 0);
+ ok(X.meosChainNextRow(d,'H_1',3,true).line===4, '1行目の ⤵️2 は 8h → 1分 へつなぐ', 0);
+ const L2=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 1. ↺↻8h 2026-09-28 16:59:58p ⛓️⤵️2 // 💧目薬の時間です -->', t.replace('⛓️⤴️','⛓️⤴️2')]);
+ const d2=mk('file:///eye2.md',L2); X.meosChainResetLoops(d2,'H_1');
+ ok(X.meosChainNextRow(d2,'H_1',4,true).line===3, '★⛓️⤴️2 に直せば 1分 → 8h へ戻る(×M 無し= 戻り続ける)', 0);
+}
+
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');
 (async()=>{
  const W=[]; stub.WorkspaceEdit=class{replace(u,r,t){W.push(t);} insert(u,p,t){W.push(t);} delete(){}}; stub.workspace.applyEdit=()=>Promise.resolve(true);
@@ -165,6 +182,11 @@ console.log('⑥ 書き直しても鎖の印は残る(書く口)');
  W.length=0;
  await X.meosClockFcSet(d6,'H_1',{ when:'', cycle:r6[1].cycle, rounds:1, cycleSrc:'(10s)×1', up:false, dual:true, done:false, chainSrc:'' },r6[1].line);
  ok(W[0] && W[0].indexOf('⛓')<0, 'パネルの箱で消した印は消える(chainSrc:\'\')', W[0]);
+
+ W.length=0;
+ const L7=head.concat(['<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(1m)×1 ⛓️⤴️ // eye -->']); const d7=mk('file:///w7.md',L7); const r7=X.meosClockFcScan(d7);
+ await X.meosClockFcSet(d7,'H_1',{ when:'', cycle:r7[0].cycle, rounds:r7[0].rounds, cycleSrc:r7[0].cycleSrc, up:false, dual:true, done:true },r7[0].line);
+ ok(W[0] && W[0].indexOf('(1m)×1✓ ⛓️⤴️ // eye')>0, '数字の無い鎖も書き直しで消えずに残る(直すのは人)', W[0]);
  })().then(()=>{
 
 console.log('⑮ ボタンを押した後、行頭に残ったカーソルを押す前の所へ戻す(v5.1.104)');

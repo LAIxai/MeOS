@@ -11472,10 +11472,17 @@ function meosParseCycleExpr(src, base) {
 //   ★書く形は1つ= `⛓️⤵️N` / `⛓️⤴️N)×M`(異体字セレクタ付き)。読むのは ⛓/⤵/⤴ の素の字も。
 // ★v5.1.96(俊克 10.20 am10:25 改良2「⛓️ボタンをクリックすると、⛓️‍💥になって、切れたことを示せばいい」): `⛓️‍💥` = 切れた鎖= 印は残るがつながない。
 const MEOS_CHAIN_RE = /\u26d3\ufe0f?(\u200d\ud83d\udca5)?[ \t]*([\u2934\u2935])\ufe0f?[ \t]*(\d{1,3})(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(\d{1,4}))?/u;
+const MEOS_CHAIN_BAD_RE = /\u26d3\ufe0f?(?:\u200d\ud83d\udca5)?(?:[ \t]*[\u2934\u2935]\ufe0f?)?(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*\d{1,4})?/u;   // v5.1.105: 数字の無い鎖(⛓️ だけ・⛓️⤴️ など)
 function meosChainTokenText(dir, n, reps, off) { return '\u26d3\ufe0f' + (off ? '\u200d\ud83d\udca5' : '') + (dir === 'up' ? '\u2934\ufe0f' : '\u2935\ufe0f') + n + ((dir === 'up' && reps) ? (')\u00d7' + reps) : ''); }
 function meosChainTokenSplit(text) {
   const s = String(text == null ? '' : text), m = MEOS_CHAIN_RE.exec(s);
-  if (!m) return { text: s, chainSrc: '', chainDir: '', chainN: 0, chainReps: 0, chainOff: false };
+  if (!m) {
+    // ★v5.1.105(俊克 10.20 pm06:19「1分タイマーの後、1つ上に連動しない」= `⛓️⤴️` に数字が無かった・pm06:26「⚠️で知らせるのがいい」):
+    //   数字の無い鎖は、黙って周期の字に混ぜていた(cycleSrc = `(1m)×1 ⛓️⤴️`)。→ 取り分けて本文にそのまま残し(書き直しでも運ぶ)、つながない。描く側が ⚠️ を出す。
+    const bad = MEOS_CHAIN_BAD_RE.exec(s);
+    if (bad) return { text: (s.slice(0, bad.index) + ' ' + s.slice(bad.index + bad[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: bad[0].trim(), chainDir: '', chainN: 0, chainReps: 0, chainOff: false, chainBad: true };
+    return { text: s, chainSrc: '', chainDir: '', chainN: 0, chainReps: 0, chainOff: false };
+  }
   const off = !!m[1], dir = (m[2] === '\u2934') ? 'up' : 'down', n = Math.max(1, parseInt(m[3], 10) || 1), reps = (dir === 'up' && m[4]) ? Math.max(1, parseInt(m[4], 10) || 1) : 0;
   return { text: (s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: meosChainTokenText(dir, n, reps, off), chainDir: dir, chainN: n, chainReps: reps, chainOff: off };
 }
@@ -11487,8 +11494,8 @@ function meosClockFcParse(text) {
   let body = String(m[2] || '').trim(), done = false;
   const _bodyAt = m.index + (m[2] ? m[0].indexOf(m[2]) : 0);   // v4.1.157: 行の中の位置(白く光る桁を数え直さない)
   // ★v5.1.94: 鎖の印は時計の中身に混ぜない(`)×3` を周期の回数と読ませない)。タイトルの後ろに書かれても拾う
-  let chainSrc = '', chainDir = '', chainN = 0, chainReps = 0, chainOff = false;
-  { const _ch = meosChainTokenSplit(body); if (_ch.chainSrc) { body = _ch.text; chainSrc = _ch.chainSrc; chainDir = _ch.chainDir; chainN = _ch.chainN; chainReps = _ch.chainReps; chainOff = _ch.chainOff; } }
+  let chainSrc = '', chainDir = '', chainN = 0, chainReps = 0, chainOff = false, chainBad = false;
+  { const _ch = meosChainTokenSplit(body); if (_ch.chainSrc) { body = _ch.text; chainSrc = _ch.chainSrc; chainDir = _ch.chainDir; chainN = _ch.chainN; chainReps = _ch.chainReps; chainOff = _ch.chainOff; chainBad = !!_ch.chainBad; } }
   // ★★★v4.2.91(俊克 2026.09.14 am09:38「従来のメッセージ機能を取り込んで、従来の分離したメッセージ機能は
   //   廃止した方が分かりやすいんじゃないかな?」 `<!-- Mew!UFC ⏰ ↺↻(5m)×2 // 目薬 1. 本目 -->`):
   //   ★★★**`//` から後ろは、その1本のタイトル**= 時計の中身には混ぜない(今までは「5分」の 5 が周期に入っていた)。
@@ -11692,7 +11699,7 @@ function meosClockFcParse(text) {
   //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
   //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
   //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
-  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, bellSrc, bellMainOn, bellMain, bellSubOn, bellSub, chainSrc, chainDir, chainN, chainReps, chainOff, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, bellSrc, bellMainOn, bellMain, bellSubOn, bellSub, chainSrc, chainDir, chainN, chainReps, chainOff, chainBad, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -11824,7 +11831,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, /* v5.1.94 / v5.1.96 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, chainBad: !!c.chainBad, /* v5.1.94 / v5.1.96 / v5.1.105 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -14757,7 +14764,12 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           // ★★v5.1.97(俊克 10.20 am10:36 改良2「⛓️の上で選択指にならない。クリックしても⛓️‍💥に切り替わらない」):
           //   真因= 本文の字のまま押させていた= 行の前の方の飾りで見た目と桁がずれ、押した所より2〜4桁左にカーソルが落ちた([clkClick] caretCh=28 at="1 ⛓️⤴️")。
           //   → 家の作り(🔔と同じ)= 本文の ⛓️ は隠し、その直後の桁に札(インレイヒント・全角空白で一定)を立てて絵を重ねる。押した判定は「カーソルの桁 == 札の桁」。
-          if (c.chainSrc && !_rawHere) {
+          if (c.chainBad && c.chainSrc && !_rawHere) {   // ★v5.1.105: 数字の無い鎖= 直す場所に ⚠️(つながっていない)
+            const _ba = txt.indexOf(c.chainSrc);
+            if (_ba >= 0) items.push({ range: new vscode.Range(i, _ba, i, _ba + c.chainSrc.length), hoverMessage: '⚠️ This ⛓️ has no number, so it links nothing. Write ⛓️⤵️2 (this line and the next) or ⛓️⤴️2 (go back 2 lines, counting this one).',
+              renderOptions: { after: { contentText: '⚠️', margin: '0 0 0 2px' } } });
+          }
+          if (c.chainSrc && !c.chainBad && !_rawHere) {
             const _cm96 = meosClockChainMarkAt(txt);
             if (_cm96) {
               badgeHide.push(new vscode.Range(i, _cm96.a, i, _cm96.b));
