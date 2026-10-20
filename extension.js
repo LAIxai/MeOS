@@ -12071,6 +12071,23 @@ function meosTimerDbText(eol) {
     '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->'];
   return { id, text: [t.open, 'Timer database — press ▶️ on a line to use it, or copy a line into another membrane. MeOS makes this membrane again if it is deleted.', t.close].join(eol) + eol + rows.join(eol) };
 }
+// ★v5.1.95: ⏰のデータベース膜が mMETA の手前(間は空行だけ)に居なければ、移す範囲を返す(居れば null)。
+//   塊= 開始膜〜閉じ膜〜直後の FC 群(バッジ・⏰の行)。to は後ろの空行まで(移した跡に空行を残さない)。
+function meosTimerDbMovePlan(doc, openLine) {
+  let mmLine = -1;
+  for (let i = doc.lineCount - 1; i >= 0; i--) { if (isHtocMetaOpenAt(doc, i)) { mmLine = i; break; } }
+  if (mmLine < 0 || openLine >= mmLine) return null;
+  let close = -1;
+  for (let i = openLine + 1; i < doc.lineCount && i < openLine + 400; i++) { try { const c = parseCloseLine(doc.lineAt(i).text || ''); if (c && meosIsTimerDbKey(c.id)) { close = i; break; } } catch (_) { } }
+  if (close < 0) return null;
+  let blockEnd = close + 1;
+  while (blockEnd < doc.lineCount && meosIsSpecLine(doc.lineAt(blockEnd).text || '')) blockEnd++;
+  let to = blockEnd;
+  while (to < doc.lineCount && !(doc.lineAt(to).text || '').trim()) to++;
+  if (to >= mmLine) return null;   // 間は空行だけ= もう手前に居る
+  let from = openLine;
+  return { from, blockEnd, to, mmLine };
+}
 async function meosOpenTimerDb() {
   try {
     let ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
@@ -12092,6 +12109,24 @@ async function meosOpenTimerDb() {
       else { const last = doc.lineCount - 1; pos = new vscode.Position(last, (doc.lineAt(last).text || '').length); await ed.edit(eb => eb.insert(pos, eol + eol + db.text + eol)); }
       meosDbg('[timerDb] 作った ' + db.id + ' mMETA行=' + (mmLine + 1));
       line = _dbLine();
+    }
+    // ★v5.1.95(俊克 10.20 am10:12 バグ1「なぜまだ、mMETAの手前に移動しないのか?」): 5.1.93 は「無ければ mMETA の手前に作る」だけで、
+    //   既に違う所に在る膜は動かさなかった(消せば作り直す、と言っただけ)。→ 押した時に mMETA の手前でなければ、膜ごと(⏰の行まで)そこへ移す。
+    //   走っている⏰も覚えは膜の名前で持っているので、行が動いても止まらない(行は走査のたびに読み直す)。
+    if (line >= 0) {
+      try {
+        const mv = meosTimerDbMovePlan(doc, line);
+        if (mv) {
+          const eol = _vaultEol(all);
+          const body = []; for (let i = mv.from; i < mv.blockEnd; i++) body.push(doc.lineAt(i).text);
+          const we = new vscode.WorkspaceEdit();
+          we.insert(doc.uri, new vscode.Position(mv.mmLine, 0), body.join(eol) + eol + eol);
+          we.delete(doc.uri, new vscode.Range(new vscode.Position(mv.from, 0), (mv.to < doc.lineCount) ? new vscode.Position(mv.to, 0) : doc.lineAt(doc.lineCount - 1).range.end));
+          const okMv = await vscode.workspace.applyEdit(we);
+          meosDbg('[timerDb] mMETA の手前へ移す ' + (mv.from + 1) + '〜' + mv.blockEnd + ' → mMETA行=' + (mv.mmLine + 1) + ' ok=' + okMv);
+          line = _dbLine();
+        }
+      } catch (e) { meosDbg('[timerDb] 移す err ' + (e && e.message)); }
     }
     if (line < 0) return;
     await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false });

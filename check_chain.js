@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -61,6 +61,17 @@ const d5=mk('file:///p.md',L5); const s5=[]; at=3;
 for(let k=0;k<6;k++){ s5.push(at-3); const n=X.meosChainNextRow(d5,'H_1',at,true); if(!n) break; at=n.line; }
 ok(JSON.stringify(s5)===JSON.stringify([0,1,0,1,0,1]), '★🍅→☕→🍅… と回り続ける', s5);
 
+
+console.log('⑦ ⏰のデータベース膜を mMETA の手前へ(v5.1.95)');
+{
+ const DB=['<!-- {* ▼mCN=⏰0y0d0h3m_20261020T082405JST // c *} -->','Timer database','<!-- {* ▲mCN=⏰0y0d0h3m_20261020T082405JST // c *} -->','<!-- Mew!FC mCN (📊⊕0+0D0W) -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes -->'];
+ const META=['<!-- {* ▼mCN=mMETA // MeOS metadata — do not edit (📊⊖f0+0D0W) *} -->','<!-- mHTOC1 x -->','<!-- {* ▲mCN=mMETA // end *} -->'];
+ const L7=['# t','本文に引用 ▼mCN=mMETA の字',''].concat(DB,['','続きの日記','']).concat(META);
+ const d7=mk('file:///m.md',L7); const mv=X.meosTimerDbMovePlan(d7,3);
+ ok(mv && mv.from===3 && mv.blockEnd===9 && mv.to===10 && mv.mmLine===12, '★途中に居る膜= 開始膜〜⏰の行(+後ろの空行)を本物の mMETA の前へ', mv);
+ const L8=['# t','続きの日記',''].concat(DB,['']).concat(META);
+ ok(X.meosTimerDbMovePlan(mk('file:///m2.md',L8),3)===null, '既に手前(間は空行だけ)なら動かさない', 0);
+}
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');
 (async()=>{
