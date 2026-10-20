@@ -11465,6 +11465,19 @@ function meosParseCycleExpr(src, base) {
   if (!outerTaken && outerRounds <= 0) { const n2 = readCount(); if (n2 > 0) outerRounds = n2; }
   return { steps, seps, rounds: (outerRounds > 0 ? outerRounds : null) };
 }
+// ★★★v5.1.94(俊克 10.20 am09:40〜09:45「タイマー連動の記法を明確化しよう」「⛓️⤵️2 = ここを含めて2つのタイマーが連動」
+//   「⛓️⤴️2)×3 = 2つ前に戻って、それを3回繰り返す」＋ 10.20「鎖の印を書いた行だけ連動にして。印の無い行は独立」):
+//   ★★数字はどちらも**自分を含めた本数**= 塊ごとコピーすれば壊れない(行番号ではない)。
+//   ★`⛓️⤴️N` だけ(`)×M` 無し)= 戻り続ける(輪)。⤵️ に `)×M` は付かない。
+//   ★書く形は1つ= `⛓️⤵️N` / `⛓️⤴️N)×M`(異体字セレクタ付き)。読むのは ⛓/⤵/⤴ の素の字も。
+const MEOS_CHAIN_RE = /\u26d3\ufe0f?[ \t]*([\u2934\u2935])\ufe0f?[ \t]*(\d{1,3})(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(\d{1,4}))?/u;
+function meosChainTokenText(dir, n, reps) { return '\u26d3\ufe0f' + (dir === 'up' ? '\u2934\ufe0f' : '\u2935\ufe0f') + n + ((dir === 'up' && reps) ? (')\u00d7' + reps) : ''); }
+function meosChainTokenSplit(text) {
+  const s = String(text == null ? '' : text), m = MEOS_CHAIN_RE.exec(s);
+  if (!m) return { text: s, chainSrc: '', chainDir: '', chainN: 0, chainReps: 0 };
+  const dir = (m[1] === '\u2934') ? 'up' : 'down', n = Math.max(1, parseInt(m[2], 10) || 1), reps = (dir === 'up' && m[3]) ? Math.max(1, parseInt(m[3], 10) || 1) : 0;
+  return { text: (s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: meosChainTokenText(dir, n, reps), chainDir: dir, chainN: n, chainReps: reps };
+}
 function meosClockFcParse(text) {
   const t = String(text == null ? '' : text);
   if (t.indexOf('\u23f0') < 0) return null;
@@ -11472,6 +11485,9 @@ function meosClockFcParse(text) {
   if (!m) return null;
   let body = String(m[2] || '').trim(), done = false;
   const _bodyAt = m.index + (m[2] ? m[0].indexOf(m[2]) : 0);   // v4.1.157: 行の中の位置(白く光る桁を数え直さない)
+  // ★v5.1.94: 鎖の印は時計の中身に混ぜない(`)×3` を周期の回数と読ませない)。タイトルの後ろに書かれても拾う
+  let chainSrc = '', chainDir = '', chainN = 0, chainReps = 0;
+  { const _ch = meosChainTokenSplit(body); if (_ch.chainSrc) { body = _ch.text; chainSrc = _ch.chainSrc; chainDir = _ch.chainDir; chainN = _ch.chainN; chainReps = _ch.chainReps; } }
   // ★★★v4.2.91(俊克 2026.09.14 am09:38「従来のメッセージ機能を取り込んで、従来の分離したメッセージ機能は
   //   廃止した方が分かりやすいんじゃないかな?」 `<!-- Mew!UFC ⏰ ↺↻(5m)×2 // 目薬 1. 本目 -->`):
   //   ★★★**`//` から後ろは、その1本のタイトル**= 時計の中身には混ぜない(今までは「5分」の 5 が周期に入っていた)。
@@ -11675,7 +11691,7 @@ function meosClockFcParse(text) {
   //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
   //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
   //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
-  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, bellSrc, bellMainOn, bellMain, bellSubOn, bellSub, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, bellSrc, bellMainOn, bellMain, bellSubOn, bellSub, chainSrc, chainDir, chainN, chainReps, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -11807,7 +11823,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, /* v5.1.94 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -12119,10 +12135,12 @@ async function meosClockCaretBeforeClose(key) {
 //   2行目から先は起点なし(前の⏰から受け継ぐ)で、同じ膜の⏰群の後ろへ足す。
 //   ★カーソルが⏰行の上= その膜の⏰群を**丸ごと置き換え**る(1行目は群の先頭行へ・余った行は消す・🔐は残す)。
 function meosPanelCycleOpts(rep, text) {
+  const _ch94 = meosChainTokenSplit(String(text == null ? '' : text));   // v5.1.94: 鎖の印は周期に混ぜない
+  if (_ch94.chainSrc) return Object.assign(meosPanelCycleOpts(rep, _ch94.text), { chainSrc: _ch94.chainSrc });
   const raw = String(text == null ? '' : text).trim();
   const ex = (rep && raw) ? meosParseCycleExpr(raw, 0) : null;
   return { cycle: (ex && ex.steps.length) ? ex.steps.map(e => e.tok) : (rep ? meosParseCycleInput(raw) : []),
-    cycleSrc: (ex && ex.steps.length) ? raw : '',
+    cycleSrc: (ex && ex.steps.length) ? raw : '', chainSrc: '',
     rounds: (ex && ex.rounds) ? ex.rounds : (rep ? meosParseRoundsInput(raw) : 0) };
 }
 async function meosClockSetMore(message, first) {
@@ -12140,7 +12158,7 @@ async function meosClockSetMore(message, first) {
     await sleep(250);
     for (let i = 0; i < more.length; i++) {
       const it = more[i] || {};
-      const want = String(it.cycle || '').replace(/^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u, '').trim();   // v4.2.477: 2行目から先の 🔔/🔕 は読まない(メインの行の指定が決める)
+      const want = meosChainTokenSplit(String(it.cycle || '')).text.replace(/^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u, '').trim();   // v4.2.477: 2行目から先の 🔔/🔕 は読まない(メインの行の指定が決める)
       for (let t = 0; t < 6; t++) {
         let at;
         if (replace) { const r = rows(); const k = r.findIndex(c => c.line === first.atLine); if (k >= 0 && r[k + 1 + i]) at = r[k + 1 + i].line; }
@@ -12547,6 +12565,14 @@ async function meosClockFcSet(doc, key, spec, atLine) {
         if (_bh && typeof _bh.line === 'number') { const _pc = meosClockFcParse(doc.lineAt(_bh.line).text); if (_pc && _pc.bellSrc) spec = Object.assign({}, spec, { bellSrc: _pc.bellSrc }); }
       }
     } catch (_) { }
+    // ★v5.1.94: 鎖の印も書き直しの度に運ぶ(🔔と同じ作法)。名指しの行の物だけ= 足す行に別の行の鎖を写さない
+    try {
+      if (spec && spec.chainSrc === undefined) {
+        let _chs = '';
+        if (typeof atLine === 'number') for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === atLine) { _chs = x.chainSrc || ''; break; }
+        spec = Object.assign({}, spec, { chainSrc: _chs });
+      }
+    } catch (_) { }
     // ★v4.2.312: ⚓(停泊)は書き直しの度に運ぶ= 呼ぶ側(15箇所)が知らなくても落ちない。明示された時だけ替える
     try {
       if (spec && spec.anchor === undefined) {
@@ -12589,7 +12615,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
         })()
         + ((spec.untilSrc && !spec.done) ? (' ' + String(spec.untilSrc).trim()) : '')   /* v4.2.347: 書き戻す前の ~日付 */
         + (spec.__og43 ? (' ' + spec.__og43) : '')   /* v4.2.477: 起点は周期の後ろ */
-        + (spec.done ? '\u2713' : '') + ((spec.title && String(spec.title).trim()) ? (' // ' + String(spec.title).trim()) : '') + ' -->')   /* v4.2.91: タイトル */
+        + (spec.done ? '\u2713' : '') + (spec.chainSrc ? (' ' + String(spec.chainSrc).trim()) : '')   /* v5.1.94: 鎖の印 */ + ((spec.title && String(spec.title).trim()) ? (' // ' + String(spec.title).trim()) : '') + ' -->')   /* v4.2.91: タイトル */
       : '';
     // ★★★v4.1.31: **同じ膜に⏰行that2本以上在り得る**= 拾う側は find(1本目だけ)so、消したつもりで残る。
     //   85,821行のような大きい膜では、閉じ膜の直後でない⏰行も「一番内側の膜」の持ち物として拾われる
@@ -12691,14 +12717,40 @@ let _meosChainBlink = null, _meosChainBlinkOn = false;   // ★v4.2.54: 待っ�
 //   ★渡す入口は2つ在る(鐘が鳴った時 / `×N` を終えた時)が、**決めるのはこの1か所**=
 //     今までは入口ごとに別々に渡していて、物差しが2本在った
 //     → [[feedback_one_source_for_mark_count_action]]
-function meosChainNextRow(doc, key, line) {
+// ★★★v5.1.94(俊克 10.20「鎖の印を書いた行だけ連動にして。印の無い行は独立」): 次の1本は**鎖の印だけ**が決める。
+//   今までは「同じ膜に2本以上 = 並びの順に輪」(暗黙)= 印の無い⏰のデータベースまで連動していた。
+//   `⛓️⤵️N` = 自分から下へ N 本(自分を含む)が順につながる / `⛓️⤴️N)×M` = 自分から上へ N 本(自分を含む)を M 回(M 無し= 戻り続ける)。
+//   ★consume= 本当に渡す時だけ ⤴️ の回数を進める(覗くだけの口は数えない)。回数は覚えの中(▶️ で押し直すと 1 回目から)。
+const _meosChainLoops = new Map();   // 'uri 膜 #並びの番号' → 今終えたのは何回目か
+const _meosChainGo = new Set();      // 'uri 膜 行' → ▶️ か鎖で渡された= 起点の無い行でも走ってよい(下の席の決まり)
+function meosChainLinks(rows) {
+  const nx = rows.map(() => -1), back = rows.map(() => null);
+  rows.forEach((r, i) => {
+    if (!r || !r.chainDir) return;
+    const n = Math.max(1, Number(r.chainN) || 1);
+    if (r.chainDir === 'down') { for (let k = i; k < Math.min(rows.length - 1, i + n - 1); k++) nx[k] = k + 1; }
+    else { const s0 = Math.max(0, i - (n - 1)); for (let k = s0; k < i; k++) nx[k] = k + 1; back[i] = { to: s0, reps: Number(r.chainReps) || 0 }; }
+  });
+  return { nx, back };
+}
+function meosChainResetLoops(doc, key) {
+  try { const pf = doc.uri.toString() + ' ' + key + ' #'; for (const k of Array.from(_meosChainLoops.keys())) if (k.indexOf(pf) === 0) _meosChainLoops.delete(k); } catch (_) { }
+}
+function meosChainNextRow(doc, key, line, consume) {
   try {
     const rows = meosClockFcScan(doc).filter(c => c.key === key);
-    if (rows.length < 2) return null;
+    if (rows.length < 1) return null;
     let i = rows.findIndex(c => c.line === line);
     if (i < 0) i = rows.findIndex(c => c.ufc && !c.done);
     if (i < 0) return null;
-    return rows[(i + 1) % rows.length] || null;
+    const L = meosChainLinks(rows), b = L.back[i];
+    if (b) {
+      const lk = doc.uri.toString() + ' ' + key + ' #' + i;
+      const n = _meosChainLoops.get(lk) || 1;
+      if (!b.reps || n < b.reps) { if (consume) _meosChainLoops.set(lk, n + 1); return rows[b.to] || null; }
+      if (consume) _meosChainLoops.delete(lk);
+    }
+    return (L.nx[i] >= 0) ? (rows[L.nx[i]] || null) : null;
   } catch (_) { return null; }
 }
 // 次の1本は「押すまで待て」と言っているか。言っていなければ、そのまま渡す。
@@ -12706,21 +12758,32 @@ function meosChainWantsClick(doc, key, line) {
   const nx = meosChainNextRow(doc, key, line);
   return !!(nx && nx.manual);
 }
-async function meosChainAdvance(doc, key) {
+async function meosChainAdvance(doc, key, fromLine) {
   try {
     const rows = meosClockFcScan(doc).filter(c => c.key === key);
-    if (rows.length < 2) return -1;
-    let cur = rows.findIndex(c => c.ufc && !c.done);
+    if (rows.length < 1) return -1;
+    let cur = -1;
+    // ★★★v5.1.94(俊克 10.20 am09:40 のスクショ= 3分の次に25分を飛ばして1時間が走った・MeOS Debug.log 09:19:15 で実測):
+    //   真因= 渡す口が2つ(armClock の「×N を終えた」と、鐘の timeUp の「無印 → そのまま次へ」)が同じ瞬間に両方渡し、2歩進んでいた。
+    //   → 渡す口は「どの行から渡すか」を名乗る。その行がもう走りでなければ(別の行が走っている)= 既に渡した後なので進めない。
+    if (typeof fromLine === 'number') {
+      const live = rows.find(c => c.ufc && !c.done);
+      if (live && live.line !== fromLine) { meosDbg('[chain] \u65e2\u306b\u6b21\u3078\u56de\u3063\u3066\u3044\u308b \u2192 \u9032\u3081\u306a\u3044 \u884c=' + (fromLine + 1) + ' \u819c=' + key); return -1; }
+      cur = rows.findIndex(c => c.line === fromLine);
+    }
+    if (cur < 0) cur = rows.findIndex(c => c.ufc && !c.done);
     if (cur < 0) cur = 0;
-    const next = (cur + 1) % rows.length;
-    if (next === cur) return -1;
+    const _nxRow = meosChainNextRow(doc, key, rows[cur].line, true);
+    const next = _nxRow ? rows.findIndex(c => c.line === _nxRow.line) : -1;
+    if (next < 0) return -1;
+    try { _meosChainGo.add(doc.uri.toString() + ' ' + key + ' ' + rows[next].line); } catch (_) { }
     const _put = async (c, wait) => {
       await meosClockFcSet(doc, c.key, {
         when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual,
         rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: (function () { const _sv = meosClockSplitV(c.whenSrc); return _sv ? _sv.pre : c.whenSrc; })(),   /* ★v4.2.77: 席が回って来た1本は、その瞬間が起点(残っていた v は使わない) */
         tags: c.tags, done: false, wait: !!wait }, c.line);
     };
-    await _put(rows[cur], true);                    // 今の1本= 待ちへ(FC・\u2713なし)
+    if (next !== cur) await _put(rows[cur], true);  // 今の1本= 待ちへ(FC・\u2713なし)(v5.1.94: ⛓️⤴️1 = 自分をもう一度)
     await _put(rows[next], false);                  // 次の1本= 走りへ(UFC)
     try { meosDbg('[chain] ' + (cur + 1) + '\u672c\u76ee \u2192 ' + (next + 1) + '\u672c\u76ee \u819c=' + key); } catch (_) { }
     try { const lk = doc.uri.toString() + ' ' + key; meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); } catch (_) { }   // ★v4.2.62: 席that回った= 起点も忘れる
@@ -12906,6 +12969,14 @@ function meosArmClockFcFor(doc) {
         //   「UFCが1本も無い膜は先頭が席を取る」(v4.2.50)で一番上の3分が席に座り、起点が無いので読めない= ⚠️ だった。
         //   → データベースの待ちの行は席を取らない= ▶️ を押した1本(UFC)だけが走る。
         if (!c.ufc && meosIsTimerDbKey(c.key)) continue;
+        // ★★v5.1.94(俊克「印の無い行は独立」): 起点の無い⏰は、▶️ か鎖で渡された時だけ走る。
+        //   ①待ち(FC)の行は席を取らない(全部待ちの膜で先頭が座り ⚠️ になった 5.1.93 の穴と同じ形)。起点のある待ちは今までどおり(目薬の 8h が戻る道)。
+        //   ②同じ膜に2本以上ある時、走った跡(v…)も渡された覚えも無い UFC は座らない= 上の1本が済んでも勝手に走り出さない。
+        if (!c.ufc && !meosClockHasOwnOrigin(c)) continue;
+        if (c.ufc && !c.off && !meosClockHasOwnOrigin(c) && !c.vAt && !(typeof c.vElapsed === 'number' && c.vElapsed >= 0)
+          && !_meosChainStart.has(uri + ' ' + c.key) && !_meosChainGo.has(uri + ' ' + c.key + ' ' + c.line)
+          && !_meosPseudoUntil.has(uri + ' ' + c.key)
+          && meosClockFcScan(doc).filter(x => x.key === c.key).length >= 2) continue;
         _liveTaken.add(c.key);
       }
       const lk = uri + ' ' + c.key;
@@ -12953,6 +13024,7 @@ function meosArmClockFcFor(doc) {
             || ((typeof c.vElapsed === 'number' && c.vElapsed >= 0) ? (Date.now() - c.vElapsed) : 0)
             || ((_sc53 && _sc53.armedAt) ? _sc53.armedAt : Date.now());
           _meosChainStart.set(lk, _base53);
+          try { _meosChainGo.delete(lk + ' ' + c.line); } catch (_) { }   // v5.1.94: 走り出した= 渡された覚えは要らない(v… が本文に残る)
           // ★★★v4.2.77: 仮想の起点を本文へ `v` 付きで書く。**値が変わった時だけ**(秒の単位で同じなら書かない)=
           //   書く → 文書が変わる → 走査 → 同じ値なので書かない、で輪が1回で止まる。
           if (!(c.vAt && Math.abs(c.vAt - _base53) < 1000)) {
@@ -12983,7 +13055,7 @@ function meosArmClockFcFor(doc) {
             let _chained50 = false;
             try {
               // v4.2.428: 起点を持つ行は独立= ×N を終えたら自分だけ ✓ で止まり、順番を回さない(下の「済み」へ落ちる)
-              if (!meosClockHasOwnOrigin(c) && meosClockFcScan(doc).filter(x => x.key === c.key).length >= 2) {
+              if (meosChainNextRow(doc, c.key, c.line, false)) {   // ★v5.1.94: 鎖の印がある行だけ(印の無い行は独立= 自分だけ ✓)
                 // ★★★v4.2.63: ここも同じ1つの決め手を通す(印that在れば押すまで待つ)。
                 if (meosChainWantsClick(doc, c.key, c.line)) {
                   const _nx63 = meosChainNextRow(doc, c.key, c.line);
@@ -12993,7 +13065,7 @@ function meosArmClockFcFor(doc) {
                   _chained50 = true;
                   meosDbg('[chain] \u00d7N \u3092\u7d42\u3048\u305f \u2192 \u62bc\u3059\u307e\u3067\u5f85\u3064 \u819c=' + c.key);
                 } else {
-                meosChainAdvance(doc, c.key); _chained50 = true;
+                meosChainAdvance(doc, c.key, c.line); _chained50 = true;   // v5.1.94: どの行から渡すかを名乗る(2つの口の二重渡しを止める)
                 meosDbg('[chain] \u00d7N \u3092\u7d42\u3048\u305f \u2192 \u6b21\u3078 \u819c=' + c.key + ' \u884c=' + (c.line + 1));
                 }
               }
@@ -16434,24 +16506,25 @@ async function meosPseudoTimeUp(key) {
   try {
     const _d50 = vscode.workspace.textDocuments.find(x => x.uri.toString() === scope.uri);
     if (_d50 && scope.key) {
-      const _rows50 = meosClockFcScan(_d50).filter(c => c.key === scope.key);
-      const _i50 = _rows50.findIndex(c => c.line === scope.line);
-      if (_rows50.length >= 2 && _i50 >= 0 && _i50 < _rows50.length - 1) {
+      // ★★v5.1.94: 次は鎖の印が決める(meosChainNextRow)。×N を持つ行は鐘の度ではなく**終えた時だけ**渡す
+      //   (armClock の「×N を終えた」口が渡す)= (25m 5m)×4 の1歩目の鐘で次へ行かない・2つの口の二重渡しも起きない。
+      const _fin94 = Array.isArray(scope.cycle) && scope.cycle.length && Number(scope.rounds) > 0;
+      const _nx54 = _fin94 ? null : meosChainNextRow(_d50, scope.key, scope.line, false);
+      if (_nx54) {
         // ★★v4.2.54(俊克 改良1「3分のあと、-click to start 1m timer と表示した方がいい」):
         //   ★★**次に何が始まるのかを、押す前に言う**= 長さは次の1本that既に持っているso、
         //     ここで数え直さない([[feedback_one_source_for_mark_count_action]])。
-        const _nx54 = _rows50[_i50 + 1];
         const _len54 = (_nx54 && Array.isArray(_nx54.cycle) && _nx54.cycle.length) ? _nx54.cycle.join('/') : '';
         // ★★★v4.2.63: 次の1本に `▶️` が無ければ、押させずにそのまま渡す。
         //   ★知らせ(「時間です」)は今までどおり出す= 鐘は鳴っている。**押す手間だけを外す**。
         if (!(_nx54 && _nx54.manual)) {
           _meosChainWait = null;
           try { meosDbg('[chain] \u7121\u5370 \u2192 \u305d\u306e\u307e\u307e\u6b21\u3078 \u819c=' + scope.key); } catch (_) { }
-          try { meosChainAdvance(_d50, scope.key); } catch (_) { }
+          try { meosChainAdvance(_d50, scope.key, scope.line); } catch (_) { }
           try { meosUpdateTimerBar(); } catch (_) { }
         } else {
           _meosChainWait = { uri: scope.uri, key: scope.key, line: scope.line, since: Date.now(), text: _say49 || scope.name || '', next: _len54 };
-          try { meosDbg('[chain] \u6b21\u3092\u5f85\u3064 ' + (_i50 + 1) + '/' + _rows50.length + ' \u819c=' + scope.key); } catch (_) { }
+          try { meosDbg('[chain] \u6b21\u3092\u5f85\u3064 \u884c=' + (scope.line + 1) + ' \u2192 ' + (_nx54.line + 1) + ' \u819c=' + scope.key); } catch (_) { }
           try { meosUpdateTimerBar(); } catch (_) { }
         }
       }
@@ -16784,7 +16857,12 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   if (scope.key && _cy0 && opts && opts.noOrigin) {   // ★v4.2.395: 起点を書かない⏰(席が回ってきた/Set した瞬間から数える= 連なりの2本目と同じ)
     _meosPseudoScopes.delete(lk);
     if (opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
-    await meosClockFcSet(scope.doc, scope.key, Object.assign((opts && opts.bellSrc) ? { bellSrc: opts.bellSrc } : {}, { when: '', hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, manual: _mn0 }, opts.listNo ? { whenSrc: opts.listNo } : {}, opts.title ? { title: opts.title } : {}), (typeof opts.atLine === 'number') ? opts.atLine : undefined);
+    await meosClockFcSet(scope.doc, scope.key, Object.assign((opts && opts.bellSrc) ? { bellSrc: opts.bellSrc } : {}, (opts && typeof opts.chainSrc === 'string') ? { chainSrc: opts.chainSrc } : {}, { when: '', hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, manual: _mn0 }, opts.listNo ? { whenSrc: opts.listNo } : {}, opts.title ? { title: opts.title } : {}), (typeof opts.atLine === 'number') ? opts.atLine : undefined);
+    try {   // ★v5.1.94: Set した起点なしの1本は走ってよい(席の決まり②で止めない)。名指しの行か、他に走っている行が無い時だけ
+      const _rs = meosClockFcScan(scope.doc).filter(x => x.key === scope.key);
+      const _me = (typeof opts.atLine === 'number') ? _rs.find(x => x.line === opts.atLine) : (_rs.some(x => x.ufc && !x.done && x !== _rs[_rs.length - 1]) ? null : _rs[_rs.length - 1]);
+      if (_me) { _meosChainGo.add(lk + ' ' + _me.line); meosChainResetLoops(scope.doc, scope.key); }
+    } catch (_) { }
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     return;
@@ -16800,7 +16878,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
     //   ★未来を指定した時は付けない= 掛かった瞬間に `f/…p` の対thatが書かれる(v4.2.28)。
     const _pMark = ((_up0 || _dl0) && _org && _org.getTime() <= Date.now()) ? (meosClockFcStamp(_org) + 'p') : '';
     const _lnPre = (opts && opts.listNo) ? (opts.listNo + ' ') : '';   // v4.2.396: read した連番を頭に
-    await meosClockFcSet(scope.doc, scope.key, Object.assign((opts && opts.bellSrc) ? { bellSrc: opts.bellSrc } : {}, { when: meosClockFcStamp(_org), hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _lnPre ? (_lnPre + (_pMark || meosClockFcStamp(_org))) : _pMark, manual: _mn0 }, (opts && opts.title) ? { title: opts.title } : {}), (opts && typeof opts.atLine === 'number') ? opts.atLine : undefined);   // v4.2.367   // ★v4.2.63: ▶️も運ぶ
+    await meosClockFcSet(scope.doc, scope.key, Object.assign((opts && opts.bellSrc) ? { bellSrc: opts.bellSrc } : {}, (opts && typeof opts.chainSrc === 'string') ? { chainSrc: opts.chainSrc } : {}, { when: meosClockFcStamp(_org), hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _lnPre ? (_lnPre + (_pMark || meosClockFcStamp(_org))) : _pMark, manual: _mn0 }, (opts && opts.title) ? { title: opts.title } : {}), (opts && typeof opts.atLine === 'number') ? opts.atLine : undefined);   // v4.2.367   // ★v4.2.63: ▶️も運ぶ
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + (_up0 ? '\u21bb' : '\u21ba') + _cy0.join('/')
@@ -22867,6 +22945,7 @@ async function meosChainStartHere(doc, key, line) {
     // ★v4.2.65: 押した1本は**休みも外す**= 押したのに `⏸` のまま、は嘘になる。
     if (me && (!me.ufc || me.off)) await _put(me, false);                                  // この1本を走りへ
     const lk = doc.uri.toString() + ' ' + key;
+    try { meosChainResetLoops(doc, key); _meosChainGo.add(lk + ' ' + line); } catch (_) { }   // v5.1.94: 押し直したら ⤴️ は1回目から/この行は走ってよい
     // ★★★v4.2.72: **休みから戻る時は、止まっていた分だけ仮想の起点を先へずらす**=
     //   止めた値から続く(俊克 改良2)。席that次へ回った時は今までどおり作り直す(輪の入口)。
     try {
@@ -32579,7 +32658,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'\ud83d\udd14GONG/\ud83d\udd15MEW ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 \u26d3\ufe0f\u2935\ufe0f2 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 \u26d3\ufe0f\u2934\ufe0f2 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h \u26d3\ufe0f\u2935\ufe0f2 // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 \u26d3\ufe0f\u2934\ufe0f2 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'\ud83d\udd14GONG/\ud83d\udd15MEW ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
 function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};var _w=b?b.parentNode:null;if(_w&&_w.classList){_w.classList.remove('s0','s1','s2');_w.classList.add('s'+(clkPresetSlot%3));}if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
 function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
 var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
@@ -35703,7 +35782,7 @@ function toggleMeDock(editorOverride) {
               if (/^(?:\d{1,3}[.)]\s*)?(v\S.*)?$/.test(w0)) return '';
               return w0;
             })(), noOrigin: (function () { const w0 = String(hit.whenSrc || hit.when || '').trim(); return /^(?:\d{1,3}[.)]\s*)?(v\S.*)?$/.test(w0); })(),
-            cycle: String(hit.cycleSrc || ((hit.cycle || []).join(' '))),
+            cycle: String(hit.cycleSrc || ((hit.cycle || []).join(' '))) + (hit.chainSrc ? (' ' + hit.chainSrc) : ''),   // v5.1.94: 鎖の印も箱へ(Set で書き戻る)
             rep: !!(hit.cycle && hit.cycle.length), lock: !!hit.lock, tags: hit.tags || [] };
           else if (!sc || !sc.key) _r.why = 'put the caret on a \u23f0 line or inside a membrane first';
         }
@@ -35757,6 +35836,7 @@ function toggleMeDock(editorOverride) {
       _meosClkPanelOpen = !!message.on; if (_meosClkPanelOpen) meosPostClkTarget(); return;
     }
     if (message && message.type === 'clkLastAsk') {   // v4.2.365: ⏰パネルの ×N → 最終日(ホイール)
+      try { if (message.cycle) message.cycle = meosChainTokenSplit(String(message.cycle)).text; } catch (_) { }   // v5.1.94: 鎖の印は周期ではない
       try { meDockPanel.webview.postMessage(Object.assign({ type: 'clkLast', seq: message.seq }, meosClockLastAnswer(message))); } catch (_) { }
       return;
     }
@@ -35851,6 +35931,10 @@ function toggleMeDock(editorOverride) {
       //   打った字は `cycleSrc` としてそのまま本文へ書く(展開した17歩を書かない)。
       let _bell43 = '';   // ★v4.2.477: 箱の行頭の 🔔主/🔕副 = 頭の鐘の指定(周期には混ぜない)
       try { const _bm43 = /^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u.exec(String(message.cycle || '')); if (_bm43) { _bell43 = _bm43[1].trim(); message.cycle = String(message.cycle).slice(_bm43[0].length); } } catch (_) { }
+      // ★v5.1.94: 箱の行の鎖の印(⛓️⤵️N / ⛓️⤴️N)×M)は周期に混ぜず、行の印として書く(タイトル側に書かれても拾う)
+      let _chain94 = '';
+      try { const _c1 = meosChainTokenSplit(String(message.cycle || '')); if (_c1.chainSrc) { _chain94 = _c1.chainSrc; message.cycle = _c1.text; }
+        const _c2 = meosChainTokenSplit(String(message.title || '')); if (_c2.chainSrc) { _chain94 = _chain94 || _c2.chainSrc; message.title = _c2.text; } } catch (_) { }
       const _cyRaw = (message.cycle == null) ? '' : String(message.cycle).trim();
       const _cyEx = (_rep && _cyRaw) ? meosParseCycleExpr(_cyRaw, 0) : null;
       const _opts = { hasCycle: true,
@@ -35859,6 +35943,7 @@ function toggleMeDock(editorOverride) {
         up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,   // v4.1.142: 面は常に \u21ba\u21bb
         rounds: (_cyEx && _cyEx.rounds) ? _cyEx.rounds : (_rep ? meosParseRoundsInput(message.cycle) : 0),
         ...(_bell43 ? { bellSrc: meosBellNumbersToNames(_bell43) } : {}),   // v4.2.477
+        chainSrc: _chain94,   // v5.1.94: 箱に無ければ消す(read で箱に入るので、消したのは人の意思)
         title: meosBellNumbersToNames(String(message.title || '')), listNo: String(message.listNo || ''),   // v4.2.396: read した行のタイトルと連番 / v4.2.438: 🔔番号→名前
         tags: (message.tags != null) ? meosParseTagInput(message.tags) : null,
         // ★★v4.2.390(俊克「ある膜で⏰FCをreadで読込み、別の膜に行って、そこの⏰FCに上書きしたり、追加したりできるので、文字カーソルの位置で制御するのがいい」):
@@ -35974,9 +36059,13 @@ function toggleMeDock(editorOverride) {
     if (message && (message.type === 'clockPresetsAsk' || message.type === 'clockPresetSlot' || message.type === 'clockPresetSave')) {
       try {
         // v4.2.410(俊克): 既定= ①ポモドーロ(×Nでトマトを数える・海外向け)/②目薬の2行(⚓)/③24h×10(毎日忘れない)。覚えの名を改めて新しい既定から始める
-        const def = [{ cyc: '(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\n(10m)\u00d71 // \u2615Break', anchor: false, noOrigin: true },   // v4.2.427(俊克「3プリセットの1つを従属連動の例に。🍅で10分の休みを入れて繰り返す」)= 起点なしの受け渡し
-                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '\ud83d\udd14GONG/\ud83d\udd15MEW ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.', anchor: false }   /* v4.2.432(俊克「HIITのプリセットに個別メッセージ・ボクサーの1時間練習に」)= 3分×5ラウンドを3セット= 60分 */];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
+        const def = [{ cyc: '(25m 5m)\u00d74 \u26d3\ufe0f\u2935\ufe0f2 // \ud83c\udf45Pomodoro 1.\n(10m)\u00d71 \u26d3\ufe0f\u2934\ufe0f2 // \u2615Break', anchor: false, noOrigin: true },   // v4.2.427(俊克「3プリセットの1つを従属連動の例に。🍅で10分の休みを入れて繰り返す」)= 起点なしの受け渡し
+                   { cyc: '8h \u26d3\ufe0f\u2935\ufe0f2 // \ud83d\udca7Time for eye drops\n(5m)\u00d72 \u26d3\ufe0f\u2934\ufe0f2 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '\ud83d\udd14GONG/\ud83d\udd15MEW ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.', anchor: false }   /* v4.2.432(俊克「HIITのプリセットに個別メッセージ・ボクサーの1時間練習に」)= 3分×5ラウンドを3セット= 60分 */];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
         let list = extensionContext.globalState.get('meosClockPresets15', null); if (!Array.isArray(list) || list.length !== 3) list = def;
+        // ★v5.1.94(俊克「プリセットのポモドーロ等は印付きに書き換えて」): 覚えに古い既定がそのまま残っていれば、印付きの既定に替える(自分で直した物は触らない)
+        try { const _old94 = ['(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\n(10m)\u00d71 // \u2615Break', '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.'];
+          const _mig = list.map((x, i) => (x && _old94.indexOf(String(x.cyc || '')) >= 0 && def[i]) ? def[i] : x);
+          if (_mig.some((x, i) => x !== list[i])) { list = _mig; await extensionContext.globalState.update('meosClockPresets15', list); meosDbg('[preset] v5.1.94 鎖の印付きの既定へ'); } } catch (_) { }
         let slot = 0;   // v4.2.412(俊克「最初に表示するのは、トマトだよ」): 開くたびに①から
         if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); }
         if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor, noOrigin: !!message.noOrigin, anchors: Array.isArray(message.anchors) ? message.anchors.map(Boolean) : undefined }; await extensionContext.globalState.update('meosClockPresets15', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }

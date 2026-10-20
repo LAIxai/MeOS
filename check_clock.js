@@ -2333,7 +2333,7 @@ console.log('㊵ ⏰のタイトル(v4.2.91 俊克「メッセージ機能を取
     '  タイトルが無ければ空= 今までどおり膜の名前を出す', true);
  ok(/const name = _say49 \|\| scope\.name \|\| 'this file';/.test(S49),
     '★★言葉が在れば名前でなく言葉を出す(書かない人には何も変わらない)', true);
- ok(/\(spec\.done \? '\\u2713' : ''\) \+ \(\(spec\.title && String\(spec\.title\)\.trim\(\)\) \? \(' \/\/ ' \+ String\(spec\.title\)\.trim\(\)\) : ''\)/.test(S49)
+ ok(/\(spec\.done \? '\\u2713' : ''\) \+ \(spec\.chainSrc \? \(' ' \+ String\(spec\.chainSrc\)\.trim\(\)\) : ''\)   \/\* v5\.1\.94: 鎖の印 \*\/ \+ \(\(spec\.title && String\(spec\.title\)\.trim\(\)\) \? \(' \/\/ ' \+ String\(spec\.title\)\.trim\(\)\) : ''\)/.test(S49)
     && /if \(spec && spec\.title === undefined && typeof atLine === 'number'\)/.test(S49),
     '★★書き戻す口はタイトルを運ばなくても残る(名指しの行から引く)', true);
 }
@@ -2343,14 +2343,14 @@ console.log('㊶ 連なりの輪(俊克 pm06:43 の設計 ＋ pm07:17「最下�
  ok(/\(\(spec\.done \|\| spec\.wait\) \? 'FC' : 'UFC'\)/.test(S50) && /\(spec\.done \? '\\u2713' : ''\)/.test(S50),
     '★★★「待っている」を書ける(FC＋✓なし)= 名前と印を別々に決める', true);
  const AD=FN(S50,'async function meosChainAdvance');
- ok(/const next = \(cur \+ 1\) % rows\.length;/.test(AD),
-    '★★★次が無ければ先頭へ戻る= これが輪', true);
+ ok(/const _nxRow = meosChainNextRow\(doc, key, rows\[cur\]\.line, true\);/.test(AD),
+    '★★★v5.1.94: 次は鎖の印が決める(輪は ⛓️⤴️N で書く= check_chain.js)', true);
  ok(/await _put\(rows\[cur\], true\);[\s\S]{0,200}?await _put\(rows\[next\], false\);/.test(AD),
     '★★今の1本を待ちへ、次の1本を走りへ(名前を付け替えるだけ)', true);
  ok(/done: false, wait: !!wait \}/.test(AD),
     '★★★済みにしない= 次の周でまた走るので ✓ は付けない', true);
- ok(/if \(rows\.length < 2\) return -1;/.test(AD),
-    '  1本しか無い膜では何も起きない(一度きりの時計の姿は変えない)', true);
+ ok(/if \(next < 0\) return -1;/.test(AD) && /if \(live && live\.line !== fromLine\)/.test(AD),
+    '  v5.1.94: 鎖の印が無ければ何も起きない/既に渡した後なら進めない(2つの口の二重渡し)', true);
  const BAR=FN(S50,'function meosUpdateTimerBar');
  ok(/if \(_meosChainWait\) \{/.test(BAR) && /'lai-membrane\.chainNext'/.test(BAR),
     '★★★最下段の4つ目の姿= ⏰ ringing / ↩ Back と同じ列・同じ作り', true);
@@ -2367,11 +2367,11 @@ console.log('㊶ 連なりの輪(俊克 pm06:43 の設計 ＋ pm07:17「最下�
  ok(/if \(!_meosChainWait && _meosChainBlink\)/.test(BAR),
     '  押されたら点滅も終わる(拍を置き去りにしない)', true);
  const UP=FN(S50,'async function meosPseudoTimeUp');
- ok(/_i50 >= 0 && _i50 < _rows50\.length - 1/.test(UP),
-    '★★待つのは次が在る時だけ= 最後の1本は自分で先頭へ戻る', true);
+ ok(/const _nx54 = _fin94 \? null : meosChainNextRow\(_d50, scope\.key, scope\.line, false\);/.test(UP),
+    '★★v5.1.94: 鐘の口は次が在る時だけ・×N を持つ行は終えた時だけ(armClock の口)', true);
  const ARM=FN(S50,'function meosArmClockFcFor');
- ok(/meosChainAdvance\(doc, c\.key\); _chained50 = true;/.test(ARM),
-    '★★★×N を終えたら、済みにせず次へ回す(連なりの中だけ)', true);
+ ok(/meosChainAdvance\(doc, c\.key, c\.line\); _chained50 = true;/.test(ARM) && /if \(meosChainNextRow\(doc, c\.key, c\.line, false\)\)/.test(ARM),
+    '★★★×N を終えたら、鎖の印がある時だけ次へ回す(v5.1.94)', true);
  ok(/if \(!_chained50 && c\.ufc\)/.test(ARM),
     '  1本だけの膜は今までどおり済み(✓)になる', true);
 }
