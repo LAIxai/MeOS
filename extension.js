@@ -22385,11 +22385,34 @@ function membraneArrowToggleHitInfo(editor) {
 //   実測= 開く(unfold)はカーソルを元の桁へ戻す → 次のクリックが無音。畳む(fold)は0桁へ退避する
 //   (v0.9.905)ので次が届く＝ **押せたり押せなかったりの差は、開いたか畳んだかだった**。
 //   ★直し＝ 押し終わったら、畳む時と同じ所(その行の0桁)へカーソルを置く。家の中の同じ役の手に揃える。
+// ★★v5.1.104(俊克 10.20 pm00:30 バグ1/2 の元・pm00:47「(リリース前の)今でしょ」): 行頭(桁0)は隠した字(`<!-- Mew!FC`)の前= そこに残ったカーソルへ打った字は
+//   見えないまま本文を壊した(12:33:19 の打鍵で `9<!-- Mew!FC …`)。→ 押してから 1.2 秒(札が「…」に化ける 0.8 秒の後)経ってもカーソルが
+//   その行頭に居たら、押す前に居た所(別の行の時だけ)へ戻す= ボタンを押してもカーソルは動かない(Me Dock のボタンと同じ感覚)。
+//   ★押す前の所は選択の見張りが控える(_meosPrevCaretPos)。同じ行の2度目の呼び出しでは控えを取り直さない(1度目の後の選択の変化で上書きされるため)。
+let _meosPrevCaretPos = null, _meosParkBack = null;
 function meosParkCaretAfterPress(editor, line) {
   try {
     const a = editor && editor.selection ? editor.selection.active : null;
-    if (!a || a.line !== line || a.character === 0) return;
-    editor.selection = new vscode.Selection(line, 0, line, 0);
+    if (a && a.line === line && a.character !== 0) editor.selection = new vscode.Selection(line, 0, line, 0);
+    if (!editor) return;
+    if (!_meosParkBack || _meosParkBack.line !== line || _meosParkBack.editor !== editor) {
+      if (_meosParkBack && _meosParkBack.timer) clearTimeout(_meosParkBack.timer);
+      const pv = _meosPrevCaretPos;
+      _meosParkBack = { editor, line, back: (pv && pv.line !== line) ? { line: pv.line, character: pv.character } : null, timer: null };
+    }
+    const r = _meosParkBack;
+    if (r.timer) clearTimeout(r.timer);
+    r.timer = setTimeout(() => {
+      if (_meosParkBack === r) _meosParkBack = null;
+      try {
+        const s0 = editor.selection;
+        if (!r.back || !s0 || !s0.isEmpty || s0.active.line !== line || s0.active.character !== 0) return;
+        const doc = editor.document; if (!doc || r.back.line >= doc.lineCount) return;
+        const ch = Math.min(r.back.character, (doc.lineAt(r.back.line).text || '').length);
+        editor.selection = new vscode.Selection(r.back.line, ch, r.back.line, ch);
+        meosDbg('[park] 行頭に残ったカーソルを押す前の所へ戻す 行=' + (line + 1) + ' → ' + (r.back.line + 1) + ':' + ch);
+      } catch (_) { }
+    }, 1200);
   } catch (_) { }
 }
 let _meosArrowToggling = false;   // ★v4.2.76: トグルの最中に届いた2度目は、畳み/開きが食い違うので受けない
@@ -44437,6 +44460,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       const _prevKey = caretKeyForEditor(e.textEditor);
       const _prevCaret = lastCaretByEditorKey.get(_prevKey);
       prevLineBeforeSelectionChange = _prevCaret ? _prevCaret.line : -1;
+      _meosPrevCaretPos = _prevCaret ? { line: _prevCaret.line, character: _prevCaret.character } : null;   // v5.1.104: 桁も(ボタンの後に戻す先)
       // Cursor-snap over hidden ranges must stay immediate so arrow-key navigation
       // moves naturally through decoration-hidden source bytes.
       if (maybeSkipHiddenPrefixOnKeyboard(e.textEditor, e.kind)) { refresh(e.textEditor); return; }

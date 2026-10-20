@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -165,5 +165,27 @@ console.log('⑥ 書き直しても鎖の印は残る(書く口)');
  W.length=0;
  await X.meosClockFcSet(d6,'H_1',{ when:'', cycle:r6[1].cycle, rounds:1, cycleSrc:'(10s)×1', up:false, dual:true, done:false, chainSrc:'' },r6[1].line);
  ok(W[0] && W[0].indexOf('⛓')<0, 'パネルの箱で消した印は消える(chainSrc:\'\')', W[0]);
+ })().then(()=>{
+
+console.log('⑮ ボタンを押した後、行頭に残ったカーソルを押す前の所へ戻す(v5.1.104)');
+(async()=>{
+ const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+ stub.Selection=class{constructor(a,b,c,d){if(typeof a==='number'){this.anchor={line:a,character:b};this.active={line:c,character:d};}else{this.anchor=a;this.active=b;}this.isEmpty=(this.anchor.line===this.active.line&&this.anchor.character===this.active.character);}};
+ const lines=['a','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // w -->','日記の本文です'];
+ const mkEd=()=>{const ed={document:mk('file:///p1.md',lines),selection:new stub.Selection(1,32,1,32)};return ed;};
+ const e1=mkEd(); X.__setPrev({line:2,character:3});
+ X.meosParkCaretAfterPress(e1,1);
+ ok(e1.selection.active.line===1 && e1.selection.active.character===0, '押した直後は行頭(札が「…」に化けない)', e1.selection.active);
+ X.meosParkCaretAfterPress(e1,1); X.__setPrev({line:1,character:32});   // 2度目の呼び出し・その後の選択の変化で控えが上書きされても
+ await sleep(1300);
+ ok(e1.selection.active.line===2 && e1.selection.active.character===3, '★1.2秒後、押す前の所(2:3)へ戻る= 隠れた行頭に打鍵が入らない', e1.selection.active);
+ const e2=mkEd(); X.__setPrev({line:2,character:3});
+ X.meosParkCaretAfterPress(e2,1); e2.selection=new stub.Selection(0,1,0,1);
+ await sleep(1300);
+ ok(e2.selection.active.line===0, 'その間に人がカーソルを動かしたら戻さない', e2.selection.active);
+ const e3=mkEd(); X.__setPrev({line:1,character:5});
+ X.meosParkCaretAfterPress(e3,1); await sleep(1300);
+ ok(e3.selection.active.line===1 && e3.selection.active.character===0, '押す前も同じ行に居た時は今までどおり行頭', e3.selection.active);
  console.log(ng?('NG '+ng):'ALL PASS'); process.exit(ng?1:0);
 })();
+});
