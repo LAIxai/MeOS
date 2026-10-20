@@ -14448,7 +14448,7 @@ function meosClockLineHints(editor, doc, i) {
       }
     }
     if (c.ufc) { const nk = meosClockNudgeSpot(txt, c); if (nk >= 0 && bh && bh.end === nk) out.push({ col: nk, label: '\u22121s' }, { col: nk + 1, label: '+1s' }); }
-    { const cm = c.chainSrc ? meosClockChainMarkAt(txt) : null; if (cm) out.push({ col: cm.b, label: '\u3000' }); }   // v5.1.97: ⛓️ の札(描く側の _hintBtn と同じ桁・同じ字)
+    { const cm = c.chainSrc ? meosClockChainMarkAt(txt) : null; if (cm) out.push({ col: cm.b, label: '\u00a0\u00a0\u00a0' }); }   // v5.1.97: ⛓️ の札(描く側の _hintBtn と同じ桁・同じ字)/ v5.1.102: 3ch
   } catch (_) { }
   return out;
 }
@@ -14758,7 +14758,14 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
             const _cm96 = meosClockChainMarkAt(txt);
             if (_cm96) {
               badgeHide.push(new vscode.Range(i, _cm96.a, i, _cm96.b));
-              _hintBtn(i, _cm96.b, '\u3000', { content: _cm96.off ? '\u26d3\ufe0f\u200d\ud83d\udca5' : '\u26d3\ufe0f' });
+              // ★v5.1.102(俊克 10.20 pm00:14 改良1「⛓️、⛓️‍💥が見えにくいので、色付き角丸四角の上に重ねたボタンにしようよ」):
+              //   札は半角空白3字(3ch・状態によらず一定)。絵は [−1s] と同じ作り= 字と同じ並び(基準線揃え)に置き、幅は左右の余白で打ち消す。
+              //   寸法は em で書く(箱の書体を絵文字にすると ch がその書体の「0」の幅になり広がる= 台 MeOS/tmp/_devcheck/chainbtn.html で測った)。
+              //   3ch = 1.806em(Menlo 0.602)/ 箱 1.6em(左右に約0.1em の隙間)。⛓️=緑 / ⛓️‍💥=赤。絵文字の書体を名指し(素の ⛓ は白黒の字で見えにくかった)
+              _hintBtn(i, _cm96.b, '\u00a0\u00a0\u00a0');
+              items.push({ range: new vscode.Range(i, _cm96.b, i, _cm96.b), renderOptions: { before: { contentText: _cm96.off ? '\u26d3\ufe0f\u200d\ud83d\udca5' : '\u26d3\ufe0f',
+                textDecoration: 'none; position: relative; pointer-events: none; z-index: 1; display: inline-block; box-sizing: border-box; width: 1.6em; margin-left: -1.806em; margin-right: 0.206em; text-align: center; line-height: 1.2; border-radius: 5px; font-family: "Apple Color Emoji"; font-size: 0.9em; '
+                  + (_cm96.off ? 'background-color: #fde4e1; border: 1px solid #d9534f;' : 'background-color: #e3f4e8; border: 1px solid #3fa85c;') } } });
               items.push({ range: new vscode.Range(i, _cm96.b, i, Math.min(txt.length, _cm96.b + 2)), hoverMessage: _cm96.off ? 'Click ⛓️‍💥 to link it again' : 'Click ⛓️ to cut it (⛓️‍💥)' });
             }
           }
