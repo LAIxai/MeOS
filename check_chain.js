@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -100,6 +100,15 @@ console.log('⑨ ⏰のデータベースに連動の例');
  const d11=mk('file:///x11.md',L11); X.meosChainResetLoops(d11,'H_1'); const s11=[]; let a11=4;
  for(let k=0;k<20;k++){ s11.push(a11-3); const n=X.meosChainNextRow(d11,'H_1',a11,true); if(!n) break; a11=n.line; }
  ok(s11.length===16 && s11[15]===2 && X.meosChainNextRow(d11,'H_1',3,false)===null, '★Tabata は work/rest を8回で止まり、上の3分とはつながらない', s11);
+}
+
+console.log('⑩ データベース膜の行から膜の名前を引く(v5.1.98 コメントを添える判定)');
+{
+ const DBH=['<!-- {* ▼mCN=⏰0y0d0h3m_20261020T082405JST // c *} -->','x','<!-- {* ▲mCN=⏰0y0d0h3m_20261020T082405JST // c *} -->'];
+ const d12=mk('file:///x12.md',DBH.concat(X.MEOS_TIMER_DB_CHAIN_EX));
+ const row=X.meosClockAtLine(d12,null,3);
+ ok(row && X.meosIsTimerDbKey(row.key) && row.title==='💪Tabata work', '★行→膜の名前→データベース膜と分かる・タイトルも在る', row&&[row.key,row.title]);
+ ok(!X.meosIsTimerDbKey(X.meosClockFcParse(X.MEOS_TIMER_DB_CHAIN_EX[0]).key), '(5.1.97 の穴) 行を読んだだけの物は key を持たない', 0);
 }
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');

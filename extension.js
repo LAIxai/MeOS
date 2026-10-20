@@ -14753,7 +14753,9 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           }
           // ★v5.1.97(俊克 改良1「💪Tabata work などのコメント文が見えると分かり易い」): ⏰のデータベースは選ぶための膜= 待っている行にもコメントを薄く添える
           //   (ふつうの膜は v4.2.173 のまま= 走っている1本だけ)。本文は1字も足さない(飾りだけ)。
-          if (!_rawHere && c.title && meosIsTimerDbKey(c.key) && !(c.ufc && !c.done)) {
+          // ★v5.1.98(俊克 10.20 am10:51 バグ1「まだコメント文が見えない。なぜ?」): 真因= ここの c は行の字を読んだだけ(meosClockFcParse)で膜の名前(key)を持たない
+          //   → meosIsTimerDbKey(undefined) が毎回「違う」。膜は拾い読みの控え(meosClockAtLine)から引く。
+          if (!_rawHere && c.title && !(c.ufc && !c.done) && meosIsTimerDbKey(((meosClockAtLine(doc, null, i) || {}).key) || '')) {
             const _ti97 = txt.indexOf('//', Math.max(0, txt.search(/[\u21ba\u21bb]/)));
             let _k97 = _ti97; while (_k97 > 0 && /\s/.test(txt.charAt(_k97 - 1))) _k97--;
             if (_ti97 > 0 && _k97 > 0) items.push({ range: new vscode.Range(i, _k97 - 1, i, _k97), renderOptions: { after: { contentText: '\u00a0\u00a0' + c.title, color: '#8b949e', fontStyle: 'italic' } } });
