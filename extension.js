@@ -12086,7 +12086,10 @@ function meosClockChainMarkAt(txt) {
   return { a, b: a + (g ? g[0].length : 1), off: !!m[1] };
 }
 function meosClockChainHitAt(document, line, character) {
-  try { const mk = meosClockChainMarkAt(document.lineAt(line).text || ''); return (mk && character === mk.b) ? Object.assign({ line }, mk) : null; } catch (_) { return null; }   // v5.1.97: 札の桁(絵の直後)だけ
+  // ★v5.1.100(俊克 10.20 am11:13 バグ1「選択指にはなるが、クリックすると Raw 表示になり ⛓️‍💥 に切り替わらない」・[clkClick] caretCh=31 at="️⤵️2 /"):
+  //   真因= ⛓️ は ⛓ + FE0F の2字で、2字とも隠している= 桁 a+1(2字の間)と札の桁 b は画面の上で同じ所。VS Code はカーソルを a+1 に置いた。
+  //   → 隠した字の中の桁(a+1〜b)はどれも札と同じ所= 全部当たり。a(隠す範囲の左端)は前の字の右半分と同じ所なので入れない。
+  try { const mk = meosClockChainMarkAt(document.lineAt(line).text || ''); return (mk && character > mk.a && character <= mk.b) ? Object.assign({ line }, mk) : null; } catch (_) { return null; }
 }
 async function meosClockChainToggle(document, hit) {
   try {

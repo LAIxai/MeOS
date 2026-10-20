@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -118,6 +118,16 @@ console.log('⑪ 見えない [−1s] を押さない(v5.1.99)');
  ok(X.meosClockNudgeHitAt(mk('file:///n1.md',[tW]),0,k)===null, '★待ちの行(FC)の ↺ の手前を押しても起点は動かない(ボタンは描かれていない)', k);
  const h=X.meosClockNudgeHitAt(mk('file:///n2.md',[tU]),0,tU.indexOf('↺')-1);
  ok(h && h.dir===-1, '走っている行(UFC)では今までどおり [−1s]', h);
+}
+
+console.log('⑫ ⛓️ を押した桁(v5.1.100)');
+{
+ const t='<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // 💪Tabata work -->', d=mk('file:///c1.md',[t]), a=t.indexOf('⛓');
+ ok(a===30 && !!X.meosClockChainHitAt(d,0,31), '★実機の桁 31(⛓ と FE0F の間)= 当たり', a);
+ ok(!!X.meosClockChainHitAt(d,0,32), '札の桁 32 も当たり', 0);
+ ok(!X.meosClockChainHitAt(d,0,30) && !X.meosClockChainHitAt(d,0,33), '隠す範囲の左端 30 と ⤵️ の中 33 は外れ', 0);
+ const t2=t.replace('⛓️','⛓️‍💥'), d2=mk('file:///c2.md',[t2]);
+ ok([31,32,33,35].every(k=>!!X.meosClockChainHitAt(d2,0,k)) && !X.meosClockChainHitAt(d2,0,36), '⛓️‍💥 の時は隠した5字の中が全部当たり', 0);
 }
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');
