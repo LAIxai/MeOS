@@ -11470,13 +11470,14 @@ function meosParseCycleExpr(src, base) {
 //   ★★数字はどちらも**自分を含めた本数**= 塊ごとコピーすれば壊れない(行番号ではない)。
 //   ★`⛓️⤴️N` だけ(`)×M` 無し)= 戻り続ける(輪)。⤵️ に `)×M` は付かない。
 //   ★書く形は1つ= `⛓️⤵️N` / `⛓️⤴️N)×M`(異体字セレクタ付き)。読むのは ⛓/⤵/⤴ の素の字も。
-const MEOS_CHAIN_RE = /\u26d3\ufe0f?[ \t]*([\u2934\u2935])\ufe0f?[ \t]*(\d{1,3})(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(\d{1,4}))?/u;
-function meosChainTokenText(dir, n, reps) { return '\u26d3\ufe0f' + (dir === 'up' ? '\u2934\ufe0f' : '\u2935\ufe0f') + n + ((dir === 'up' && reps) ? (')\u00d7' + reps) : ''); }
+// ★v5.1.96(俊克 10.20 am10:25 改良2「⛓️ボタンをクリックすると、⛓️‍💥になって、切れたことを示せばいい」): `⛓️‍💥` = 切れた鎖= 印は残るがつながない。
+const MEOS_CHAIN_RE = /\u26d3\ufe0f?(\u200d\ud83d\udca5)?[ \t]*([\u2934\u2935])\ufe0f?[ \t]*(\d{1,3})(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(\d{1,4}))?/u;
+function meosChainTokenText(dir, n, reps, off) { return '\u26d3\ufe0f' + (off ? '\u200d\ud83d\udca5' : '') + (dir === 'up' ? '\u2934\ufe0f' : '\u2935\ufe0f') + n + ((dir === 'up' && reps) ? (')\u00d7' + reps) : ''); }
 function meosChainTokenSplit(text) {
   const s = String(text == null ? '' : text), m = MEOS_CHAIN_RE.exec(s);
-  if (!m) return { text: s, chainSrc: '', chainDir: '', chainN: 0, chainReps: 0 };
-  const dir = (m[1] === '\u2934') ? 'up' : 'down', n = Math.max(1, parseInt(m[2], 10) || 1), reps = (dir === 'up' && m[3]) ? Math.max(1, parseInt(m[3], 10) || 1) : 0;
-  return { text: (s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: meosChainTokenText(dir, n, reps), chainDir: dir, chainN: n, chainReps: reps };
+  if (!m) return { text: s, chainSrc: '', chainDir: '', chainN: 0, chainReps: 0, chainOff: false };
+  const off = !!m[1], dir = (m[2] === '\u2934') ? 'up' : 'down', n = Math.max(1, parseInt(m[3], 10) || 1), reps = (dir === 'up' && m[4]) ? Math.max(1, parseInt(m[4], 10) || 1) : 0;
+  return { text: (s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: meosChainTokenText(dir, n, reps, off), chainDir: dir, chainN: n, chainReps: reps, chainOff: off };
 }
 function meosClockFcParse(text) {
   const t = String(text == null ? '' : text);
@@ -11486,8 +11487,8 @@ function meosClockFcParse(text) {
   let body = String(m[2] || '').trim(), done = false;
   const _bodyAt = m.index + (m[2] ? m[0].indexOf(m[2]) : 0);   // v4.1.157: 行の中の位置(白く光る桁を数え直さない)
   // ★v5.1.94: 鎖の印は時計の中身に混ぜない(`)×3` を周期の回数と読ませない)。タイトルの後ろに書かれても拾う
-  let chainSrc = '', chainDir = '', chainN = 0, chainReps = 0;
-  { const _ch = meosChainTokenSplit(body); if (_ch.chainSrc) { body = _ch.text; chainSrc = _ch.chainSrc; chainDir = _ch.chainDir; chainN = _ch.chainN; chainReps = _ch.chainReps; } }
+  let chainSrc = '', chainDir = '', chainN = 0, chainReps = 0, chainOff = false;
+  { const _ch = meosChainTokenSplit(body); if (_ch.chainSrc) { body = _ch.text; chainSrc = _ch.chainSrc; chainDir = _ch.chainDir; chainN = _ch.chainN; chainReps = _ch.chainReps; chainOff = _ch.chainOff; } }
   // ★★★v4.2.91(俊克 2026.09.14 am09:38「従来のメッセージ機能を取り込んで、従来の分離したメッセージ機能は
   //   廃止した方が分かりやすいんじゃないかな?」 `<!-- Mew!UFC ⏰ ↺↻(5m)×2 // 目薬 1. 本目 -->`):
   //   ★★★**`//` から後ろは、その1本のタイトル**= 時計の中身には混ぜない(今までは「5分」の 5 が周期に入っていた)。
@@ -11691,7 +11692,7 @@ function meosClockFcParse(text) {
   //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
   //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
   //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
-  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, bellSrc, bellMainOn, bellMain, bellSubOn, bellSub, chainSrc, chainDir, chainN, chainReps, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, bellSrc, bellMainOn, bellMain, bellSubOn, bellSub, chainSrc, chainDir, chainN, chainReps, chainOff, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -11823,7 +11824,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, /* v5.1.94 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, /* v5.1.94 / v5.1.96 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -12057,6 +12058,12 @@ function meosTimerDbBlockAt(doc, line) {   // その行が⏰データベース�
   } catch (_) { }
   return false;
 }
+// ★v5.1.96(俊克 10.20 am10:25 改良1「連動の例も入れようよ」): ⛓️ の例= Tabata(20秒/10秒 を8回)とポモドーロ(25分/5分 を4回)
+const MEOS_TIMER_DB_CHAIN_EX = [
+  '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // 💪Tabata work -->',
+  '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest -->',
+  '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(25m)×1 ⛓️⤵️2 // 🍅Pomodoro focus -->',
+  '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(5m)×1 ⛓️⤴️2)×4 // ☕Pomodoro break -->'];
 function meosTimerDbText(eol) {
   const d = new Date(), p = (x) => (x < 10 ? '0' : '') + x;
   const id = MEOS_TIMER_DB_PREFIX + meosMembraneStamp(d);
@@ -12068,20 +12075,39 @@ function meosTimerDbText(eol) {
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m ×1 // 1 hour -->',
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days -->',
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->',
-    '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->'];
-  return { id, text: [t.open, 'Timer database — press ▶️ on a line to use it, or copy a line into another membrane. MeOS makes this membrane again if it is deleted.', t.close].join(eol) + eol + rows.join(eol) };
+    '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->'].concat(MEOS_TIMER_DB_CHAIN_EX);
+  return { id, text: [t.open, 'Timer database — press ▶️ on a line to use it, or copy a line into another membrane. ⛓️⤵️2 links this line and the next; ⛓️⤴️2)×8 goes 2 lines back, 8 times. Click ⛓️ to cut it (⛓️‍💥). MeOS makes this membrane again if it is deleted.', t.close].join(eol) + eol + rows.join(eol) };
+}
+// ★v5.1.96: 本文の鎖の絵(⛓️ / ⛓️‍💥)の位置= 押す所。押すと切る/つなぐ(本文の字を書き換えるだけ= ⚓ と同じ作り)
+function meosClockChainMarkAt(txt) {
+  const t = String(txt || ''); if (t.indexOf('\u23f0') < 0) return null;
+  const m = MEOS_CHAIN_RE.exec(t); if (!m) return null;
+  const a = m.index, g = /^\u26d3\ufe0f?(?:\u200d\ud83d\udca5)?/.exec(t.slice(a));
+  return { a, b: a + (g ? g[0].length : 1), off: !!m[1] };
+}
+function meosClockChainHitAt(document, line, character) {
+  try { const mk = meosClockChainMarkAt(document.lineAt(line).text || ''); return (mk && character >= mk.a && character <= mk.b) ? Object.assign({ line }, mk) : null; } catch (_) { return null; }
+}
+async function meosClockChainToggle(document, hit) {
+  try {
+    const we = new vscode.WorkspaceEdit();
+    we.replace(document.uri, new vscode.Range(hit.line, hit.a, hit.line, hit.b), hit.off ? '\u26d3\ufe0f' : '\u26d3\ufe0f\u200d\ud83d\udca5');
+    const ok = await vscode.workspace.applyEdit(we);
+    meosDbg('[chain] ' + (hit.off ? '\u26d3\ufe0f\u200d\ud83d\udca5 \u2192 \u26d3\ufe0f \u3064\u306a\u3050' : '\u26d3\ufe0f \u2192 \u26d3\ufe0f\u200d\ud83d\udca5 \u5207\u308b') + ' \u884c=' + (hit.line + 1) + ' ok=' + ok);
+    return ok;
+  } catch (_) { return false; }
 }
 // ★v5.1.95: ⏰のデータベース膜が mMETA の手前(間は空行だけ)に居なければ、移す範囲を返す(居れば null)。
 //   塊= 開始膜〜閉じ膜〜直後の FC 群(バッジ・⏰の行)。to は後ろの空行まで(移した跡に空行を残さない)。
+function meosTimerDbBlockEnd(doc, closeLine) { let e = closeLine + 1; while (e < doc.lineCount && meosIsSpecLine(doc.lineAt(e).text || '')) e++; return e; }
+function meosTimerDbCloseLine(doc, openLine) { for (let i = openLine + 1; i < doc.lineCount && i < openLine + 400; i++) { try { const c = parseCloseLine(doc.lineAt(i).text || ''); if (c && meosIsTimerDbKey(c.id)) return i; } catch (_) { } } return -1; }
 function meosTimerDbMovePlan(doc, openLine) {
   let mmLine = -1;
   for (let i = doc.lineCount - 1; i >= 0; i--) { if (isHtocMetaOpenAt(doc, i)) { mmLine = i; break; } }
   if (mmLine < 0 || openLine >= mmLine) return null;
-  let close = -1;
-  for (let i = openLine + 1; i < doc.lineCount && i < openLine + 400; i++) { try { const c = parseCloseLine(doc.lineAt(i).text || ''); if (c && meosIsTimerDbKey(c.id)) { close = i; break; } } catch (_) { } }
+  const close = meosTimerDbCloseLine(doc, openLine);
   if (close < 0) return null;
-  let blockEnd = close + 1;
-  while (blockEnd < doc.lineCount && meosIsSpecLine(doc.lineAt(blockEnd).text || '')) blockEnd++;
+  const blockEnd = meosTimerDbBlockEnd(doc, close);
   let to = blockEnd;
   while (to < doc.lineCount && !(doc.lineAt(to).text || '').trim()) to++;
   if (to >= mmLine) return null;   // 間は空行だけ= もう手前に居る
@@ -12127,6 +12153,25 @@ async function meosOpenTimerDb() {
           line = _dbLine();
         }
       } catch (e) { meosDbg('[timerDb] 移す err ' + (e && e.message)); }
+    }
+    // ★v5.1.96: 既に在る膜には連動の例が無い= 鎖の行が1本も無ければ、⏰の行の最後に1度だけ足す(消した人に毎回押し付けない= 日記ごとに覚える)
+    if (line >= 0) {
+      try {
+        const _k96 = 'meosTimerDbChainEx:' + doc.uri.toString();
+        const _cl = meosTimerDbCloseLine(doc, line);
+        if (_cl >= 0 && !extensionContext.globalState.get(_k96, false)) {
+          const _be = meosTimerDbBlockEnd(doc, _cl);
+          let _has = false; for (let i = _cl + 1; i < _be; i++) if (MEOS_CHAIN_RE.test(doc.lineAt(i).text || '')) { _has = true; break; }
+          if (!_has) {
+            const eol = _vaultEol(doc.getText());
+            const we = new vscode.WorkspaceEdit();
+            we.insert(doc.uri, new vscode.Position(_be - 1, (doc.lineAt(_be - 1).text || '').length), eol + MEOS_TIMER_DB_CHAIN_EX.join(eol));
+            const okEx = await vscode.workspace.applyEdit(we);
+            meosDbg('[timerDb] 連動の例を足す 行=' + _be + ' ok=' + okEx);
+          }
+          await extensionContext.globalState.update(_k96, true);
+        }
+      } catch (e) { meosDbg('[timerDb] 例 err ' + (e && e.message)); }
     }
     if (line < 0) return;
     await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false });
@@ -12761,7 +12806,7 @@ const _meosChainGo = new Set();      // 'uri 膜 行' → ▶️ か鎖で渡さ
 function meosChainLinks(rows) {
   const nx = rows.map(() => -1), back = rows.map(() => null);
   rows.forEach((r, i) => {
-    if (!r || !r.chainDir) return;
+    if (!r || !r.chainDir || r.chainOff) return;   // v5.1.96: ⛓️‍💥= 切れている= つながない
     const n = Math.max(1, Number(r.chainN) || 1);
     if (r.chainDir === 'down') { for (let k = i; k < Math.min(rows.length - 1, i + n - 1); k++) nx[k] = k + 1; }
     else { const s0 = Math.max(0, i - (n - 1)); for (let k = s0; k < i; k++) nx[k] = k + 1; back[i] = { to: s0, reps: Number(r.chainReps) || 0 }; }
@@ -14693,6 +14738,10 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
                   + '`\n\nLook for a stray character just after the ⏰ — deleting a ⏸ leaves its number behind.',
                 renderOptions: { after: { contentText: '⚠️', margin: '0 0 0 2px' } } });
             }
+          }
+          if (c.chainSrc && !_rawHere) {   // ★v5.1.96: 鎖の絵に押し方の tip(1行)
+            const _cm96 = meosClockChainMarkAt(txt);
+            if (_cm96) items.push({ range: new vscode.Range(i, _cm96.a, i, _cm96.b), hoverMessage: _cm96.off ? 'Click to link this ⛓️‍💥 again' : 'Click to cut this ⛓️ (⛓️‍💥)' });
           }
           if (c.lock && !_rawHere) {   // ★v4.2.235/238(済んだ後も): 掛かっている🔐に外し方のtip(外す時は確認しない=安全な向き)
             const _lm = meosClockLockMarkAt(txt);
@@ -23088,6 +23137,15 @@ async function handleMembraneNameSelection(editor, selectionKind) {
             + ' at=' + JSON.stringify(_t80.substr(editor.selection.active.character, 6)));
         }
       } catch (_) { }
+      const _chH = meosClockChainHitAt(editor.document, _ln, editor.selection.active.character);   // ★v5.1.96: ⛓️ を押した= 切る(⛓️‍💥)/つなぐ
+      if (_chH) {
+        setRefNoRaw(editor.document, _ln);
+        meosParkCaretAfterPress(editor, _ln);
+        await meosBtnEdit(() => meosClockChainToggle(editor.document, _chH));   try { meosApplyTimerLineDecorations(editor); } catch (_) { }
+        setRefNoRaw(editor.document, _ln);
+        meosCalmRefresh(editor);
+        return;
+      }
       const _an = meosClockAnchorHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.314: 🚢💨/⚓を押した= 停泊を切り替える
       if (_an) {
         setRefNoRaw(editor.document, _ln);

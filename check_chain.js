@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -71,6 +71,35 @@ console.log('⑦ ⏰のデータベース膜を mMETA の手前へ(v5.1.95)');
  ok(mv && mv.from===3 && mv.blockEnd===9 && mv.to===10 && mv.mmLine===12, '★途中に居る膜= 開始膜〜⏰の行(+後ろの空行)を本物の mMETA の前へ', mv);
  const L8=['# t','続きの日記',''].concat(DB,['']).concat(META);
  ok(X.meosTimerDbMovePlan(mk('file:///m2.md',L8),3)===null, '既に手前(間は空行だけ)なら動かさない', 0);
+}
+
+console.log('⑧ 切れた鎖 ⛓️‍💥 (v5.1.96)');
+{
+ const t1='<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️‍💥⤴️2)×8 // rest -->';
+ const c8=X.meosClockFcParse(t1);
+ ok(c8 && c8.chainOff===true && c8.chainReps===8 && c8.rounds===1 && c8.chainSrc==='⛓️‍💥⤴️2)×8', '★⛓️‍💥 も読む・周期に混ぜない・書く形も切れたまま', c8&&[c8.chainOff,c8.chainReps,c8.rounds,c8.chainSrc]);
+ const L9=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // work -->', t1]);
+ const d9=mk('file:///x9.md',L9); X.meosChainResetLoops(d9,'H_1');
+ const n9=X.meosChainNextRow(d9,'H_1',4,true);
+ ok(n9===null, '★切れた ⤴️ は戻らない(work→rest で止まる)', n9&&n9.line);
+ const L10=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️‍💥⤵️2 // work -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 // rest -->']);
+ ok(X.meosChainNextRow(mk('file:///x10.md',L10),'H_1',3,true)===null, '★切れた ⤵️ は次へ渡さない', 0);
+ const tA='<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // work -->', mA=X.meosClockChainMarkAt(tA);
+ ok(mA && tA.slice(mA.a,mA.b)==='⛓️' && !mA.off, '押す所= ⛓️ の字そのもの', mA);
+ const mB=X.meosClockChainMarkAt(t1);
+ ok(mB && t1.slice(mB.a,mB.b)==='⛓️‍💥' && mB.off, '切れている時は ⛓️‍💥 の字全部', mB);
+ ok(X.meosClockChainMarkAt('<!-- Mew!FC ⏰ ↺↻3m // x -->')===null, '鎖の無い行は押す所が無い', 0);
+}
+console.log('⑨ ⏰のデータベースに連動の例');
+{
+ const db=X.meosTimerDbText('\n').text;
+ ok(X.MEOS_TIMER_DB_CHAIN_EX.every(r=>db.indexOf(r)>=0), '★新しく作る膜に例が入る', 0);
+ const ex=X.MEOS_TIMER_DB_CHAIN_EX.map(r=>X.meosClockFcParse(r));
+ ok(ex[0].chainDir==='down' && ex[1].chainReps===8 && ex[3].chainReps===4 && ex.every(e=>e.rounds===1), '例はどれも読める(Tabata ×8 / Pomodoro ×4)', ex.map(e=>[e.chainSrc,e.rounds]));
+ const L11=head.concat(['<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->'].concat(X.MEOS_TIMER_DB_CHAIN_EX));
+ const d11=mk('file:///x11.md',L11); X.meosChainResetLoops(d11,'H_1'); const s11=[]; let a11=4;
+ for(let k=0;k<20;k++){ s11.push(a11-3); const n=X.meosChainNextRow(d11,'H_1',a11,true); if(!n) break; a11=n.line; }
+ ok(s11.length===16 && s11[15]===2 && X.meosChainNextRow(d11,'H_1',3,false)===null, '★Tabata は work/rest を8回で止まり、上の3分とはつながらない', s11);
 }
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');
