@@ -18218,6 +18218,51 @@ function meosLineDiffHunks(a, b, maxD) {
   }
   return hunks;
 }
+// 行の塊(a の [a0,a1) を b の [b0,b1) に)を文書に当てる。末尾の行に触れる塊は、前の行の行末から文書の終わりまでを置き換える(最後の行には改行が無い)
+async function meosApplyLineHunks(d, a, b, hunks, eol) {
+  const we = new vscode.WorkspaceEdit();
+  for (const h of hunks) {
+    if (h.a1 < a.length) { we.replace(d.uri, new vscode.Range(h.a0, 0, h.a1, 0), b.slice(h.b0, h.b1).map(l => l + eol).join('')); continue; }
+    const end = d.lineAt(d.lineCount - 1).range.end, lines = b.slice(h.b0, h.b1);
+    const st = h.a0 > 0 ? d.lineAt(h.a0 - 1).range.end : new vscode.Position(0, 0);
+    we.replace(d.uri, new vscode.Range(st, end), (h.a0 > 0 && lines.length ? eol : '') + lines.join(eol));
+  }
+  return await vscode.workspace.applyEdit(we);
+}
+// ★★v5.1.107(俊克 10.20 pm07:04〜07:23「暗号化した部分の変更は捨てて、平文を保障するほうがいい。暗号の中をどう変更したかは、たぶん記憶している」「今でしょ」):
+//   MeOS が止まった間に書きかけが残った入口の文書= 訊かずに、膜の外の書きかけは全部残して保存し、ディスクで暗号の膜の中の違いだけ捨てる。
+//   ・違いを場所ごとに分ける(meosLineDiffHunks)。ディスクの暗号文の行(🔒MeOS-enc:v1)とその上下1行に触れる塊= 暗号の膜の中= ディスクの姿に戻す
+//     (膜の開始行・閉じ行を書き換えていた時も、秘密を守る側に倒して戻す)。それ以外の塊は画面の姿のまま。
+//   ・保存できたら VSCodium の控え(平文)も消える。保存は書く口の守り④が最後に確かめる= 平文が1行でも残れば保存されない→ 今までのパネルへ。
+//   ・違いが多すぎて分けられない時(D>1500)も、今までのパネル(Discard / Cancel)へ。
+async function meosVaultKeepOutsideAndSave(d) {
+  try {
+    const disk = Buffer.from(await vscode.workspace.fs.readFile(d.uri)).toString('utf8');
+    const eol = (d.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+    const a = d.getText().split(/\r?\n/), b = disk.split(/\r?\n/);
+    const hunks = meosLineDiffHunks(a, b, 1500);
+    if (!hunks) { meosDbg('[vaultKeep] 違いが多すぎる → パネル'); return null; }
+    const marks = []; for (let j = 0; j < b.length; j++) if (b[j].indexOf(_MEOS_ENC_PREFIX) >= 0) marks.push(j);
+    const pick = meosVaultInnerHunks(hunks, marks);
+    const names = [];
+    for (const m of pick.marks) { try { const o = parseOpenLine(b[m - 1] || ''); names.push((o && o.id) || ('line ' + m)); } catch (_) { names.push('line ' + m); } }
+    if (pick.hunks.length) { const ok = await meosApplyLineHunks(d, a, b, pick.hunks, eol); meosDbg('[vaultKeep] 暗号の膜の中を戻す ' + pick.hunks.length + '塊 ok=' + ok); }
+    const saved = await d.save();
+    meosDbg('[vaultKeep] 塊=' + hunks.length + ' 戻した=' + pick.hunks.length + ' 膜=' + names.join(',') + ' 保存=' + saved);
+    if (!saved) return null;
+    return { kept: hunks.length - pick.hunks.length, names };
+  } catch (e) { try { meosDbg('[vaultKeep] err ' + (e && e.message)); } catch (_) { } return null; }
+}
+// 暗号の膜の中の塊(ディスクの暗号文の行 m とその上下1行に触れる塊)を選ぶ。純粋な関数(台で確かめる)
+function meosVaultInnerHunks(hunks, marks) {
+  const out = [], hit = new Set();
+  for (const h of hunks) {
+    // 足す/置き換える塊= ディスクの [b0,b1) が 開始行(m-1)〜暗号文(m)〜閉じ行(m+1) に重なる / 消すだけの塊= 消す所が膜の内側(暗号文の前 m か後 m+1)
+    const touch = marks.filter(m => (h.b1 > h.b0) ? (h.b0 <= m + 1 && h.b1 - 1 >= m - 1) : (h.b0 === m || h.b0 === m + 1));
+    if (touch.length) { out.push(h); touch.forEach(m => hit.add(m)); }
+  }
+  return { hunks: out, marks: Array.from(hit).sort((x, y) => x - y) };
+}
 async function meosVaultRevertGently(d) {
   try {
     if (d.lineCount > 20000) {
@@ -18227,15 +18272,7 @@ async function meosVaultRevertGently(d) {
       const t0 = Date.now(), hunks = meosLineDiffHunks(a, b, 1500);
       meosDbg('[vaultDiscard] 差分 ' + (hunks ? hunks.length + '塊' : '多すぎる') + ' ' + (Date.now() - t0) + 'ms 行=' + a.length + '→' + b.length);
       if (hunks && hunks.length) {
-        const we = new vscode.WorkspaceEdit();
-        for (const h of hunks) {
-          if (h.a1 < a.length) { we.replace(d.uri, new vscode.Range(h.a0, 0, h.a1, 0), b.slice(h.b0, h.b1).map(l => l + eol).join('')); continue; }
-          // 末尾の行に触れる塊= 前の行の行末から文書の終わりまでを置き換える(最後の行には改行が無い)
-          const end = d.lineAt(d.lineCount - 1).range.end, lines = b.slice(h.b0, h.b1);
-          const st = h.a0 > 0 ? d.lineAt(h.a0 - 1).range.end : new vscode.Position(0, 0);
-          we.replace(d.uri, new vscode.Range(st, end), (h.a0 > 0 && lines.length ? eol : '') + lines.join(eol));
-        }
-        const ok = await vscode.workspace.applyEdit(we);
+        const ok = await meosApplyLineHunks(d, a, b, hunks, eol);
         meosDbg('[vaultDiscard] 小さく直した ok=' + ok + ' 同じ=' + (d.getText().split(/\r?\n/).join('\n') === b.join('\n')));
       }
     }
@@ -18619,6 +18656,17 @@ function meosVaultActivate(context) {
         const dirty = docs.filter(d => d.isDirty);
         // ★v5.1.64: 書きかけの平文は VSCodium の控えに入っている(ディスクには書かれない)。知らせるだけでは控えに残る&膜はボタンの無い
         //   「ふつうの膜」に見える(10.19 am08:16 俊克「膜に暗号ボタンが消えていた」)→ 捨てる道をその場に出す(モーダル)。
+        // ★v5.1.107: 先に自動で「膜の外は残して保存・暗号の膜の中は捨てる」。できた文書は知らせるだけ。できなかった物だけ今までのパネルへ。
+        const left = [];
+        for (const d of dirty) {
+          if (d.isClosed || !d.isDirty) continue;
+          const r = await meosVaultKeepOutsideAndSave(d);
+          if (!r) { left.push(d); continue; }
+          const fn = String(d.uri.path || '').split('/').pop();
+          vscode.window.showInformationMessage('MeOS 🔐: MeOS restarted while ' + fn + ' had unsaved edits. Your edits outside the encrypted membranes were kept and saved.'
+            + (r.names.length ? ' Edits inside ' + r.names.length + ' encrypted membrane' + (r.names.length > 1 ? 's' : '') + ' were not kept: ' + r.names.join(', ') + ' — unlock and redo them.' : ''));
+        }
+        if (left.length) { dirty.length = 0; for (const d of left) dirty.push(d); } else dirty.length = 0;
         if (dirty.length) {
           const pick = await vscode.window.showWarningMessage('MeOS 🔐: MeOS restarted while ' + dirty.length + ' vault file(s) had unsaved edits. They may hold unlocked plain text, which VSCodium keeps in its own backup (never on disk). Discard the unsaved edits and show the locked file?', { modal: true }, 'Discard unsaved edits');
           if (pick === 'Discard unsaved edits') {

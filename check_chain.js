@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -231,6 +231,38 @@ console.log('⑰ Discard の前に違う所だけ小さく直す(v5.1.106・32�
   const B3=big.slice(); B3.push('末尾に足した行'); r=await run(A,B3.join('\n')); ok(r.out===B3.join('\n'), '最後の行の後ろに足した違いも正しく直す', r.n);
   const B4=big.slice(0,29995); r=await run(A,B4.join('\n')); ok(r.out===B4.join('\n'), '末尾の行を消した違いも正しく直す', r.n);
   const B5=big.slice(); B5[29999]='最後の行を書き換え'; r=await run(A,B5.join('\n')); ok(r.out===B5.join('\n'), '最後の行の書き換えも正しく直す', r.n);
+ })();
+
+console.log('⑱ 起き直した時: 膜の外の書きかけは残して保存・暗号の膜の中だけ捨てる(v5.1.107)');
+ await (async()=>{
+  const offOf=(L,pos)=>{let o=0;for(let i=0;i<pos.line;i++)o+=L[i].length+1;return o+pos.character;};
+  const run=async(aT,bT)=>{
+    const L=aT.split('\n'); let saved=false; const E=[];
+    const d={uri:{toString:()=>'meos-vault:/x.md',fsPath:'/x.md',scheme:'meos-vault',path:'/x.md'},lineCount:L.length,eol:1,getText:()=>L.join('\n'),
+      lineAt:n=>({text:L[n],range:{end:{line:n,character:L[n].length}}}),save:async()=>{saved=true;return true;}};
+    stub.WorkspaceEdit=class{replace(u,r,t){E.push({s:r.start,e:r.end,t});}};
+    stub.workspace.fs={readFile:async()=>Buffer.from(bT,'utf8')}; stub.workspace.applyEdit=async()=>true;
+    const r=await X.meosVaultKeepOutsideAndSave(d);
+    let out=aT; E.map(x=>({s:offOf(L,x.s),e:offOf(L,x.e),t:x.t})).sort((p,q)=>q.s-p.s).forEach(x=>{out=out.slice(0,x.s)+x.t+out.slice(x.e);});
+    return {r,out,saved};
+  };
+  const base=[];for(let i=0;i<3000;i++)base.push('日記 '+i);
+  const OPEN='<!-- {* ▼mCN=🔐テスト_1 // c *} -->', CLOSE='<!-- {* ▲mCN=🔐テスト_1 // c *} -->', ENC='🔒MeOS-enc:v1 QUJDREVG';
+  const diskL=base.slice(); diskL.splice(2000,0,OPEN,ENC,CLOSE);
+  const bufL=base.slice(); bufL[500]='日記 500 ← 保存し忘れた書きかけA'; bufL.splice(1200,0,'足した行B');
+  const memb=[OPEN,'秘密1','秘密2(書き換えた)','秘密3(足した)',CLOSE]; bufL.splice(2001,0,...memb);   // bufL は1行足したので 2001
+  bufL[2900]='日記 2899 ← 書きかけC';
+  const want=bufL.slice(); want.splice(2002,3,ENC);
+  const {r,out,saved}=await run(bufL.join('\n'), diskL.join('\n'));
+  ok(r && saved && out===want.join('\n'), '★膜の外の書きかけA・B・Cは残り、膜の中は暗号文に戻って保存される', r);
+  ok(r && r.names.length===1 && r.names[0]==='🔐テスト_1', '知らせに戻した膜の名前が出る', r&&r.names);
+  ok(out.indexOf('秘密')<0, '★平文の秘密は1字も残らない', 0);
+  const bufL2=base.slice(); bufL2.splice(2000,0,OPEN.replace('🔐テスト_1','🔐テスト_改名'),'秘密1',CLOSE.replace('🔐テスト_1','🔐テスト_改名'));
+  const r2=await run(bufL2.join('\n'), diskL.join('\n'));
+  ok(r2.out===diskL.join('\n') && r2.out.indexOf('秘密')<0, '膜の名前を書き換えていた時も、秘密を守る側(ディスクの姿)に倒す', 0);
+  const bufL3=base.slice(); bufL3[10]='外だけの書きかけ'; bufL3.splice(2000,0,OPEN,ENC,CLOSE);
+  const r3=await run(bufL3.join('\n'), diskL.join('\n'));
+  ok(r3.r && r3.r.names.length===0 && r3.out===bufL3.join('\n'), '暗号の膜に触れていなければ、全部そのまま保存', r3.r);
  })();
  console.log(ng?('NG '+ng):'ALL PASS'); process.exit(ng?1:0);
 })();
