@@ -12817,7 +12817,10 @@ function meosChainLinks(rows) {
     if (!r || !r.chainDir || r.chainOff) return;   // v5.1.96: ⛓️‍💥= 切れている= つながない
     const n = Math.max(1, Number(r.chainN) || 1);
     if (r.chainDir === 'down') { for (let k = i; k < Math.min(rows.length - 1, i + n - 1); k++) nx[k] = k + 1; }
-    else { const s0 = Math.max(0, i - (n - 1)); for (let k = s0; k < i; k++) nx[k] = k + 1; back[i] = { to: s0, reps: Number(r.chainReps) || 0 }; }
+    // ★v5.1.101(俊克 10.20 am11:29 バグ1「⛓️‍💥 に設定したタイマーを起動すると、次の rest との間を繰返し、連動してしまう。なぜ?」):
+    //   真因= ⤴️ が「戻る」だけでなく、戻り先から自分までを前へもつないでいた= work の ⤵️ を切っても rest の ⤴️ がつなぎ直した。
+    //   → ⤴️ は戻るだけ。前へつなぐのは ⤵️ だけ(俊克の例どおり ⤵️ と ⤴️ を両方書く)= 切った所で本当に切れる。
+    else { const s0 = Math.max(0, i - (n - 1)); back[i] = { to: s0, reps: Number(r.chainReps) || 0 }; }
   });
   return { nx, back };
 }

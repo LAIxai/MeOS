@@ -130,6 +130,18 @@ console.log('⑫ ⛓️ を押した桁(v5.1.100)');
  ok([31,32,33,35].every(k=>!!X.meosClockChainHitAt(d2,0,k)) && !X.meosClockChainHitAt(d2,0,36), '⛓️‍💥 の時は隠した5字の中が全部当たり', 0);
 }
 
+console.log('⑬ ⤴️ は戻るだけ・前へつなぐのは ⤵️ だけ(v5.1.101)');
+{
+ const L13=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️‍💥⤵️2 // work -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×8 // rest -->']);
+ const d13=mk('file:///x13.md',L13); X.meosChainResetLoops(d13,'H_1');
+ ok(X.meosChainNextRow(d13,'H_1',3,true)===null, '★work の ⤵️ を切ったら rest へ進まない(実機で繰り返した形)', 0);
+ const n13=X.meosChainNextRow(d13,'H_1',4,true);
+ ok(n13 && n13.line===3, 'rest から始めれば ⤴️ で work へ戻る(戻るのは ⤴️ の仕事)', n13&&n13.line);
+ X.meosChainResetLoops(d13,'H_1');
+ const L14=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 ↺↻(20s)×1 // work -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×3 // rest -->']);
+ ok(X.meosChainNextRow(mk('file:///x14.md',L14),'H_1',3,true)===null, '印の無い行は ⤴️ の範囲に居ても独立', 0);
+}
+
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');
 (async()=>{
  const W=[]; stub.WorkspaceEdit=class{replace(u,r,t){W.push(t);} insert(u,p,t){W.push(t);} delete(){}}; stub.workspace.applyEdit=()=>Promise.resolve(true);
