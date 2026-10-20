@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,meosClockBadgeRowForLine,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -169,6 +169,16 @@ console.log('⑯ 数字の無い鎖は周期に混ぜず、つながず、⚠️
  const L2=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 1. ↺↻8h 2026-09-28 16:59:58p ⛓️⤵️2 // 💧目薬の時間です -->', t.replace('⛓️⤴️','⛓️⤴️2')]);
  const d2=mk('file:///eye2.md',L2); X.meosChainResetLoops(d2,'H_1');
  ok(X.meosChainNextRow(d2,'H_1',4,true).line===3, '★⛓️⤴️2 に直せば 1分 → 8h へ戻る(×M 無し= 戻り続ける)', 0);
+}
+
+console.log('⑲ ⏰のデータベース膜の下の方の⏰もバッジ行を見つける(v5.1.108)');
+{
+ const L=X.meosTimerDbText('\n').text.split('\n'); L.unshift('# t');   // 型の閉じ膜の後に、もともとバッジ行が入っている
+ const d={lineCount:L.length,lineAt:n=>({text:L[n]})}; const B=L.findIndex(l=>/Mew!FC mCN/.test(l));
+ const rows=L.map((t,i)=>i).filter(i=>/Mew!FC ⏰/.test(L[i]));
+ ok(rows.length===10 && rows.every(i=>X.meosClockBadgeRowForLine(d,i)===B), '★10行目(☕Pomodoro break)までバッジ行に届く', rows.map(i=>X.meosClockBadgeRowForLine(d,i)));
+ const L2=['<!-- Mew!FC mCN (📊⊕0+0D0W) -->','本文の行','<!-- Mew!FC ⏰ ↺↻3m ×1 // x -->'];
+ ok(X.meosClockBadgeRowForLine({lineCount:3,lineAt:n=>({text:L2[n]})},2)===-1, '指定行の並びが切れたら探さない(今までどおり)', 0);
 }
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');

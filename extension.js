@@ -4725,7 +4725,10 @@ function meosClockBadgeRow(document, pair) {
 // ⏰行から、その数字を置くバッジ行を引く(上へ辿る。指定行の並びの中だけ)。
 function meosClockBadgeRowForLine(document, clockLine) {
   try {
-    for (let k = clockLine - 1; k >= 0 && k >= clockLine - 8; k--) {
+    // ★v5.1.108(俊克 10.21 am01:45 バグ1「1st & 3rd Thursday 10:00 以降のタイマーを起動すると、バッジ部分に表示されない。離れすぎると見つけられないのか?」):
+    //   そのとおり= 上へ8行までしか探していなかった。⏰のデータベース膜はバッジ行の下に⏰が10行並ぶので、9行目からのポモドーロが届かなかった。
+    //   → 指定行の並びが続く限り上へ探す(並びが切れたら膜の外= 今までどおり)。念のため500行で止める。
+    for (let k = clockLine - 1; k >= 0 && k >= clockLine - 500; k--) {
       const t = document.lineAt(k).text;
       if (meosIsPairBadgeSpec(t)) return k;
       if (!meosIsSpecLine(t)) return -1;             // 指定行thatが途切れたら、もう膜の外
