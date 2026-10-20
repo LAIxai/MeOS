@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -109,6 +109,15 @@ console.log('⑩ データベース膜の行から膜の名前を引く(v5.1.98 
  const row=X.meosClockAtLine(d12,null,3);
  ok(row && X.meosIsTimerDbKey(row.key) && row.title==='💪Tabata work', '★行→膜の名前→データベース膜と分かる・タイトルも在る', row&&[row.key,row.title]);
  ok(!X.meosIsTimerDbKey(X.meosClockFcParse(X.MEOS_TIMER_DB_CHAIN_EX[0]).key), '(5.1.97 の穴) 行を読んだだけの物は key を持たない', 0);
+}
+
+console.log('⑪ 見えない [−1s] を押さない(v5.1.99)');
+{
+ const tW='<!-- Mew!FC ⏰ 2026-10-20 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->', tU=tW.replace('Mew!FC','Mew!UFC');
+ const k=tW.indexOf('↺')-1;
+ ok(X.meosClockNudgeHitAt(mk('file:///n1.md',[tW]),0,k)===null, '★待ちの行(FC)の ↺ の手前を押しても起点は動かない(ボタンは描かれていない)', k);
+ const h=X.meosClockNudgeHitAt(mk('file:///n2.md',[tU]),0,tU.indexOf('↺')-1);
+ ok(h && h.dir===-1, '走っている行(UFC)では今までどおり [−1s]', h);
 }
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');

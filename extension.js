@@ -12370,7 +12370,12 @@ function meosClockNudgeSpot(txt, c) {
 function meosClockNudgeHitAt(document, line, character) {
   try {
     const txt = document.lineAt(line).text || ''; if (txt.indexOf('⏰') < 0) return null;
-    const c = meosClockFcParse(txt); const k = meosClockNudgeSpot(txt, c); if (k < 0) return null;
+    const c = meosClockFcParse(txt);
+    // ★v5.1.99(俊克 10.20 am11:03 スクショ「第1第3木曜の起点が 10:00 → 09:59.59」・Debug.log 10:54:29 [clkClick] caretCh=30 ±1s=30 → [nudge] 書く -1s):
+    //   真因= 押す側は「起点が在る行」だけを見ていたが、描く側は走っている行(UFC)だけに [−1s][+1s] を描く= 待ちの行(FC)では
+    //   見えないボタンの当たりが ↺ の手前の空白に残り、行を押した人の起点を黙って1秒戻した。→ 押す側も描く側と同じ条件(UFC)にする。
+    if (!c || !c.ufc) return null;
+    const k = meosClockNudgeSpot(txt, c); if (k < 0) return null;
     if (character === k) return { line, dir: -1 };
     if (character === k + 1) return { line, dir: 1 };
     return null;
