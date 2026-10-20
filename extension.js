@@ -12102,7 +12102,10 @@ async function meosClockChainToggle(document, hit) {
 }
 // ★v5.1.95: ⏰のデータベース膜が mMETA の手前(間は空行だけ)に居なければ、移す範囲を返す(居れば null)。
 //   塊= 開始膜〜閉じ膜〜直後の FC 群(バッジ・⏰の行)。to は後ろの空行まで(移した跡に空行を残さない)。
-function meosTimerDbBlockEnd(doc, closeLine) { let e = closeLine + 1; while (e < doc.lineCount && meosIsSpecLine(doc.lineAt(e).text || '')) e++; return e; }
+// ★v5.1.103(俊克 10.20 pm00:30 バグ2「他の部分に移動して戻ってくると崩れている」・Debug.log 12:33:19 の打鍵で work の行頭に `9` が入った):
+//   `9<!-- Mew!FC …` は FC の行と読めない= 塊の終わりがそこで止まり、移す時に下の4行を置き去りにした。
+//   → 塊の終わりは「Mew! の印を含む行」まで(壊れた行も塊の一部として一緒に運ぶ)。
+function meosTimerDbBlockEnd(doc, closeLine) { let e = closeLine + 1; while (e < doc.lineCount && (meosIsSpecLine(doc.lineAt(e).text || '') || /<!--\s*Mew!/.test(doc.lineAt(e).text || ''))) e++; return e; }
 function meosTimerDbCloseLine(doc, openLine) { for (let i = openLine + 1; i < doc.lineCount && i < openLine + 400; i++) { try { const c = parseCloseLine(doc.lineAt(i).text || ''); if (c && meosIsTimerDbKey(c.id)) return i; } catch (_) { } } return -1; }
 function meosTimerDbMovePlan(doc, openLine) {
   let mmLine = -1;

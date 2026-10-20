@@ -142,6 +142,18 @@ console.log('⑬ ⤴️ は戻るだけ・前へつなぐのは ⤵️ だけ(v5
  ok(X.meosChainNextRow(mk('file:///x14.md',L14),'H_1',3,true)===null, '印の無い行は ⤴️ の範囲に居ても独立', 0);
 }
 
+console.log('⑭ 行頭に字が入った⏰の行も塊ごと運ぶ(v5.1.103)');
+{
+ const DB=['<!-- {* ▼mCN=⏰0y0d0h3m_20261020T082405JST // c *} -->','x','<!-- {* ▲mCN=⏰0y0d0h3m_20261020T082405JST // c *} -->','<!-- Mew!FC mCN (📊⊕0+0D0W) -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->',
+  '9<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️‍💥⤵️2 // 💪Tabata work -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest -->'];
+ const META=['<!-- {* ▼mCN=mMETA // MeOS metadata — do not edit (📊⊖f0+0D0W) *} -->','<!-- mHTOC1 x -->','<!-- {* ▲mCN=mMETA // end *} -->'];
+ const d=mk('file:///m3.md',['# t'].concat(DB,['']).concat(META));
+ ok(X.meosTimerDbMovePlan(d,1)===null, '★壊れた行(9<!--)の下の行も塊の内= 既に手前と分かり、動かさない(4行を置き去りにしない)', X.meosTimerDbMovePlan(d,1));
+ const d2=mk('file:///m4.md',['# t'].concat(DB,['','日記','']).concat(META));
+ const mv=X.meosTimerDbMovePlan(d2,1);
+ ok(mv && mv.blockEnd===8, '動かす時も壊れた行と下の行まで一緒', mv);
+}
+
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');
 (async()=>{
  const W=[]; stub.WorkspaceEdit=class{replace(u,r,t){W.push(t);} insert(u,p,t){W.push(t);} delete(){}}; stub.workspace.applyEdit=()=>Promise.resolve(true);
