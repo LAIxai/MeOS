@@ -18174,6 +18174,75 @@ class MeosVaultFs {
 }
 function _vaultDocsOf(fileKey) { return (vscode.workspace.textDocuments || []).filter(d => meosIsVaultDoc(d) && _vaultKeyOf(d.uri) === fileKey); }
 // 鍵が変わった後、そのファイルを開いている入口のエディターを読み直させる(未保存は先に保存してある前提)。
+// ★★v5.1.106(俊克 10.20 pm06:42 不具合1「インストールの後のパネルで Discard を押すと VSCm が反応しなくなり、Reopen しても繰り返す。初めてだ」):
+//   実測(VSCodium main.log 18:32:16「CodeWindow: detected unresponsive」の見本)= workbench の revert → resolveFromFile → updateTextEditorModel
+//   → pushEditOperations → onModelLineChanged → getPrefixSum で止まっていた。読み直しは「最初に違う行〜最後に違う行」を1つの塊で置き換える
+//   = 日記の真ん中(159,2xx 行)を書きかけ、末尾の⏰データベース膜(325,8xx 行)で MeOS が起点を書いていたので、塊が約16万行になり、
+//   1行ごとに画面の行の数え直しが走った(32万行の日記)。
+//   → 先に MeOS が「違う所だけ」を小さく直す(行の差分= Myers)。中身がディスクと同じになってから revert すれば、読み直しは何も置き換えない。
+//   違いが多すぎる時(D > 1500)は今までどおり revert だけ(悪くはならない)。
+function meosLineDiffHunks(a, b, maxD) {
+  let p = 0; const n0 = a.length, m0 = b.length;
+  while (p < n0 && p < m0 && a[p] === b[p]) p++;
+  let q = 0; while (q < n0 - p && q < m0 - p && a[n0 - 1 - q] === b[m0 - 1 - q]) q++;
+  const A = a.slice(p, n0 - q), B = b.slice(p, m0 - q), N = A.length, M = B.length;
+  if (!N && !M) return [];
+  const MAX = Math.min(N + M, maxD || 1500), off = MAX + 1, trace = [];
+  let V = new Int32Array(2 * MAX + 3); V[off + 1] = 0; let found = -1;
+  for (let d = 0; d <= MAX; d++) {
+    trace.push(V.slice(off - d - 1, off + d + 2));
+    for (let k = -d; k <= d; k += 2) {
+      let x = (k === -d || (k !== d && V[off + k - 1] < V[off + k + 1])) ? V[off + k + 1] : V[off + k - 1] + 1;
+      let y = x - k; while (x < N && y < M && A[x] === B[y]) { x++; y++; }
+      V[off + k] = x; if (x >= N && y >= M) { found = d; break; }
+    }
+    if (found >= 0) break;
+  }
+  if (found < 0) return null;
+  // 道をたどって「消す/足す」を拾い、隣り合う物を塊にまとめる
+  const ops = []; let x = N, y = M;
+  for (let d = found; d > 0; d--) {
+    const Vp = trace[d], at = (k) => Vp[k + d + 1];   // trace[d] は d-1 段目の終わりの V(k=-d-1..d+1 を k+d+1 で引く)
+    const k = x - y;
+    const prevK = (k === -d || (k !== d && at(k - 1) < at(k + 1))) ? k + 1 : k - 1;
+    const px = at(prevK), py = px - prevK;
+    if (prevK === k + 1) ops.push({ t: 'ins', a: px, b: py }); else ops.push({ t: 'del', a: px, b: py });   // 下へ= B[py] を足す / 右へ= A[px] を消す
+    x = px; y = py;
+  }
+  ops.reverse();
+  const hunks = [];
+  for (const o of ops) {
+    const a0 = o.a + p, b0 = o.b + p, last = hunks[hunks.length - 1];
+    if (o.t === 'del') { if (last && last.a1 === a0 && last.b1 === b0) last.a1++; else hunks.push({ a0, a1: a0 + 1, b0, b1: b0 }); }
+    else { if (last && last.a1 === a0 && last.b1 === b0) last.b1++; else hunks.push({ a0, a1: a0, b0, b1: b0 + 1 }); }
+  }
+  return hunks;
+}
+async function meosVaultRevertGently(d) {
+  try {
+    if (d.lineCount > 20000) {
+      const disk = Buffer.from(await vscode.workspace.fs.readFile(d.uri)).toString('utf8');
+      const eol = (d.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+      const a = d.getText().split(/\r?\n/), b = disk.split(/\r?\n/);
+      const t0 = Date.now(), hunks = meosLineDiffHunks(a, b, 1500);
+      meosDbg('[vaultDiscard] 差分 ' + (hunks ? hunks.length + '塊' : '多すぎる') + ' ' + (Date.now() - t0) + 'ms 行=' + a.length + '→' + b.length);
+      if (hunks && hunks.length) {
+        const we = new vscode.WorkspaceEdit();
+        for (const h of hunks) {
+          if (h.a1 < a.length) { we.replace(d.uri, new vscode.Range(h.a0, 0, h.a1, 0), b.slice(h.b0, h.b1).map(l => l + eol).join('')); continue; }
+          // 末尾の行に触れる塊= 前の行の行末から文書の終わりまでを置き換える(最後の行には改行が無い)
+          const end = d.lineAt(d.lineCount - 1).range.end, lines = b.slice(h.b0, h.b1);
+          const st = h.a0 > 0 ? d.lineAt(h.a0 - 1).range.end : new vscode.Position(0, 0);
+          we.replace(d.uri, new vscode.Range(st, end), (h.a0 > 0 && lines.length ? eol : '') + lines.join(eol));
+        }
+        const ok = await vscode.workspace.applyEdit(we);
+        meosDbg('[vaultDiscard] 小さく直した ok=' + ok + ' 同じ=' + (d.getText().split(/\r?\n/).join('\n') === b.join('\n')));
+      }
+    }
+  } catch (e) { try { meosDbg('[vaultDiscard] err ' + (e && e.message)); } catch (_) { } }
+  await vscode.window.showTextDocument(d);
+  await vscode.commands.executeCommand('workbench.action.files.revert');
+}
 async function _vaultReload(fileKey) {
   _vaultGen.set(fileKey, (_vaultGen.get(fileKey) || 0) + 1);
   for (const d of _vaultDocsOf(fileKey)) {
@@ -18555,7 +18624,7 @@ function meosVaultActivate(context) {
           if (pick === 'Discard unsaved edits') {
             for (const d of dirty) {
               if (d.isClosed || !d.isDirty) continue;
-              try { await vscode.window.showTextDocument(d); await vscode.commands.executeCommand('workbench.action.files.revert'); } catch (_) { }
+              try { await meosVaultRevertGently(d); } catch (_) { }   // v5.1.106: 違う所だけ小さく直してから読み直す(32万行で固まった)
             }
             for (const k of keysSeen) { try { await _vaultReload(k); } catch (_) { } }
           }
@@ -29253,6 +29322,9 @@ async function meosInstallVsix() {
     const uri = picked[0];
     try { extensionContext.globalState.update('meosVsixLastDir', require('path').dirname(uri.fsPath)); } catch (_) { }   // v4.2.349
     meosDbg('[vsix] install ' + uri.fsPath);
+    // ★v5.1.106(俊克 10.20 pm06:42 改良1「インストールのときに、自動で保存してから実行するようにしたほうが良い」):
+    //   入れ替わると MeOS は止まる= 解錠中の膜と書きかけが残ると、起き直した時に「Discard」を訊くことになる。→ 先に全部施錠して、全部保存する。
+    try { const nL = await meosVaultLockAll('before install'); const okS = await vscode.workspace.saveAll(false); meosDbg('[vsix] 入れる前に 施錠=' + nL + ' 保存=' + okS); } catch (e) { meosDbg('[vsix] 施錠・保存 err ' + (e && e.message)); }
     await vscode.commands.executeCommand('workbench.extensions.installExtension', uri);
     const name = String(uri.fsPath || '').split('/').pop();
     // ★★★v4.2.78(俊克 2026.09.13 am10:21「最後は、右下に出るパネルでボタンを押す必要がある。

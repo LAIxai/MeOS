@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -208,6 +208,30 @@ console.log('⑮ ボタンを押した後、行頭に残ったカーソルを押
  const e3=mkEd(); X.__setPrev({line:1,character:5});
  X.meosParkCaretAfterPress(e3,1); await sleep(1300);
  ok(e3.selection.active.line===1 && e3.selection.active.character===0, '押す前も同じ行に居た時は今までどおり行頭', e3.selection.active);
+
+console.log('⑰ Discard の前に違う所だけ小さく直す(v5.1.106・32万行で固まった)');
+ await (async()=>{
+  const mkDoc=(text)=>{const L=text.split('\n');return {uri:{toString:()=>'meos-vault:/x.md',fsPath:'/x.md',scheme:'meos-vault'},lineCount:L.length,eol:1,getText:()=>L.join('\n'),
+    lineAt:n=>({text:L[n],range:{end:{line:n,character:L[n].length}}})};};
+  const offOf=(L,pos)=>{let o=0;for(let i=0;i<pos.line;i++)o+=L[i].length+1;return o+pos.character;};
+  const run=async(aT,bT)=>{
+    const d=mkDoc(aT), L=aT.split('\n'); const E=[];
+    stub.WorkspaceEdit=class{replace(u,r,t){E.push({s:r.start,e:r.end,t});}};
+    stub.Range=class{constructor(a,b,c,d){if(typeof a==='number'){this.start={line:a,character:b};this.end={line:c,character:d};}else{this.start=a;this.end=b;}}};
+    stub.Position=class{constructor(l,c){this.line=l;this.character=c;}};
+    stub.workspace.fs={readFile:async()=>Buffer.from(bT,'utf8')}; stub.workspace.applyEdit=async()=>true;
+    stub.window.showTextDocument=async()=>{}; stub.commands.executeCommand=async()=>{};
+    await X.meosVaultRevertGently(d);
+    let out=aT; E.map(x=>({s:offOf(L,x.s),e:offOf(L,x.e),t:x.t})).sort((p,q)=>q.s-p.s).forEach(x=>{out=out.slice(0,x.s)+x.t+out.slice(x.e);});
+    return {out,n:E.length};
+  };
+  const big=[];for(let i=0;i<30000;i++)big.push('line '+i+' 本文');
+  const A=big.join('\n'); const B2=big.slice(); B2.splice(15000,2,'書きかけ'); B2[29990]='⏰ v 18:10.45'; const B=B2.join('\n');
+  let r=await run(A,B); ok(r.out===B && r.n===2, '★真ん中の書きかけと末尾の⏰の2か所だけを直す(16万行の塊にしない)', [r.n]);
+  const B3=big.slice(); B3.push('末尾に足した行'); r=await run(A,B3.join('\n')); ok(r.out===B3.join('\n'), '最後の行の後ろに足した違いも正しく直す', r.n);
+  const B4=big.slice(0,29995); r=await run(A,B4.join('\n')); ok(r.out===B4.join('\n'), '末尾の行を消した違いも正しく直す', r.n);
+  const B5=big.slice(); B5[29999]='最後の行を書き換え'; r=await run(A,B5.join('\n')); ok(r.out===B5.join('\n'), '最後の行の書き換えも正しく直す', r.n);
+ })();
  console.log(ng?('NG '+ng):'ALL PASS'); process.exit(ng?1:0);
 })();
 });
