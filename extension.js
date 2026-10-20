@@ -12086,7 +12086,7 @@ function meosClockChainMarkAt(txt) {
   return { a, b: a + (g ? g[0].length : 1), off: !!m[1] };
 }
 function meosClockChainHitAt(document, line, character) {
-  try { const mk = meosClockChainMarkAt(document.lineAt(line).text || ''); return (mk && character >= mk.a && character <= mk.b) ? Object.assign({ line }, mk) : null; } catch (_) { return null; }
+  try { const mk = meosClockChainMarkAt(document.lineAt(line).text || ''); return (mk && character === mk.b) ? Object.assign({ line }, mk) : null; } catch (_) { return null; }   // v5.1.97: 札の桁(絵の直後)だけ
 }
 async function meosClockChainToggle(document, hit) {
   try {
@@ -14437,6 +14437,7 @@ function meosClockLineHints(editor, doc, i) {
       }
     }
     if (c.ufc) { const nk = meosClockNudgeSpot(txt, c); if (nk >= 0 && bh && bh.end === nk) out.push({ col: nk, label: '\u22121s' }, { col: nk + 1, label: '+1s' }); }
+    { const cm = c.chainSrc ? meosClockChainMarkAt(txt) : null; if (cm) out.push({ col: cm.b, label: '\u3000' }); }   // v5.1.97: ⛓️ の札(描く側の _hintBtn と同じ桁・同じ字)
   } catch (_) { }
   return out;
 }
@@ -14739,9 +14740,23 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
                 renderOptions: { after: { contentText: '⚠️', margin: '0 0 0 2px' } } });
             }
           }
-          if (c.chainSrc && !_rawHere) {   // ★v5.1.96: 鎖の絵に押し方の tip(1行)
+          // ★★v5.1.97(俊克 10.20 am10:36 改良2「⛓️の上で選択指にならない。クリックしても⛓️‍💥に切り替わらない」):
+          //   真因= 本文の字のまま押させていた= 行の前の方の飾りで見た目と桁がずれ、押した所より2〜4桁左にカーソルが落ちた([clkClick] caretCh=28 at="1 ⛓️⤴️")。
+          //   → 家の作り(🔔と同じ)= 本文の ⛓️ は隠し、その直後の桁に札(インレイヒント・全角空白で一定)を立てて絵を重ねる。押した判定は「カーソルの桁 == 札の桁」。
+          if (c.chainSrc && !_rawHere) {
             const _cm96 = meosClockChainMarkAt(txt);
-            if (_cm96) items.push({ range: new vscode.Range(i, _cm96.a, i, _cm96.b), hoverMessage: _cm96.off ? 'Click to link this ⛓️‍💥 again' : 'Click to cut this ⛓️ (⛓️‍💥)' });
+            if (_cm96) {
+              badgeHide.push(new vscode.Range(i, _cm96.a, i, _cm96.b));
+              _hintBtn(i, _cm96.b, '\u3000', { content: _cm96.off ? '\u26d3\ufe0f\u200d\ud83d\udca5' : '\u26d3\ufe0f' });
+              items.push({ range: new vscode.Range(i, _cm96.b, i, Math.min(txt.length, _cm96.b + 2)), hoverMessage: _cm96.off ? 'Click ⛓️‍💥 to link it again' : 'Click ⛓️ to cut it (⛓️‍💥)' });
+            }
+          }
+          // ★v5.1.97(俊克 改良1「💪Tabata work などのコメント文が見えると分かり易い」): ⏰のデータベースは選ぶための膜= 待っている行にもコメントを薄く添える
+          //   (ふつうの膜は v4.2.173 のまま= 走っている1本だけ)。本文は1字も足さない(飾りだけ)。
+          if (!_rawHere && c.title && meosIsTimerDbKey(c.key) && !(c.ufc && !c.done)) {
+            const _ti97 = txt.indexOf('//', Math.max(0, txt.search(/[\u21ba\u21bb]/)));
+            let _k97 = _ti97; while (_k97 > 0 && /\s/.test(txt.charAt(_k97 - 1))) _k97--;
+            if (_ti97 > 0 && _k97 > 0) items.push({ range: new vscode.Range(i, _k97 - 1, i, _k97), renderOptions: { after: { contentText: '\u00a0\u00a0' + c.title, color: '#8b949e', fontStyle: 'italic' } } });
           }
           if (c.lock && !_rawHere) {   // ★v4.2.235/238(済んだ後も): 掛かっている🔐に外し方のtip(外す時は確認しない=安全な向き)
             const _lm = meosClockLockMarkAt(txt);
