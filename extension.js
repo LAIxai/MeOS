@@ -14339,7 +14339,7 @@ function meosClockUnitSpans(txt, c) {   // ⏰行の周期の中の「数＋単�
     const ar = txt.search(/[\u21ba\u21bb]/); if (ar < 0) return out;
     const at = txt.indexOf(c.cycleSrc, ar); if (at < 0) return out;
     const re = /(\d+)([ydhms])(?![a-z])/g; let m;
-    while ((m = re.exec(c.cycleSrc))) out.push([at + m.index, at + m.index + m[0].length, MEOS_CLOCK_UNIT_COLOR[m[2]]]);
+    while ((m = re.exec(c.cycleSrc))) out.push([at + m.index, at + m.index + m[0].length, MEOS_CLOCK_UNIT_COLOR[m[2]], Number(m[1]) === 0]);   // 4つ目= ゼロの桁(v5.1.123)
   } catch (_) { }
   return out;
 }
@@ -14649,7 +14649,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //     ここで決めるのは「時計として描くか」だけ。
           if (!c || (!c.when && !(c.cycle && c.cycle.length))) continue;
           if (!meosClockLineIsLive(doc, i)) continue;   // v4.1.66: 囲いの中の見本には印を出さない
-          for (const sp of meosClockUnitSpans(txt, c)) unitCols[sp[2]].push(new vscode.Range(i, sp[0], i, sp[1]));   // v5.1.122: 年は年の色
+          for (const sp of meosClockUnitSpans(txt, c)) { const _r = new vscode.Range(i, sp[0], i, sp[1]); if (sp[3]) _r.__zero = true; unitCols[sp[2]].push(_r); }   // v5.1.122: 年は年の色 / v5.1.123: ゼロの桁の印
           // ★★★v4.1.161(俊克 9/6 pm02:14「本当は、インライン編集のときや、Rawモードでは、残り時間の
           //   表示は見えないはずなんだよね。これを特殊事情として許すのか、原則通り見せなくすべきか」):
           //   ★★★**原則どおり消す**= 規則を1行にする= **Rawでは字を1つも足さない。色は字ではないso残す**。
@@ -15488,11 +15488,21 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (meosClockPauseOutDeco) editor.setDecorations(meosClockPauseOutDeco, pausesOut);
     if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
     if (meosClockDirUpDeco) editor.setDecorations(meosClockDirUpDeco, dirUp);
-    if (meosClockCycNowDeco) editor.setDecorations(meosClockCycNowDeco, cycNow);
     // v5.1.122: 周期の単位の色。今走っている桁(白)とは重ねない= 走っている物が一番目立つ
     if (!meosClockUnitDecos) meosClockUnitDecos = MEOS_STAMP_COLORS.map(col => vscode.window.createTextEditorDecorationType({
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed, color: col, textDecoration: 'none; color: ' + col + ' !important;' }));
-    { const _hot = (r) => cycNow.some(n => n.start.line === r.start.line && n.start.character < r.end.character && r.start.character < n.end.character);
+    // ★v5.1.123(俊克 10.21 pm05:52 改良1「動作中のFCだけ白色にしているのは仕様だったけど、この例では25mの部分だけ白色にすべき」):
+    //   走っている桁の白は、ゼロでない単位だけ(0y0d0h25m なら 25m)。ゼロの桁は単位の色のまま= 効いている値が一目で分かる。
+    const _zero = unitCols.flat().filter(r => r.__zero);
+    const _cut = (n) => {   // 白い範囲からゼロの桁を抜く(抜いた残りを返す)
+      let parts = [[n.start.character, n.end.character]];
+      for (const z of _zero) { if (z.start.line !== n.start.line) continue; const a = z.start.character, b = z.end.character;
+        parts = parts.flatMap(([p, q]) => (b <= p || q <= a) ? [[p, q]] : [[p, a], [b, q]].filter(([x, y]) => y > x)); }
+      return parts.map(([p, q]) => new vscode.Range(n.start.line, p, n.start.line, q));
+    };
+    const _white = cycNow.flatMap(_cut);
+    if (meosClockCycNowDeco) editor.setDecorations(meosClockCycNowDeco, _white);
+    { const _hot = (r) => _white.some(n => n.start.line === r.start.line && n.start.character < r.end.character && r.start.character < n.end.character);
       meosClockUnitDecos.forEach((t, k) => { try { editor.setDecorations(t, unitCols[k].filter(r => !_hot(r))); } catch (_) { } }); }
     meosLegacyDecorate(editor);   // v5.1.37: 🏦 遺産膜の顔も同じ描き直しに乗せる
   } catch (_) { }

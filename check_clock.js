@@ -2652,4 +2652,24 @@ console.log('59 周期の数を単位ごとにタイムスタンプと同じ色�
  ok(on(5)==='0y:120 0d:150 1h:210 0m:150 0s:120', '★★★年=水・日=若草・時=藤・分=若草・秒=水(膜名TSの年/日/時/分/秒と同じ色)', on(5));
  ok(on(6)==='25m:150 5m:150', '  短い形も単位の色(分=若草)', on(6));
 }
+// v5.1.123(俊克 10.21 pm05:52 改良1「動作中のFCは白だけど、この例では25mの部分だけ白にすべき」)
+console.log('60 走っている桁の白は、ゼロでない単位だけ(v5.1.123)');
+{
+ const CL='<!-- Mew!UFC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes -->';
+ const L=['# t','<!-- {* ▼mCN=W_1 // c *} -->','x','<!-- {* ▲mCN=W_1 // c *} -->','<!-- Mew!UFC mCN (📊⊕0+0D0W) -->',CL,'本文'];
+ const d={uri:{toString:()=>'file:///w123.md',fsPath:'/w123.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/w123.md',isClosed:false,version:1};
+ const c=X.meosClockFcParse(CL);
+ const lk='file:///w123.md W_1';
+ X._meosPseudoScopes.set(lk,{uri:'file:///w123.md',key:'W_1',name:'W_1',fc:true,hold:false,lock:false,step:1500000,line:5,when:String(c.when||''),round:1,rounds:1,cycle:c.cycle,cycleSrc:c.cycleSrc,cidx:0,title:c.title});
+ X._meosPseudoUntil.set(lk, Date.now()+600e3);
+ const white=[], col=[];
+ X.meosApplyTimerLineDecorations({document:d,selection:{active:new stub.Position(0,0)},visibleRanges:[new stub.Range(0,0,L.length-1,0)],
+  setDecorations:(t,r)=>{const o=(t&&t.__opts)||{}; for(const x of (r||[])){ if(!x.start||x.start.line!==5) continue; const tx=L[5].slice(x.start.character,x.end.character);
+   if(/#ffffff\) !important; font-weight: 900/.test(String(o.textDecoration||''))) white.push(tx);
+   else if(/^rgba\((120, 200, 255|210, 160, 255|150, 220, 150)/.test(String(o.color||''))) col.push(tx); }}});
+ ok(white.join('|')==='25m', '★★★白いのは 25m だけ(効いている値)', white);
+ ok(col.slice().sort().join('|')==='0d|0h|0y', '★★ゼロの桁は単位の色のまま', col);
+ X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
