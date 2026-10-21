@@ -188,6 +188,7 @@ console.log('⑫ 閉じの直後の UFC 行= 説明(紙の中の2行に見せか
  const shown=(first?first.renderOptions.after.contentText:'')+(rest?L8[4].slice(rest.start.character,rest.end.character):'');
  ok(first && rest && shown===C, '★★★説明が閉じの行(1行目)と説明の行(2行目)に分かれ、つなぐと元の字', [first&&first.renderOptions.after.contentText, shown]);
  ok(hid.some(r=>r.start.line===3&&r.start.character===0&&r.end.character===3), '  閉じの ``` は幅ごと畳む', hid);
+ ok(first && /border-top: 1px solid #2f6fb3/.test(first.renderOptions.before.textDecoration||''), '★説明の上に青の罫線(上の中身と分ける・v5.1.115)', first&&first.renderOptions.before);
  ok(hid.some(r=>r.start.line===4&&r.start.character===0) && hid.some(r=>r.start.line===4&&r.end.character===L8[4].length), '  説明の行の包みと1行目に出した分は畳む', hid);
  const sv2=sv; X.meosApplyCodeFenceDecorations(ed(4));
  ok((sv2.get(HD)||[]).length===0 && (sv2.get(IK)||[]).length===0, '  カーソルが説明の行に居る間は生のまま', [(sv2.get(HD)||[]).length,(sv2.get(IK)||[]).length]);

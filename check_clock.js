@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosLiveClockFor,meosChainFillSlot,meosChainSayFor,meosArmClockFcFor,_meosClockUnreadable,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosLiveClockFor,meosChainFillSlot,meosChainSayFor,meosArmClockFcFor,_meosClockUnreadable,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockLineIsLive,meosClockLineHints,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 // ★★★v4.2.39: 関数を**丸ごと**切り出す(固定長の窓をやめる)。
 //   今日3度、コードは無傷なのに「探している字が窓の外へ出た」だけで検査が落ちた
@@ -2586,5 +2586,18 @@ console.log('54 囲いの中の --- は文字のまま / 罫線は橙(v5.1.113)'
  const rules=all.filter(x=>x.renderOptions&&x.renderOptions.before&&/border-top/.test(x.renderOptions.before.textDecoration||''));
  ok(rules.map(x=>x.range.start.line).join()==='4', '★★★``` の中の --- は文字のまま・外だけ罫線', rules.map(x=>x.range.start.line));
  ok(rules.every(x=>/#e0803a/.test(x.renderOptions.before.textDecoration)), '★罫線は⏰の家の橙', rules.map(x=>x.renderOptions.before.textDecoration));
+}
+// v5.1.115(俊克 10.21 pm00:06 改良1「コードブロックにMeOSのコードが入っていると、外側で文字を入力する度に再描画がかかる」)
+console.log('55 1字打って控えが古い間も、囲いの中の⏰は字のまま(v5.1.115)');
+{
+ const L=['# t','<!-- {* ▼mCN=Q_1 // c *} -->','x','<!-- {* ▲mCN=Q_1 // c *} -->','<!-- Mew!UFC ⏰ ↺↻(20s)×1 // live -->','本文','```','<!-- Mew!UFC ⏰ ↺↻(20s)×1 ⛓️⤵️2 // sample -->','```','あ'];
+ let ver=1;
+ const d={uri:{toString:()=>'file:///q115.md',fsPath:'/q115.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n')+(ver>1?'い':''),eol:1,fileName:'/q115.md',isClosed:false,get version(){return ver;}};
+ X.meosClockFcScan(d);
+ ok(X.meosClockLineIsLive(d,4) && !X.meosClockLineIsLive(d,7), '  控えが新しい時= 外は生き・中は見本', [X.meosClockLineIsLive(d,4),X.meosClockLineIsLive(d,7)]);
+ ver=2;   // 囲いの外で1字打った(控えはまだ作り直していない)
+ ok(X.meosClockLineIsLive(d,4) && !X.meosClockLineIsLive(d,7), '★★★控えが古い間も、囲いの中は見本のまま(一瞬だけ時計に描かない)', [X.meosClockLineIsLive(d,4),X.meosClockLineIsLive(d,7)]);
+ ok(X.meosClockLineHints(null,d,7).length===0, '★★札も差し込まない(行が横にずれない)', X.meosClockLineHints(null,d,7));
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

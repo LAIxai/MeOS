@@ -11844,7 +11844,10 @@ function meosClockFcScan(doc) {
 function meosClockLineIsLive(doc, i) {
   try {
     const m = _meosClockLinesMem.get(doc.uri.toString());
-    if (!m || m.version !== doc.version) return true;
+    // ★v5.1.115(俊克 10.21 pm00:06 改良1「コードブロックにMeOSのコードが入っていると、その外側で文字を入力する度に再描画がかかってうざい」):
+    //   控えは版ごと= 1字打つと古くなり、作り直すまで「生きている」と答えていた→ 囲いの中の⏰が一瞬だけ時計に描かれ(札も差し込まれ)、すぐ字に戻っていた。
+    //   → 控えが古い間は、囲いの中かどうかだけを答える(囲いの数え方は1つ= meosFenceBlocks)。
+    if (!m || m.version !== doc.version) { try { return !meosFenceBlocks(doc).some(b => b.open < i && i < b.close); } catch (_) { return true; } }
     return m.lines.has(i);
   } catch (_) { return true; }
 }
@@ -43215,7 +43218,10 @@ function meosApplyCodeFenceDecorations(editor) {
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(紙だけ残す)
           if (ln === b.close && _capLive) {                            // v5.1.114: 閉じの ``` は幅ごと畳み、説明の1行目を見せる
             if (t.length) { capHides.push(new vscode.Range(ln, 0, ln, t.length));
-              capInks.push({ range: new vscode.Range(ln, 0, ln, t.length), renderOptions: { after: { contentText: _cap1, color: MEOS_FENCE_CAP_INK, fontStyle: 'italic' } } }); }
+              capInks.push({ range: new vscode.Range(ln, 0, ln, t.length), renderOptions: {
+                // ★v5.1.115(俊克 改良2「青色のコメントの部分と上側の通常の表示の間に罫線を入れて、区別をはっきりしよう」): 紙の中身の幅で上辺に線
+                before: { contentText: '', textDecoration: 'none; position: absolute; left: ' + MEOS_FENCE_INDENT_COLS + 'ch; width: ' + _capW + 'ch; height: 0; border-top: 1px solid ' + MEOS_FENCE_CAP_INK + '; pointer-events: none;' },
+                after: { contentText: _cap1, color: MEOS_FENCE_CAP_INK, fontStyle: 'italic' } } }); }
             continue;
           }
           if (ln === b.open || ln === b.close) {
