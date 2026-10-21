@@ -64,6 +64,16 @@ line into any membrane and it works there too. Each waiting line shows its title
 you want at a glance. Delete the database by mistake, and the next press of `⏰0y0d0h3m …` makes it again.
 The countdown shows on the badge line at the top of the database even when the running line is scrolled out of view.
 
+**Timer in Timer — 🪑 the away timer.** Look at the right end of the menu bar: inside the ⏰ sits a small chair on
+a coloured tile — `🪑3m`. *The ⏰ counts toward the time you chose; the 🪑 inside it counts the time you have been
+away.* When nobody has touched the Mac for that long (MeOS counts the way macOS does before it sleeps), MeOS saves,
+locks every 🔐 membrane and quits VSCodium — like a TV that switches itself off. Your clocks keep ringing from
+V-helper, and when you come back a note tells you what happened. Pick a seat with the button beside **Encrypt Me**
+in Me Dock: 🪑 chair 3 minutes, 🛋️ sofa 15, 💺 train seat 30 (each one 3–60), and the tile takes the seat's colour —
+sky blue, red-brown, gold. In the last 75 seconds it counts in seconds, `🪑0:42`, and a minute before the end it
+rings like any ⏰; touch anything and it stops. Doze off at the keyboard, and it wakes you up — along with everyone
+around you.
+
 **`<!-- Mew!UFC --- -->` draws a line.** Three dashes or more, as in Markdown's own `---`: the comment disappears and
 an orange rule takes its place, so the groups in a long list of clocks stand apart. Two dashes are not enough, and
 inside a code block it stays text. It is a UFC line (one that never folds), so it does not break the list — the
