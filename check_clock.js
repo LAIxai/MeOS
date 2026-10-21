@@ -2672,4 +2672,14 @@ console.log('60 走っている桁の白は、ゼロでない単位だけ(v5.1.1
  ok(col.slice().sort().join('|')==='0d|0h|0y', '★★ゼロの桁は単位の色のまま', col);
  X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
 }
+// v5.1.126(俊克 10.22 am04:53「今日自動生成した日記膜が、展開しても直ぐに閉じてしまう」)
+console.log('61 開始膜の直下の FC 行の塊は畳まない(頭が膜と同じ行= 膜を畳んでしまう)(v5.1.126)');
+{
+ const L=['# t','<!-- {* ▼mCN=✴️10/22t 2026 日記_20261022t044552JST // ~~24.4℃↘~~ (copied) *} -->','<!-- Mew!FC ~~ (赤/紺) -->','本文','<!-- Mew!FC ~~👻 (赤/紺) -->','~~64kg~~','<!-- {* ▲mCN=✴️10/22t 2026 日記_20261022t044552JST // comment2 *} -->','後'];
+ const d={uri:{toString:()=>'file:///o126.md',fsPath:'/o126.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/o126.md',isClosed:false,version:1};
+ const sh=X.meosFcFoldShape(d,-1);
+ ok(!sh.some(it=>it.head===1&&it.hasRange), '★★★頭が開始膜の行(1)の塊には畳む範囲を渡さない', sh.map(it=>[it.head,it.end,it.hasRange]));
+ ok(sh.some(it=>it.head===3&&it.end===4&&it.hasRange), '  膜の中の他の FC の塊は今までどおり畳む', sh.map(it=>[it.head,it.end,it.hasRange]));
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

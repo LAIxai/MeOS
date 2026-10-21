@@ -40141,6 +40141,7 @@ function meosApplyFcRowDecorations(editor) {
 //     **必ずこの1つの関数から引く**。別々に数えると、開けるつもりで膜を開いてしまう。
 function meosFcFoldShape(document, caretLine) {
   const out = [];
+  let _opens126 = null;   // v5.1.126: 膜の開始行(1回だけ数える)
   try {
     // ★★★v4.2.51(俊克 2026.09.10 pm07:47 改良1「文字カーソルthatある行によって、部分的にしか
     //   表示されない(一部thatが折り畳まれている)のthat使い難いので、どこにあってもすべての行を
@@ -40181,7 +40182,14 @@ function meosFcFoldShape(document, caretLine) {
           if (c) { _keepOpen51 = true; break; }                   // ⏰の行= この塊は開けたまま(v5.1.119: 鳴り終わった ✓ も畳まない= 直して使い回す)
         }
       } catch (_) { }
-      out.push({ b, head, end, shift, open, hasRange: (end > head) && !_keepOpen51, keepOpen: _keepOpen51 });
+      // ★★v5.1.126(俊克 10.22 am04:53「今日自動生成した日記膜が、展開しても直ぐに閉じてしまう。また制限数を超えたかな?」):
+      //   上限ではなかった(範囲は67)。真因= 開始膜の直下の FC 行(`<!-- Mew!FC ~~ (赤/紺) -->` = 開始膜のコメントの指定)の塊は、頭が**開始膜の行**になる。
+      //   膜の範囲も同じ行から始まるので、VS Code は同じ行から始まる2つ目(FCの塊)を捨てる→ 「その塊を畳め」が膜そのものを畳んでいた
+      //   (ログ: [fold] unfold start=344 → 1.5秒後 meosAutoFoldSpecLines lines=[344] → [fcReopen] 頭=345 … が4回)。
+      //   → 頭が開始膜の行の塊には、畳む範囲を渡さない(VS Code が元から捨てている物= 見え方は変わらず、膜を畳む誤りだけが消える)。
+      let _onOpen126 = false;
+      try { if (!_opens126) { _opens126 = new Set(); for (const pr of collectPairs(document, { excludeIndex: false })) _opens126.add(pr.start); } _onOpen126 = _opens126.has(head); } catch (_) { }
+      out.push({ b, head, end, shift, open, hasRange: (end > head) && !_keepOpen51 && !_onOpen126, keepOpen: _keepOpen51 });
     }
   } catch (_) { }
   return out;
