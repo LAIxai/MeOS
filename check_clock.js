@@ -527,10 +527,9 @@ const mkL=(last,uri)=>{const L=['# t','<!-- {* \u25bcmCN=F_1 *} -->','x','<!-- {
 const dDone=mkL('<!-- Mew!FC \u23f0 2026-08-30 00:04\u2713 -->','file:///i.md');
 const prD=X.collectPairs(dDone,{excludeIndex:false})[0];
 const bD=X.meosDefBlocks(dDone), shD=X.meosFcFoldShape(dDone,1).filter(it=>it.hasRange);
-ok(X.foldRangeEnd(dDone,prD)===5, '\u2605\u2605済んだ⏰(FC)はカーソルが外なら膜と一緒に畳まれる', X.foldRangeEnd(dDone,prD));
-ok(Math.max(...bD.map(b=>b.end))<=X.foldRangeEnd(dDone,prD), '\u2605\u2605\u2605カーソルが外= 入れ子で収まる', true);
-ok(shD.length===1&&shD[0].head===4&&shD[0].end===5, '\u2605\u2605カーソルが中= 塊の頭はバッジ行(頭は隠れない)', shD.map(it=>[it.head,it.end]));
-ok(shD.every(it=>it.head>X.foldRangeEnd(dDone,prD,true)), '\u2605\u2605\u2605カーソルが中でも交差しない(離れている)', true);
+/* ★v5.1.119(俊克 10.21「鳴り終わった⏰もバッジ行も畳まずに見せて」): 済んだ⏰も膜の外に見えたまま(v4.1.19 の「畳まれる仲間に戻る」を取り消した) */
+ok(X.foldRangeEnd(dDone,prD)===3, '\u2605\u2605済んだ⏰(FC)も畳まない= 膜の畳みは▲で止まる(v5.1.119)', X.foldRangeEnd(dDone,prD));
+ok(shD.length===0, '\u2605\u2605\u2605カーソルが中でも、FCの塊に畳む物は無い(交差しようが無い)', shD.map(it=>[it.head,it.end]));
 const dLive=mkL('<!-- Mew!UFC \u23f0 2026-12-31 23:00 -->','file:///j.md');
 const prL=X.collectPairs(dLive,{excludeIndex:false})[0];
 ok(X.foldRangeEnd(dLive,prL)===3&&X.foldRangeEnd(dLive,prL,true)===3, '\u2605これから鳴る\u23f0(UFC)はどちらの形でも膜の畳みの外', [X.foldRangeEnd(dLive,prL),X.foldRangeEnd(dLive,prL,true)]);
@@ -2173,10 +2172,11 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '★★★走る前に畳まない(直る前は 5〜7 を畳んでいた)', X.foldRangeEnd(mid,pair,false)+1);
   ok(X.meosClockBadgeRow(one,pair)===4 && X.foldRangeEnd(one,pair,false)===3,
      '  走っている1本が在る間も今までどおり(バッジは動く数字の置き場)', true);
-  ok(X.meosClockBadgeRow(all,pair)===-1 && X.foldRangeEnd(all,pair,false)===8,
-     '★★★全部終わったら、バッジもコメントFCも含めて畳む(v4.2.37で塊の物差しを揃えた)', X.foldRangeEnd(all,pair,false)+1);}
- ok(/if \(c && !c\.done && \(c\.when \|\| \(Array\.isArray\(c\.cycle\) && c\.cycle\.length\)\)\) return badge;/.test(S9),
-    '★★数え方が読む側(v4.2.31)・掛ける側(v4.2.33)と揃っている', true);
+  /* ★v5.1.119(俊克 10.21「鳴り終わった⏰もバッジ行も畳まずに見せて」): v4.2.36「全部終わったら膜だけが見える」を取り消した */
+  ok(X.meosClockBadgeRow(all,pair)===4 && X.foldRangeEnd(all,pair,false)===3,
+     '★★★全部終わっても、バッジ行と⏰は畳まない(v5.1.119= 直して使い回す)', [X.meosClockBadgeRow(all,pair), X.foldRangeEnd(all,pair,false)+1]);}
+ ok(/if \(c && \(c\.when \|\| \(Array\.isArray\(c\.cycle\) && c\.cycle\.length\)\)\) return badge;   \/\/ v5.1.119: 済みも数える/.test(S9),
+    '★★起点か周期を持つ⏰の行が在れば置き場を残す(v5.1.119: 済みも数える)', true);
  /* ★★★v4.2.36(俊克「バッジもUFCしておくのが合理的かな? 済んだ分から折り畳んで
     見えなくなっていく方が、進んでいくのが分かりやすいでしょ」)= 名前が状態を語る。 */
  {let _u=0;
@@ -2196,12 +2196,13 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
            mem:X.foldRangeEnd(d,{start:1,end:3,id:'X_1'},false), badge:X.meosClockBadgeRow(d,{end:3})};};
   const a=shape(B(UB,D1,U2,U3)), b=shape(B(UB,D1,D2,U3)), c=shape(B(FB,D1,D2,D3));
   ok(a.badge===4 && b.badge===4, '★★UFCのバッジも「バッジ行」と読める(名前を変えても在り処は変わらない)', [a.badge,b.badge]);
-  ok(JSON.stringify(a.fc)==='[[4,5]]',
-     '★★★⏰の行は畳まない/メッセージは畳む(v4.2.52・俊克 バグ1で狭めた)', a.fc);
-  ok(JSON.stringify(b.fc)==='[[4,6]]',
-     '  待っている1本が増えても、畳むのはメッセージの側だけ', b.fc);
-  ok(c.badge===-1 && c.mem===7,
-     '★★★全部済んだらバッジも畳みの中= 膜だけが見える(5分タイマーの時と同じ姿)', [c.badge,c.mem]);}
+  /* ★v5.1.119: 鳴り終わった ✓ の行も畳まない(v4.2.36「済んだ分から消えていく」を取り消した) */
+  ok(JSON.stringify(a.fc)==='[]',
+     '★★★⏰の行は済んでも畳まない(v5.1.119)', a.fc);
+  ok(JSON.stringify(b.fc)==='[]',
+     '  済んだ行が増えても畳まない', b.fc);
+  ok(c.badge===4 && c.mem===3,
+     '★★★全部済んでも、バッジ行と⏰は膜の外に見えたまま(v5.1.119)', [c.badge,c.mem]);}
  /* ★★★v4.2.37(俊克 バグ1/2「最後のメッセージ用のデータがRawのように見えている」
     「①の膜を折り畳むと、なぜか⏰1〜3が消える」)= 2つの畳みが交差していた。 */
  {const A7=['# t','<!-- {* ▼mCN=Y_1 // c *} -->','本文','<!-- {* ▲mCN=Y_1 // *} -->',
@@ -2215,10 +2216,9 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
   const pr={start:1,end:3,id:'Y_1'};
   const mem=X.foldRangeEnd(d7,pr,false);
   const fc=X.meosFcFoldShape(d7,-1).filter(it=>it.hasRange).map(it=>[it.head,it.end]);
-  ok(mem===7, '★★★コメントFCも膜の物(指定は塊の下に積み上がる物)', mem);
-  ok(fc.length===1 && fc[0][1]===7, '  FC塊も同じ所で終わる(直る前は膜が行6で切れていた)', fc);
-  ok(!(pr.start < fc[0][0] && fc[0][0] < mem && mem < fc[0][1]),
-     '★★★2つの範囲が交差しない= VS Code に捨てられない( [ ) ] にならない)', [pr.start,fc[0][0],mem,fc[0][1]]);}
+  /* ★v5.1.119: 済んだ⏰が在る膜は、膜も FC の塊もバッジ行の手前(▲)で止まる= 交差しようが無い */
+  ok(mem===3, '★★★済んだ⏰の膜も、膜の畳みは▲で止まる(v5.1.119)', mem);
+  ok(fc.length===0, '  FC塊もバッジ行の手前で止まる(畳む物が無い)', fc);}
  ok(/if \(meosIsSpecLine\(t\) && !meosIsUnfoldingSpecLine\(t\)\) \{ e\+\+; continue; \}/.test(S9),
     '★★塊の終わりを決める物差しが meosDefBlocks と同じ(時計かどうかを訊かない)', true);
  ok(/if \(!c \|\| \(!c\.when && !\(c\.cycle && c\.cycle\.length\)\)\) continue;[\s\S]{0,400}?meosClockLineIsLive/.test(S9),
@@ -2383,8 +2383,8 @@ console.log('㊷ 走る⏰の並びは畳まない(俊克 pm07:47 改良1)');
      '★★★見るのは**畳まれる行だけ**= 全文書を走らない(v4.2.51は再描画のたびに全文書を走り、ホストを5秒止めた)', true);
  ok(/hasRange: \(end > head\) && !_keepOpen51/.test(SH),
     '★★★まだ鳴る⏰が居れば、その並びには畳む範囲を渡さない', true);
-  ok(/const c = meosClockFcParse\(t\);\s*\n\s*if \(c && !c\.done\) \{ _keepOpen51 = true; break; \}/.test(SH),
-     '★まだ鳴る時計が在る塊だけ開けたまま(済んだ物しか無い塊は今までどおり畳む)', true);
+  ok(/const c = meosClockFcParse\(t\);\s*\n\s*if \(c\) \{ _keepOpen51 = true; break; \}/.test(SH),
+     '★⏰の行が在る塊は開けたまま(v5.1.119: 済んだ ✓ も畳まない)', true);
   ok(/if \(t\.indexOf\('\\u23f0'\) < 0\) continue;/.test(SH) && !/meosClockFcScan\(document\)/.test(SH),
      '  ⏰の無い行は読まない(安い足切り)・畳みの形を決める所で全文書を走らない', true);
  /* ★★★v4.2.52(俊克 am01:12「ただし連番が表示されないよね」)= 見せかけの番号を描く。 */
@@ -2625,5 +2625,17 @@ console.log('57 ①= ↺↻(1h)×2・2か所の①は同じ1つの口(v5.1.118)'
  ok(/cycle:'\(1h\)\\u00d72',title:'Timer 1h # 1\.'/.test(S) && /rep:true/.test(S.slice(S.indexOf('const __oneShot'), S.indexOf('const __oneShot')+400)), '★★★①は (1h)×2 の繰返し・タイトルに回数の器', 0);
  ok(/\['clk-one','os-one'\]\.forEach/.test(S) && (S.match(/id="os-one"/g)||[]).length===1 && (S.match(/id="clk-one"/g)||[]).length===1, '★★Timed Me-System の⏰と Format Me の⏰0y0d0h3m … の右肩に1つずつ・口は1つ', 0);
  ok(/<span class="ww-split os-split"><button class="ww-btn os-btn" id="os-btn"/.test(S), '  右肩の丸は折り返しの↻と同じ囲い(ww-split)', 0);
+}
+// v5.1.119(俊克 10.21 pm04:38 バグ1「終了後、⏰FCが畳まれ、…を押してもRawになるだけ」→ 案A「鳴り終わった⏰もバッジ行も畳まずに見せて」)
+console.log('58 鳴り終わった①((1m)×2✓)もバッジ行も畳まない(v5.1.119)');
+{
+ const L=['# t','<!-- {* ▼mCN=name_20261021W163937JST // comment1 *} -->','','<!-- {* ▲mCN=name_20261021W163937JST // comment2 *} -->',
+  '<!-- Mew!FC mCN (📊⊕0+0D-3Y) -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(1m)×2✓ // Timer 1h # 1. -->','本文'];
+ const d={uri:{toString:()=>'file:///n119.md',fsPath:'/n119.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/n119.md',isClosed:false,version:1};
+ const pr={start:1,end:3,id:'name_20261021W163937JST'};
+ ok(X.meosClockBadgeRow(d,pr)===4, '★★★済んだ⏰でもバッジ行は置き場として残る', X.meosClockBadgeRow(d,pr));
+ ok(X.foldRangeEnd(d,pr,false)===3, '★★★膜を畳んでも▲で止まる(バッジ行と⏰は外に見える)', X.foldRangeEnd(d,pr,false));
+ ok(X.meosFcFoldShape(d,-1).every(it=>!it.hasRange) && X.meosFcFoldShape(d,6).every(it=>!it.hasRange), '★★★カーソルがどこでも、FCの塊として畳まれない(…が出ない)', X.meosFcFoldShape(d,-1).map(it=>[it.head,it.end,it.hasRange]));
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

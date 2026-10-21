@@ -4705,10 +4705,17 @@ function meosClockBadgeRow(document, pair) {
       break;
     }
     if (badge < 0) return -1;                       // バッジ行thatが無い膜は、今までどおり
-    for (let k = e + 1; k < document.lineCount; k++) {
+    // ★★v5.1.119(俊克 10.21 pm04:38 バグ1「終了後、⏰FCが折り畳まれてしまい、…をクリックするとRaw表示になるだけで、通常モードになると畳まれてしまう」
+    //   → 案A「鳴り終わった⏰もバッジ行も畳まずに見せて」): v4.2.36「全部終わったら膜だけが見える」を取り消す。
+    //   ①の (1h)×2 のように、⏰は鳴り終えた後も直して使い回す物になった(⏰のデータベース膜も、鳴り終えたら待ちに戻って見えたまま)。
+    //   → 置き場(バッジ行)を残す条件= **⏰の行が在ること**(済み ✓ も数える)。済みの行は FC と名乗っていても並びに数える。
+    //   畳み(膜・FCの塊)とバッジ行の名前(UFC/FC)は、この1つの答えから引く= 3か所が揃って「畳まない」になる。
+    for (let k = Math.min(document.lineCount - 1, pair.end) + 1, n = 0; k < document.lineCount && n < 500; k++, n++) {   // バッジ行の上の⏰も数える
       const t = document.lineAt(k).text;
-      if (!meosIsUnfoldingSpecLine(t)) break;        // 指定行the並びthat切れたら、そこまで
+      if (!meosIsSpecLine(t)) break;                 // 指定行の並びが切れたら、そこまで(v5.1.119: FC の行も並びに数える)
+      if (t.indexOf('\u23f0') < 0) continue;
       const c = meosClockFcParse(t);
+      if (c && (c.when || (Array.isArray(c.cycle) && c.cycle.length))) return badge;   // v5.1.119: 済みも数える
       // ★★★v4.2.35(2026.09.10 俊克「最終的に全部終わったら、バッジも含めて折り畳むべきだよね?」から出た穴):
       //   ★★★**これから鳴る⏰の数え方が古かった**= `c.when` を要求していたので、連なりの
       //     まだ席の回っていない1本(`3. ↺3m ×1` = 起点を書いていない)が「居ない」ことにされ、
@@ -4717,7 +4724,6 @@ function meosClockBadgeRow(document, pair) {
       //     **済みでなく、起点か周期のどちらかを持てば、これから鳴る**
       //     → [[feedback_one_source_for_mark_count_action]]
       //   ★休み(⏸)は今までどおり数える= また自分が動くという意思so、置き場は要る。
-      if (c && !c.done && (c.when || (Array.isArray(c.cycle) && c.cycle.length))) return badge;
     }
     return -1;
   } catch (_) { return -1; }
@@ -40136,7 +40142,7 @@ function meosFcFoldShape(document, caretLine) {
           const t = document.lineAt(ln).text;
           if (t.indexOf('\u23f0') < 0) continue;                 // 安い足切り(⏰の無い行は読まない)
           const c = meosClockFcParse(t);
-          if (c && !c.done) { _keepOpen51 = true; break; }        // まだ鳴る時計= この塊は開けたまま
+          if (c) { _keepOpen51 = true; break; }                   // ⏰の行= この塊は開けたまま(v5.1.119: 鳴り終わった ✓ も畳まない= 直して使い回す)
         }
       } catch (_) { }
       out.push({ b, head, end, shift, open, hasRange: (end > head) && !_keepOpen51, keepOpen: _keepOpen51 });
