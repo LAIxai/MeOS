@@ -181,6 +181,25 @@ console.log('⑦ 膜名を直に打ち替えた = 閉じ膜へ届ける1つの�
   ok(T.meosMembraneNameEditFor(doc, w) === null, '揃った後はもう何も出ない(繰り返し書かない)', JSON.stringify(T.meosMembraneNameEditFor(doc, w)));
   lines[OPEN_LINE] = before; lines[CLOSE_LINE] = lines[CLOSE_LINE].replace('新しい名前_20260822s110000JST', 'テスト膜_20260822s105259JST');
 }
+console.log('⑦b 閉じ膜で膜名を打ち替えた = 開始膜へ届ける1つの書き換えが出る(v5.1.127)');
+{
+  const beforeC = lines[CLOSE_LINE];
+  const w = { uri: uri.toString(), openLine: OPEN_LINE, closeLine: CLOSE_LINE, oldName: 'テスト膜_20260822s105259JST', side: 'close', line: CLOSE_LINE };
+  ok(T.meosMembraneNameEditFor(doc, w) === null, '名前を変えていない間は何も出ない', JSON.stringify(T.meosMembraneNameEditFor(doc, w)));
+  lines[CLOSE_LINE] = beforeC.replace('テスト膜_20260822s105259JST', '閉じ側の名前_20260822s120000JST');   // 閉じ行だけ直に打ち替えた
+  const one = T.meosMembraneNameEditFor(doc, w);
+  ok(one && one.text === '閉じ側の名前_20260822s120000JST' && one.range.start.line === OPEN_LINE, '★★★書き換える先は開始行・新しい名前が入る', JSON.stringify(one));
+  const op = T.membraneNameRangeForRenameOnLine(doc, OPEN_LINE, 'open');
+  const applied = lines[OPEN_LINE].slice(0, op.range.start.character) + one.text + lines[OPEN_LINE].slice(op.range.end.character);
+  ok(/▼mCN=閉じ側の名前_20260822s120000JST/.test(applied), '★当てると開始膜が揃う', applied);
+  const beforeO = lines[OPEN_LINE]; lines[OPEN_LINE] = applied;
+  ok(T.meosMembraneNameEditFor(doc, w) === null, '揃った後はもう何も出ない', JSON.stringify(T.meosMembraneNameEditFor(doc, w)));
+  lines[OPEN_LINE] = beforeO; lines[CLOSE_LINE] = beforeC;
+  const w2 = Object.assign({}, w, { oldName: '別の名前_20260101s000000JST' });
+  lines[CLOSE_LINE] = beforeC.replace('テスト膜_20260822s105259JST', 'X_20260822s120000JST');
+  ok(T.meosMembraneNameEditFor(doc, w2) === null, '  開始行が控えた名前でなければ触らない', JSON.stringify(T.meosMembraneNameEditFor(doc, w2)));
+  lines[CLOSE_LINE] = beforeC;
+}
 console.log('⑧ 閉じ行が控えた名前でない = 触らない(誰かが先に直した後)');
 {
   const w = { uri: uri.toString(), openLine: OPEN_LINE, closeLine: CLOSE_LINE, oldName: '別の名前_20260101s000000JST' };

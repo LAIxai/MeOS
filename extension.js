@@ -26133,7 +26133,10 @@ function membraneNameRangeForRenameOnLine(document, line, expectedKind, expected
 //   ★閉じ行が控えた名前のままの時だけ書き換える。既に違う名前なら、誰かが直した後なので触らない。
 //   ★畳んだまま名前を直すこともある(俊克「折り畳んであっても、comment1は修正できる」)＝ 閉じ行は畳んだ中に
 //     居るので、書き換えると VSCode が折り畳みを計算し直して開いてしまう(v0.9.906)。**畳み直して返す**。
-let _meosNameWatch = null;   // { uri, openLine, closeLine, oldName }
+// ★v5.1.127(俊克 10.22 am05:00 改良1「膜名をエディター上でも修正できるようになっているけど、開始膜でしかできない。閉じ膜で修正した場合はうまく行かない。それもできるように」):
+//   見張る行を閉じ膜にも広げる= side:'close' なら、閉じ行の名前を打ち替えて離れた時に、開始行(控えた名前のまま)を揃える。
+//   作法は開始膜の側と同じ1つ(入った時に控える・離れた時に1回だけ・相手が控えた名前のままの時だけ書く)。
+let _meosNameWatch = null;   // { uri, openLine, closeLine, oldName, side?, line? }(side 無し= 開始膜の側)
 function meosNoteMembraneNameEdit(editor) {
   try {
     if (!editor || !editor.document || !editor.selection) return;
@@ -26141,17 +26144,25 @@ function meosNoteMembraneNameEdit(editor) {
     const uri = String(doc.uri);
     const line = editor.selection.active.line;
     const w = _meosNameWatch;
-    if (w && (w.uri !== uri || w.openLine !== line)) {   // 見ていた行を離れた
+    const _wl = (w) => (w && typeof w.line === 'number') ? w.line : (w ? w.openLine : -1);   // v5.1.127: 見ている行
+    if (w && (w.uri !== uri || _wl(w) !== line)) {   // 見ていた行を離れた
       _meosNameWatch = null;
       meosApplyMembraneNameEdit(w);                      // 待たない(カーソルの道を止めない)
     }
     if (line < 0 || line >= doc.lineCount) return;
-    if (_meosNameWatch && _meosNameWatch.uri === uri && _meosNameWatch.openLine === line) return; // もう見ている
+    if (_meosNameWatch && _meosNameWatch.uri === uri && _wl(_meosNameWatch) === line) return; // もう見ている
     const nm = membraneNameRangeForRenameOnLine(doc, line, 'open');
-    if (!nm || !nm.id) return;                           // 膜の開始行でなければ何もしない(ここで足切り)
-    const pair = collectPairs(doc, { excludeIndex: false }).find(p => p.start === line && p.id === nm.id);
-    if (!pair || pair.end <= pair.start) return;
-    _meosNameWatch = { uri, openLine: line, closeLine: pair.end, oldName: nm.id };
+    if (nm && nm.id) {
+      const pair = collectPairs(doc, { excludeIndex: false }).find(p => p.start === line && p.id === nm.id);
+      if (!pair || pair.end <= pair.start) return;
+      _meosNameWatch = { uri, openLine: line, closeLine: pair.end, oldName: nm.id };
+      return;
+    }
+    const cn = membraneNameRangeForRenameOnLine(doc, line, 'close');   // v5.1.127: 閉じ膜の行も見張る
+    if (!cn || !cn.id) return;                           // 膜の開始行でも閉じ行でもなければ何もしない(ここで足切り)
+    const pc = collectPairs(doc, { excludeIndex: false }).find(p => p.end === line && p.id === cn.id);
+    if (!pc || pc.end <= pc.start) return;
+    _meosNameWatch = { uri, openLine: pc.start, closeLine: line, oldName: cn.id, side: 'close', line };
   } catch (_) { }
 }
 // 控えと今の文書を見て、閉じ行に必要な1つの書き換えを返す(無ければ null)。判定はここ1つだけ。
@@ -26159,6 +26170,14 @@ function meosMembraneNameEditFor(doc, w) {
   if (!doc || !w) return null;
   if (w.openLine < 0 || w.openLine >= doc.lineCount) return null;
   if (w.closeLine <= w.openLine || w.closeLine >= doc.lineCount) return null;
+  if (w.side === 'close') {                      // v5.1.127: 閉じ膜で打ち替えた→ 開始行を揃える
+    const nowC = membraneNameRangeForRenameOnLine(doc, w.closeLine, 'close');
+    if (!nowC || !nowC.id) return null;          // 閉じ行の形が壊れている = 触らない
+    if (nowC.id === w.oldName) return null;      // 名前は変わっていない
+    const op = membraneNameRangeForRenameOnLine(doc, w.openLine, 'open', w.oldName);
+    if (!op || op.id !== w.oldName) return null; // 開始行が控えた名前でない = 触らない
+    return { range: op.range, text: nowC.id, side: 'close' };
+  }
   const now = membraneNameRangeForRenameOnLine(doc, w.openLine, 'open');
   if (!now || !now.id) return null;              // 開始行の形が壊れている = 触らない
   if (now.id === w.oldName) return null;         // 名前は変わっていない
@@ -26190,7 +26209,7 @@ async function meosApplyMembraneNameEdit(w) {
     const okd = await ed.edit(e => { e.replace(one.range, one.text); }, { undoStopBefore: true, undoStopAfter: true });
     if (!okd) return;
     if (wasFolded) meosRefoldAfterNameEdit(ed, w.openLine);
-    try { vscode.window.setStatusBarMessage('MeOS: closing membrane renamed → ' + one.text, 2500); } catch (_) { }
+    try { vscode.window.setStatusBarMessage('MeOS: ' + (one.side === 'close' ? 'opening' : 'closing') + ' membrane renamed → ' + one.text, 2500); } catch (_) { }
     setTimeout(() => { try { refresh(ed); } catch (_) { } }, 60);
   } catch (_) { }
 }
