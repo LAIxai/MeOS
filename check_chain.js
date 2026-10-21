@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,meosClockBadgeRowForLine,meosChainFillSlot,meosChainLoopRound,meosChainSayFor,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,meosClockBadgeRowForLine,meosChainFillSlot,meosChainLoopRound,meosChainLoopInfo,meosClockChainMarkAt,meosClockChainHitAt,meosChainSayFor,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -194,6 +194,28 @@ console.log('⑳ 器(1.)に鎖の輪の何回目かを入れる(v5.1.110)');
  ok(X.meosChainLoopRound(d,'H_1',c.line)===0 && say(c)==='cool 1 回目', '  輪の外の行は今までどおり(行の ×N)', [X.meosChainLoopRound(d,'H_1',c.line), say(c)]);
  ok(X.meosChainFillSlot('目薬 1. 本目', 2, {doc:d,key:'H_1',line:w.line,round:2,rounds:3})==='目薬 2 本目', '  行の ×N が2回以上なら行の回数(目薬はそのまま)', 0);
  X.meosChainResetLoops(d,'H_1');
+}
+
+console.log('㉑ バッジの分母は輪の回数 / ⛓️ の札は隠した字の間(v5.1.111)');
+{
+ const L=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 1. ↺↻(20s)×1 v4s ⛓️⤵️2 // 💪Tabata work -->','<!-- Mew!FC ⏰ 🔔/🔔 1. ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest 1. 回目 -->','<!-- Mew!FC ⏰ ↺↻(5m)×1 ⛓️⤴️2 // forever -->']);
+ const d=mk('file:///tb21.md',L); X.meosChainResetLoops(d,'H_1');
+ const R=X.meosClockFcScan(d).filter(r=>r.key==='H_1');
+ const i0=X.meosChainLoopInfo(d,'H_1',R[1].line);
+ ok(i0.n===1&&i0.reps===8, '★★★rest は 1/8', i0);
+ X.meosChainNextRow(d,'H_1',R[1].line,true); X.meosChainNextRow(d,'H_1',R[1].line,true);
+ ok(X.meosChainLoopInfo(d,'H_1',R[0].line).n===3&&X.meosChainLoopInfo(d,'H_1',R[0].line).reps===8, '  2周したら work も 3/8', X.meosChainLoopInfo(d,'H_1',R[0].line));
+ X.meosChainResetLoops(d,'H_1');
+ for(const t of [L[3],L[4]]){
+  const m=X.meosClockChainMarkAt(t), arrow=t.indexOf('⤵')>=0?t.indexOf('⤵'):t.indexOf('⤴');
+  ok(m.col===m.a+1 && m.b===arrow && m.col<arrow, '★★★札は ⛓ と FE0F の間(右隣の矢印の字に掛からない)', [m.a,m.col,m.b,arrow]);
+ }
+ const m2=X.meosClockChainMarkAt('<!-- Mew!FC ⏰ ↺↻(10s)×1 ⛓‍💥⤴️2 -->'.replace('⛓‍💥','⛓️‍💥'));
+ ok(m2.off && m2.col===m2.a+1, '  ⛓️‍💥 も a+1', m2);
+ const m3=X.meosClockChainMarkAt('<!-- Mew!FC ⏰ ↺↻(10s)×1 ⛓⤴2 -->');
+ ok(m3.col===m3.b, '  FE0F の無い素の ⛓ は今までどおり右端', m3);
+ const dd=mk('file:///tb21b.md',[L[4]]), m=X.meosClockChainMarkAt(L[4]);
+ ok(!!X.meosClockChainHitAt(dd,0,m.col), '  札の桁を押せば当たる', m.col);
 }
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');

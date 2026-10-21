@@ -12093,7 +12093,11 @@ function meosClockChainMarkAt(txt) {
   const t = String(txt || ''); if (t.indexOf('\u23f0') < 0) return null;
   const m = MEOS_CHAIN_RE.exec(t); if (!m) return null;
   const a = m.index, g = /^\u26d3\ufe0f?(?:\u200d\ud83d\udca5)?/.exec(t.slice(a));
-  return { a, b: a + (g ? g[0].length : 1), off: !!m[1] };
+  const b = a + (g ? g[0].length : 1);
+  // ★v5.1.111(俊克 10.21 am09:56 バグ1「⤵️の上でも選択指になり、そこをクリックすると Raw 表示になる」):
+  //   札を b(隠した ⛓️ の右端)に立てていた= 札を跨ぐ手の形の型(_hintBtn)が右隣の見える字 ⤵️/⤴️ まで掛かっていた。
+  //   → 札は ⛓ と FE0F の間(a+1)に立てる= 型が跨ぐのは隠した字だけ。FE0F の無い素の ⛓ は今までどおり b。
+  return { a, b, col: (b - a >= 2) ? a + 1 : b, off: !!m[1] };
 }
 function meosClockChainHitAt(document, line, character) {
   // ★v5.1.100(俊克 10.20 am11:13 バグ1「選択指にはなるが、クリックすると Raw 表示になり ⛓️‍💥 に切り替わらない」・[clkClick] caretCh=31 at="️⤵️2 /"):
@@ -12947,19 +12951,21 @@ function meosClockStepSeg(ctx) {
 // ★v5.1.110(俊克 10.21 am09:45 改良1「目薬タイマーのように回数を1回目、2回目と出したいが、毎回同じ表示になる。なぜ?」):
 //   器(1.)に入れる回数は、その行の ×N だけを数えていた= Tabata は各行 ×1 で、回るのは鎖(⛓️⤴️2)×8)なので、いつも 1。
 //   → 行が ⤴️ の輪の中に居て、行の ×N が1回きりなら、輪の何回目か(_meosChainLoops= meosChainNextRow が数える物)を入れる。
-function meosChainLoopRound(doc, key, line) {
+function meosChainLoopRound(doc, key, line) { return meosChainLoopInfo(doc, key, line).n; }
+// v5.1.111: 輪の何回目か(n)と、何回回すか(reps= ⛓️⤴️2)×8 の 8・0= 回り続ける)。輪の外は n=0。
+function meosChainLoopInfo(doc, key, line) {
   try {
-    if (!doc || !key || typeof line !== 'number') return 0;
+    if (!doc || !key || typeof line !== 'number') return { n: 0, reps: 0 };
     const rows = meosClockFcScan(doc).filter(c => c.key === key);
     const me = rows.findIndex(c => c.line === line);
-    if (me < 0) return 0;
+    if (me < 0) return { n: 0, reps: 0 };
     const L = meosChainLinks(rows);
     for (let i = me; i < rows.length; i++) {
       const b = L.back[i];
-      if (b && b.to <= me) return _meosChainLoops.get(doc.uri.toString() + ' ' + key + ' #' + i) || 1;
+      if (b && b.to <= me) return { n: _meosChainLoops.get(doc.uri.toString() + ' ' + key + ' #' + i) || 1, reps: b.reps || 0 };
     }
   } catch (_) { }
-  return 0;
+  return { n: 0, reps: 0 };
 }
 function meosChainFillSlot(text, round, ctx) {
   try {
@@ -14481,7 +14487,7 @@ function meosClockLineHints(editor, doc, i) {
       }
     }
     if (c.ufc) { const nk = meosClockNudgeSpot(txt, c); if (nk >= 0 && bh && bh.end === nk) out.push({ col: nk, label: '\u22121s' }, { col: nk + 1, label: '+1s' }); }
-    { const cm = c.chainSrc ? meosClockChainMarkAt(txt) : null; if (cm) out.push({ col: cm.b, label: '\u00a0\u00a0\u00a0' }); }   // v5.1.97: ⛓️ の札(描く側の _hintBtn と同じ桁・同じ字)/ v5.1.102: 3ch
+    { const cm = c.chainSrc ? meosClockChainMarkAt(txt) : null; if (cm) out.push({ col: cm.col, label: '\u00a0\u00a0\u00a0', tip: cm.off ? 'Click \u26d3\ufe0f\u200d\ud83d\udca5 to link it again' : 'Click \u26d3\ufe0f to cut it (\u26d3\ufe0f\u200d\ud83d\udca5)' }); }   // v5.1.111: 札は a+1・tipは札に   // v5.1.97: ⛓️ の札(描く側の _hintBtn と同じ桁・同じ字)/ v5.1.102: 3ch
   } catch (_) { }
   return out;
 }
@@ -14804,16 +14810,18 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           if (c.chainSrc && !c.chainBad && !_rawHere) {
             const _cm96 = meosClockChainMarkAt(txt);
             if (_cm96) {
-              badgeHide.push(new vscode.Range(i, _cm96.a, i, _cm96.b));
+              // v5.1.111: 隠す範囲を札の桁で切る= 絵(before)をいつも隠す範囲の頭に立たせる(内側に置いた before は一緒に消える= v4.2.479)
+              if (_cm96.col > _cm96.a) badgeHide.push(new vscode.Range(i, _cm96.a, i, _cm96.col));
+              if (_cm96.b > _cm96.col) badgeHide.push(new vscode.Range(i, _cm96.col, i, _cm96.b));
               // ★v5.1.102(俊克 10.20 pm00:14 改良1「⛓️、⛓️‍💥が見えにくいので、色付き角丸四角の上に重ねたボタンにしようよ」):
               //   札は半角空白3字(3ch・状態によらず一定)。絵は [−1s] と同じ作り= 字と同じ並び(基準線揃え)に置き、幅は左右の余白で打ち消す。
               //   寸法は em で書く(箱の書体を絵文字にすると ch がその書体の「0」の幅になり広がる= 台 MeOS/tmp/_devcheck/chainbtn.html で測った)。
               //   3ch = 1.806em(Menlo 0.602)/ 箱 1.6em(左右に約0.1em の隙間)。⛓️=緑 / ⛓️‍💥=赤。絵文字の書体を名指し(素の ⛓ は白黒の字で見えにくかった)
-              _hintBtn(i, _cm96.b, '\u00a0\u00a0\u00a0');
-              items.push({ range: new vscode.Range(i, _cm96.b, i, _cm96.b), renderOptions: { before: { contentText: _cm96.off ? '\u26d3\ufe0f\u200d\ud83d\udca5' : '\u26d3\ufe0f',
+              _hintBtn(i, _cm96.col, '\u00a0\u00a0\u00a0');
+              items.push({ range: new vscode.Range(i, _cm96.col, i, _cm96.col), renderOptions: { before: { contentText: _cm96.off ? '\u26d3\ufe0f\u200d\ud83d\udca5' : '\u26d3\ufe0f',
                 textDecoration: 'none; position: relative; pointer-events: none; z-index: 1; display: inline-block; box-sizing: border-box; width: 1.6em; margin-left: -1.806em; margin-right: 0.206em; text-align: center; line-height: 1.2; border-radius: 5px; font-family: "Apple Color Emoji"; font-size: 0.9em; '
                   + (_cm96.off ? 'background-color: #fde4e1; border: 1px solid #d9534f;' : 'background-color: #e3f4e8; border: 1px solid #3fa85c;') } } });
-              items.push({ range: new vscode.Range(i, _cm96.b, i, Math.min(txt.length, _cm96.b + 2)), hoverMessage: _cm96.off ? 'Click ⛓️‍💥 to link it again' : 'Click ⛓️ to cut it (⛓️‍💥)' });
+              // v5.1.111: tip は札(InlayHint の tooltip)に付けた= 右隣の ⤵️/⤴️ の上には出さない
             }
           }
           // ★v5.1.97(俊克 改良1「💪Tabata work などのコメント文が見えると分かり易い」): ⏰のデータベースは選ぶための膜= 待っている行にもコメントを薄く添える
@@ -15168,8 +15176,16 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   ★★★**数字と同じ側に、その数字の単位を置く**= 出ている 0.07/0.08 は**今の1本**の値so、
           //     「4本目」はその隣に居るべき。セットの数(\u00d71/3)は一段粗い話so、仕切りの向こう。
           //   ★仕切り(|)は畳んだバッジの跡= 物理的にそこに在るso、手前と向こうで役を分けられる。
-          const _rndOut = ((Array.isArray(c.cycle) && c.cycle.length) && _rnd0(_sc7))
+          let _rndOut = ((Array.isArray(c.cycle) && c.cycle.length) && _rnd0(_sc7))
             ? ('\u00d7' + _sc7.round + (c.rounds > 0 ? ('/' + c.rounds) : '')) : '';
+          // ★v5.1.111(俊克 10.21 am09:56 改良1「バッジの一番右の数字が常に /1。⛓️の周回を示す ×8 の値を使おう」):
+          //   行の ×N が1回きりで、⛓️⤴️ の輪の中に居るなら、数えるのは輪= ×何回目/8(器の数字と同じ口= meosChainLoopInfo)。
+          try {
+            if (_rndOut && !(Number(c.rounds) > 1)) {
+              const _li = meosChainLoopInfo(doc, owner ? owner.id : '', i);
+              if (_li.n > 0) _rndOut = '\u00d7' + _li.n + (_li.reps > 0 ? ('/' + _li.reps) : '');
+            }
+          } catch (_) { }
           let _rndIn = '';
           try {
             const _rp = (c.cycleReps && _sc7 && typeof _sc7.cidx === 'number') ? c.cycleReps[_sc7.cidx] : null;
@@ -44535,7 +44551,9 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
           // v4.2.492: 札はその行の本文からすぐ出す(描画全体を回さない)。絵はこの後すぐ描く(札と同じ時)
           for (let ln = range.start.line; ln <= range.end.line && ln < document.lineCount; ln++) {
             for (const h of meosClockLineHints(_ed89, document, ln)) {
-              out.push(new vscode.InlayHint(new vscode.Position(ln, h.col), h.label));
+              const _ih = new vscode.InlayHint(new vscode.Position(ln, h.col), h.label);
+              if (h.tip) _ih.tooltip = h.tip;   // v5.1.111: ⛓️ の tip は札の上だけ
+              out.push(_ih);
             }
             { const _vh = meosVaultLineHints(document, ln, _ed89); if (_vh && !_vh.marker && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) { out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label));
               const _ch = meosAwayChairSpot(document, ln, _ed89); if (_ch) out.push(new vscode.InlayHint(new vscode.Position(ln, _ch.col), '\u3000')); } }   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓

@@ -2529,4 +2529,27 @@ console.log('51 ⏸で止めた今の席にも灰色のタイトルを添える(
  ok(grey()==='6', '  走っている1本はバッジ行に出るので、行には添えない(今までどおり)', grey());
  X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
 }
+// v5.1.111(俊克 10.21 am09:56 改良1「バッジの右端が常に /1」・バグ1「⤵️の上でも選択指」)
+console.log('52 バッジの分母は ⛓️ の輪の回数 / ⛓️ の手の形は矢印に掛からない(v5.1.111)');
+{
+ const K='⏰0y0d0h3m_20261020T125707JST';
+ const L=['# t','<!-- {* ▼mCN='+K+' // c *} -->','x','<!-- {* ▲mCN='+K+' // c *} -->','<!-- Mew!UFC mCN (📊⊕0+0D0W) -->',
+  '<!-- Mew!UFC ⏰ 🔔/🔔 1. ↺↻(20s)×1 v4s ⛓️⤵️2 // 💪Tabata work -->',
+  '<!-- Mew!FC ⏰ 🔔/🔔 1. ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest 1. 回目 -->','本文'];
+ const d={uri:{toString:()=>'file:///db111.md',fsPath:'/db111.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/db111.md',isClosed:false,version:1};
+ const lk='file:///db111.md '+K;
+ X._meosPseudoScopes.set(lk,{uri:'file:///db111.md',key:K,name:K,fc:true,hold:false,lock:false,step:0,line:5,when:'',round:1,rounds:1,cycle:[20000],cycleSrc:'(20s)×1',cidx:0,title:'💪Tabata work'});
+ X._meosPseudoUntil.set(lk, Date.now()+20e3);
+ const all=[];
+ const e={document:d,selection:{active:new stub.Position(0,0)},visibleRanges:[new stub.Range(0,0,L.length-1,0)],
+   setDecorations:(t,r)=>{for(const x of (r||[])) all.push(x);}};
+ X.meosApplyTimerLineDecorations(e);
+ const badge=all.filter(x=>x.range&&x.range.start.line===4&&x.renderOptions).map(x=>JSON.stringify(x.renderOptions)).join('|');
+ ok(/\/8/.test(badge) && !/"\/1/.test(badge), '★★★バッジの右端は /8(輪の回数)', badge.slice(0,300));
+ const arrow=L[5].indexOf('⤵');
+ const onArrow=all.filter(x=>x.range&&x.range.start.line===5&&x.range.start.character<=arrow&&x.range.end.character>arrow&&!(x.renderOptions)&&(x.hoverMessage));
+ ok(onArrow.length===0, '★★★⤵️ の上に tip を出さない', onArrow.map(x=>x.hoverMessage));
+ X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
