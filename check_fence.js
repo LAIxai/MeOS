@@ -11,7 +11,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mf_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={displayColumns,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure,meosDefBlocks,getFoldDeco:()=>fenceFoldDeco};\n');
+ +'\nmodule.exports.__t={displayColumns,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure,meosDefBlocks,getFoldDeco:()=>fenceFoldDeco,getCapDeco:()=>[fenceCapHideDeco,fenceCapInkDeco],meosFenceCaption};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 const displayCols=(t)=>X.displayColumns(t);
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
@@ -170,5 +170,29 @@ console.log('⑪ 畳まれた板の頭に「⇐ click ⋯ to unfold」(v5.1.49)'
  ok(((sv.get(X.getFoldDeco())||[]).length)===0, '  開いていれば出さない', sv.get(X.getFoldDeco()));
  X.meosApplyCodeFenceDecorations(ed([new stub.Range(0,0,2,0)]));
  ok(((sv.get(X.getFoldDeco())||[]).length)===0, '  画面の下端で切れているだけなら出さない', sv.get(X.getFoldDeco()));
+}
+
+console.log('⑫ 閉じの直後の UFC 行= 説明(紙の中の2行に見せかける・v5.1.114)');
+{
+ const C='これは説明の字です。とても長いので二行に分けて見せかけます';
+ const L8=['# t','```js','a=1','```','<!-- Mew!UFC '+C+' -->','本文'];
+ const d8={uri:{toString:()=>'file:///c8.md',fsPath:'/c8.md',scheme:'file'},languageId:'markdown',lineCount:L8.length,
+  lineAt:n=>({text:L8[n],range:new stub.Range(n,0,n,L8[n].length)}),getText:()=>L8.join('\n'),eol:1,fileName:'/c8.md',isClosed:false,version:1};
+ const sv=new Map();
+ const ed=(caret)=>({document:d8,visibleRanges:[new stub.Range(0,0,L8.length-1,0)],
+  selection:{active:{line:caret,character:0},anchor:{line:caret,character:0},isEmpty:true},
+  selections:[{active:{line:caret,character:0},anchor:{line:caret,character:0},isEmpty:true}],setDecorations:(t,items)=>sv.set(t,items)});
+ X.meosApplyCodeFenceDecorations(ed(0));
+ const [HD,IK]=X.getCapDeco(), hid=(sv.get(HD)||[]), ink=(sv.get(IK)||[]);
+ const first=ink.find(x=>x.range&&x.range.start.line===3), rest=ink.find(x=>!x.range&&x.start.line===4);
+ const shown=(first?first.renderOptions.after.contentText:'')+(rest?L8[4].slice(rest.start.character,rest.end.character):'');
+ ok(first && rest && shown===C, '★★★説明が閉じの行(1行目)と説明の行(2行目)に分かれ、つなぐと元の字', [first&&first.renderOptions.after.contentText, shown]);
+ ok(hid.some(r=>r.start.line===3&&r.start.character===0&&r.end.character===3), '  閉じの ``` は幅ごと畳む', hid);
+ ok(hid.some(r=>r.start.line===4&&r.start.character===0) && hid.some(r=>r.start.line===4&&r.end.character===L8[4].length), '  説明の行の包みと1行目に出した分は畳む', hid);
+ const sv2=sv; X.meosApplyCodeFenceDecorations(ed(4));
+ ok((sv2.get(HD)||[]).length===0 && (sv2.get(IK)||[]).length===0, '  カーソルが説明の行に居る間は生のまま', [(sv2.get(HD)||[]).length,(sv2.get(IK)||[]).length]);
+ const cap=(t)=>X.meosFenceCaption(['```','x','```',t],{open:0,close:2});
+ ok(!cap('<!-- Mew!UFC --- -->') && !cap('<!-- Mew!UFC ⏰ ↺↻3m ×1 // x -->') && !cap('<!-- Mew!FC 説明 -->') && !!cap('<!-- Mew!UFC 説明 -->'),
+   '  説明になるのは UFC だけ(罫線・⏰・FC は説明ではない)', 0);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

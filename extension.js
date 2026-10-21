@@ -43112,6 +43112,21 @@ function meosApplyQuoteDecorations(editor) {
 }
 // {* ▲mCN=4283_QUOTE // *}
 let fenceFoldDeco = null;   // v5.1.49: 畳まれた板の頭に「⇐ click ⋯ to unfold」
+let fenceCapHideDeco = null, fenceCapInkDeco = null;   // v5.1.114: 説明の行(閉じの直後の UFC)
+const MEOS_FENCE_CAP_INK = '#2f6fb3';   // v5.1.114: 説明の字= 中身の茶と分ける青
+// ★v5.1.114(俊克 10.21 am11:34「codeブロックの閉じ記号の空行に説明を書くのに利用すると良い・上と区別する色で」
+//   → am11:44「閉じの直後に置いたFC行も、codeブロックの中に取り込んで、2行分にコメントを見せかければ良い」):
+//   閉じの ``` の後ろには字を書けない(CommonMark= 書くと閉じない)ので、説明は閉じの直後の行に書く。
+//   FC は閉じの行を頭に畳まれて2行目が消えるので、畳まない指定行(UFC)= `<!-- Mew!UFC 説明 -->`。⏰の行と罫線(---)は説明ではない。
+function meosFenceCaption(lines, b) {
+  try {
+    const i = b.close + 1, t = lines[i];
+    if (t == null || b.close <= b.open) return null;
+    const m = /^(\s*<!--\s*Mew!UFC\s+)(.*?)(\s*-->\s*)$/.exec(t);
+    if (!m || !m[2] || m[2].indexOf('\u23f0') >= 0 || /^-{3,}$/.test(m[2])) return null;
+    return { line: i, text: m[2], at: m[1].length, end: m[1].length + m[2].length };
+  } catch (_) { return null; }
+}
 function meosApplyCodeFenceDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
@@ -43137,12 +43152,18 @@ function meosApplyCodeFenceDecorations(editor) {
     const _seen = (ln) => _vrs.some(r => r.start.line <= ln && ln <= r.end.line);
     const _foldHead = (ln) => _seen(ln) && !_seen(ln + 1) && _vrs.some(r => r.start.line > ln + 1);   // 次の行が隠れ、その先にまた見える= 畳まれている(画面の下端で切れているのとは違う)
     const paper = new Map();                                        // 型 → 置く行(予備の板と、字の側の紙)
-    const inks = [], ticks = [], langs = [], indents = [], folds = [];
+    const inks = [], ticks = [], langs = [], indents = [], folds = [], capHides = [], capInks = [];
+    if (!fenceCapHideDeco) {
+      fenceCapHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      fenceCapInkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        textDecoration: 'none; color: ' + MEOS_FENCE_CAP_INK + ' !important; -webkit-text-fill-color: ' + MEOS_FENCE_CAP_INK + ' !important; font-style: italic;' });
+    }
     const put = () => {
       for (const t of _fencePaperCapTypes.values()) editor.setDecorations(t, paper.get(t) || []);
       editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs);
       editor.setDecorations(fenceIndentDeco, indents);
       editor.setDecorations(fenceFoldDeco, folds);   // v5.1.49
+      editor.setDecorations(fenceCapHideDeco, capHides); editor.setDecorations(fenceCapInkDeco, capInks);   // v5.1.114
     };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
@@ -43156,11 +43177,23 @@ function meosApplyCodeFenceDecorations(editor) {
         //     折り返しの設定にも**一切よらない**。俊克の見た「差that移動している内に変わる」は、
         //     VS Codethat「今までに描いた行の中で一番長い行」で箱を決めているから(実測)。その箱から降りる。
         const _wrapCol = meosFenceWrapColumn(doc);   // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
+        const _cap = meosFenceCaption(lines, b);                       // v5.1.114: 説明の行
+        let _capW = 0;
         const _w = (() => {
           let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, meosRenderCols(lines[i] || ''));
+          if (_cap) { const cc = meosRenderCols(_cap.text); if (cc > c) c = Math.max(c, Math.ceil(cc / 2)); }   // v5.1.114: 説明が2行に収まる幅まで広げる
           if (_wrapCol) c = Math.min(c, _wrapCol);                    // 折り返った行は其処までしか出ていない
+          _capW = c;
           return MEOS_FENCE_INDENT_COLS + c + MEOS_FENCE_PAD_COLS;    // v4.2.281: 左の字下げ + 中身 + 右の余白
         })();
+        // v5.1.114: 説明を2行に割る= 1行目は閉じの行(見せかけ)・残りは説明の行の字そのもの
+        let _cap1 = '', _capRest = 0;
+        if (_cap) {
+          let n = 0, k = 0; const chars = Array.from(_cap.text);
+          for (; k < chars.length; k++) { const w = meosRenderCols(chars[k]); if (n + w > _capW) break; n += w; }
+          _cap1 = chars.slice(0, k).join(''); _capRest = _cap1.length;
+        }
+        const _capLive = !!_cap && !raw.has(b.close) && !raw.has(_cap.line);   // カーソルが居る間は生のまま
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
@@ -43169,7 +43202,7 @@ function meosApplyCodeFenceDecorations(editor) {
           //     字は畳んであるso、その行はただの空行に見える。足の丸みは**最後の中身の行**へ。
           // ★v5.1.112(俊克 10.21 am10:23 改良2「最後の区切りマークが紙の外に残り、そこに入力できそうに見える。中に入れて空行として見せた方が良い」):
           //   閉じの ``` の行も紙に入れる(字は今までどおり隠す= 枠の字は見えない・紙の足の空行に見える)。v4.2.298 の「閉じの行に紙を敷かない」を取り消す。
-          const _last = b.close;                                       // 紙の足= 閉じの ``` の行
+          const _last = _cap ? -1 : b.close;                           // 紙の足= 閉じの ``` の行(v5.1.114: 説明の行が在ればそちら)
           {
             const _kind = (ln === b.open) ? 'head' : ((ln === _last) ? 'foot' : 'body');
             // v4.2.280: その行that何段に折り返るか= 段の数だけ紙を高くする(折り返した段にも紙that続く)
@@ -43180,11 +43213,30 @@ function meosApplyCodeFenceDecorations(editor) {
             indents.push(L(ln));                                     // v4.2.281: 1桁ぶん右へ
           }
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(紙だけ残す)
+          if (ln === b.close && _capLive) {                            // v5.1.114: 閉じの ``` は幅ごと畳み、説明の1行目を見せる
+            if (t.length) { capHides.push(new vscode.Range(ln, 0, ln, t.length));
+              capInks.push({ range: new vscode.Range(ln, 0, ln, t.length), renderOptions: { after: { contentText: _cap1, color: MEOS_FENCE_CAP_INK, fontStyle: 'italic' } } }); }
+            continue;
+          }
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
             if (ln === b.open) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.lang || 'code' } } });
             if (ln === b.open && b.close > b.open + 1 && _foldHead(ln)) folds.push(new vscode.Range(ln, t.length, ln, t.length));   // v5.1.49: 畳まれた板の頭
           } else if (t.length) inks.push(new vscode.Range(ln, 0, ln, t.length));
+        }
+        // v5.1.114: 説明の行= 紙の足。1行目に出した分と包みは幅ごと畳み、残りを青の斜体で見せる
+        if (_cap && _cap.line >= vr[0] && _cap.line <= vr[1]) {
+          const ct = lines[_cap.line] || '';
+          const _rows = _wrapCol ? Math.max(1, Math.min(20, Math.ceil(meosRenderCols(ct) / _wrapCol))) : 1;
+          const ty = meosFencePaperCapType(_w, 'foot', _rows);
+          if (!paper.has(ty)) paper.set(ty, []);
+          paper.get(ty).push(L(_cap.line)); indents.push(L(_cap.line));
+          if (_capLive) {
+            const _a = _cap.at + _capRest;
+            capHides.push(new vscode.Range(_cap.line, 0, _cap.line, _a));
+            if (_cap.end > _a) capInks.push(new vscode.Range(_cap.line, _a, _cap.line, _cap.end));
+            if (ct.length > _cap.end) capHides.push(new vscode.Range(_cap.line, _cap.end, _cap.line, ct.length));
+          }
         }
       }
     }
