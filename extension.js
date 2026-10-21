@@ -12069,11 +12069,15 @@ function meosTimerDbBlockAt(doc, line) {   // その行が⏰データベース�
   return false;
 }
 // ★v5.1.96(俊克 10.20 am10:25 改良1「連動の例も入れようよ」): ⛓️ の例= Tabata(20秒/10秒 を8回)とポモドーロ(25分/5分 を4回)
+// ★v5.1.113(俊克 10.21 am11:28 改良1「データベースの膜の罫線を橙に。区切り方はスクショのように(最初の個別のを一々区切るのはウザい)」):
+//   型の区切り= 単発5本 / --- / ↺t1,3 と Tabata / --- / Pomodoro。罫線は鎖の例の前後に置く(既存の膜へ例を足す時も同じ並び)。
+const MEOS_TIMER_DB_RULE = '<!-- Mew!UFC --- -->';
 const MEOS_TIMER_DB_CHAIN_EX = [
   '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // 💪Tabata work -->',
   '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest -->',
   '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(25m)×1 ⛓️⤵️2 // 🍅Pomodoro focus -->',
   '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(5m)×1 ⛓️⤴️2)×4 // ☕Pomodoro break -->'];
+function meosTimerDbChainExLines() { const E = MEOS_TIMER_DB_CHAIN_EX; return [E[0], E[1], MEOS_TIMER_DB_RULE, E[2], E[3]]; }   // v5.1.113: Tabata / --- / Pomodoro
 function meosTimerDbText(eol) {
   const d = new Date(), p = (x) => (x < 10 ? '0' : '') + x;
   const id = MEOS_TIMER_DB_PREFIX + meosMembraneStamp(d);
@@ -12085,7 +12089,8 @@ function meosTimerDbText(eol) {
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m ×1 // 1 hour -->',
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days -->',
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->',
-    '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->'].concat(MEOS_TIMER_DB_CHAIN_EX);
+    MEOS_TIMER_DB_RULE,
+    '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->'].concat(meosTimerDbChainExLines());
   return { id, text: [t.open, 'Timer database — press ▶️ on a line to use it, or copy a line into another membrane. ⛓️⤵️2 links this line and the next; ⛓️⤴️2)×8 goes 2 lines back, 8 times. Click ⛓️ to cut it (⛓️‍💥). MeOS makes this membrane again if it is deleted.', t.close].join(eol) + eol + rows.join(eol) };
 }
 // ★v5.1.96: 本文の鎖の絵(⛓️ / ⛓️‍💥)の位置= 押す所。押すと切る/つなぐ(本文の字を書き換えるだけ= ⚓ と同じ作り)
@@ -12185,7 +12190,7 @@ async function meosOpenTimerDb() {
           if (!_has) {
             const eol = _vaultEol(doc.getText());
             const we = new vscode.WorkspaceEdit();
-            we.insert(doc.uri, new vscode.Position(_be - 1, (doc.lineAt(_be - 1).text || '').length), eol + MEOS_TIMER_DB_CHAIN_EX.join(eol));
+            we.insert(doc.uri, new vscode.Position(_be - 1, (doc.lineAt(_be - 1).text || '').length), eol + [MEOS_TIMER_DB_RULE].concat(meosTimerDbChainExLines()).join(eol))   // v5.1.113: 足す例の前にも区切り;
             const okEx = await vscode.workspace.applyEdit(we);
             meosDbg('[timerDb] 連動の例を足す 行=' + _be + ' ok=' + okEx);
           }
@@ -14589,10 +14594,12 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   `<!-- Mew!UFC --- -->`(- が3つ以上)= 罫線。畳まない指定行(UFC)なので並びは途切れない(バッジ行も鎖もそのまま届く)。
           //   字は幅ごと畳んで線だけ描く。カーソル行/Raw では字のまま(直すための窓)。
           if (MEOS_RULE_LINE_RE.test(txt)) {
-            if (!meosShowsRawLineStable(editor, i)) {
+            // ★v5.1.113(俊克 10.21 am11:28 バグ1「コードブロックの中に罫線指定を入れると、罫線になってしまう」): 囲いの中は文字そのもの(v4.0.58 の約束)
+            let _inFence = false; try { _inFence = meosFenceBlocks(doc).some(b => b.open < i && i < b.close); } catch (_) { }
+            if (!_inFence && !meosShowsRawLineStable(editor, i)) {
               badgeHide.push(new vscode.Range(i, 0, i, txt.length));
               items.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; display: inline-block; width: 60ch; height: 0; vertical-align: middle; border-top: 1px solid rgba(139,148,158,.7); pointer-events: none;' } } });
+                textDecoration: 'none; display: inline-block; width: 60ch; height: 0; vertical-align: middle; border-top: 1px solid #e0803a; pointer-events: none;' } } });
             }
             continue;
           }

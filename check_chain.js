@@ -94,6 +94,9 @@ console.log('⑨ ⏰のデータベースに連動の例');
 {
  const db=X.meosTimerDbText('\n').text;
  ok(X.MEOS_TIMER_DB_CHAIN_EX.every(r=>db.indexOf(r)>=0), '★新しく作る膜に例が入る', 0);
+ { const R=db.split('\n'), at=(re)=>R.findIndex(l=>re.test(l)), rl=R.map((l,i)=>i).filter(i=>R[i]==='<!-- Mew!UFC --- -->');
+   ok(rl.length===2 && rl[0]===at(/1 year/)+1 && rl[0]===at(/↺t1,3/)-1 && rl[1]===at(/Tabata rest/)+1 && rl[1]===at(/Pomodoro focus/)-1,
+      '★型の区切り(v5.1.113)= 単発5本 / --- / ↺t1,3 と Tabata / --- / Pomodoro', rl); }
  const ex=X.MEOS_TIMER_DB_CHAIN_EX.map(r=>X.meosClockFcParse(r));
  ok(ex[0].chainDir==='down' && ex[1].chainReps===8 && ex[3].chainReps===4 && ex.every(e=>e.rounds===1), '例はどれも読める(Tabata ×8 / Pomodoro ×4)', ex.map(e=>[e.chainSrc,e.rounds]));
  const L11=head.concat(['<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->'].concat(X.MEOS_TIMER_DB_CHAIN_EX));

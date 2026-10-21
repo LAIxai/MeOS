@@ -2575,4 +2575,16 @@ console.log('53 `<!-- Mew!UFC --- -->` は罫線(v5.1.112)');
  all2.length=0; X.meosApplyTimerLineDecorations(e2);
  ok(!all2.some(x=>x.renderOptions&&x.renderOptions.before&&/border-top/.test(x.renderOptions.before.textDecoration||'')&&x.range.start.line===7), '  カーソルの行は字のまま(直すための窓)', 0);
 }
+// v5.1.113(俊克 10.21 am11:28 バグ1「コードブロックの中の罫線指定が罫線になる」・改良1「罫線を橙に」)
+console.log('54 囲いの中の --- は文字のまま / 罫線は橙(v5.1.113)');
+{
+ const L=['# t','```','<!-- Mew!UFC --- -->','```','<!-- Mew!UFC --- -->','本文'];
+ const d={uri:{toString:()=>'file:///rule2.md',fsPath:'/rule2.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/rule2.md',isClosed:false,version:1};
+ const all=[];
+ X.meosApplyTimerLineDecorations({document:d,selection:{active:new stub.Position(0,0)},visibleRanges:[new stub.Range(0,0,L.length-1,0)],setDecorations:(t,r)=>{for(const x of (r||[])) all.push(x);}});
+ const rules=all.filter(x=>x.renderOptions&&x.renderOptions.before&&/border-top/.test(x.renderOptions.before.textDecoration||''));
+ ok(rules.map(x=>x.range.start.line).join()==='4', '★★★``` の中の --- は文字のまま・外だけ罫線', rules.map(x=>x.range.start.line));
+ ok(rules.every(x=>/#e0803a/.test(x.renderOptions.before.textDecoration)), '★罫線は⏰の家の橙', rules.map(x=>x.renderOptions.before.textDecoration));
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
