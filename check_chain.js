@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,meosClockBadgeRowForLine,meosChainFillSlot,meosChainLoopRound,meosChainLoopInfo,meosClockChainMarkAt,meosClockChainHitAt,meosChainSayFor,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,meosClockBadgeRowForLine,meosChainFillSlot,meosClockLastReply,meosClockLastAnswer,meosChainLoopRound,meosChainLoopInfo,meosClockChainMarkAt,meosClockChainHitAt,meosChainSayFor,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -219,6 +219,19 @@ console.log('㉑ バッジの分母は輪の回数 / ⛓️ の札は隠した�
  ok(m3.col===m3.b, '  FE0F の無い素の ⛓ は今までどおり右端', m3);
  const dd=mk('file:///tb21b.md',[L[4]]), m=X.meosClockChainMarkAt(L[4]);
  ok(!!X.meosClockChainHitAt(dd,0,m.col), '  札の桁を押せば当たる', m.col);
+}
+
+console.log('㉒ ⏰パネルの最終日の答えは、箱の1行目の式をそのまま返す(v5.1.116 ↻が🍅から進まない)');
+{
+ const L0=(v)=>{const nl=v.indexOf('\n');const line=nl<0?v:v.slice(0,nl);const k=line.indexOf('//');return (k<0?line:line.slice(0,k)).trim();};   // 面の clkL0 と同じ
+ const P=['(25m 5m)×4 ⛓️⤵️2 // 🍅Pomodoro 1.\n(10m)×1 ⛓️⤴️2 // ☕Break',
+          '8h ⛓️⤵️2 // 💧Time for eye drops\n(5m)×2 ⛓️⤴️2 // 💧Eye drop # 1.',
+          '🔔GONG/🔕MEW ((3m 1m)×5)×3 // 💓HIIT-Box 1. // 💓break 1.'];
+ const ask=(ex)=>({cycle:ex,when:'',unit:'',dir:0});
+ for (const p of P) { const ex=L0(p), r=X.meosClockLastReply(ask(ex));
+   ok(r && r.cycle===ex, '★★★プリセットの式がそのまま返る(面が箱を書き直さない): '+ex, r&&r.cycle); }
+ const old=X.meosClockLastAnswer(ask('(25m 5m)×4'));
+ ok(old && old.cycle==='(25m 5m)×4', '  印の無い式も今までどおり', old&&old.cycle);
 }
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');

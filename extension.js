@@ -12528,6 +12528,15 @@ function meosCycleTextSetRounds(text, n) {
   return ex.steps.length === 1 ? (t + ' \u00d7' + n) : ('(' + t + ')\u00d7' + n);
 }
 // ⏰パネルの問い= {when, cycle, unit:'n'|'d'|'mo'|'y'|'', dir:±1} → {n, cycle, parts}
+// v5.1.116: ⏰パネルの最終日の答え= 鎖の印は周期ではないので外して数え、返す時に付け戻す(付け戻さないと面が箱を書き直す)
+function meosClockLastReply(msg) {
+  let ch = '';
+  const m = Object.assign({}, msg);
+  try { if (m.cycle) { const sp = meosChainTokenSplit(String(m.cycle)); m.cycle = sp.text; ch = sp.chainSrc || ''; } } catch (_) { }
+  const r = meosClockLastAnswer(m);
+  if (ch && r && typeof r.cycle === 'string') r.cycle = r.cycle + ' ' + ch;
+  return r;
+}
 function meosClockLastAnswer(msg) {
   const _r43 = meosClockLastAnswer0(Object.assign({}, msg, { cycle: String(msg.cycle || '').replace(/^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u, '') }));   // v4.2.477: 行頭の 🔔主/🔕副 は周期でない
   const _b43 = /^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u.exec(String(msg.cycle || ''));
@@ -36199,8 +36208,11 @@ function toggleMeDock(editorOverride) {
       _meosClkPanelOpen = !!message.on; if (_meosClkPanelOpen) meosPostClkTarget(); return;
     }
     if (message && message.type === 'clkLastAsk') {   // v4.2.365: ⏰パネルの ×N → 最終日(ホイール)
-      try { if (message.cycle) message.cycle = meosChainTokenSplit(String(message.cycle)).text; } catch (_) { }   // v5.1.94: 鎖の印は周期ではない
-      try { meDockPanel.webview.postMessage(Object.assign({ type: 'clkLast', seq: message.seq }, meosClockLastAnswer(message))); } catch (_) { }
+      // ★v5.1.116(俊克 10.21 pm03:46「Timed Me の▼のパネルで、繰返しの↻が🍅から変わらなくなっている」):
+      //   鎖の印を外して数えたまま返していた→ 面は「返った式が箱と違う」と見て、箱の1行目を印の無い形に書き直した
+      //   → 箱がプリセットと一致しなくなり、↻は毎回①を入れ直した(しかも Set すると鎖が消えていた)。
+      //   → 外した印は、返す時に付け戻す(行頭の🔔主/🔕副と同じ作法= meosClockLastAnswer)。
+      try { meDockPanel.webview.postMessage(Object.assign({ type: 'clkLast', seq: message.seq }, meosClockLastReply(message))); } catch (_) { }
       return;
     }
     if (message && message.type === 'toggleHelper') {   // v4.2.363: ⏰パネルの [V-helper]= 常駐の係を起こす/降ろす
