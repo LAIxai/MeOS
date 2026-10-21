@@ -2638,4 +2638,18 @@ console.log('58 鳴り終わった①((1m)×2✓)もバッジ行も畳まない(
  ok(X.foldRangeEnd(d,pr,false)===3, '★★★膜を畳んでも▲で止まる(バッジ行と⏰は外に見える)', X.foldRangeEnd(d,pr,false));
  ok(X.meosFcFoldShape(d,-1).every(it=>!it.hasRange) && X.meosFcFoldShape(d,6).every(it=>!it.hasRange), '★★★カーソルがどこでも、FCの塊として畳まれない(…が出ない)', X.meosFcFoldShape(d,-1).map(it=>[it.head,it.end,it.hasRange]));
 }
+// v5.1.122(俊克 10.21 pm05:35 改良1「更新日のように、年は年の色のように、塗り分けると見やすくなるかも」)
+console.log('59 周期の数を単位ごとにタイムスタンプと同じ色で塗る(v5.1.122)');
+{
+ const L=['# t','<!-- {* ▼mCN=U_1 // c *} -->','x','<!-- {* ▲mCN=U_1 // c *} -->','<!-- Mew!UFC mCN (📊⊕0+0D0W) -->',
+  '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m0s ×1 // 1 hour -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(25m 5m)×4 // 🍅 -->','本文'];
+ const d={uri:{toString:()=>'file:///u122.md',fsPath:'/u122.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/u122.md',isClosed:false,version:1};
+ const got=[];
+ X.meosApplyTimerLineDecorations({document:d,selection:{active:new stub.Position(0,0)},visibleRanges:[new stub.Range(0,0,L.length-1,0)],
+  setDecorations:(t,r)=>{const col=t&&t.__opts&&t.__opts.color; if(typeof col==='string'&&/^rgba\((120, 200, 255|210, 160, 255|150, 220, 150)/.test(col)) for(const x of (r||[])) got.push([x.start.line,L[x.start.line].slice(x.start.character,x.end.character),col.slice(5,8)]);}});
+ const on=(ln)=>got.filter(g=>g[0]===ln).sort((a,b)=>L[ln].indexOf(a[1])-L[ln].indexOf(b[1])).map(g=>g[1]+':'+g[2]).join(' ');
+ ok(on(5)==='0y:120 0d:150 1h:210 0m:150 0s:120', '★★★年=水・日=若草・時=藤・分=若草・秒=水(膜名TSの年/日/時/分/秒と同じ色)', on(5));
+ ok(on(6)==='25m:150 5m:150', '  短い形も単位の色(分=若草)', on(6));
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

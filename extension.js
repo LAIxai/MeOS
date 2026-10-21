@@ -14327,6 +14327,22 @@ let meosClockPauseOutDeco = null;   // v4.1.67: ⏸ は場所で色を変えな�
 //   ★塗り方は ✓ / \u23f8 と同じ= **橙の範囲から抜いてから置く**(v4.1.19「外側を割る」)。
 let meosClockDirDownDeco = null, meosClockDirUpDeco = null;
 let meosClockCycNowDeco = null;   // v4.1.1111: 今その回を走っている側(3m/1m の片方)
+// ★v5.1.122(俊克 10.21 pm05:35 改良1「更新日のように、年は年の色のように、塗り分けると見やすくなるかもね」):
+//   ⏰の周期の数(0y0d1h0m0s)を、タイムスタンプのモザイク(v4.0.363)と同じ色で単位ごとに塗る= 年は年の色。
+//   色は MEOS_STAMP_COLORS 1か所から(年=水・日=若草・時=藤・分=若草・秒=水= 膜名TSの年/日/時/分/秒と同じ位置の色)。隣り合う単位は必ず違う色。
+let meosClockUnitDecos = null;
+const MEOS_CLOCK_UNIT_COLOR = { y: 0, d: 2, h: 1, m: 2, s: 0 };
+function meosClockUnitSpans(txt, c) {   // ⏰行の周期の中の「数＋単位」の桁= [[from, to, 色の番号], …]
+  const out = [];
+  try {
+    if (!c || !c.cycleSrc) return out;
+    const ar = txt.search(/[\u21ba\u21bb]/); if (ar < 0) return out;
+    const at = txt.indexOf(c.cycleSrc, ar); if (at < 0) return out;
+    const re = /(\d+)([ydhms])(?![a-z])/g; let m;
+    while ((m = re.exec(c.cycleSrc))) out.push([at + m.index, at + m.index + m[0].length, MEOS_CLOCK_UNIT_COLOR[m[2]]]);
+  } catch (_) { }
+  return out;
+}
 let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
@@ -14523,6 +14539,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];
+    const unitCols = [[], [], []];   // v5.1.122: 周期の単位の色(MEOS_STAMP_COLORS の順)
     const _badgeLent = new Set();   // v4.2.346: 最終日に貸したバッジ行(1膜1つ)   // v4.1.148 / v4.1.176
     const gap3 = [], gap6 = [], gap9 = [], nudgeHints = [], hintSkins = [], hintMasks = [];   // ★v4.2.481 / v4.2.483 / v4.2.487
     // ★★★v4.2.487(俊克「他のボタンもインレイヒント上書き方式にしましょう。そして、今後追加するボタンも同様にすればいいよね」):
@@ -14632,6 +14649,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //     ここで決めるのは「時計として描くか」だけ。
           if (!c || (!c.when && !(c.cycle && c.cycle.length))) continue;
           if (!meosClockLineIsLive(doc, i)) continue;   // v4.1.66: 囲いの中の見本には印を出さない
+          for (const sp of meosClockUnitSpans(txt, c)) unitCols[sp[2]].push(new vscode.Range(i, sp[0], i, sp[1]));   // v5.1.122: 年は年の色
           // ★★★v4.1.161(俊克 9/6 pm02:14「本当は、インライン編集のときや、Rawモードでは、残り時間の
           //   表示は見えないはずなんだよね。これを特殊事情として許すのか、原則通り見せなくすべきか」):
           //   ★★★**原則どおり消す**= 規則を1行にする= **Rawでは字を1つも足さない。色は字ではないso残す**。
@@ -15471,6 +15489,11 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
     if (meosClockDirUpDeco) editor.setDecorations(meosClockDirUpDeco, dirUp);
     if (meosClockCycNowDeco) editor.setDecorations(meosClockCycNowDeco, cycNow);
+    // v5.1.122: 周期の単位の色。今走っている桁(白)とは重ねない= 走っている物が一番目立つ
+    if (!meosClockUnitDecos) meosClockUnitDecos = MEOS_STAMP_COLORS.map(col => vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed, color: col, textDecoration: 'none; color: ' + col + ' !important;' }));
+    { const _hot = (r) => cycNow.some(n => n.start.line === r.start.line && n.start.character < r.end.character && r.start.character < n.end.character);
+      meosClockUnitDecos.forEach((t, k) => { try { editor.setDecorations(t, unitCols[k].filter(r => !_hot(r))); } catch (_) { } }); }
     meosLegacyDecorate(editor);   // v5.1.37: 🏦 遺産膜の顔も同じ描き直しに乗せる
   } catch (_) { }
 }
