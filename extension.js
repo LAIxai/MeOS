@@ -15352,7 +15352,10 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
                 after: { contentText: (_sl > 0 ? _rndIn.slice(_sl) : ''), color: MEOS_CLOCK_DIR_UP, fontWeight: '800' }
               } });
           }
-          if (_rnd) rounds.push({ range: new vscode.Range(_fl, _fat2, _fl, _fat2),
+          // ★v5.1.117(俊克 10.21 pm04:22「🍅で設定したこのタイマーは、なぜコメントがバッジに表示しないのか?」= 繰返しの無い1回きり):
+          //   タイトルの札は回数の駒に相乗りしていた= 回数(×N)の無い1本は駒ごと作られず、行の側の // も隠している(v4.2.477)のでどこにも出なかった。
+          //   → タイトルが在れば、回数が無くても駒を置く(分母は空)。
+          if (_rnd || c.title) rounds.push({ range: new vscode.Range(_fl, _fat2, _fl, _fat2),
             // ★v4.1.142(俊克 9/5 pm06:46 改良1「オレンジ一色に近い中、重要な回数that同じオレンジ色では
             //   目立たない」): ★橙は**地の色**so、その上に置く物には使えない。緑と水色は顔that持っている
             //   so、周回数は**地でも顔でもない白**= 3つthat互いに違う。

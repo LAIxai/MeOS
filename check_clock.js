@@ -2600,4 +2600,22 @@ console.log('55 1字打って控えが古い間も、囲いの中の⏰は字の
  ok(X.meosClockLineIsLive(d,4) && !X.meosClockLineIsLive(d,7), '★★★控えが古い間も、囲いの中は見本のまま(一瞬だけ時計に描かない)', [X.meosClockLineIsLive(d,4),X.meosClockLineIsLive(d,7)]);
  ok(X.meosClockLineHints(null,d,7).length===0, '★★札も差し込まない(行が横にずれない)', X.meosClockLineHints(null,d,7));
 }
+// v5.1.117(俊克 10.21 pm04:22「このタイマーは、なぜコメントがバッジに表示しないのか?」= 繰返しの無い1回きり)
+console.log('56 繰返しの無い1本も、バッジ行にタイトルの札(v5.1.117)');
+{
+ const CL='<!-- Mew!UFC ⏰⚓︎ 🔔/🔔 ↺↻ 2099-01-01 17:15.37f // v5.1のヒーロー画像の作成 -->';
+ const L=['# t','<!-- {* ▼mCN=HR_1 // c *} -->','x','<!-- {* ▲mCN=HR_1 // c *} -->','<!-- Mew!UFC mCN (📊⊕0+0D0W) -->',CL,'本文'];
+ const d={uri:{toString:()=>'file:///hr117.md',fsPath:'/hr117.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/hr117.md',isClosed:false,version:1};
+ const c=X.meosClockFcParse(CL);
+ ok(c && c.title==='v5.1のヒーロー画像の作成' && !(c.cycle&&c.cycle.length), '  1回きり・タイトルあり', c&&[c.title,c.cycle]);
+ const lk='file:///hr117.md HR_1';
+ X._meosPseudoScopes.set(lk,{uri:'file:///hr117.md',key:'HR_1',name:'HR_1',fc:true,hold:false,lock:false,anchor:true,step:0,line:5,when:String(c.when),round:0,rounds:0,cycle:[],cycleSrc:'',cidx:0,title:c.title});
+ X._meosPseudoUntil.set(lk, Date.now()+3600e3);
+ const all=[];
+ X.meosApplyTimerLineDecorations({document:d,selection:{active:new stub.Position(0,0)},visibleRanges:[new stub.Range(0,0,L.length-1,0)],setDecorations:(t,r)=>{for(const x of (r||[])) all.push(x);}});
+ const onBadge=all.filter(x=>x.range&&x.range.start.line===4&&x.renderOptions).map(x=>JSON.stringify(x.renderOptions)).join('|');
+ ok(/ヒーロー画像の作成/.test(onBadge), '★★★バッジ行にタイトルの札が出る', onBadge.slice(0,300));
+ X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
