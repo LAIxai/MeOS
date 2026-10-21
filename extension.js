@@ -15417,7 +15417,9 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     // v4.1.1111: 走っている側は**地の色と違う**だけでよい(色を1つ増やさない= editor.foreground を借りる)。
     if (cycNow.length && !meosClockCycNowDeco) meosClockCycNowDeco = vscode.window.createTextEditorDecorationType({
       // v4.1.1113: 変数that解けなかった時のために、素の白を控えに置く(黙って何も塗らない、を作らない)。
-      textDecoration: 'none; color: var(--vscode-editor-foreground, #ffffff) !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      // ★v5.1.124(俊克 10.21 pm06:11「これだけ並ぶと目立たないので、文字サイズを可能な範囲で大きく」): 1.25倍。
+      //   行の高さは変えない= line-height: 0(大きな字でも行の箱を押し広げない・v4.2.488 の⚓が行を沈めた轍を踏まない)
+      textDecoration: 'none; color: var(--vscode-editor-foreground, #ffffff) !important; font-weight: 900; font-size: 1.25em; line-height: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     // v4.1.148: 場所を借りたバッジ行は中身を消す(幅ごと畳む= 数字thatが行頭に立つ)。
     if (badgeHide.length && !meosClockBadgeHideDeco) meosClockBadgeHideDeco = vscode.window.createTextEditorDecorationType({
       textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
