@@ -14546,8 +14546,17 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     }
     // 本文に書いてある予定= その ⏰ 行の右に立てる。済んだ物(✓)は、カーソルがその膜に居る時だけ白。
     try {
-      for (const r of (editor.visibleRanges || [])) {
-        for (let i = r.start.line; i <= r.end.line && i < doc.lineCount; i++) {
+      // \u2605v5.1.109(\u4fca\u514b 10.21 am09:10 \u30d0\u30b01\u300c\ud83d\udcaaTabata\u306e\u6307\u5b9a\u304c\u753b\u9762\u306b\u306a\u3044\u3068\u3001\u30d0\u30c3\u30b8\u306b\u8868\u793a\u3055\u308c\u306a\u3044\u3002\u30b9\u30af\u30ed\u30fc\u30eb\u3057\u3066\u898b\u3048\u308b\u3068\u6b63\u3057\u304f\u51fa\u308b\u300d):
+      //   \u30d0\u30c3\u30b8\u884c\u306e\u6570\u5b57\u306f\u23f0\u884c\u3092\u8d70\u67fb\u3057\u305f\u6642\u306b\u7f6e\u304f= \u898b\u3048\u3066\u3044\u308b\u884c\u3057\u304b\u8d70\u67fb\u3057\u3066\u3044\u306a\u304b\u3063\u305f\u306e\u3067\u3001\u23f0\u884c\u304c\u753b\u9762\u306e\u4e0b\u3078\u5916\u308c\u308b\u3068\u6570\u5b57\u3082\u6d88\u3048\u305f\u3002
+      //   (\u30e1\u30cb\u30e5\u30fc\u30d0\u30fc\u306f\u6587\u66f8\u306e\u23f0\u3092\u5168\u90e8\u8aad\u3080\u306e\u3067\u6b63\u3057\u304b\u3063\u305f)
+      //   \u2192 \u898b\u3048\u3066\u3044\u308b\u7bc4\u56f2\u306e\u4e0b\u306b\u6307\u5b9a\u884c\u306e\u4e26\u3073\u304c\u7d9a\u304f\u9650\u308a\u3001\u305d\u3053\u307e\u3067\u8d70\u67fb\u3059\u308b(\u30d0\u30c3\u30b8\u884c\u304c\u898b\u3048\u3066\u3044\u308c\u3070\u3001\u305d\u306e\u4e0b\u306e\u23f0\u306f\u5168\u90e8\u5c4a\u304f)\u3002500\u884c\u3067\u6b62\u3081\u308b\u3002
+      const _tmSpans = meosMergeSpans((editor.visibleRanges || []).map(r => {
+        let e = Math.min(r.end.line, doc.lineCount - 1);
+        for (let n = 0; n < 500 && e + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(e + 1).text); n++) e++;
+        return [r.start.line, e];
+      }));
+      for (const [_s0, _e0] of _tmSpans) {
+        for (let i = _s0; i <= _e0 && i < doc.lineCount; i++) {
           const txt = doc.lineAt(i).text || '';
           if (txt.indexOf('\u23f0') < 0) continue;
           const c = meosClockFcParse(txt);

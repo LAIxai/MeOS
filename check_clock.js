@@ -2488,4 +2488,25 @@ console.log('㊾ 錠は本文that決める / 🔐のtipは1行(v4.2.254〜255)')
  ok(!/clockUnlockAt/.test(S254),
     '  tipから押す口(v4.2.254)は撤去= 道は Opt+クリック と ⏰一覧の🔓 の2つに戻る', true);
 }
+// v5.1.109(俊克 10.21 バグ1「💪Tabataの指定が画面にないと、バッジに表示されない」)
+console.log('㊿ ⏰行が画面の下に外れても、バッジ行の数字は出る(v5.1.109)');
+{
+ const L=['# t','<!-- {* ▼mCN=TB_1 // c *} -->','x','<!-- {* ▲mCN=TB_1 // c *} -->','<!-- Mew!UFC mCN (📊⊕0+0D0W) -->'];
+ for(let k=0;k<9;k++) L.push('<!-- Mew!FC ⏰ 2099-01-01 09:00 ↻10m/1m // wait'+k+' -->');
+ L.push('<!-- Mew!UFC ⏰ 2099-01-01 09:00 ↻10m/1m // 💪Tabata -->');
+ L.push('本文');
+ const d={uri:{toString:()=>'file:///tb.md',fsPath:'/tb.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/tb.md',isClosed:false,version:1};
+ const lk='file:///tb.md TB_1';
+ X._meosPseudoScopes.set(lk,{uri:'file:///tb.md',key:'TB_1',name:'TB_1',fc:true,hold:false,lock:false,step:0});
+ X._meosPseudoUntil.set(lk, Date.now()+3600e3);
+ const onBadge=(lastVis)=>{const got=[];
+  const e={document:d,selection:{active:new stub.Position(0,0)},visibleRanges:[new stub.Range(0,0,lastVis,0)],
+   setDecorations:(t,r)=>{for(const x of (r||[])){const rg=x.range||x; if(rg&&rg.start&&rg.start.line===4&&x.renderOptions) got.push(JSON.stringify(x.renderOptions));}}};
+  X.meosApplyTimerLineDecorations(e); return got.join('|');};
+ const full=onBadge(L.length-1), cut=onBadge(5);
+ ok(full.length>0, '  画面に全部見えていれば、バッジ行に数字が出る', full);
+ ok(cut===full, '★★★⏰行が画面の下に外れても、バッジ行は同じ姿', [cut,full]);
+ X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
