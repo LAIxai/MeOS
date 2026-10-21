@@ -12095,7 +12095,7 @@ function meosTimerDbText(eol) {
   const rows = [
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->',
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes -->',
-    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m ×1 // 1 hour -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m0s ×1 // 1 hour -->',   // ★v5.1.121(俊克 10.21 pm05:32「不要なものは書かないという選択肢もあるので、データベースは1つだけ秒を書いておく」)= ①と同じ周期の行だけ秒まで
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days -->',
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->',
     MEOS_TIMER_DB_RULE,

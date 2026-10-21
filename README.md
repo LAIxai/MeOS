@@ -47,7 +47,7 @@ a membrane near the end of your diary, just above the meta membrane. Your everyd
 ```md
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes -->
-<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m ×1 // 1 hour -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m0s ×1 // 1 hour -->
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days -->
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->
 <!-- Mew!UFC --- -->
