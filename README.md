@@ -37,6 +37,72 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 >
 > ## **You(AI) & I(LAI) 🐔**
 
+<!-- v5.1 の2本柱(🔐暗号の仮想化/🏦貸金庫膜)の節は、この上に書く(2026.10.21 時点で未記入)。 -->
+
+### NEW in v5.1 — a ⏰ database, clocks on a chain, and a note under your code
+
+**The ⏰ database.** Press `⏰0y0d0h3m …` on the menu bar (macOS) or in Me Dock's **Format Me**, and you warp to
+a membrane near the end of your diary, just above the meta membrane. Your everyday timers wait there, one per line:
+
+```md
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m ×1 // 1 hour -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->
+<!-- Mew!UFC --- -->
+<!-- Mew!FC ⏰ 2026-10-21 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // 💪Tabata work -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest -->
+<!-- Mew!UFC --- -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(25m)×1 ⛓️⤵️2 // 🍅Pomodoro focus -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(5m)×1 ⛓️⤴️2)×4 // ☕Pomodoro break -->
+```
+
+Press ▶️ on a line and only that clock runs; when it has rung, it goes back to waiting, ready for next time. Copy a
+line into any membrane and it works there too. Each waiting line shows its title in grey, so you can find the one
+you want at a glance. Delete the database by mistake, and the next press of `⏰0y0d0h3m …` makes it again.
+The countdown shows on the badge line at the top of the database even when the running line is scrolled out of view.
+
+**`<!-- Mew!UFC --- -->` draws a line.** Three dashes or more, as in Markdown's own `---`: the comment disappears and
+an orange rule takes its place, so the groups in a long list of clocks stand apart. Two dashes are not enough, and
+inside a code block it stays text. It is a UFC line (one that never folds), so it does not break the list — the
+badge line and the chains reach across it.
+
+**⛓️ Clocks on a chain.** A chain mark on a ⏰ line links it to its neighbours. Lines without one stay independent.
+
+| Mark | Meaning |
+|---|---|
+| `⛓️⤵️2` | this line and the next (2 lines, counting this one) run one after the other |
+| `⛓️⤴️2)×8` | go back 2 lines (counting this one) and do it 8 times |
+| `⛓️‍💥` | a cut chain — the mark stays, but links nothing |
+
+The number counts lines, not line numbers, so you can copy a chained block anywhere and it still works.
+On screen ⛓️ is a button on a green tile: click it and it turns into a red ⛓️‍💥, and the chain is cut right there;
+click again to link it. ⤵️ only goes forward and ⤴️ only goes back — so cut the ⤵️ of *work*, start from *rest*,
+and you get "rest, then one more work" with a single click.
+
+**The count goes into your title.** Write `1.` in a title and MeOS fills in the round of the chain. With
+`// 💪Tabata work #1.` and `// 😮‍💨Tabata rest #1.`, the badge line reads `⏰ 0.14 0.06 💪Tabata work #3 /8` in the
+third round — the `/8` is the `×8` of the chain — and the bell says *😮‍💨Tabata rest #7* in the status bar and on
+the menu bar. A clock that repeats on its own (`×N` on its own line, like the eye drops in v5.0 below) counts its own turns.
+
+**A note under your code block.** The closing ` ``` ` of a code block cannot carry text — CommonMark would no longer
+see it as closed. So write the note on the line right after it, as a UFC comment:
+
+````md
+```js
+const rate = 0.08;
+```
+<!-- Mew!UFC Change the rate here when the tax changes. -->
+````
+
+MeOS takes the closing line and the note line into the sheet: a blue rule, then the note in blue italics, over two
+lines if it is long. The sheet is never wider than it needs to be. GitHub, Zenn and every other Markdown viewer show
+only the code — the note is a comment. Use UFC, not FC: an FC line folds under the line above it, and the second
+row would be gone. A ⏰ line or a `---` line is never taken as a note. Clocks and other MeOS notation you quote
+inside a code block stay plain text — they never run, and they do not flicker while you type outside the block.
+
 ### NEW in v5.0 — clocks that hand over to each other, and keep ringing after you close the editor
 
 v4.1 put one clock on a membrane. **v5.0 lets a membrane carry a whole routine** — several clocks, one after
