@@ -2622,7 +2622,7 @@ console.log('56 繰返しの無い1本も、バッジ行にタイトルの札(v5
 console.log('57 ①= ↺↻(1h)×2・2か所の①は同じ1つの口(v5.1.118)');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/cycle:'\(1h\)\\u00d72',title:'Timer 1h # 1\.'/.test(S) && /rep:true/.test(S.slice(S.indexOf('const __oneShot'), S.indexOf('const __oneShot')+400)), '★★★①は (1h)×2 の繰返し・タイトルに回数の器', 0);
+ ok(/cycle:'\(0y0d1h0m0s\)\\u00d72',title:'Timer 1h # 1\.'/.test(S) && /rep:true/.test(S.slice(S.indexOf('const __oneShot'), S.indexOf('const __oneShot')+400)), '★★★①は (0y0d1h0m0s)×2 の繰返し(フルスペック・v5.1.120)・タイトルに回数の器', 0);
  ok(/\['clk-one','os-one'\]\.forEach/.test(S) && (S.match(/id="os-one"/g)||[]).length===1 && (S.match(/id="clk-one"/g)||[]).length===1, '★★Timed Me-System の⏰と Format Me の⏰0y0d0h3m … の右肩に1つずつ・口は1つ', 0);
  ok(/<span class="ww-split os-split"><button class="ww-btn os-btn" id="os-btn"/.test(S), '  右肩の丸は折り返しの↻と同じ囲い(ww-split)', 0);
 }
