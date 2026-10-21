@@ -2509,4 +2509,24 @@ console.log('㊿ ⏰行が画面の下に外れても、バッジ行の数字は
  ok(cut===full, '★★★⏰行が画面の下に外れても、バッジ行は同じ姿', [cut,full]);
  X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
 }
+// v5.1.110(俊克 10.21 am09:45 バグ1「1行目のコメントが見えない」)
+console.log('51 ⏸で止めた今の席にも灰色のタイトルを添える(v5.1.110)');
+{
+ const K='⏰0y0d0h3m_20261020T125707JST';
+ const L=['# t','<!-- {* ▼mCN='+K+' // c *} -->','x','<!-- {* ▲mCN='+K+' // c *} -->','<!-- Mew!UFC mCN (📊⊕0+0D0W) -->',
+  '<!-- Mew!UFC ⏰⏸1 🔔/🔔 1. ↺↻(20s)×1 v4s ⛓️⤵️2 // 💪Tabata work -->',
+  '<!-- Mew!FC ⏰ 🔔/🔔 1. ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest 1. 回目 -->','本文'];
+ const d={uri:{toString:()=>'file:///db110.md',fsPath:'/db110.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/db110.md',isClosed:false,version:1};
+ const grey=()=>{const got=new Set();
+  const e={document:d,selection:{active:new stub.Position(0,0)},visibleRanges:[new stub.Range(0,0,L.length-1,0)],
+   setDecorations:(t,r)=>{for(const x of (r||[])){const a=x&&x.renderOptions&&x.renderOptions.after; if(a&&a.fontStyle==='italic') got.add(x.range.start.line);}}};
+  X.meosApplyTimerLineDecorations(e); return [...got].sort().join(',');};
+ ok(grey()==='5,6', '★★★⏸で止めた work(UFC)にもタイトルが見える', grey());
+ const lk='file:///db110.md '+K;
+ X._meosPseudoScopes.set(lk,{uri:'file:///db110.md',key:K,name:K,fc:true,hold:false,lock:false,step:0,line:5});
+ X._meosPseudoUntil.set(lk, Date.now()+3600e3);
+ ok(grey()==='6', '  走っている1本はバッジ行に出るので、行には添えない(今までどおり)', grey());
+ X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

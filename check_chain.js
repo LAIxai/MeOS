@@ -9,7 +9,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mch_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,meosClockBadgeRowForLine,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
+ +'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosChainNextRow,meosChainLinks,meosChainTokenSplit,meosChainTokenText,meosChainResetLoops,_meosChainLoops,meosPanelCycleOpts,meosClockFcSet,meosTimerDbMovePlan,meosClockChainMarkAt,meosTimerDbText,MEOS_TIMER_DB_CHAIN_EX,meosClockAtLine,meosIsTimerDbKey,meosClockNudgeHitAt,meosClockChainHitAt,meosParkCaretAfterPress,meosLineDiffHunks,meosVaultRevertGently,meosVaultKeepOutsideAndSave,meosVaultInnerHunks,meosClockBadgeRowForLine,meosChainFillSlot,meosChainLoopRound,meosChainSayFor,__setPrev:(v)=>{_meosPrevCaretPos=v;}};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const mk=(uri,lines)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -179,6 +179,21 @@ console.log('⑲ ⏰のデータベース膜の下の方の⏰もバッジ行を
  ok(rows.length===10 && rows.every(i=>X.meosClockBadgeRowForLine(d,i)===B), '★10行目(☕Pomodoro break)までバッジ行に届く', rows.map(i=>X.meosClockBadgeRowForLine(d,i)));
  const L2=['<!-- Mew!FC mCN (📊⊕0+0D0W) -->','本文の行','<!-- Mew!FC ⏰ ↺↻3m ×1 // x -->'];
  ok(X.meosClockBadgeRowForLine({lineCount:3,lineAt:n=>({text:L2[n]})},2)===-1, '指定行の並びが切れたら探さない(今までどおり)', 0);
+}
+
+console.log('⑳ 器(1.)に鎖の輪の何回目かを入れる(v5.1.110)');
+{
+ const L=head.concat(['<!-- Mew!UFC ⏰ 🔔/🔔 1. ↺↻(20s)×1 v4s ⛓️⤵️2 // 💪Tabata work -->','<!-- Mew!FC ⏰ 🔔/🔔 1. ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest 1. 回目 -->','<!-- Mew!FC ⏰ ↺↻(5m)×1 // cool 1. 回目 -->']);
+ const d=mk('file:///tb20.md',L); X.meosChainResetLoops(d,'H_1');
+ const R=X.meosClockFcScan(d).filter(r=>r.key==='H_1'), w=R[0], r=R[1], c=R[2];
+ const say=(row)=>X.meosChainFillSlot(row.title, 1, {doc:d,key:'H_1',line:row.line,round:1,rounds:1,cycle:row.cycle,cycleSrc:row.cycleSrc});
+ const seen=[];
+ for(let k=1;k<=8;k++){ seen.push(say(r)); ok(X.meosChainLoopRound(d,'H_1',w.line)===k, '  '+k+'回目の work も輪の'+k+'回目', X.meosChainLoopRound(d,'H_1',w.line)); X.meosChainNextRow(d,'H_1',r.line,true); }
+ ok(seen.join('|')===[1,2,3,4,5,6,7,8].map(n=>'😮‍💨Tabata rest '+n+' 回目').join('|'), '★★★rest の札が 1〜8 回目と進む', seen);
+ ok(X.meosChainSayFor(d,'H_1',r.line,1)==='😮‍💨Tabata rest 1 回目', '  輪を抜けたら1回目へ戻る(鳴った時の言葉も同じ口)', X.meosChainSayFor(d,'H_1',r.line,1));
+ ok(X.meosChainLoopRound(d,'H_1',c.line)===0 && say(c)==='cool 1 回目', '  輪の外の行は今までどおり(行の ×N)', [X.meosChainLoopRound(d,'H_1',c.line), say(c)]);
+ ok(X.meosChainFillSlot('目薬 1. 本目', 2, {doc:d,key:'H_1',line:w.line,round:2,rounds:3})==='目薬 2 本目', '  行の ×N が2回以上なら行の回数(目薬はそのまま)', 0);
+ X.meosChainResetLoops(d,'H_1');
 }
 
 console.log('⑥ 書き直しても鎖の印は残る(書く口)');

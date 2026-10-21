@@ -12944,8 +12944,28 @@ function meosClockStepSeg(ctx) {
     return { seg: n % len, atoms: len, count: round };
   } catch (_) { return { seg: 0, atoms: 1, count: Number(ctx && ctx.round) || 0 }; }
 }
+// ★v5.1.110(俊克 10.21 am09:45 改良1「目薬タイマーのように回数を1回目、2回目と出したいが、毎回同じ表示になる。なぜ?」):
+//   器(1.)に入れる回数は、その行の ×N だけを数えていた= Tabata は各行 ×1 で、回るのは鎖(⛓️⤴️2)×8)なので、いつも 1。
+//   → 行が ⤴️ の輪の中に居て、行の ×N が1回きりなら、輪の何回目か(_meosChainLoops= meosChainNextRow が数える物)を入れる。
+function meosChainLoopRound(doc, key, line) {
+  try {
+    if (!doc || !key || typeof line !== 'number') return 0;
+    const rows = meosClockFcScan(doc).filter(c => c.key === key);
+    const me = rows.findIndex(c => c.line === line);
+    if (me < 0) return 0;
+    const L = meosChainLinks(rows);
+    for (let i = me; i < rows.length; i++) {
+      const b = L.back[i];
+      if (b && b.to <= me) return _meosChainLoops.get(doc.uri.toString() + ' ' + key + ' #' + i) || 1;
+    }
+  } catch (_) { }
+  return 0;
+}
 function meosChainFillSlot(text, round, ctx) {
   try {
+    let _lp = 0;   // v5.1.110: 鎖の輪の何回目か(行の ×N が1回きりの時だけ)
+    try { if (ctx && typeof ctx === 'object' && !(Number(ctx.rounds) > 1)) _lp = meosChainLoopRound(ctx.doc, ctx.key, ctx.line); } catch (_) { }
+    if (_lp > 0 && !(ctx && ctx.done)) round = _lp;
     let t = String(text == null ? '' : text).replace(/^\s*\d{1,3}[.)]\s*/, '');   // 行頭= 見せかけの番号
     const segs = t.split(/\s+\/\/\s+/);
     if (segs.length > 1) {                                                          // v4.2.430: 時間ごとのメッセージ
@@ -12953,7 +12973,7 @@ function meosChainFillSlot(text, round, ctx) {
         const si = meosClockStepSeg(ctx);
         const done = (Number(ctx.rounds) > 0 && round > Number(ctx.rounds)) || !!ctx.done;
         t = (done && segs.length > si.atoms) ? segs[si.atoms] : (segs[Math.min(si.seg, segs.length - 1)] || segs[0]);
-        round = done ? 0 : si.count;
+        round = done ? 0 : (_lp > 0 ? _lp : si.count);
       } else t = segs[0];
     }
     t = t.replace(/\s*\u{1F514}\S*/gu, '').replace(/\s*\u{1F515}\S*/gu, '');                                         // v4.2.436: 🔔音の名前は見せない(鳴らす時に読む)
@@ -12967,7 +12987,7 @@ function meosChainFillSlot(text, round, ctx) {
 function meosChainSayFor(doc, key, clockLine, round) {
   try {
     let me = null; for (const c of meosClockFcScan(doc)) if (c.key === key && c.line === clockLine) { me = c; break; }   // 行で名指し(「この膜の時計」を訊く口ではない)
-    if (me && me.title) return meosChainFillSlot(me.title, round);
+    if (me && me.title) { const _lp = (me.rounds > 1) ? 0 : meosChainLoopRound(doc, key, clockLine); return meosChainFillSlot(me.title, _lp > 0 ? _lp : round); }   // v5.1.110
   } catch (_) { }
   return '';
 }
@@ -14800,7 +14820,14 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   (ふつうの膜は v4.2.173 のまま= 走っている1本だけ)。本文は1字も足さない(飾りだけ)。
           // ★v5.1.98(俊克 10.20 am10:51 バグ1「まだコメント文が見えない。なぜ?」): 真因= ここの c は行の字を読んだだけ(meosClockFcParse)で膜の名前(key)を持たない
           //   → meosIsTimerDbKey(undefined) が毎回「違う」。膜は拾い読みの控え(meosClockAtLine)から引く。
-          if (!_rawHere && c.title && !(c.ufc && !c.done) && meosIsTimerDbKey(((meosClockAtLine(doc, null, i) || {}).key) || '')) {
+          // ★v5.1.110(俊克 10.21 am09:45 バグ1「1行目のコメントが見えない」): 外していたのは「UFC の行」全部= ⏸で止めた今の席は、
+          //   バッジ行にもこの行にもタイトルが出なかった。→ 外すのは**今バッジ行にタイトルを出している1本だけ**(掛かっている/凍らせた行)。
+          const _k110 = ((meosClockAtLine(doc, null, i) || {}).key) || '';
+          const _onBadge110 = (() => { try {
+            const _s = scById.get(_k110); if (_s && _s.line === i && byId.has(_k110)) return true;
+            const _f = _meosPauseFreeze.get(uri + ' ' + _k110); return !!(_f && _f.line === i && c.off && !c.done);
+          } catch (_) { return false; } })();
+          if (!_rawHere && c.title && !_onBadge110 && meosIsTimerDbKey(_k110)) {
             const _ti97 = txt.indexOf('//', Math.max(0, txt.search(/[\u21ba\u21bb]/)));
             let _k97 = _ti97; while (_k97 > 0 && /\s/.test(txt.charAt(_k97 - 1))) _k97--;
             if (_ti97 > 0 && _k97 > 0) items.push({ range: new vscode.Range(i, _k97 - 1, i, _k97), renderOptions: { after: { contentText: '\u00a0\u00a0' + c.title, color: '#8b949e', fontStyle: 'italic' } } });
