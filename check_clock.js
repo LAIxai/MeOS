@@ -2552,4 +2552,27 @@ console.log('52 バッジの分母は ⛓️ の輪の回数 / ⛓️ の手の�
  ok(onArrow.length===0, '★★★⤵️ の上に tip を出さない', onArrow.map(x=>x.hoverMessage));
  X._meosPseudoUntil.delete(lk); X._meosPseudoScopes.delete(lk);
 }
+// v5.1.112(俊克 10.21 am10:23 改良1「--- と短く書く記法で罫線を」)
+console.log('53 `<!-- Mew!UFC --- -->` は罫線(v5.1.112)');
+{
+ const K='⏰0y0d0h3m_20261020T125707JST';
+ const L=['# t','<!-- {* ▼mCN='+K+' // c *} -->','x','<!-- {* ▲mCN='+K+' // c *} -->','<!-- Mew!UFC mCN (📊⊕0+0D0W) -->',
+  '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // work -->','<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×8 // rest -->',
+  '<!-- Mew!UFC --- -->','<!-- Mew!FC ⏰ ↺↻(1m)×1 // focus -->','<!-- Mew!UFC --------------------------------------------------->','本文'];
+ const d={uri:{toString:()=>'file:///rule.md',fsPath:'/rule.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/rule.md',isClosed:false,version:1};
+ const all=[];
+ const e={document:d,selection:{active:new stub.Position(0,0)},visibleRanges:[new stub.Range(0,0,L.length-1,0)],setDecorations:(t,r)=>{for(const x of (r||[])) all.push(x);}};
+ X.meosApplyTimerLineDecorations(e);
+ const rules=all.filter(x=>x.renderOptions&&x.renderOptions.before&&/border-top/.test(x.renderOptions.before.textDecoration||'')).map(x=>x.range.start.line);
+ ok(rules.join()==='7,9', '★★★--- の行(短くても長くても)に罫線を描く', rules);
+ const hid=all.filter(x=>!x.renderOptions&&x.start&&x.start.character===0&&(x.start.line===7||x.start.line===9)&&x.end.character===L[x.start.line].length).length;
+ ok(hid===2, '  字は幅ごと畳む', hid);
+ ok(X.meosClockBadgeRowForLine(d,8)===4, '★★罫線を挟んでもバッジ行に届く(畳まない指定行= 並びは切れない)', X.meosClockBadgeRowForLine(d,8));
+ const e2={document:d,selection:{active:new stub.Position(7,0)},visibleRanges:[new stub.Range(0,0,L.length-1,0)],setDecorations:()=>{}};
+ const all2=[]; e2.setDecorations=(t,r)=>{for(const x of (r||[])) all2.push(x);};
+ X.meosApplyTimerLineDecorations(e2); { const t0=Date.now(); while(Date.now()-t0<300){} }   /* 生の行は 0.25秒続いてから効く(v4.2.494) */
+ all2.length=0; X.meosApplyTimerLineDecorations(e2);
+ ok(!all2.some(x=>x.renderOptions&&x.renderOptions.before&&/border-top/.test(x.renderOptions.before.textDecoration||'')&&x.range.start.line===7), '  カーソルの行は字のまま(直すための窓)', 0);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

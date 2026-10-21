@@ -14491,6 +14491,7 @@ function meosClockLineHints(editor, doc, i) {
   } catch (_) { }
   return out;
 }
+const MEOS_RULE_LINE_RE = /^\s*<!--\s*Mew!UFC\s+-{3,}\s*-->\s*$/;   // v5.1.112: 罫線の行(`<!-- Mew!UFC --- -->`)
 function meosApplyTimerLineDecorations(editor, fromHints) {
   try {
     if (!editor || !editor.document) return;
@@ -14584,6 +14585,17 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
       for (const [_s0, _e0] of _tmSpans) {
         for (let i = _s0; i <= _e0 && i < doc.lineCount; i++) {
           const txt = doc.lineAt(i).text || '';
+          // ★v5.1.112(俊克 10.21 am10:23 改良1「⏰FCが並んでいるとどこが区切りか読み難い。Zennのように --- と短く書く記法で罫線を引こう」):
+          //   `<!-- Mew!UFC --- -->`(- が3つ以上)= 罫線。畳まない指定行(UFC)なので並びは途切れない(バッジ行も鎖もそのまま届く)。
+          //   字は幅ごと畳んで線だけ描く。カーソル行/Raw では字のまま(直すための窓)。
+          if (MEOS_RULE_LINE_RE.test(txt)) {
+            if (!meosShowsRawLineStable(editor, i)) {
+              badgeHide.push(new vscode.Range(i, 0, i, txt.length));
+              items.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '\u200b',
+                textDecoration: 'none; display: inline-block; width: 60ch; height: 0; vertical-align: middle; border-top: 1px solid rgba(139,148,158,.7); pointer-events: none;' } } });
+            }
+            continue;
+          }
           if (txt.indexOf('\u23f0') < 0) continue;
           const c = meosClockFcParse(txt);
           // ★★★v4.2.37(俊克 バグ3「1番目のタイマーが一時停止中のときには、動作中もそうだけど、
@@ -43148,8 +43160,10 @@ function meosApplyCodeFenceDecorations(editor) {
           // ★★v4.2.298(俊克 改良1「コードブロックの閉じる記号that、枠の行として表示されるのはおかしい」):
           //   ★紙は**中身の行まで**= 閉じの ``` の行には紙を敷かない(空の枠の行thatが出ない)。
           //     字は畳んであるso、その行はただの空行に見える。足の丸みは**最後の中身の行**へ。
-          const _last = (b.close > b.open) ? (b.close - 1) : b.close;   // 紙の足= 最後の中身の行
-          if (!(ln === b.close && b.close > b.open)) {                 // 閉じの ``` の行には紙を敷かない
+          // ★v5.1.112(俊克 10.21 am10:23 改良2「最後の区切りマークが紙の外に残り、そこに入力できそうに見える。中に入れて空行として見せた方が良い」):
+          //   閉じの ``` の行も紙に入れる(字は今までどおり隠す= 枠の字は見えない・紙の足の空行に見える)。v4.2.298 の「閉じの行に紙を敷かない」を取り消す。
+          const _last = b.close;                                       // 紙の足= 閉じの ``` の行
+          {
             const _kind = (ln === b.open) ? 'head' : ((ln === _last) ? 'foot' : 'body');
             // v4.2.280: その行that何段に折り返るか= 段の数だけ紙を高くする(折り返した段にも紙that続く)
             const _rows = _wrapCol ? Math.max(1, Math.min(20, Math.ceil(meosRenderCols(t) / _wrapCol))) : 1;
