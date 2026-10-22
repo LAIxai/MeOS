@@ -168,9 +168,13 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
     T._vaultKeys.set(K3, new Map([['V_open', 'pw']]));
     T.meosVeilSet(true);
     const all = Array.from(got.values());
-    const cover = all.find(r => r.length && r[0] instanceof Range) || [], mk = all.find(r => r.length && r[0].renderOptions) || [];
+    const cover = all.find(r => r.length && r[0] instanceof Range) || [], mk = all.find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.contentText === '🙈') || [];
+    const bd = all.find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.contentText === '') || [];
     ok(T.getVeil() && cover.length === 3 && cover[0].start.line === 2 && cover[2].start.line === 4, '🙈: 中身の3行だけを覆う(開始/閉じの行は覆わない)');
-    ok(mk.length === 1 && mk[0].range.start.line === 3 && /font-size: \d+px/.test(mk[0].renderOptions.before.textDecoration) && mk[0].renderOptions.before.contentText === '🙈', '🙈: 真ん中の行に1つ');
+    ok(mk.length === 1 && mk[0].range.start.line === 3 && mk[0].renderOptions.before.contentText === '🙈', '🙈: 真ん中の行に1つ');
+    ok(bd.length === 3 && bd.every(b => /width: 15ch; height: 100%/.test(b.renderOptions.before.textDecoration) && b.renderOptions.before.backgroundColor === '#ffffff'), '🙈: 白い板= 中身の行ごとに1枚・幅は一番長い行(13桁)+2');
+    { const td = mk[0] ? mk[0].renderOptions.before.textDecoration : ''; const K = Number((/font-size: ([\d.]+)em/.exec(td) || [])[1]), L = Number((/left: ([\d.]+)ch/.exec(td) || [])[1]);
+      ok(K > 0 && Math.abs(L * K - 7.5) < 0.01 && /top: 0\.75em|top: [\d.]+em/.test(td), '🙈: 横は板の真ん中(左から7.5桁= 字の大きさで割り戻す)'); }
     T.meosVeilSet(false);
     ok(!T.getVeil() && Array.from(got.values()).every(r => r.length === 0), '🙈: 外すと覆いも🙈も消える');
     T._vaultKeys.delete(K3);

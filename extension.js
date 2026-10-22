@@ -18136,45 +18136,64 @@ async function meosAwayLeave(idle) {
 //   時間= 🪑の席の1/10・最低1分(3分→1分 / 15分→1分30秒 / 30分→3分 / 60分→6分)。数えるのは🪑と同じ1つ(Mac 全体の無操作= HIDIdleTime・15秒ごと)。
 //   戻すのは入口のエディターをマウスかキーで触った時だけ(マウスを動かしただけ・スクロールだけでは戻らない)。
 //   覆い方= 行の字を透明に＋行全体に薄い灰の地(折り返した行の続きも覆う)。🙈は覆った所のうち見えている部分の真ん中に、見えている高さの9割まで。
+// ★v5.1.129(俊克 10.22 am10:31 改良1「端に半分しか見えない。暗号部分の表示幅で白い四角で目隠しをした上に、見猿を中央にだそうよ」):
+//   v5.1.128 は🙈を「行の箱の50%」に置いた= 行の箱の幅は字の幅ではない(スクショ= 左端に半分)。
+//   → 家の紙(コードブロック v4.2.278/280)と同じ作り= 板は字の側の駒(before)なので ch がそのまま「1桁」(Cmd+= で拡大しても付いて行く)。
+//     板= 中身の行ごとに1枚・幅は中身の一番長い行の桁(+余白2・折り返し幅まで)・高さは段の数×100%(折り返しの段をまたぐ)・白。
+//     🙈= 字の大きさの K 倍(em)。🙈の中の 1ch は字の K 倍なので、板の真ん中(W/2 桁)は W/2/K ch。縦は見えている板の真ん中(段で数える)。
+//     大きさ= 板の幅に収まる大きさまで(絵文字の幅≒1.25em・半角1桁≒0.6em)・高さは見えている高さの9割まで・最低8行分。
 let _meosVeilOn = false;
-let _meosVeilDeco = null, _meosVeilMonkeyDeco = null;
+let _meosVeilDeco = null, _meosVeilBoardDeco = null, _meosVeilMonkeyDeco = null;
+const MEOS_VEIL_PAPER = '#ffffff';
 function meosVeilMs() { return Math.max(60 * 1000, Math.round(meosAwayMs() / 10)); }
-function meosVeilLineHeight(editor) {
+function meosVeilLineEm(doc) {   // 行の高さ÷字の大きさ(拡大しても変わらない比)
   try {
-    const c = vscode.workspace.getConfiguration('editor', editor.document.uri);
+    const c = meosFenceCfg(doc);
     const fs = Number(c.get('fontSize')) || 14; let lh = Number(c.get('lineHeight')) || 0;
-    if (lh > 0 && lh < 8) lh = lh * fs;   // 8未満は倍率(VS Code と同じ読み方)
-    return lh > 0 ? lh : Math.round(fs * 1.5);   // 0= 自動(mac は字の1.5倍)
-  } catch (_) { return 21; }
+    if (lh > 0 && lh < 8) return lh;   // 8未満は倍率(VS Code と同じ読み方)
+    return lh > 0 ? lh / fs : 1.5;     // 0= 自動(mac は字の1.5倍)
+  } catch (_) { return 1.5; }
 }
 function meosVeilPaint(editor) {
   try {
     if (!editor || !meosIsVaultDoc(editor.document)) return;
     const doc = editor.document;
     const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
-    const lines = [], monkeys = [];
+    const lines = [], boards = [], monkeys = [];
     if (_meosVeilOn && keys && keys.size) {
       const vis = (editor.visibleRanges || []).map(r => [r.start.line, r.end.line]);
-      let nVis = 0; for (const v of vis) nVis += v[1] - v[0] + 1;
-      const lh = meosVeilLineHeight(editor);
+      const wrap = meosFenceWrapColumn(doc), lhEm = meosVeilLineEm(doc);
+      const rowsOf = (cols) => wrap > 0 ? Math.max(1, Math.ceil(cols / wrap)) : 1;
+      let visRows = 0; for (const v of vis) for (let i = v[0]; i <= v[1]; i++) visRows += rowsOf(meosRenderCols(doc.lineAt(i).text || ''));
       const covered = new Set();
       for (const p of collectPairs(doc, { excludeIndex: false })) {
         if (!keys.has(p.id) || p.end - p.start < 2) continue;
-        for (let i = p.start + 1; i < p.end; i++) { if (!covered.has(i)) { covered.add(i); lines.push(new vscode.Range(i, 0, i, (doc.lineAt(i).text || '').length)); } }
-        const shown = [];
-        for (const v of vis) for (let i = Math.max(v[0], p.start + 1); i <= Math.min(v[1], p.end - 1); i++) shown.push(i);
+        const cols = [];
+        for (let i = p.start + 1; i < p.end; i++) cols.push(meosRenderCols(doc.lineAt(i).text || ''));
+        let W = Math.max(12, Math.max.apply(null, cols) + 2); if (wrap > 0) W = Math.min(W, wrap + 2);
+        for (let i = p.start + 1; i < p.end; i++) {
+          if (covered.has(i)) continue; covered.add(i);
+          lines.push(new vscode.Range(i, 0, i, (doc.lineAt(i).text || '').length));
+          boards.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '', backgroundColor: MEOS_VEIL_PAPER,
+            textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + W + 'ch; height: ' + (rowsOf(cols[i - p.start - 1]) * 100) + '%; z-index: 30; pointer-events: none;' } } });
+        }
+        const shown = [];   // 見えている中身の行と段の数
+        for (const v of vis) for (let i = Math.max(v[0], p.start + 1); i <= Math.min(v[1], p.end - 1); i++) shown.push([i, rowsOf(cols[i - p.start - 1])]);
         if (!shown.length) continue;
-        const n = shown.length, mid = shown[Math.floor(n / 2)];
-        const size = Math.round(Math.min(nVis * lh * 0.9, Math.max(n * lh, 8 * lh)));
-        const top = n % 2 ? lh / 2 : 0;   // 奇数行= 真ん中の行の中ほど / 偶数行= 真ん中の2行の境目
-        monkeys.push({ range: new vscode.Range(mid, 0, mid, 0), renderOptions: { before: { contentText: '🙈',
-          textDecoration: 'none; position: absolute; left: 50%; top: ' + top + 'px; transform: translate(-50%, -50%); font-size: ' + size + 'px; line-height: 1; z-index: 30; pointer-events: none; -webkit-text-fill-color: initial; opacity: 1;' } } });
+        let tot = 0; for (const r of shown) tot += r[1];
+        let half = tot / 2, k = 0; while (k < shown.length - 1 && half >= shown[k][1]) { half -= shown[k][1]; k++; }
+        const K = Math.max(1, Math.min(visRows * lhEm * 0.9, Math.max(tot * lhEm, 8 * lhEm), W * 0.6 / 1.25));
+        const f = (x) => (Math.round(x * 1000) / 1000);
+        monkeys.push({ range: new vscode.Range(shown[k][0], 0, shown[k][0], 0), renderOptions: { before: { contentText: '🙈',
+          textDecoration: 'none; position: absolute; left: ' + f(W / 2 / K) + 'ch; top: ' + f(half * lhEm / K) + 'em; transform: translate(-50%, -50%); font-size: ' + f(K) + 'em; line-height: 1; z-index: 31; pointer-events: none; -webkit-text-fill-color: initial; opacity: 1;' } } });
       }
     }
-    if (lines.length && !_meosVeilDeco) _meosVeilDeco = vscode.window.createTextEditorDecorationType({ isWholeLine: true, backgroundColor: 'rgba(128,128,128,0.22)',
+    if (lines.length && !_meosVeilDeco) _meosVeilDeco = vscode.window.createTextEditorDecorationType({ isWholeLine: true,
       textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (boards.length && !_meosVeilBoardDeco) _meosVeilBoardDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (monkeys.length && !_meosVeilMonkeyDeco) _meosVeilMonkeyDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (_meosVeilDeco) editor.setDecorations(_meosVeilDeco, lines);
+    if (_meosVeilBoardDeco) editor.setDecorations(_meosVeilBoardDeco, boards);
     if (_meosVeilMonkeyDeco) editor.setDecorations(_meosVeilMonkeyDeco, monkeys);
   } catch (_) { }
 }
