@@ -19,7 +19,7 @@
 ### **MarkdownⓌ** — *Markdown, double-u: doubled, and warped.*
 
 MeOS speaks **MarkdownⓌ**: plain Markdown, extended with **membranes**. The Ⓦ is a double-u — *double*, and *Warp*. A membrane is just a comment — so a MarkdownⓌ document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **MarkdownⓌ doubles it with structure, navigation, and bookmarks — and warps you back to them** — without touching your data.
-It was once Markdown⊕ — *plus*. But a membrane does not add; it multiplies. When a cell took in the mitochondrion,
+**M↓ became M↓⊕ — and M↓⊕ has now super-evolved into M↓Ⓦ.** The ⊕ meant *plus*. But a membrane does not add; it multiplies. When a cell took in the mitochondrion,
 1 + 1 did not make 2: it made a new kind of life, and every one of your cells still carries two genomes. A MarkdownⓌ
 file, too, carries two layers in one — the text you read, and the comments that act.
 
