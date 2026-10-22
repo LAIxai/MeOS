@@ -1,8 +1,9 @@
 # MeOS — Membrane OS
 
 <p align="center">
-  <!-- 新ロゴ(MeW)とM↓⊕を1枚に(GitHubは<table>に必ず枠線を付けるので合成にした)。2つで1つを表わす分身。 -->
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-3.png" alt="MeW - Membrane Warpspace / Markdown(+)" width="776">
+  <!-- 新ロゴ(MeW)とM↓⊕を1枚に(GitHubは<table>に必ず枠線を付けるので合成にした)。2つで1つを表わす分身。
+       2026.10.22 俊克「M↓Ⓦにしよう」= Ⓦ は double(W)と Warp。⊕ は ⊗(駄目マークに見える)を経て Ⓦ へ。★絵(mew-header-3.png)の ⊕ は俊克の描き直し待ち -->
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-3.png" alt="MeW - Membrane Warpspace / MarkdownⓌ" width="776">
 </p>
 
 <p align="center">
@@ -15,9 +16,9 @@
 <p align="center"><b>MeOS — Membrane OS</b>, a.k.a. <b>iWarpShip</b><br>
 <sub><i>i</i> for information — a ship that warps through the space of what you wrote.</sub></p>
 
-### **Markdown⊕** — *Markdown, plus.*
+### **MarkdownⓌ** — *Markdown, double-u: doubled, and warped.*
 
-MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the ⊕). A membrane is just a comment — so a Markdown⊕ document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **Markdown⊕ adds structure, navigation, and bookmarks that bring you back** — without touching your data.
+MeOS speaks **MarkdownⓌ**: plain Markdown, extended with **membranes**. The Ⓦ is a double-u — *double*, and *Warp*. A membrane is just a comment — so a MarkdownⓌ document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **MarkdownⓌ doubles it with structure, navigation, and bookmarks — and warps you back to them** — without touching your data.
 
 > **A new world — where comments become commands.**
 >
@@ -780,9 +781,9 @@ MeOS stands on the shoulders of:
 > Prefer a perfectly continuous lane? Set `"laiMembrane.gutterLanes": false` to draw it inside the text instead — at the cost of some IME friction (so the gutter is the default).
 > **A note for VSCodium / VS Code maintainers:** an API to let glyph-margin / gutter decorations span all visual rows of a wrapped line (as breakpoints and folding controls already do internally) would let MeOS offer both a perfectly continuous lane *and* clean IME input. We'd love to see it. 🙏
 
-## Markdown⊕ — Welcome to the New World
+## MarkdownⓌ — Welcome to the New World
 
-**Markdown⊕** — the lightness of Markdown, with usability that leaves WYSIWYG far behind.
+**MarkdownⓌ** — the lightness of Markdown, with usability that leaves WYSIWYG far behind.
 
 Your notes stop scattering. **One file: a one-month diary, or a ten-year one.** Goodbye to the sea of endlessly fragmented files. **At last, a file becomes truly your own.**
 
@@ -798,9 +799,9 @@ And this is a fact: **one AI wrote this membrane-structured code, and another AI
 
 ---
 
-### Markdown⊕ ― 新世界へようこそ（日本語）
+### MarkdownⓌ ― 新世界へようこそ（日本語）
 
-**Markdown⊕** ― Markdown の軽快さはそのままに、WYSIWYG をはるかに凌ぐ快適さを。
+**MarkdownⓌ** ― Markdown の軽快さはそのままに、WYSIWYG をはるかに凌ぐ快適さを。
 
 ノートは、もう散らばらない。**1ファイルで、1ヶ月日記も、10年日記も。** 無数に分割されたファイルの海に、グッバイ。**やっと、ファイルが"自分の所有物"になる。**
 
