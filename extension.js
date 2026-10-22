@@ -18150,17 +18150,25 @@ const MEOS_VEIL_PAPER = '#ffffff';
 //   contentIconPath は大きさが効かず原寸(v3.4.1〜3.4.2で確定)→ 駒(before)の背景に敷く= 大きさは em(字の大きさ)で決まり、拡大にも付いて行く。
 //   駒の型ごとに1つの決まった姿(置き場・大きさ)を持たせる= 背景の絵が型の CSS に1回だけ入る(行ごとの renderOptions に入れると、型の before を上書きして絵が消える)。
 //   型は「板の幅・大きさ・縦の位置」の組ごとに作り、目隠しを外す時に全部捨てる。
-const MEOS_VEIL_ART_RATIO = 304 / 480;   // 絵の横÷縦
-const _meosVeilArtTypes = new Map();     // '幅|大きさ|縦' -> 型
-let _meosVeilArtUrl = null;
+// ★v5.1.132(俊克 pm00:47 👍1「呼吸をしているみたいにも見えるので、いいでしょ」[検収印]＋改良1「絵文字のように、上半分くらいを切り出して使うのもいいかもね…
+//   2つのパターンをアットランダムに出してもいいしね」): 絵を2つに= 全身(mizaru.svg)と上半分(mizaru_half.svg= 同じ2枚の上半分・絵文字の🙈の構図)。
+//   どちらを出すかは、目隠しを掛けるたびにランダムに選ぶ(掛けている間は替えない= スクロールで猿が入れ替わらない)。
+const MEOS_VEIL_ARTS = [{ file: 'mizaru.svg', ratio: 304 / 480 }, { file: 'mizaru_half.svg', ratio: 619 / 480 }];   // ratio= 絵の横÷縦
+let _meosVeilArtPick = 0;
+const _meosVeilArtTypes = new Map();     // '絵|幅|大きさ|縦' -> 型
+const _meosVeilArtUrls = new Map();
+function meosVeilArt() { return MEOS_VEIL_ARTS[_meosVeilArtPick] || MEOS_VEIL_ARTS[0]; }
 function meosVeilArtUrl() {
-  if (_meosVeilArtUrl !== null) return _meosVeilArtUrl;
-  _meosVeilArtUrl = '';
-  try { const b = require('fs').readFileSync(require('path').join(extensionContext.extensionPath, 'media', 'veil', 'mizaru.svg')); _meosVeilArtUrl = 'data:image/svg+xml;base64,' + b.toString('base64'); } catch (_) { }
-  return _meosVeilArtUrl;
+  const a = meosVeilArt();
+  if (_meosVeilArtUrls.has(a.file)) return _meosVeilArtUrls.get(a.file);
+  let u = '';
+  try { const b = require('fs').readFileSync(require('path').join(extensionContext.extensionPath, 'media', 'veil', a.file)); u = 'data:image/svg+xml;base64,' + b.toString('base64'); } catch (_) { }
+  _meosVeilArtUrls.set(a.file, u);
+  return u;
 }
 function meosVeilArtType(W, K, top) {
-  const key = W + '|' + K + '|' + top;
+  const MEOS_VEIL_ART_RATIO = meosVeilArt().ratio;
+  const key = _meosVeilArtPick + '|' + W + '|' + K + '|' + top;
   let t = _meosVeilArtTypes.get(key);
   if (!t) {
     t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed, before: { contentText: '',
@@ -18209,7 +18217,7 @@ function meosVeilPaint(editor) {
         let half = tot / 2, k = 0; while (k < shown.length - 1 && half >= shown[k][1]) { half -= shown[k][1]; k++; }
         const f = (x) => (Math.round(x * 1000) / 1000);
         if (meosVeilArtUrl()) {   // v5.1.131: 見猿の絵(大きさと縦の位置は0.5刻み= 型が増え過ぎない)
-          const K = Math.max(1, Math.round(2 * Math.min(visRows * lhEm * 0.9, Math.max(tot * lhEm, 6 * lhEm), W * 0.6 * 0.9 / MEOS_VEIL_ART_RATIO)) / 2);
+          const K = Math.max(1, Math.round(2 * Math.min(visRows * lhEm * 0.9, Math.max(tot * lhEm, 6 * lhEm), W * 0.6 * 0.9 / meosVeilArt().ratio)) / 2);
           arts.push([meosVeilArtType(W, K, f(Math.round(half * 2) / 2 * lhEm)), new vscode.Range(shown[k][0], 0, shown[k][0], 0)]);
           continue;
         }
@@ -18233,6 +18241,7 @@ function meosVeilSet(on) {
   on = !!on && meosVaultUnlockedCount().n > 0;
   if (on === _meosVeilOn) return;
   _meosVeilOn = on;
+  if (on) _meosVeilArtPick = Math.floor(Math.random() * MEOS_VEIL_ARTS.length);   // v5.1.132: 掛けるたびにどちらかの絵
   try { meosDbg('[veil] ' + (on ? '🙈 覆う' : '戻す')); } catch (_) { }
   for (const ed of (vscode.window.visibleTextEditors || [])) meosVeilPaint(ed);
   if (!on) meosVeilArtDrop();   // v5.1.131: 見猿の型は外す時に全部捨てる
