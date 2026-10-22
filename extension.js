@@ -18101,6 +18101,7 @@ function meosAwayCheck() {
           if (_l52 >= 0 && _l52 <= 75000 && !_meosAwayFast) _meosAwayFast = setInterval(meosAwayCheck, 1000);
           else if ((_l52 < 0 || _l52 > 75000) && _meosAwayFast) { clearInterval(_meosAwayFast); _meosAwayFast = null; } }
         { const sf = meosAwayMenuSuffix(); if (sf !== _meosAwayShown) { _meosAwayShown = sf; try { if (!meosIsRinging()) meosUpdateTimerBar(); } catch (_) { } } }   // 分が変わった時だけ
+        if (!_meosVeilOn && idle >= meosVeilMs()) meosVeilSet(true);   // v5.1.128: 🙈目隠し(戻すのはクリック/キーだけ)
         if (idle >= meosAwayMs()) meosAwayLeave(idle).catch(() => { });
       } catch (_) { }
     });
@@ -18128,6 +18129,62 @@ async function meosAwayLeave(idle) {
     await vscode.commands.executeCommand('workbench.action.quit');
   } finally { setTimeout(() => { _meosAwayBusy = false; }, 30000); }
 }   // ★v5.1.1(俊克 10.17 am10:58「テスト用に3分で自動施錠に」): 試しの間は3分。★リリース前に30分へ戻す
+// ★★v5.1.128(俊克 10.22 am10:05「暗号を仮想化しているとき…無操作が5秒か10秒続いたら、簡易的な暗号化を…クリックすれば、合言葉なしで、再描画する」
+//   → am10:11「離席時間の10分の1、但し、最低1分」→ am10:14「目隠しの真中に、どでかく、🙈マークをいれよう。こんな大きな見猿を見たことない、ってくらいデカクね」):
+//   🙈目隠し。ファイルはもう暗号(0.5秒ごとに暗号で保存)= 丸出しなのは画面だけ。→ 字は書き換えず、解錠中の膜の中身を装飾で覆う
+//   (Undo・未保存の印・保存の流れに触らない)。合言葉なしのクリックで戻る= 守る相手は「見るだけの人」(後ろからの覗き見・画面共有・スクショ)。本当に閉じるのは🪑。
+//   時間= 🪑の席の1/10・最低1分(3分→1分 / 15分→1分30秒 / 30分→3分 / 60分→6分)。数えるのは🪑と同じ1つ(Mac 全体の無操作= HIDIdleTime・15秒ごと)。
+//   戻すのは入口のエディターをマウスかキーで触った時だけ(マウスを動かしただけ・スクロールだけでは戻らない)。
+//   覆い方= 行の字を透明に＋行全体に薄い灰の地(折り返した行の続きも覆う)。🙈は覆った所のうち見えている部分の真ん中に、見えている高さの9割まで。
+let _meosVeilOn = false;
+let _meosVeilDeco = null, _meosVeilMonkeyDeco = null;
+function meosVeilMs() { return Math.max(60 * 1000, Math.round(meosAwayMs() / 10)); }
+function meosVeilLineHeight(editor) {
+  try {
+    const c = vscode.workspace.getConfiguration('editor', editor.document.uri);
+    const fs = Number(c.get('fontSize')) || 14; let lh = Number(c.get('lineHeight')) || 0;
+    if (lh > 0 && lh < 8) lh = lh * fs;   // 8未満は倍率(VS Code と同じ読み方)
+    return lh > 0 ? lh : Math.round(fs * 1.5);   // 0= 自動(mac は字の1.5倍)
+  } catch (_) { return 21; }
+}
+function meosVeilPaint(editor) {
+  try {
+    if (!editor || !meosIsVaultDoc(editor.document)) return;
+    const doc = editor.document;
+    const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
+    const lines = [], monkeys = [];
+    if (_meosVeilOn && keys && keys.size) {
+      const vis = (editor.visibleRanges || []).map(r => [r.start.line, r.end.line]);
+      let nVis = 0; for (const v of vis) nVis += v[1] - v[0] + 1;
+      const lh = meosVeilLineHeight(editor);
+      const covered = new Set();
+      for (const p of collectPairs(doc, { excludeIndex: false })) {
+        if (!keys.has(p.id) || p.end - p.start < 2) continue;
+        for (let i = p.start + 1; i < p.end; i++) { if (!covered.has(i)) { covered.add(i); lines.push(new vscode.Range(i, 0, i, (doc.lineAt(i).text || '').length)); } }
+        const shown = [];
+        for (const v of vis) for (let i = Math.max(v[0], p.start + 1); i <= Math.min(v[1], p.end - 1); i++) shown.push(i);
+        if (!shown.length) continue;
+        const n = shown.length, mid = shown[Math.floor(n / 2)];
+        const size = Math.round(Math.min(nVis * lh * 0.9, Math.max(n * lh, 8 * lh)));
+        const top = n % 2 ? lh / 2 : 0;   // 奇数行= 真ん中の行の中ほど / 偶数行= 真ん中の2行の境目
+        monkeys.push({ range: new vscode.Range(mid, 0, mid, 0), renderOptions: { before: { contentText: '🙈',
+          textDecoration: 'none; position: absolute; left: 50%; top: ' + top + 'px; transform: translate(-50%, -50%); font-size: ' + size + 'px; line-height: 1; z-index: 30; pointer-events: none; -webkit-text-fill-color: initial; opacity: 1;' } } });
+      }
+    }
+    if (lines.length && !_meosVeilDeco) _meosVeilDeco = vscode.window.createTextEditorDecorationType({ isWholeLine: true, backgroundColor: 'rgba(128,128,128,0.22)',
+      textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (monkeys.length && !_meosVeilMonkeyDeco) _meosVeilMonkeyDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (_meosVeilDeco) editor.setDecorations(_meosVeilDeco, lines);
+    if (_meosVeilMonkeyDeco) editor.setDecorations(_meosVeilMonkeyDeco, monkeys);
+  } catch (_) { }
+}
+function meosVeilSet(on) {
+  on = !!on && meosVaultUnlockedCount().n > 0;
+  if (on === _meosVeilOn) return;
+  _meosVeilOn = on;
+  try { meosDbg('[veil] ' + (on ? '🙈 覆う' : '戻す')); } catch (_) { }
+  for (const ed of (vscode.window.visibleTextEditors || [])) meosVeilPaint(ed);
+}
 const _vaultKeys = new Map();   // fileUri文字列 -> Map(膜名 -> 合言葉)
 const _vaultSeen = new Map();   // fileUri文字列 -> Set(このセッションで一度でも解錠した膜名)=守り①
 const _vaultGen = new Map();    // fileUri文字列 -> 世代(鍵が変わるたび+1=statのmtimeに足してVSCodeに読み直させる)
@@ -18810,12 +18867,14 @@ function meosVaultActivate(context) {
       } catch (_) { }
     }, 1500);
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultLockAll', () => meosVaultLockAll('now')));
-    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) { _vaultTouch(); _vaultArmAutoSave(e.document); } }));
-    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) _vaultTouch(); }));
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) { _vaultTouch(); _vaultArmAutoSave(e.document);
+      if (_meosVeilOn) { if (!meosVaultUnlockedCount().n) meosVeilSet(false); else for (const ed of (vscode.window.visibleTextEditors || [])) if (ed.document === e.document) meosVeilPaint(ed); } } }));   // v5.1.128: 施錠で字が替わったら覆いも付け直す
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) { _vaultTouch(); if (_meosVeilOn && e.kind) meosVeilSet(false); } }));   // v5.1.128: マウス/キーで触ったら🙈を外す(プログラムの移動= kind 無しでは外さない)
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { if (_meosVeilOn) meosVeilPaint(e.textEditor); }));   // v5.1.128: 🙈は見えている所の真ん中へ
     // ★v5.1.8(俊克 pm00:45「ほとんどずっと、Finderの日記ファイルをWクリックしたものを使っている」):
     //   入口のタブが開いているのに Finder から同じ日記を開くと、file: のタブがもう1つできる= 2つの口から同じファイルを書く
     //   (片方の保存がもう片方を上書きする)。→ file: のタブが前に出たら、同じファイルの入口のタブへ移し、file: のタブは閉じる。
-    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { meosVaultRedirectFileTab(ed).catch(() => { }); }));
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { meosVaultRedirectFileTab(ed).catch(() => { }); if (_meosVeilOn && ed) meosVeilPaint(ed); }));   // v5.1.128: 前に出た入口のタブも覆う
     const iv = setInterval(() => {
       if (_vaultKeys.size && Date.now() - _vaultLastTouch >= meosAwayMs()) { meosVaultLockAll('idle ' + meosAwayMins()[meosAwaySlot() - 1] + ' min').catch(() => { }); }   // v5.1.19: 時間は🪑の席と同じ
       meosAwayCheck();   // v5.1.19: 🪑 離席(Mac 全体の無操作)

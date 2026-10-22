@@ -38,7 +38,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_vault_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield };
+module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
@@ -154,6 +154,31 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
     ok(T.meosDecryptText(ln.slice(ln.indexOf(T._MEOS_ENC_PREFIX) + T._MEOS_ENC_PREFIX.length).trim(), PASS).includes('追記'), '🛡️: 暗号は🔐と同じ(同じ合言葉で開く)');
     ok(!T.meosPassStrongEnough('abc') && !T.meosPassStrongEnough('pass-word-ok') && T.meosPassStrongEnough(PASS) && T.meosPassStrongEnough('a'.repeat(20)) && T.meosPassStrongEnough('あいう-かきく-さしす-たちつ-なに'), '🛡️の合言葉の長さ(20字以上/言葉4つ以上で16字以上)');
     T._vaultKeys.delete(K2);
+  }
+  // v5.1.128: 🙈目隠し= 🪑の1/10・最低1分。解錠中の膜の中身だけを覆い、🙈を見えている所の真ん中に
+  {
+    ok(T.meosVeilMs() === 90 * 1000, '🙈: 既定の席(🛋️15分)なら1分30秒');
+    const P3 = '/veil.md', VU3 = { path: P3, scheme: 'meos-vault', toString: () => 'meos-vault:' + P3 }, K3 = 'file://' + P3;
+    const L = ['# t', '// {▼mCN=V_open // c}', 'secret line 1', 'secret line 2', 'secret line 3', '// {▲mCN=V_open //}', 'after'];
+    const doc = { version: 1, uri: VU3, languageId: 'markdown', lineCount: L.length, lineAt: (i) => ({ text: L[i] }) };
+    const got = new Map(); let ti = 0;
+    const ed = { document: doc, visibleRanges: [new Range(0, 0, 6, 0)], setDecorations: (t, r) => { got.set(t, r); } };
+    stub.window.createTextEditorDecorationType = () => ({ id: ti++, dispose() { } });
+    stub.window.visibleTextEditors = [ed];
+    T._vaultKeys.set(K3, new Map([['V_open', 'pw']]));
+    T.meosVeilSet(true);
+    const all = Array.from(got.values());
+    const cover = all.find(r => r.length && r[0] instanceof Range) || [], mk = all.find(r => r.length && r[0].renderOptions) || [];
+    ok(T.getVeil() && cover.length === 3 && cover[0].start.line === 2 && cover[2].start.line === 4, '🙈: 中身の3行だけを覆う(開始/閉じの行は覆わない)');
+    ok(mk.length === 1 && mk[0].range.start.line === 3 && /font-size: \d+px/.test(mk[0].renderOptions.before.textDecoration) && mk[0].renderOptions.before.contentText === '🙈', '🙈: 真ん中の行に1つ');
+    T.meosVeilSet(false);
+    ok(!T.getVeil() && Array.from(got.values()).every(r => r.length === 0), '🙈: 外すと覆いも🙈も消える');
+    T._vaultKeys.delete(K3);
+    const keep = new Map(T._vaultKeys); T._vaultKeys.clear();
+    T.meosVeilSet(true);
+    for (const [k, v] of keep) T._vaultKeys.set(k, v);
+    ok(!T.getVeil(), '🙈: 解錠中の膜が無ければ覆わない');
+    stub.window.visibleTextEditors = [];
   }
   console.log(fail ? ('\n' + fail + ' 項目 NG') : '\n全項目 PASS');
   process.exit(fail ? 1 : 0);
