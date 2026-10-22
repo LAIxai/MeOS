@@ -2859,6 +2859,7 @@ function meosSoundResolve(name) {
   if (n === 'SOFT') return meosNoChangeSoundPath() || '';
   if (n === 'GROWL') return meosGrowlPath() || '';   // v4.2.621: 🍙GROWL
   if (n === 'THUMP') return meosThumpPath() || '';   // v5.0.18: 🐇THUMP(足ダン)
+  if (n === 'EEK-EEK') return meosEekPath() || '';   // v5.1.134: 🐒EEK-EEK(猿のキー、キー)
   if (n === MEOS_CROW_PRIZE_NAME) return meosCrowPath();   // v5.0.18: 鐘でも八咫烏の一鳴き
   if (n === 'ROCKET') return meosRocketPath(true) || '';   // v4.2.676(俊克「毎回フェードアウトして、その90%で次を」): いつもフェード版   // v4.2.667: 賞品(MecoDTk で☿を出した人だけ)
   if (n === MEOS_GOLD_PRIZE_NAME) return meosGoldPrizePath();   // v4.2.776-13: 栄誉の音(最初の達成者だけ)
@@ -2879,6 +2880,7 @@ function meosSoundList() {
   out.push('PURR');  // v4.2.518: 作った強烈なゴロゴロ
   out.push('GROWL'); // v4.2.621: 作ったお腹の虫
   out.push('THUMP'); // v5.0.18: 作った兎の足ダン
+  out.push('EEK-EEK'); // v5.1.134: 作った猿のキー、キー
   try { if (extensionContext && extensionContext.globalState.get('meosDingDongWon')) out.push('DING-DONG!'); } catch (_) { }
   try { if (meosGoldPrizePath()) out.push(MEOS_GOLD_PRIZE_NAME); } catch (_) { }   // v4.2.776-13
   try { if (meosCrowPath()) out.push(MEOS_CROW_PRIZE_NAME); } catch (_) { }   // v5.0.9: コンプリートの賞品
@@ -2903,6 +2905,7 @@ function meosSoundSpawn(name) {
   if (name === MEOS_CROW_PRIZE_NAME) name = meosCrowPath();   // v5.0.9: 八咫烏の一鳴き(コンプリートの賞品)
   if (name === 'ROCKET') name = meosRocketPath(true) || '';   // v4.2.667 / v4.2.676: いつもフェード版
   if (name === 'GROWL') name = meosGrowlPath() || '';   // v4.2.621
+  if (name === 'EEK-EEK') name = meosEekPath() || '';   // v5.1.134
   let _volMul = 1; if (name === 'THUMP') { name = meosThumpPath() || ''; _volMul = 2; }   // v5.0.18: 🐇足ダン(俊克「音量を上げて鳴らそう」= 鳴らす音量も2倍)
   if (!name) return null;
   if (process.platform === 'darwin') {
@@ -14081,6 +14084,7 @@ function meosHelperSound() {
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'THUMP' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'thump-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.0.18: 閉じていても V-helper が足ダン
+    if (name === 'EEK-EEK' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'eek-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.1.134: 🐒も閉じていても鳴るようヘルパーへ
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
     if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); for (let ms = 500; ms <= 1000; ms += 100) { const src = meosGrowlPath(ms / 1000), dst = path.join(meosHelperDir(), 'growl-v6-' + ms + '.wav'); if (src && !fs.existsSync(dst)) fs.copyFileSync(src, dst); } file = path.join(meosHelperDir(), 'growl-v6-1000.wav'); } catch (_) { } }   // v4.2.621 / v4.2.629: 長さ6本を全部渡す(ヘルパーが選ぶ)
     if (name === 'ROCKET' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'rocket-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); const _fsrc = meosRocketPath(true), _fdst = path.join(meosHelperDir(), 'rocket-v2-fade.wav'); if (_fsrc && !fs.existsSync(_fdst)) fs.copyFileSync(_fsrc, _fdst); file = dst; } catch (_) { } }   // v4.2.667
@@ -16266,6 +16270,46 @@ function meosThumpPath() {
     fs.writeFileSync(f, buf); _meosThumpFile = f; return f;
   } catch (_) { return null; }
 }
+// ★v5.1.134(俊克 2026.10.22 pm01:36「猿が出たときに、キー、キーという猿の鳴き声も出そうかな。それも音リストに追加しよう」
+//   → pm01:40「隣の人がうるさがって、触ると台無しだけどね。まー、それも面白いでしょ」「あなたの想像力で、一度、作っておいてよ」): 🐒EEK-EEK。
+//   ★THUMP と同じく一から計算で作る(素材なし= 権利の心配が無い・vsix も増えない)。
+//     1声= 0.28秒。高さは 1250Hz から一気に 2150Hz まで上がって下りる(「キーッ」の山)・倍音8本(高い方ほど弱く、3k/5kHz あたりを少し持ち上げる)
+//     ＋喉のがらつき(70Hz で強さを揺らす・高さを細かく揺らす)＋息の雑音(高い所だけ)。2声目は 0.40秒後・高さ8%上(「キー、キー」)。
+let _meosEekFile = '';
+function meosEekPath() {
+  if (_meosEekFile) return _meosEekFile;
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const rate = 44100, L = 0.85, n = Math.round(L * rate), T = 0.28, calls = [[0.02, 1.0], [0.42, 1.08]];
+    let seed = 20261022; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const smp = new Float64Array(n); let peak = 0;
+    for (const [t0, up] of calls) {
+      let ph = 0, hp = 0, lp = 0;
+      const i0 = Math.round(t0 * rate), m = Math.round(T * rate);
+      for (let j = 0; j < m && i0 + j < n; j++) {
+        const t = j / rate, u = t / T;
+        const jit = 1 + 0.012 * Math.sin(2 * Math.PI * 23 * t) + 0.006 * (rnd() - 0.5);
+        const f = (1250 + 900 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.15)), 0.5)) * up * jit;
+        ph += 2 * Math.PI * f / rate;
+        let v = 0;
+        for (let k = 1; k <= 8; k++) { const fk = f * k; if (fk > 16000) break; const form = 1 + 0.8 * Math.exp(-Math.pow((fk - 3000) / 900, 2)) + 0.5 * Math.exp(-Math.pow((fk - 5200) / 1200, 2)); v += Math.sin(ph * k + k * 0.7) * form / Math.pow(k, 1.2); }
+        const wn = rnd() * 2 - 1; hp = 0.85 * (hp + wn - lp); lp = wn;   // 高い所だけの息
+        const rough = 1 - 0.3 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 70 * t));
+        const env = Math.min(1, t / 0.012) * (u > 0.75 ? Math.exp(-(u - 0.75) * 9) : 1);
+        smp[i0 + j] += (v * 0.55 * rough + hp * 0.12) * env;
+      }
+    }
+    for (let i = 0; i < n; i++) { smp[i] = Math.tanh(2 * smp[i]) / Math.tanh(2); if (Math.abs(smp[i]) > peak) peak = Math.abs(smp[i]); }
+    const buf = Buffer.alloc(44 + n * 2);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+    buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+    buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    const k = peak > 0 ? 0.95 / peak : 1; for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, smp[i] * k)) * 32767), 44 + i * 2);
+    const f = path.join(os.tmpdir(), 'meos-eek-v1.wav');
+    fs.writeFileSync(f, buf); _meosEekFile = f; return f;
+  } catch (_) { return null; }
+}
 // ★v4.2.667: 🚀ROCKET= 俊克がアラームアプリの試作用に用意したフリー素材(On-Jin ～音人～「ロケット発射」)の最初の3秒を同梱していた
 // ★★v4.2.669(俊克「周波数解析して、合成してはどうか?」「1個目を」): 素材のファイルを配らない= 元の0〜3秒を 25ms×20帯域(40〜12000Hz・対数)で測った
 //   強さの表(2dB刻み・0〜-90dB)だけを持ち、毎回でたらめな位相の雑音をその形に整えて FFT 逆変換で作る(元の波形は1サンプルも使わない)。
@@ -18242,6 +18286,7 @@ function meosVeilSet(on) {
   if (on === _meosVeilOn) return;
   _meosVeilOn = on;
   if (on) _meosVeilArtPick = Math.floor(Math.random() * MEOS_VEIL_ARTS.length);   // v5.1.132: 掛けるたびにどちらかの絵
+  if (on) { try { if (meosRealHost()) meosSoundSpawn('EEK-EEK'); } catch (_) { } }   // v5.1.134(俊克「猿が出たときに、キー、キー」): 掛けた時に1回だけ鳴く(検査の台では鳴らさない)
   try { meosDbg('[veil] ' + (on ? '🙈 覆う' : '戻す')); } catch (_) { }
   for (const ed of (vscode.window.visibleTextEditors || [])) meosVeilPaint(ed);
   if (!on) meosVeilArtDrop();   // v5.1.131: 見猿の型は外す時に全部捨てる
@@ -34171,9 +34216,9 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,10).join('');};
-const sdLabel=(n)=>(n==='GLD-KNIGHT'?'\u269c\ufe0f ':'')+(n==='THUMP'?'\ud83d\udc07 ':'')+(n==='YATAGARASU'?'\ud83d\udc26\u200d\u2b1b ':'')+(n==='ROCKET'?'\ud83d\ude80 ':'')+(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':(n==='GROWL'?'\ud83c\udf59 ':''))+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
+const sdLabel=(n)=>(n==='GLD-KNIGHT'?'\u269c\ufe0f ':'')+(n==='THUMP'?'\ud83d\udc07 ':'')+(n==='EEK-EEK'?'\ud83d\udc12 ':'')+(n==='YATAGARASU'?'\ud83d\udc26\u200d\u2b1b ':'')+(n==='ROCKET'?'\ud83d\ude80 ':'')+(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':(n==='GROWL'?'\ud83c\udf59 ':''))+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
 const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
-window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL'||m.current==='ROCKET'||m.current==='GLD-KNIGHT'||m.current==='YATAGARASU'||m.current==='THUMP')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL'||m.current==='ROCKET'||m.current==='GLD-KNIGHT'||m.current==='YATAGARASU'||m.current==='THUMP'||m.current==='EEK-EEK')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  /* v5.0.0-11: 一番上に ×3(アラームと同じ連打で試聴・既定オン) */const _x3=document.createElement('label');_x3.className='sd-x3';_x3.innerHTML='<input type="checkbox"'+(m.x3!==false?' checked':'')+'> Preview ×3 — as the alarm rings';_x3.addEventListener('click',ev=>ev.stopPropagation());_x3.querySelector('input').addEventListener('change',ev=>{vscode.postMessage({type:'soundX3',on:!!ev.target.checked});});sp.appendChild(_x3);
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
