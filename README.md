@@ -2,8 +2,8 @@
 
 <p align="center">
   <!-- 新ロゴ(MeW)とM↓⊕を1枚に(GitHubは<table>に必ず枠線を付けるので合成にした)。2つで1つを表わす分身。
-       2026.10.22 俊克「M↓Ⓦにしよう」= Ⓦ は double(W)と Warp。⊕ は ⊗(駄目マークに見える)を経て Ⓦ へ。★絵(mew-header-3.png)の ⊕ は俊克の描き直し待ち -->
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-3.png" alt="MeW - Membrane Warpspace / MarkdownⓌ" width="776">
+       2026.10.22 俊克「M↓Ⓦにしよう」= Ⓦ は double(W)と Warp。⊕ は ⊗(駄目マークに見える)を経て Ⓦ へ。pm11:33 俊克が M↓Ⓦ の絵を描いた(media/logo/mdw-logo.png)→ mew-header-4.png= mew-header-3 の MeW はそのまま・右の箱を同じ所(538,82・幅477)に縮めて差し替え -->
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-4.png" alt="MeW - Membrane Warpspace / MarkdownⓌ" width="776">
 </p>
 
 <p align="center">
