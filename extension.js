@@ -30771,6 +30771,7 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .sd-row:hover,.sd-row.act{background:color-mix(in srgb,var(--vscode-editor-background) 60%,#d18400 40%)}
 .sd-row.cur::before{content:'●';position:absolute;left:9px;font-size:9px;top:5px;color:#e0803a}
 .sd-row.off{opacity:.75;font-style:italic}
+.sd-row.cur{font-size:17px;font-weight:700;padding:5px 11px 5px 25px;margin:2px 4px;border-radius:6px;background:#f3e6c4;color:#3b3020}.sd-row.cur:hover,.sd-row.cur.act{background:#ead6a2}.sd-row.cur::before{top:9px;left:10px}.sd-row.cur.soft{background:#cfe4f4}.sd-row.cur.soft:hover,.sd-row.cur.soft.act{background:#b6d6ee}   /* v5.1.135(俊克 改良1「音メニューが小さくて見難いので、current項目を拡大して、地の色もクリーム色にして、絵文字が見えやすくしよう。SOFTだけ違う色の方が良いかも」): 今の音の行= 大きく・クリームの地(紙と同じ #f3e6c4)・字は紙の墨。🍦SOFTはクリームに溶けるので水色の地 */
 .th-btn{border:1px solid var(--meos-frame);border-radius:6px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#b48ae8 16%);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap;overflow:hidden}
 #th-btn-val .th-ic{font-size:1.2em;vertical-align:-1px}   /* v4.2.245: 🎨を1.2倍 */
 #th-btn-val .th-nm{display:inline-block;width:9.4ch;overflow:hidden;vertical-align:bottom;text-align:left}   /* v4.2.244: 名前は最大7文字・幅を固定 */
@@ -34221,7 +34222,7 @@ const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15
 window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL'||m.current==='ROCKET'||m.current==='GLD-KNIGHT'||m.current==='YATAGARASU'||m.current==='THUMP'||m.current==='EEK-EEK')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  /* v5.0.0-11: 一番上に ×3(アラームと同じ連打で試聴・既定オン) */const _x3=document.createElement('label');_x3.className='sd-x3';_x3.innerHTML='<input type="checkbox"'+(m.x3!==false?' checked':'')+'> Preview ×3 — as the alarm rings';_x3.addEventListener('click',ev=>ev.stopPropagation());_x3.querySelector('input').addEventListener('change',ev=>{vscode.postMessage({type:'soundX3',on:!!ev.target.checked});});sp.appendChild(_x3);
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
- for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
+ for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off')+(x.name==='SOFT'?' soft':'');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
   r.addEventListener('click',ev=>{ev.stopPropagation();clearTimeout(sdTimer);sdAct(r,false);vscode.postMessage({type:'soundPreview',name:x.name});vscode.postMessage({type:'soundCommit',name:x.name});});
   sp.appendChild(r);}
