@@ -74,6 +74,12 @@ sky blue, red-brown, gold. In the last 75 seconds it counts in seconds, `🪑0:4
 rings like any ⏰; touch anything and it stops. Doze off at the keyboard, and it wakes you up — along with everyone
 around you.
 
+**Before the chair, a blind.** While a 🔐 membrane is unlocked, the plain text lives only on the screen — the file
+always holds the ciphertext. So when nobody has touched the Mac for a tenth of the seat's time (at least a minute:
+1 minute for 🪑, 1½ for 🛋️, 3 for 💺), MeOS hides what is inside every unlocked membrane. Click it or press a key,
+and it comes back — no passphrase. It is not a lock; it is for the eyes behind you, a shared screen or a screenshot.
+The 🪑 is the lock.
+
 **`<!-- Mew!UFC --- -->` draws a line.** Three dashes or more, as in Markdown's own `---`: the comment disappears and
 an orange rule takes its place, so the groups in a long list of clocks stand apart. Two dashes are not enough, and
 inside a code block it stays text. It is a UFC line (one that never folds), so it does not break the list — the
