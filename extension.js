@@ -18145,6 +18145,31 @@ async function meosAwayLeave(idle) {
 let _meosVeilOn = false;
 let _meosVeilDeco = null, _meosVeilBoardDeco = null, _meosVeilMonkeyDeco = null;
 const MEOS_VEIL_PAPER = '#ffffff';
+// ★v5.1.131(俊克 pm00:35「見猿7連発だよ」「4枚目と7枚目を交互に出すと、いいかもよ」): 🙈の絵文字を俊克の見猿の絵へ。
+//   絵= media/veil/mizaru.svg(4枚目=口を閉じた笑顔・7枚目=歯を見せた笑顔を1秒ずつ交互= SVG の中の animate。2枚は差が最小になる所で揃えた)。
+//   contentIconPath は大きさが効かず原寸(v3.4.1〜3.4.2で確定)→ 駒(before)の背景に敷く= 大きさは em(字の大きさ)で決まり、拡大にも付いて行く。
+//   駒の型ごとに1つの決まった姿(置き場・大きさ)を持たせる= 背景の絵が型の CSS に1回だけ入る(行ごとの renderOptions に入れると、型の before を上書きして絵が消える)。
+//   型は「板の幅・大きさ・縦の位置」の組ごとに作り、目隠しを外す時に全部捨てる。
+const MEOS_VEIL_ART_RATIO = 304 / 480;   // 絵の横÷縦
+const _meosVeilArtTypes = new Map();     // '幅|大きさ|縦' -> 型
+let _meosVeilArtUrl = null;
+function meosVeilArtUrl() {
+  if (_meosVeilArtUrl !== null) return _meosVeilArtUrl;
+  _meosVeilArtUrl = '';
+  try { const b = require('fs').readFileSync(require('path').join(extensionContext.extensionPath, 'media', 'veil', 'mizaru.svg')); _meosVeilArtUrl = 'data:image/svg+xml;base64,' + b.toString('base64'); } catch (_) { }
+  return _meosVeilArtUrl;
+}
+function meosVeilArtType(W, K, top) {
+  const key = W + '|' + K + '|' + top;
+  let t = _meosVeilArtTypes.get(key);
+  if (!t) {
+    t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed, before: { contentText: '',
+      textDecoration: 'none; position: absolute; left: ' + (W / 2) + 'ch; top: ' + top + 'em; width: ' + (Math.round(K * MEOS_VEIL_ART_RATIO * 1000) / 1000) + 'em; height: ' + K + 'em; transform: translate(-50%, -50%); background: url(' + meosVeilArtUrl() + ') center / contain no-repeat; z-index: 31; pointer-events: none;' } });
+    _meosVeilArtTypes.set(key, t);
+  }
+  return t;
+}
+function meosVeilArtDrop() { for (const t of _meosVeilArtTypes.values()) { try { t.dispose(); } catch (_) { } } _meosVeilArtTypes.clear(); }
 function meosVeilMs() { return Math.max(60 * 1000, Math.round(meosAwayMs() / 10)); }
 function meosVeilLineEm(doc) {   // 行の高さ÷字の大きさ(拡大しても変わらない比)
   try {
@@ -18159,7 +18184,7 @@ function meosVeilPaint(editor) {
     if (!editor || !meosIsVaultDoc(editor.document)) return;
     const doc = editor.document;
     const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
-    const lines = [], boards = [], monkeys = [];
+    const lines = [], boards = [], monkeys = [], arts = [];
     if (_meosVeilOn && keys && keys.size) {
       const vis = (editor.visibleRanges || []).map(r => [r.start.line, r.end.line]);
       const wrap = meosFenceWrapColumn(doc), lhEm = meosVeilLineEm(doc);
@@ -18182,8 +18207,13 @@ function meosVeilPaint(editor) {
         if (!shown.length) continue;
         let tot = 0; for (const r of shown) tot += r[1];
         let half = tot / 2, k = 0; while (k < shown.length - 1 && half >= shown[k][1]) { half -= shown[k][1]; k++; }
-        const K = Math.max(1, Math.min(visRows * lhEm * 0.9, Math.max(tot * lhEm, 6 * lhEm), W * 0.6 / 1.25));   // v5.1.130(俊克「拡大すると、あまりかわいくない」): 最低6行分(板が広くなっても今の大きさのまま)
         const f = (x) => (Math.round(x * 1000) / 1000);
+        if (meosVeilArtUrl()) {   // v5.1.131: 見猿の絵(大きさと縦の位置は0.5刻み= 型が増え過ぎない)
+          const K = Math.max(1, Math.round(2 * Math.min(visRows * lhEm * 0.9, Math.max(tot * lhEm, 6 * lhEm), W * 0.6 * 0.9 / MEOS_VEIL_ART_RATIO)) / 2);
+          arts.push([meosVeilArtType(W, K, f(Math.round(half * 2) / 2 * lhEm)), new vscode.Range(shown[k][0], 0, shown[k][0], 0)]);
+          continue;
+        }
+        const K = Math.max(1, Math.min(visRows * lhEm * 0.9, Math.max(tot * lhEm, 6 * lhEm), W * 0.6 / 1.25));   // v5.1.130(俊克「拡大すると、あまりかわいくない」): 最低6行分(板が広くなっても今の大きさのまま)
         monkeys.push({ range: new vscode.Range(shown[k][0], 0, shown[k][0], 0), renderOptions: { before: { contentText: '🙈',
           textDecoration: 'none; position: absolute; left: ' + f(W / 2 / K) + 'ch; top: ' + f(half * lhEm / K) + 'em; transform: translate(-50%, -50%); font-size: ' + f(K) + 'em; line-height: 1; z-index: 31; pointer-events: none; -webkit-text-fill-color: initial; opacity: 1;' } } });
       }
@@ -18195,6 +18225,8 @@ function meosVeilPaint(editor) {
     if (_meosVeilDeco) editor.setDecorations(_meosVeilDeco, lines);
     if (_meosVeilBoardDeco) editor.setDecorations(_meosVeilBoardDeco, boards);
     if (_meosVeilMonkeyDeco) editor.setDecorations(_meosVeilMonkeyDeco, monkeys);
+    { const by = new Map(); for (const a of arts) { if (!by.has(a[0])) by.set(a[0], []); by.get(a[0]).push(a[1]); }   // v5.1.131: 見猿の絵= 型ごとに
+      for (const t of _meosVeilArtTypes.values()) editor.setDecorations(t, by.get(t) || []); }
   } catch (_) { }
 }
 function meosVeilSet(on) {
@@ -18203,6 +18235,7 @@ function meosVeilSet(on) {
   _meosVeilOn = on;
   try { meosDbg('[veil] ' + (on ? '🙈 覆う' : '戻す')); } catch (_) { }
   for (const ed of (vscode.window.visibleTextEditors || [])) meosVeilPaint(ed);
+  if (!on) meosVeilArtDrop();   // v5.1.131: 見猿の型は外す時に全部捨てる
 }
 const _vaultKeys = new Map();   // fileUri文字列 -> Map(膜名 -> 合言葉)
 const _vaultSeen = new Map();   // fileUri文字列 -> Set(このセッションで一度でも解錠した膜名)=守り①
