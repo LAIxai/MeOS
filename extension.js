@@ -18170,7 +18170,7 @@ function meosVeilPaint(editor) {
         if (!keys.has(p.id) || p.end - p.start < 2) continue;
         const cols = [];
         for (let i = p.start + 1; i < p.end; i++) cols.push(meosRenderCols(doc.lineAt(i).text || ''));
-        let W = Math.max(12, Math.max.apply(null, cols) + 2); if (wrap > 0) W = Math.min(W, wrap + 2);
+        const W = wrap > 0 ? wrap : Math.max(12, Math.max.apply(null, cols) + 2);   // v5.1.130(俊克 👍1「白い板の横幅は、折り返し幅と同じでもいいよ」): 折り返し幅が有れば板はその幅
         for (let i = p.start + 1; i < p.end; i++) {
           if (covered.has(i)) continue; covered.add(i);
           lines.push(new vscode.Range(i, 0, i, (doc.lineAt(i).text || '').length));
@@ -18182,7 +18182,7 @@ function meosVeilPaint(editor) {
         if (!shown.length) continue;
         let tot = 0; for (const r of shown) tot += r[1];
         let half = tot / 2, k = 0; while (k < shown.length - 1 && half >= shown[k][1]) { half -= shown[k][1]; k++; }
-        const K = Math.max(1, Math.min(visRows * lhEm * 0.9, Math.max(tot * lhEm, 8 * lhEm), W * 0.6 / 1.25));
+        const K = Math.max(1, Math.min(visRows * lhEm * 0.9, Math.max(tot * lhEm, 6 * lhEm), W * 0.6 / 1.25));   // v5.1.130(俊克「拡大すると、あまりかわいくない」): 最低6行分(板が広くなっても今の大きさのまま)
         const f = (x) => (Math.round(x * 1000) / 1000);
         monkeys.push({ range: new vscode.Range(shown[k][0], 0, shown[k][0], 0), renderOptions: { before: { contentText: '🙈',
           textDecoration: 'none; position: absolute; left: ' + f(W / 2 / K) + 'ch; top: ' + f(half * lhEm / K) + 'em; transform: translate(-50%, -50%); font-size: ' + f(K) + 'em; line-height: 1; z-index: 31; pointer-events: none; -webkit-text-fill-color: initial; opacity: 1;' } } });
