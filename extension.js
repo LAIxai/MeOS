@@ -19274,8 +19274,8 @@ function meosLegacyNameAt(editor) {
   return null;
 }
 async function meosLegacyAskPeriod(cur) {
-  const v = await vscode.window.showInputBox({ prompt: 'Length — y (years) and d (days) only. Under a year, use days (30d, 182d). Join them: 1y30d. (m = minutes, for testing only — up to 5m)', value: meosLegacyTypedSpec(cur) ? cur : '', ignoreFocusOut: true,
-    validateInput: (t) => { const p = meosLegacyTypedSpec(t); return (p && p.ms >= 60000) ? null : 'Write it like 1y, 30d, 182d, 1y30d — only y and d (m = minutes, for testing — up to 5m)'; } });
+  const v = await vscode.window.showInputBox({ prompt: 'Length — y (years) and d (days) only. Under a year, use days (30d, 182d). Join them: 1y30d. Up to 5y in all. (m = minutes, for testing only — up to 5m)', value: meosLegacyTypedSpec(cur) ? cur : '', ignoreFocusOut: true,
+    validateInput: (t) => { const p = meosLegacyTypedSpec(t); return (p && p.ms >= 60000) ? null : 'Write it like 1y, 30d, 182d, 1y30d — only y and d, up to 5y in all (m = minutes, for testing — up to 5m)'; } });
   const p = meosLegacyTypedSpec(v);
   return (p && p.ms >= 60000) ? { spec: p.spec } : null;
 }
@@ -19445,12 +19445,15 @@ function meosLegacyParseSpec(str) {
 //   読む口(meosLegacyParseSpec)は前のまま= 既に包んだ長さ(3h 等)の継続は今までどおり。
 // ★v5.1.149(俊克 am10:51「m指定は最大値5に制限しておこうか? 1000000000mとか設定する輩もいるかも知れない」): m は試すだけ= 合わせて5分まで。
 const MEOS_LEGACY_TEST_MAX_MIN = 5;
+// ★v5.1.150(俊克 am10:54「yとdにも制限値を…5yくらいを限度に。5年に設定しておいて、それとは別に1年置きのタイマーを設定しておけば良い」): 長さは合わせて5年(1825d)まで。
+const MEOS_LEGACY_MAX_YEARS = 5;
 function meosLegacyTypedSpec(str) {
   const t = String(str || '').replace(/[ \t]+/g, '');
   if (!/^(?:[0-9]+[ydm])+$/.test(t)) return null;
   let min = 0; t.replace(/([0-9]+)m/g, (a, n) => { min += Number(n); return a; });
   if (min > MEOS_LEGACY_TEST_MAX_MIN) return null;
-  return meosLegacyParseSpec(t);
+  const p = meosLegacyParseSpec(t);
+  return (p && p.ms <= MEOS_LEGACY_MAX_YEARS * MEOS_CYCLE_UNIT.y) ? p : null;
 }
 function meosLegacyAddSpec(from, spec) { const p = meosLegacyParseSpec(spec); return p ? from + p.ms : 0; }
 function meosLegacyParsePeriod(str) { const p = meosLegacyParseSpec(str); return p ? p.ms : 0; }
