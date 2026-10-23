@@ -19274,8 +19274,8 @@ function meosLegacyNameAt(editor) {
   return null;
 }
 async function meosLegacyAskPeriod(cur) {
-  const v = await vscode.window.showInputBox({ prompt: 'Length — y (years) and d (days) only. Under a year, use days (30d, 182d). Join them: 1y30d. (m = minutes, for testing only)', value: meosLegacyTypedSpec(cur) ? cur : '', ignoreFocusOut: true,
-    validateInput: (t) => { const p = meosLegacyTypedSpec(t); return (p && p.ms >= 60000) ? null : 'Write it like 1y, 30d, 182d, 1y30d — only y and d (m = minutes, for testing)'; } });
+  const v = await vscode.window.showInputBox({ prompt: 'Length — y (years) and d (days) only. Under a year, use days (30d, 182d). Join them: 1y30d. (m = minutes, for testing only — up to 5m)', value: meosLegacyTypedSpec(cur) ? cur : '', ignoreFocusOut: true,
+    validateInput: (t) => { const p = meosLegacyTypedSpec(t); return (p && p.ms >= 60000) ? null : 'Write it like 1y, 30d, 182d, 1y30d — only y and d (m = minutes, for testing — up to 5m)'; } });
   const p = meosLegacyTypedSpec(v);
   return (p && p.ms >= 60000) ? { spec: p.spec } : null;
 }
@@ -19443,9 +19443,13 @@ function meosLegacyParseSpec(str) {
 //   v5.1.46 の「⏰と同じ読み方(大文字も小文字と同じ)」では、月のつもりの 1M が**1分**になり、1分後に合言葉が出てしまう。
 //   → 人が打つ口は y と d だけ・m(分)は試し用に残す・大文字と数字だけは受けない(打ち直しを促す)。
 //   読む口(meosLegacyParseSpec)は前のまま= 既に包んだ長さ(3h 等)の継続は今までどおり。
+// ★v5.1.149(俊克 am10:51「m指定は最大値5に制限しておこうか? 1000000000mとか設定する輩もいるかも知れない」): m は試すだけ= 合わせて5分まで。
+const MEOS_LEGACY_TEST_MAX_MIN = 5;
 function meosLegacyTypedSpec(str) {
   const t = String(str || '').replace(/[ \t]+/g, '');
   if (!/^(?:[0-9]+[ydm])+$/.test(t)) return null;
+  let min = 0; t.replace(/([0-9]+)m/g, (a, n) => { min += Number(n); return a; });
+  if (min > MEOS_LEGACY_TEST_MAX_MIN) return null;
   return meosLegacyParseSpec(t);
 }
 function meosLegacyAddSpec(from, spec) { const p = meosLegacyParseSpec(spec); return p ? from + p.ms : 0; }
