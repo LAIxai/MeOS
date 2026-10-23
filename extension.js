@@ -19008,7 +19008,7 @@ function meosVaultActivate(context) {
 const MEOS_LEGACY_SECRET = 'meos.legacy.key';
 const MEOS_LEGACY_DECOYS = 10;
 const MEOS_LEGACY_NET_HOSTS = ['www.apple.com', 'www.cloudflare.com', 'www.google.com'];
-const MEOS_LEGACY_PERIODS = [   // v5.1.45: 長さは字(spec)で持つ= 1年未満は日数(182d)・どうしても月なら大文字 M
+const MEOS_LEGACY_PERIODS = [   // v5.1.45: 長さは字(spec)で持つ= 1年未満は日数(182d)・v5.1.148: 打てるのは y と d(m=分は試し用)だけ
   { label: '1 year (1y)', spec: '1y' },
   { label: '182 days — about 6 months (182d)', spec: '182d' },
   { label: '1 day (1d)', spec: '1d' },
@@ -19274,10 +19274,10 @@ function meosLegacyNameAt(editor) {
   return null;
 }
 async function meosLegacyAskPeriod(cur) {
-  const v = await vscode.window.showInputBox({ prompt: 'Length — y / d / h / m / s, the same as ⏰ (m = minutes). Under a year, use days (90d, 182d). Join them: 1y30d.', value: cur || '', ignoreFocusOut: true,
-    validateInput: (t) => { const ms = meosLegacyParsePeriod(t); return ms >= 60000 ? null : 'Write it like 1y, 182d, 90d, 3h, 90m (at least 1 minute)'; } });
-  const p = meosLegacyParseSpec(v);
-  return (p && meosLegacyParsePeriod(v) >= 60000) ? { spec: p.spec } : null;
+  const v = await vscode.window.showInputBox({ prompt: 'Length — y (years) and d (days) only. Under a year, use days (30d, 182d). Join them: 1y30d. (m = minutes, for testing only)', value: meosLegacyTypedSpec(cur) ? cur : '', ignoreFocusOut: true,
+    validateInput: (t) => { const p = meosLegacyTypedSpec(t); return (p && p.ms >= 60000) ? null : 'Write it like 1y, 30d, 182d, 1y30d — only y and d (m = minutes, for testing)'; } });
+  const p = meosLegacyTypedSpec(v);
+  return (p && p.ms >= 60000) ? { spec: p.spec } : null;
 }
 function meosLegacyPickOf(periodArg) {   // Me Dock から来た長さ(字)。古い形(ms の数)も受ける
   if (typeof periodArg === 'string' && meosLegacyParsePeriod(periodArg) >= 60000) return { spec: meosLegacyParseSpec(periodArg).spec };
@@ -19295,7 +19295,7 @@ async function meosLegacyArm(passArg, periodArg, opts) {
   const pass = (typeof passArg === 'string' && passArg) ? passArg : await meosAskPass('Passphrase of this locked membrane — MeOS seals it and shows it on the badge when the day comes', 'passphrase');   // v5.1.38: Me Dock の🏦(合言葉欄)から来た時はそれを使う
   if (!pass) return;
   try { meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS 🏦: That passphrase does not open this membrane — nothing was sealed.'); return; }
-  let pick = meosLegacyPickOf(periodArg) || await vscode.window.showQuickPick(MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, spec: x.spec })).concat([{ label: 'Type a length… (e.g. 1y, 182d, 90d, 90m)', spec: '' }]), { placeHolder: 'Show the key after… (Continue adds the same length again)' });   // v5.1.40: Me Dock で選んだ長さ
+  let pick = meosLegacyPickOf(periodArg) || await vscode.window.showQuickPick(MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, spec: x.spec })).concat([{ label: 'Type a length… (y and d only — e.g. 1y, 30d, 1y30d)', spec: '' }]), { placeHolder: 'Show the key after… (Continue adds the same length again)' });   // v5.1.40: Me Dock で選んだ長さ
   if (pick && !pick.spec) pick = await meosLegacyAskPeriod();   // v5.1.44
   if (!pick) return;
   let key; try { key = await meosLegacyMasterKey(true); } catch (e) { key = null; }
@@ -19329,7 +19329,7 @@ async function meosLegacyContinue(nameArg, editorArg, periodArg) {
   const items = MEOS_LEGACY_PERIODS.map(x => ({ label: x.label, spec: x.spec, description: x.spec === cur ? 'same as now' : '' }));
   if (!MEOS_LEGACY_PERIODS.some(x => x.spec === cur)) items.unshift({ label: cur, spec: cur, description: 'same as now' });   // v5.1.44: 自分で書いた長さも一番上に
   items.sort((a, b) => (b.spec === cur) - (a.spec === cur));
-  items.push({ label: 'Type a length… (e.g. 1y, 182d, 90d, 90m)', spec: '' });
+  items.push({ label: 'Type a length… (y and d only — e.g. 1y, 30d, 1y30d)', spec: '' });
   // ★v5.1.40(俊克 改良1「期間指定もMe Dock内に表示しようよ」): Me Dock から来た時は、そこで選んだ長さ(periodArg)。無ければ上の選び欄
   let pick = meosLegacyPickOf(periodArg) || await vscode.window.showQuickPick(items, { placeHolder: 'Continue 🔄 — hide the key again for…' });
   if (pick && !pick.spec) pick = await meosLegacyAskPeriod(cur);   // v5.1.44
@@ -19438,6 +19438,15 @@ function meosLegacyParseSpec(str) {
   let ms = 0;
   t.replace(/([0-9]+)([a-zA-Z])/g, (a, n, u) => { ms += Number(n) * (MEOS_CYCLE_UNIT[u.toLowerCase()] || 0); return a; });
   return { ms, spec: t };
+}
+// ★v5.1.148(俊克 10.23 am10:43「デジタル遺産に分mは必要ないよ。…M(Month)も設定不可にしておけばいい。全て、dかyの2択あるいは1y30dとかでも良い」):
+//   v5.1.46 の「⏰と同じ読み方(大文字も小文字と同じ)」では、月のつもりの 1M が**1分**になり、1分後に合言葉が出てしまう。
+//   → 人が打つ口は y と d だけ・m(分)は試し用に残す・大文字と数字だけは受けない(打ち直しを促す)。
+//   読む口(meosLegacyParseSpec)は前のまま= 既に包んだ長さ(3h 等)の継続は今までどおり。
+function meosLegacyTypedSpec(str) {
+  const t = String(str || '').replace(/[ \t]+/g, '');
+  if (!/^(?:[0-9]+[ydm])+$/.test(t)) return null;
+  return meosLegacyParseSpec(t);
 }
 function meosLegacyAddSpec(from, spec) { const p = meosLegacyParseSpec(spec); return p ? from + p.ms : 0; }
 function meosLegacyParsePeriod(str) { const p = meosLegacyParseSpec(str); return p ? p.ms : 0; }
