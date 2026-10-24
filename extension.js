@@ -18248,7 +18248,9 @@ function meosVeilPaint(editor) {
     const doc = editor.document;
     const keys = _vaultKeys.get(_vaultKeyOf(doc.uri));
     const lines = [], boards = [], monkeys = [], arts = [];
-    if (_meosVeilOn && keys && keys.size) {
+    const bare = _meosVeilOn ? null : meosVeilCursorLines(editor);   // v5.1.171: 常の目隠し= 文字カーソルの行だけ見せる(🙈の時は全部覆う)
+    try { _meosVeilLast.set(editor, bare ? Array.from(bare).join(',') : '*'); } catch (_) { }
+    if (keys && keys.size) {
       const vis = (editor.visibleRanges || []).map(r => [r.start.line, r.end.line]);
       const wrap = meosFenceWrapColumn(doc), lhEm = meosVeilLineEm(doc);
       const rowsOf = (cols) => wrap > 0 ? Math.max(1, Math.ceil(cols / wrap)) : 1;
@@ -18261,10 +18263,12 @@ function meosVeilPaint(editor) {
         const W = wrap > 0 ? wrap : Math.max(12, Math.max.apply(null, cols) + 2);   // v5.1.130(俊克 👍1「白い板の横幅は、折り返し幅と同じでもいいよ」): 折り返し幅が有れば板はその幅
         for (let i = p.start + 1; i < p.end; i++) {
           if (covered.has(i)) continue; covered.add(i);
+          if (bare && bare.has(i)) continue;
           lines.push(new vscode.Range(i, 0, i, (doc.lineAt(i).text || '').length));
           boards.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '', backgroundColor: MEOS_VEIL_PAPER,
             textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + W + 'ch; height: ' + (rowsOf(cols[i - p.start - 1]) * 100) + '%; z-index: 30; pointer-events: none;' } } });
         }
+        if (bare) { let inside = false; for (const b of bare) if (b > p.start && b < p.end) { inside = true; break; } if (inside) continue; }   // v5.1.171: カーソルが中に居る膜には🙈を出さない
         const shown = [];   // 見えている中身の行と段の数
         for (const v of vis) for (let i = Math.max(v[0], p.start + 1); i <= Math.min(v[1], p.end - 1); i++) shown.push([i, rowsOf(cols[i - p.start - 1])]);
         if (!shown.length) continue;
@@ -18292,6 +18296,44 @@ function meosVeilPaint(editor) {
       for (const t of _meosVeilArtTypes.values()) editor.setDecorations(t, by.get(t) || []); }
   } catch (_) { }
 }
+// ★★v5.1.171(俊克 10.25 am08:26 改良1「解錠すると、始めから目隠しをしておく…文字カーソルが入った時、その1行だけが通常のRaw表示のように表示される。🙈はこのときは消す」):
+//   目隠しは🙈(無操作)の時だけでなく、解錠している間ずっと掛ける= 解錠中の膜の中身は白い板で覆い、文字カーソルの居る行だけ板を外す。
+//   ・見せるのはカーソルの行だけ(範囲選択でまたいだ行は見せない= Cmd+A で全部さらさない)。マルチカーソルなら各カーソルの行。
+//   ・カーソルが膜の外= 今までの🙈と同じ姿(見猿も出す)/中= 見猿は消す。鳴くのは無操作の🙈を掛けた時だけ。
+//   ・無操作の🙈は今まで通りカーソルの行も覆い、触って戻すとこの姿へ戻る(全部はさらさない)。
+//   ・解錠した直後はカーソルを膜の開始行へ移す= 始めから全部覆った姿。
+//   ・ミニマップは本物の字を縮めて描く= 板の上から形が透ける → 解錠中の膜がある間だけ止める(meosVeilMinimapSync)。
+const _meosVeilLast = new WeakMap();   // editor -> 最後に描いた時のカーソルの行('*'= 🙈で全部)
+function meosVeilCursorLines(editor) {
+  const s = new Set();
+  try { for (const sel of (editor.selections || [editor.selection])) if (sel && sel.active) s.add(sel.active.line); } catch (_) { }
+  return s;
+}
+function meosVeilRepaintIfMoved(editor) {   // カーソルの行が替わった時だけ描き直す(同じ行の中を動くだけなら何もしない)
+  try {
+    if (!editor || !meosIsVaultDoc(editor.document)) return;
+    const k = _meosVeilOn ? '*' : Array.from(meosVeilCursorLines(editor)).join(',');
+    if (_meosVeilLast.get(editor) !== k) meosVeilPaint(editor);
+  } catch (_) { }
+}
+// 解錠中の膜がある間だけミニマップを止め、全部閉じたら元へ戻す(元の値は globalState に控える= 終了を挟んでも、次の起動で戻す)。
+async function meosVeilMinimapSync() {
+  try {
+    if (!meosRealHost()) return;   // 検査の台では本物の設定に触らない
+    const st = extensionContext.globalState.get('meosVeilMinimap');
+    const want = meosVaultUnlockedCount().n > 0;
+    const cfg = vscode.workspace.getConfiguration('editor');
+    if (want && !st) {
+      if (cfg.get('minimap.enabled') === false) return;   // 元から切ってある(俊克の環境)= 何もしない
+      const ins = cfg.inspect('minimap.enabled') || {};
+      await extensionContext.globalState.update('meosVeilMinimap', { prev: ins.globalValue === undefined ? null : ins.globalValue });
+      await cfg.update('minimap.enabled', false, vscode.ConfigurationTarget.Global);
+    } else if (!want && st) {
+      await extensionContext.globalState.update('meosVeilMinimap', undefined);
+      await cfg.update('minimap.enabled', st.prev === null ? undefined : st.prev, vscode.ConfigurationTarget.Global);
+    }
+  } catch (_) { }
+}
 function meosVeilSet(on) {
   on = !!on && meosVaultUnlockedCount().n > 0;
   if (on === _meosVeilOn) return;
@@ -18299,8 +18341,8 @@ function meosVeilSet(on) {
   if (on) _meosVeilArtPick = Math.floor(Math.random() * MEOS_VEIL_ARTS.length);   // v5.1.132: 掛けるたびにどちらかの絵
   if (on) { try { if (meosRealHost()) meosSoundSpawn('EEK-EEK'); } catch (_) { } }   // v5.1.134(俊克「猿が出たときに、キー、キー」): 掛けた時に1回だけ鳴く(検査の台では鳴らさない)
   try { meosDbg('[veil] ' + (on ? '🙈 覆う' : '戻す')); } catch (_) { }
+  if (!on) meosVeilArtDrop();   // v5.1.131: 見猿の型は外す時に全部捨てる(v5.1.171: 描く前に捨てる= 常の目隠しの見猿は作り直す)
   for (const ed of (vscode.window.visibleTextEditors || [])) meosVeilPaint(ed);
-  if (!on) meosVeilArtDrop();   // v5.1.131: 見猿の型は外す時に全部捨てる
 }
 const _vaultKeys = new Map();   // fileUri文字列 -> Map(膜名 -> 合言葉)
 const _vaultSeen = new Map();   // fileUri文字列 -> Set(このセッションで一度でも解錠した膜名)=守り①
@@ -18635,11 +18677,13 @@ async function meosVaultUnlock(editor, passArg) {
   if (meosEncLineShield(t)) _vaultShieldOf(k).add(pair.id); else _vaultShieldOf(k).delete(pair.id);   // v5.1.72
   _vaultTouch();
   const range = new vscode.Range(pair.start + 1, 0, pair.start + 1, t.length);
+  try { if (editor.selection.active.line > pair.start) { const at = new vscode.Position(pair.start, 0); editor.selection = new vscode.Selection(at, at); } } catch (_) { }   // v5.1.171: 開ける前にカーソルを開始行へ= 始めから全部覆った姿
   await editor.edit(eb => { eb.replace(range, plain); });
   try { await doc.save(); } catch (_) { }
   try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
   try { refresh(editor); } catch (_) { }
   try { updateMeDockMode(); } catch (_) { }
+  try { meosVeilPaint(editor); } catch (_) { } meosVeilMinimapSync();   // v5.1.171
   vscode.window.setStatusBarMessage('MeOS 🔓: unlocked here only — the disk keeps the ciphertext. Locks itself after 30 min idle.', 5000);
 }
 // 施錠: 未保存は保存(=暗号化)してから鍵を捨て、エディターを暗号文の姿へ読み直す。id省略=そのファイルの全部。
@@ -18653,6 +18697,7 @@ async function meosVaultLock(fileKey, id) {
   if (!_vaultKeys.size) _vaultKeyCache.clear();   // v5.1.35: 全部閉じたら、作った鍵も捨てる
   await _vaultReload(fileKey);
   try { updateMeDockMode(); } catch (_) { }
+  try { if (!_vaultKeys.size) meosVeilArtDrop(); for (const ed of (vscode.window.visibleTextEditors || [])) meosVeilPaint(ed); } catch (_) { } meosVeilMinimapSync();   // v5.1.171
   return true;
 }
 async function meosVaultLockAll(reason) {
@@ -18985,13 +19030,14 @@ function meosVaultActivate(context) {
     }, 1500);
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultLockAll', () => meosVaultLockAll('now')));
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) { _vaultTouch(); _vaultArmAutoSave(e.document);
-      if (_meosVeilOn) { if (!meosVaultUnlockedCount().n) meosVeilSet(false); else for (const ed of (vscode.window.visibleTextEditors || [])) if (ed.document === e.document) meosVeilPaint(ed); } } }));   // v5.1.128: 施錠で字が替わったら覆いも付け直す
-    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) { _vaultTouch(); if (_meosVeilOn && e.kind) meosVeilSet(false); } }));   // v5.1.128: マウス/キーで触ったら🙈を外す(プログラムの移動= kind 無しでは外さない)
-    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { if (_meosVeilOn) meosVeilPaint(e.textEditor); }));   // v5.1.128: 🙈は見えている所の真ん中へ
+      if (_meosVeilOn && !meosVaultUnlockedCount().n) meosVeilSet(false); else for (const ed of (vscode.window.visibleTextEditors || [])) if (ed.document === e.document) meosVeilPaint(ed); } }));   // v5.1.128: 施錠で字が替わったら覆いも付け直す(v5.1.171: 常の目隠しも)
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) { _vaultTouch(); if (_meosVeilOn && e.kind) meosVeilSet(false); else meosVeilRepaintIfMoved(e.textEditor); } }));   // v5.1.128: マウス/キーで触ったら🙈を外す(プログラムの移動= kind 無しでは外さない)
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { meosVeilPaint(e.textEditor); }));   // v5.1.128: 🙈は見えている所の真ん中へ
     // ★v5.1.8(俊克 pm00:45「ほとんどずっと、Finderの日記ファイルをWクリックしたものを使っている」):
     //   入口のタブが開いているのに Finder から同じ日記を開くと、file: のタブがもう1つできる= 2つの口から同じファイルを書く
     //   (片方の保存がもう片方を上書きする)。→ file: のタブが前に出たら、同じファイルの入口のタブへ移し、file: のタブは閉じる。
-    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { meosVaultRedirectFileTab(ed).catch(() => { }); if (_meosVeilOn && ed) meosVeilPaint(ed); }));   // v5.1.128: 前に出た入口のタブも覆う
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { meosVaultRedirectFileTab(ed).catch(() => { }); if (ed) meosVeilPaint(ed); }));
+    meosVeilMinimapSync();   // v5.1.171: 解錠したまま終わった(🪑など)ら、止めたミニマップをここで戻す   // v5.1.128: 前に出た入口のタブも覆う
     const iv = setInterval(() => {
       if (_vaultKeys.size && Date.now() - _vaultLastTouch >= meosAwayMs()) { meosVaultLockAll('idle ' + meosAwayMins()[meosAwaySlot() - 1] + ' min').catch(() => { }); }   // v5.1.19: 時間は🪑の席と同じ
       meosAwayCheck();   // v5.1.19: 🪑 離席(Mac 全体の無操作)

@@ -176,8 +176,27 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
     { const td = mk[0] ? mk[0].renderOptions.before.textDecoration : ''; const K = Number((/font-size: ([\d.]+)em/.exec(td) || [])[1]), L = Number((/left: ([\d.]+)ch/.exec(td) || [])[1]);
       ok(K > 0 && Math.abs(L * K - 7.5) < 0.01 && /top: 0\.75em|top: [\d.]+em/.test(td), '🙈: 横は板の真ん中(左から7.5桁= 字の大きさで割り戻す)'); }
     T.meosVeilSet(false);
-    ok(!T.getVeil() && Array.from(got.values()).every(r => r.length === 0), '🙈: 外すと覆いも🙈も消える');
+    { const all2 = Array.from(got.values()); const c2 = all2.find(r => r.length && r[0] instanceof Range) || [];
+      ok(!T.getVeil() && c2.length === 3, 'v5.1.171: 🙈を外しても、カーソルが膜の外なら中身は覆ったまま(解錠中は常に目隠し)'); }
+    // v5.1.171: カーソルの行だけ板を外し、膜の中にカーソルが居る間は見猿を出さない
+    got.clear(); ed.selections = [{ active: new Position(3, 0) }, { active: new Position(3, 4) }];
+    T.meosVeilPaint(ed);
+    { const all3 = Array.from(got.values()); const c3 = all3.find(r => r.length && r[0] instanceof Range) || [];
+      const b3 = all3.find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.contentText === '') || [];
+      const m3 = all3.filter(r => r.length && r[0].renderOptions && r[0].renderOptions.before.contentText === '🙈');
+      ok(c3.length === 2 && c3.every(r => r.start.line !== 3) && b3.length === 2 && b3.every(r => r.range.start.line !== 3), 'v5.1.171: カーソルの行(3)だけ覆わない・他の2行は覆う');
+      ok(!m3.length, 'v5.1.171: カーソルが膜の中なら見猿は出さない'); }
+    got.clear(); ed.selections = [{ active: new Position(2, 0) }, { active: new Position(4, 0) }];
+    T.meosVeilPaint(ed);
+    { const c4 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
+      ok(c4.length === 1 && c4[0].start.line === 3, 'v5.1.171: マルチカーソル= 各カーソルの行だけ見せる'); }
+    T.meosVeilSet(true);
+    { const c5 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
+      ok(c5.length === 3, 'v5.1.171: 無操作の🙈はカーソルの行も覆う'); }
+    T.meosVeilSet(false); delete ed.selections;
     T._vaultKeys.delete(K3);
+    T.meosVeilPaint(ed);
+    ok(Array.from(got.values()).every(r => r.length === 0), '施錠すると(鍵が無い)覆いも見猿も消える');
     const keep = new Map(T._vaultKeys); T._vaultKeys.clear();
     T.meosVeilSet(true);
     for (const [k, v] of keep) T._vaultKeys.set(k, v);
