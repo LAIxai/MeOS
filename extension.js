@@ -31110,7 +31110,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-vh-row{display:flex;justify-content:flex-end;margin:0 0 3px}
 .clk-vhelper{border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:10px;font-weight:800;line-height:1;padding:3px 7px;cursor:var(--meos-hand)}
 .clk-vhelper.on{background:#d18400;border-color:#d18400;color:#fff}
-.ww-ring.vh-ring{top:auto;bottom:-6px;background:#8a8f98;font-size:9px}.ww-ring.vh-ring:hover{background:#a3a8b0}.ww-ring.vh-ring.on{background:#d18400}.ww-ring.vh-ring.on:hover{background:#e6960f}.vh-ring .vh-g{display:inline-block;transform:rotate(45deg)}   /* v5.1.157(俊克 pm04:57「🛟を45°回転。十字に見えて今一」): 丸の箱はそのまま・中の字だけ回す */   /* v5.1.155: 🛟= ①の下(右腰)・橙=常駐/灰=居ない(⏰パネルの [V-helper] の色を引き継ぐ) */
+.ww-ring.vh-ring{top:auto;bottom:-6px;background:#8a8f98;font-size:9px}.ww-ring.vh-ring:hover{background:#a3a8b0}.ww-ring.vh-ring.on{background:#d18400}.ww-ring.vh-ring.on:hover{background:#e6960f}.vh-ring .vh-g{display:inline-block}.vh-ring:not(.on) .vh-g{transform:rotate(45deg)}   /* v5.1.157(俊克 pm04:57「🛟を45°回転。十字に見えて今一」): 丸の箱はそのまま・中の字だけ回す / v5.1.158(俊克 pm05:14「橙色のときは十字に。灰色で×のイメージ…色の違いと二重で」): 回すのは灰(切)の時だけ */   /* v5.1.155: 🛟= ①の下(右腰)・橙=常駐/灰=居ない(⏰パネルの [V-helper] の色を引き継ぐ) */
 .bm-pop.clk-pop{position-anchor:--meos-clk;gap:2px;padding:6px;text-align:left;font-family:var(--vscode-font-family);font-size:11px;font-weight:400;cursor:var(--meos-arrow);
 color:var(--vscode-editor-foreground);
 background:color-mix(in srgb,var(--vscode-editor-foreground) 12%,var(--vscode-editor-background));
