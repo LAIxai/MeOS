@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.1.163) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.1.164) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -29,7 +29,8 @@ function run(argv) {
   const item = bar.statusItemWithLength($.NSVariableStatusItemLength);
   // ★v5.1.163(俊克 pm11:09「🛟をオフ→オンすると、メニューバーが混んでいると << が出るだけで気づき難い」): 名前の無い項目は作るたびに左端(先に隠れる所)へ置かれる。
   //   名前を付けて macOS に置き場所を覚えさせる= Cmd+ドラッグで右へ動かせば、入れ直しても起き直してもそこへ戻る。拡張側の係(MEOS_MENUBAR_JXA)も同じ名前
-  try { item.autosaveName = $('meos.clock.' + (myScheme || 'vscodium')); } catch (e) {}
+  //   ★v5.1.164(俊克 pm11:21「名前を与える、与えないを切り替えるボタンを…こういう仕組みがあることをユーザに教育する」): Me Dock の🅿️が切なら nopark の印= 名前を付けない(毎回左端)
+  try { if (!$.NSFileManager.defaultManager.fileExistsAtPath($(dir + '/nopark'))) item.autosaveName = $('meos.clock.' + (myScheme || 'vscodium')); } catch (e) {}
   // ★v4.2.317(俊克 改良1「灰色の絵文字は目立たないので、文字の⚓にして…文字サイズを大きく」): ⚓だけ字の形(FE0E)
   // ★v4.2.319(俊克 改良2「縁0.4・下げ5で確定」「⚓を右5°くらい傾けようか?」): 赤の塗り＋黒の縁(字の大きさの1.6%)・20pt・下げ5・右へ5°
   const ANCHOR_TILT = 10;   // v4.2.321(俊克「傾き10°にしてみよう」)
