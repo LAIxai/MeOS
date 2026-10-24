@@ -17,11 +17,11 @@
 <p align="center"><b>MeOS — Membrane OS</b>, a.k.a. <b>iWarpShip</b><br>
 <sub><i>i</i> for information — a ship that warps through the space of what you wrote.</sub></p>
 
-### **MarkdownⓌ** — *Markdown, double-u: doubled, and warped.*
+### **M↓Ⓦ↗ — Markdown Warpup** — *down to lighten, up to warp.*
 
-MeOS speaks **MarkdownⓌ**: plain Markdown, extended with **membranes**. The Ⓦ is a double-u — *double*, and *Warp*. A membrane is just a comment — so a MarkdownⓌ document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **MarkdownⓌ doubles it with structure, navigation, and bookmarks — and warps you back to them** — without touching your data.
-**M↓ became M↓⊕ — and M↓⊕ has now super-evolved into M↓Ⓦ.** The ⊕ meant *plus*. But a membrane does not add; it multiplies. When a cell took in the mitochondrion,
-1 + 1 did not make 2: it made a new kind of life, and every one of your cells still carries two genomes. A MarkdownⓌ
+MeOS speaks **Markdown Warpup (M↓Ⓦ↗)**: plain Markdown, extended with **membranes**. Mark*down* made markup lighter — less to write, less complexity. Warp*up* goes the other way: it speeds up the warp, and takes you *up to the stars*. The Ⓦ is a double-u — *double*, and *Warp*. A membrane is just a comment — so a Markdown Warpup document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **Markdown Warpup doubles it with structure, navigation, and bookmarks — and warps you back to them** — without touching your data.
+**M↓ became M↓⊕, M↓⊕ super-evolved into M↓Ⓦ — and M↓Ⓦ has now lifted off as M↓Ⓦ↗.** The ⊕ meant *plus*. But a membrane does not add; it multiplies. When a cell took in the mitochondrion,
+1 + 1 did not make 2: it made a new kind of life, and every one of your cells still carries two genomes. A Markdown Warpup
 file, too, carries two layers in one — the text you read, and the comments that act.
 
 > **A new world — where comments become commands.**
@@ -785,9 +785,9 @@ MeOS stands on the shoulders of:
 > Prefer a perfectly continuous lane? Set `"laiMembrane.gutterLanes": false` to draw it inside the text instead — at the cost of some IME friction (so the gutter is the default).
 > **A note for VSCodium / VS Code maintainers:** an API to let glyph-margin / gutter decorations span all visual rows of a wrapped line (as breakpoints and folding controls already do internally) would let MeOS offer both a perfectly continuous lane *and* clean IME input. We'd love to see it. 🙏
 
-## MarkdownⓌ — Welcome to the New World
+## Markdown Warpup (M↓Ⓦ↗) — Welcome to the New World
 
-**MarkdownⓌ** — the lightness of Markdown, with usability that leaves WYSIWYG far behind.
+**Markdown Warpup** — the lightness of Markdown, with usability that leaves WYSIWYG far behind.
 
 Your notes stop scattering. **One file: a one-month diary, or a ten-year one.** Goodbye to the sea of endlessly fragmented files. **At last, a file becomes truly your own.**
 
@@ -803,9 +803,9 @@ And this is a fact: **one AI wrote this membrane-structured code, and another AI
 
 ---
 
-### MarkdownⓌ ― 新世界へようこそ（日本語）
+### Markdown Warpup (M↓Ⓦ↗) ― 新世界へようこそ（日本語）
 
-**MarkdownⓌ** ― Markdown の軽快さはそのままに、WYSIWYG をはるかに凌ぐ快適さを。
+**Markdown Warpup** ― Markdown の軽快さはそのままに、WYSIWYG をはるかに凌ぐ快適さを。
 
 ノートは、もう散らばらない。**1ファイルで、1ヶ月日記も、10年日記も。** 無数に分割されたファイルの海に、グッバイ。**やっと、ファイルが"自分の所有物"になる。**
 
