@@ -14095,7 +14095,7 @@ function meosHelperSound() {
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'THUMP' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'thump-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.0.18: 閉じていても V-helper が足ダン
-    if (name === 'EEK-EEK' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'eek-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.1.134: 🐒も閉じていても鳴るようヘルパーへ
+    if (name === 'EEK-EEK' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'eek-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.1.134: 🐒も閉じていても鳴るようヘルパーへ
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
     if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); for (let ms = 500; ms <= 1000; ms += 100) { const src = meosGrowlPath(ms / 1000), dst = path.join(meosHelperDir(), 'growl-v6-' + ms + '.wav'); if (src && !fs.existsSync(dst)) fs.copyFileSync(src, dst); } file = path.join(meosHelperDir(), 'growl-v6-1000.wav'); } catch (_) { } }   // v4.2.621 / v4.2.629: 長さ6本を全部渡す(ヘルパーが選ぶ)
     if (name === 'ROCKET' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'rocket-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); const _fsrc = meosRocketPath(true), _fdst = path.join(meosHelperDir(), 'rocket-v2-fade.wav'); if (_fsrc && !fs.existsSync(_fdst)) fs.copyFileSync(_fsrc, _fdst); file = dst; } catch (_) { } }   // v4.2.667
@@ -16286,54 +16286,40 @@ function meosThumpPath() {
 //   ★THUMP と同じく一から計算で作る(素材なし= 権利の心配が無い・vsix も増えない)。
 //     1声= 0.28秒。高さは 1250Hz から一気に 2150Hz まで上がって下りる(「キーッ」の山)・倍音8本(高い方ほど弱く、3k/5kHz あたりを少し持ち上げる)
 //     ＋喉のがらつき(70Hz で強さを揺らす・高さを細かく揺らす)＋息の雑音(高い所だけ)。2声目は 0.40秒後・高さ8%上(「キー、キー」)。
-// ★★v5.1.181(俊克 10.25 pm00:48「猿の鳴き声を見つけたよ。これをサンプリングして合成してみてください」= uppbeat.io の素材・俊克が1.4秒に切り出した3声):
-//   🚀ROCKET(v4.2.669)と同じ流儀= 素材のファイルを配らない。元を10ミリ秒ごとに測った表だけを持ち、毎回一から作る(元の波形は1サンプルも使わない)。
-//   猿の声は澄んだ音(雑音でなく倍音)= 表は1コマ24字: 声の高さ(2字・300Hz+5Hz刻み)＋倍音12本の強さ(2dB刻み)＋息の雑音10帯(300〜16000Hz・対数・2dB刻み)。
-//   倍音= 高さを滑らかにつないだ正弦波を足す / 雑音= でたらめな位相の雑音を帯の形に整えて逆FFT(ROCKET と同じ)。
-//   測り方: 高さ= 900〜1800Hzで倍音4本が一番よく並ぶ所 / 雑音= 帯の中の強さの中央値(倍音の山を拾わない)×0.36(元との比べで帯ごと平均±4dB・澄み具合 0.011→0.015)。
-const MEOS_EEK_TBL = '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';
+// ★v5.1.182(俊克 10.25 pm01「v5.1.181 の表を外して元の合成音に戻して。猿の声は音人で私が探す」): uppbeat の素材は加工後も再配布できない(派生物の著作権も投稿者)
+//   → 測った表(v5.1.181)を外し、v5.1.134 の一から計算した声に戻す。写しの名前は v3(v2= 表から作った音が残っていても使わない)。
 let _meosEekFile = '';
 function meosEekPath() {
-  if (_meosEekFile) { try { if (require('fs').existsSync(_meosEekFile)) return _meosEekFile; } catch (_) { } }
+  if (_meosEekFile) return _meosEekFile;
   try {
     const os = require('os'), fs = require('fs'), path = require('path');
-    const AL = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij', T = MEOS_EEK_TBL, WD = 24, NH = 12, NB = 10, NF = T.length / WD;
-    const rate = 44100, hop = 441, N = 4096, n = NF * hop, NZ = 85.1694;
-    const c = (o) => AL.indexOf(T[o]);
-    const F = new Float64Array(NF), A = [], Z = [];
-    for (let i = 0; i < NF; i++) { const o = i * WD; F[i] = 300 + 5 * (c(o) * 46 + c(o + 1));
-      const a = [], z = []; for (let k = 0; k < NH; k++) a.push(Math.pow(10, -2 * c(o + 2 + k) / 20)); for (let b = 0; b < NB; b++) z.push(-2 * c(o + 2 + NH + b)); A.push(a); Z.push(z); }
-    // 倍音
-    const y = new Float64Array(n); let ph = 0;
-    for (let t = 0; t < n; t++) {
-      const fi = t / hop, i = Math.min(Math.floor(fi), NF - 2), u = fi - i, f = F[i] * (1 - u) + F[i + 1] * u;
-      ph += 2 * Math.PI * f / rate; let v = 0;
-      for (let k = 0; k < NH; k++) { if ((k + 1) * f >= 18000) break; v += (A[i][k] * (1 - u) + A[i + 1][k] * u) * Math.sin((k + 1) * ph + 0.7 * k); }
-      y[t] = v;
+    const rate = 44100, L = 0.85, n = Math.round(L * rate), T = 0.28, calls = [[0.02, 1.0], [0.42, 1.08]];
+    let seed = 20261022; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const smp = new Float64Array(n); let peak = 0;
+    for (const [t0, up] of calls) {
+      let ph = 0, hp = 0, lp = 0;
+      const i0 = Math.round(t0 * rate), m = Math.round(T * rate);
+      for (let j = 0; j < m && i0 + j < n; j++) {
+        const t = j / rate, u = t / T;
+        const jit = 1 + 0.012 * Math.sin(2 * Math.PI * 23 * t) + 0.006 * (rnd() - 0.5);
+        const f = (1250 + 900 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.15)), 0.5)) * up * jit;
+        ph += 2 * Math.PI * f / rate;
+        let v = 0;
+        for (let k = 1; k <= 8; k++) { const fk = f * k; if (fk > 16000) break; const form = 1 + 0.8 * Math.exp(-Math.pow((fk - 3000) / 900, 2)) + 0.5 * Math.exp(-Math.pow((fk - 5200) / 1200, 2)); v += Math.sin(ph * k + k * 0.7) * form / Math.pow(k, 1.2); }
+        const wn = rnd() * 2 - 1; hp = 0.85 * (hp + wn - lp); lp = wn;   // 高い所だけの息
+        const rough = 1 - 0.3 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 70 * t));
+        const env = Math.min(1, t / 0.012) * (u > 0.75 ? Math.exp(-(u - 0.75) * 9) : 1);
+        smp[i0 + j] += (v * 0.55 * rough + hp * 0.12) * env;
+      }
     }
-    // 息の雑音
-    let seed = 20261025; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    const fft = (re, im) => { const m = re.length; for (let i = 1, j = 0; i < m; i++) { let bit = m >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
-      for (let len = 2; len <= m; len <<= 1) { const ang = 2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang); for (let i = 0; i < m; i += len) { let cr = 1, ci = 0; for (let k = 0; k < len / 2; k++) { const a = i + k, b = a + len / 2, tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr; re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti; const nc = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nc; } } } };
-    const win = new Float64Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
-    const lb = []; for (let b = 0; b < NB; b++) lb.push(Math.log(300) + (b + 0.5) / NB * Math.log(16000 / 300));
-    const sc = Math.sqrt(N * hop) / (3 * N / 8) / N;
-    for (let i = 0; i < NF; i++) {
-      const g = Z[i], re = new Float64Array(N), im = new Float64Array(N);
-      for (let k = 1; k < N / 2; k++) { const fr = k * rate / N; if (fr < 300) continue; const lf = Math.log(fr); let d;
-        if (lf <= lb[0]) d = g[0] - 20; else if (lf >= lb[NB - 1]) d = g[NB - 1] - 20; else { let b = 0; while (lb[b + 1] < lf) b++; const v = (lf - lb[b]) / (lb[b + 1] - lb[b]); d = g[b] * (1 - v) + g[b + 1] * v; }
-        const m = NZ * Math.pow(10, d / 20), q = rnd() * 2 * Math.PI; re[k] = m * Math.cos(q); im[k] = m * Math.sin(q); re[N - k] = re[k]; im[N - k] = -im[k]; }
-      fft(re, im);
-      const a0 = i * hop - N / 2; for (let j = 0; j < N; j++) { const p = a0 + j; if (p >= 0 && p < n) y[p] += re[j] * win[j] * sc; }
-    }
-    let pk = 0; for (let i = 0; i < n; i++) pk = Math.max(pk, Math.abs(y[i]));
+    for (let i = 0; i < n; i++) { smp[i] = Math.tanh(2 * smp[i]) / Math.tanh(2); if (Math.abs(smp[i]) > peak) peak = Math.abs(smp[i]); }
     const buf = Buffer.alloc(44 + n * 2);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
     buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
-    const k = pk > 0 ? 0.95 / pk : 1; for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, y[i] * k)) * 32767), 44 + i * 2);
-    const f = path.join(os.tmpdir(), 'meos-eek-v2.wav');
+    const k = peak > 0 ? 0.95 / peak : 1; for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, smp[i] * k)) * 32767), 44 + i * 2);
+    const f = path.join(os.tmpdir(), 'meos-eek-v3.wav');
     fs.writeFileSync(f, buf); _meosEekFile = f; return f;
   } catch (_) { return null; }
 }
