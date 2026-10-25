@@ -18544,7 +18544,7 @@ class MeosVaultFs {
     let _locked = null;
     try { const st = await vscode.workspace.fs.stat(meosVaultFileUri(u)); const c = _vaultDiskLocked.get(k); if (c && c.mtime === st.mtime && c.size === st.size) _locked = c.set; } catch (_) { }
     if (!_locked) { try { _locked = _vaultLockedIds(Buffer.from(await vscode.workspace.fs.readFile(meosVaultFileUri(u))).toString('utf8')); } catch (_) { _locked = new Set(); } }
-    try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultKeys.get(k), _vaultSeen.get(k), _locked, _vaultShield.get(k), _vaultBodyHashOf(k)); }
+    try { out = meosVaultEncryptText(Buffer.from(content).toString('utf8'), _vaultWriteKeys(k), _vaultSeen.get(k), _locked, _vaultShield.get(k), _vaultBodyHashOf(k)); }
     catch (e) {
       const msg = 'MeOS 🔐: ' + (e && e.message ? e.message : String(e));
       try { vscode.window.showErrorMessage(msg); } catch (_) { }
@@ -18731,9 +18731,10 @@ async function meosVaultUnlock(editor, passArg) {
 async function meosVaultLock(fileKey, id) {
   const pk = _vaultParked.get(fileKey);   // v5.1.172: Rawで控えた鍵も捨てる(画面は元から暗号文= 読み直さない)
   const hadPk = !!(pk && (id ? pk.has(id) : pk.size));
+  if (hadPk) { for (const d of _vaultDocsOf(fileKey)) { if (d.isDirty) { try { await d.save(); } catch (_) { } } } }   // v5.1.177: 捨てる前に保存(控えた鍵でも暗号化して書く)
   if (pk) { if (id) pk.delete(id); else pk.clear(); if (!pk.size) _vaultParked.delete(fileKey); }
   const keys = _vaultKeys.get(fileKey);
-  if (!keys || !keys.size) { if (hadPk) { try { updateMeDockMode(); } catch (_) { } meosVeilMinimapSync(); } return hadPk; }
+  if (!keys || !keys.size) { if (hadPk) { try { await _vaultReload(fileKey); } catch (_) { } try { updateMeDockMode(); } catch (_) { } meosVeilMinimapSync(); } return hadPk; }   // v5.1.177: 取り消しで平文が戻っていても、読み直して暗号文の姿へ
   for (const d of _vaultDocsOf(fileKey)) { if (d.isDirty) { try { await d.save(); } catch (_) { } } }
   if (_vaultDocsOf(fileKey).some(d => d.isDirty)) { vscode.window.showWarningMessage('MeOS 🔐: could not save before locking — the membranes stay unlocked. Save the file, then lock again.'); return false; }
   if (id) keys.delete(id); else keys.clear();
@@ -18756,33 +18757,84 @@ async function meosVaultLockAll(reason) {
 //     Rawを出たら控えの鍵を戻して読み直す= 合言葉を訊かずに平文へ。施錠(🔐・全部・🪑の自動施錠・🪑の終了)は控えの鍵も捨てる。
 //   突き合わせ= 望む姿(その膜のモードが raw か)と今の姿(鍵が _vaultKeys か _vaultParked か)を比べ、違う膜だけ動かす。
 //   呼ぶ所= モードを決める1か所(meosApplyModeToScope)と解錠の後。
+// ★★v5.1.177(俊克 am10:37 バグ1「呪文でRawにして…何度か…暗号を保存できなかったと言うパネルが出て、閉じたら暗号が消えて平文に戻ってしまった」
+//   ・実測= VSCodium のログ 10:52:13「the membrane … is locked, but this editor still holds its plain text — not saved」= 書く口の守り①が止めた(ディスクは暗号文のまま)):
+//   v5.1.172 は暗号文の姿を「保存→鍵を控えへ→ファイルの読み直し(revert)」で作った= ①読み直しも取り消し(Undo)に積まれ、平文が画面に戻り得る
+//   ②膜の中に行を足すと「暗号文1行」でなくなり、保存も読み直しもできなくなる。
+//   → 読み直しをやめ、エディターの中身を直接替える(解錠と同じ作り)= その膜の中身⇄暗号文の1行。33万行を読み直さない。
+//   → 書く口は控えた鍵でも暗号化する(_vaultWriteKeys)= 平文が戻っても、保存すれば暗号文で書かれる(守り①に当たらない)。
+//   → 突き合わせは今の中身を見る= 望む姿(Rawなら暗号文1行・それ以外は平文)と違う膜だけ替える。モードを替えた時・解錠の後・打った後(0.4秒)に回す。
 let _vaultRawBusy = false, _vaultRawAgain = false;
+const _vaultRawSoon = new Map();   // uri -> timer
+function _vaultWriteKeys(k) {
+  const a = _vaultKeys.get(k), b = _vaultParked.get(k);
+  if (!b || !b.size) return a;
+  return new Map([...b, ...(a || [])]);
+}
+function meosVaultRawSyncSoon(doc) {
+  try {
+    const k = _vaultKeyOf(doc.uri), pk = _vaultParked.get(k), ks = _vaultKeys.get(k);
+    if (!(pk && pk.size) && !(ks && ks.size)) return;
+    const u = doc.uri.toString(); const t = _vaultRawSoon.get(u); if (t) clearTimeout(t);
+    _vaultRawSoon.set(u, setTimeout(() => { _vaultRawSoon.delete(u); meosVaultRawSync(doc).catch(() => { }); }, 400));
+  } catch (_) { }
+}
 async function meosVaultRawSync(doc) {
-  if (!doc || !meosIsVaultDoc(doc)) return;
+  if (!doc || !meosIsVaultDoc(doc) || doc.isClosed) return;
   if (_vaultRawBusy) { _vaultRawAgain = true; return; }
   _vaultRawBusy = true;
   try {
+    let guard = 0;
     do {
       _vaultRawAgain = false;
       const k = _vaultKeyOf(doc.uri);
       const keys = _vaultKeys.get(k), pk = _vaultParked.get(k);
       if (!(keys && keys.size) && !(pk && pk.size)) break;
       const raw = (p) => { try { return meosModeAtLine(doc, p.start) === 'raw'; } catch (_) { return false; } };
-      const park = [], back = [];
-      for (const p of collectPairs(doc, { excludeIndex: false })) {
-        if (keys && keys.has(p.id) && raw(p)) park.push(p.id);
-        else if (pk && pk.has(p.id) && !raw(p)) back.push(p.id);
+      const passOf = (id) => (keys && keys.get(id)) || (pk && pk.get(id)) || '';
+      const shield = _vaultShieldOf(k);
+      const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+      const pairs = collectPairs(doc, { excludeIndex: false }).filter(p => passOf(p.id) && p.end - p.start >= 2);
+      const toCipher = [], toPlain = [], moveIn = [], moveOut = [];
+      // 平文へ戻す数= 開けられる行だけ数える(開けない行が残っても、同じ所を回り続けない)
+      for (const p of pairs) {
+        const want = raw(p);
+        const mk = []; for (let i = p.start + 1; i < p.end; i++) if ((doc.lineAt(i).text || '').indexOf(_MEOS_ENC_PREFIX) >= 0) mk.push(i);
+        const isCipher = p.end - p.start === 2 && mk.length === 1;
+        if (want && !isCipher) toCipher.push(p);                       // 中の暗号文の行(Rawの間に足した行の隣)は、開けてから一緒に包む
+        else if (!want) for (const ln of mk) toPlain.push({ p, line: ln });
+        if (want && keys && keys.has(p.id)) moveOut.push(p.id);
+        if (!want && pk && pk.has(p.id)) moveIn.push(p.id);
       }
-      if (!park.length && !back.length) break;
-      for (const d of _vaultDocsOf(k)) { if (d.isDirty) { try { await d.save(); } catch (_) { } } }   // 書きかけは先に暗号で保存(読み直しは未保存だと効かない)
-      if (_vaultDocsOf(k).some(d => d.isDirty)) { vscode.window.showWarningMessage('MeOS 🔐: could not save — the unlocked membranes still show their plain text in Raw. Save the file, then switch again.'); break; }
-      if (park.length) { if (!_vaultParked.has(k)) _vaultParked.set(k, new Map()); const to = _vaultParked.get(k); for (const id of park) { to.set(id, keys.get(id)); keys.delete(id); } if (!keys.size) _vaultKeys.delete(k); }
-      if (back.length) { if (!_vaultKeys.has(k)) _vaultKeys.set(k, new Map()); const to = _vaultKeys.get(k); for (const id of back) { to.set(id, pk.get(id)); pk.delete(id); } if (!pk.size) _vaultParked.delete(k); }
-      try { meosDbg('[vaultRaw] 暗号文へ=' + park.join(',') + ' 平文へ=' + back.join(',')); } catch (_) { }
-      await _vaultReload(k);
+      // 替える膜が別の替える膜の中に在る時は外側だけ(書き換えの範囲を重ねない)
+      const outer = toCipher.filter(p => !toCipher.some(q => q !== p && q.start < p.start && p.end < q.end));
+      const we = new vscode.WorkspaceEdit(); let n = 0;
+      for (const p of outer) {
+        const pass = passOf(p.id), body = [];
+        for (let i = p.start + 1; i < p.end; i++) {
+          const t = doc.lineAt(i).text || '', at = t.indexOf(_MEOS_ENC_PREFIX);
+          if (at >= 0) { try { body.push(_vaultDecryptFast(t.slice(at + _MEOS_ENC_PREFIX.length).trim(), pass)); continue; } catch (_) { } }   // 開けない行(別の合言葉の内側の膜)はそのまま
+          body.push(t);
+        }
+        const plain = body.join(eol);
+        let blob; try { blob = _vaultEncryptFast(plain, pass); if (_vaultDecryptFast(blob, pass) !== plain) throw new Error('self-check'); } catch (_) { meosDbg('[vaultRaw] 暗号化に失敗= 替えない ' + p.id); continue; }
+        we.replace(doc.uri, new vscode.Range(p.start + 1, 0, p.end - 1, (doc.lineAt(p.end - 1).text || '').length), (shield.has(p.id) ? _MEOS_SHIELD : '') + _MEOS_ENC_PREFIX + blob); n++;
+      }
+      for (const o of toPlain) {
+        const t = doc.lineAt(o.line).text || '', at = t.indexOf(_MEOS_ENC_PREFIX);
+        let plain; try { plain = _vaultDecryptFast(t.slice(at + _MEOS_ENC_PREFIX.length).trim(), passOf(o.p.id)); } catch (_) { continue; }   // 開けない行(別の合言葉の内側の膜)は替えない
+        we.replace(doc.uri, new vscode.Range(o.line, 0, o.line, t.length), plain); n++;
+      }
+      for (const id of moveOut) { if (!_vaultParked.has(k)) _vaultParked.set(k, new Map()); _vaultParked.get(k).set(id, keys.get(id)); keys.delete(id); }
+      if (keys && !keys.size) _vaultKeys.delete(k);
+      for (const id of moveIn) { if (!_vaultKeys.has(k)) _vaultKeys.set(k, new Map()); _vaultKeys.get(k).set(id, pk.get(id)); pk.delete(id); }
+      if (pk && !pk.size) _vaultParked.delete(k);
+      if (!n && !moveOut.length && !moveIn.length) break;
+      try { meosDbg('[vaultRaw] 暗号文へ=' + outer.map(p => p.id).join(',') + ' 平文へ=' + toPlain.map(o => o.p.id).join(',') + ' 鍵→控え=' + moveOut.join(',') + ' 控え→鍵=' + moveIn.join(',')); } catch (_) { }
+      if (n) { try { await vscode.workspace.applyEdit(we); } catch (_) { } try { if (doc.isDirty) await doc.save(); } catch (_) { } }   // 保存= 書く口が暗号文で書く(控えた鍵でも)
       try { for (const ed of (vscode.window.visibleTextEditors || [])) if (ed.document === doc) { meosVeilPaint(ed); refresh(ed); } } catch (_) { }
       try { updateMeDockMode(); } catch (_) { }
-    } while (_vaultRawAgain);
+    } while (_vaultRawAgain && ++guard < 5);
   } finally { _vaultRawBusy = false; }
 }
 function _vaultTouch() { _vaultLastTouch = Date.now(); }
@@ -19120,7 +19172,7 @@ function meosVaultActivate(context) {
       } catch (_) { }
     }, 1500);
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultLockAll', () => meosVaultLockAll('now')));
-    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) { _vaultTouch(); _vaultArmAutoSave(e.document);
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) { _vaultTouch(); _vaultArmAutoSave(e.document); meosVaultRawSyncSoon(e.document);   // v5.1.177
       if (_meosVeilOn && !meosVaultUnlockedCount().n) meosVeilSet(false); else for (const ed of (vscode.window.visibleTextEditors || [])) if (ed.document === e.document) meosVeilPaint(ed); } }));   // v5.1.128: 施錠で字が替わったら覆いも付け直す(v5.1.171: 常の目隠しも)
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) { _vaultTouch(); const _hit = meosVeilMonkeyHit(e); if (_hit) { _meosVeilBare = null; try { const at = new vscode.Position(_hit.from, 0); e.textEditor.selection = new vscode.Selection(at, at); } catch (_) { } if (_meosVeilOn) meosVeilSet(false); else meosVeilPaint(e.textEditor); } else if (_meosVeilOn && e.kind) meosVeilSet(false); else meosVeilRepaintIfMoved(e.textEditor, e.kind); } }));   // v5.1.173: 見猿を押した / v5.1.175: 見猿・板を押した= 1行目だけ見せる(カーソルを1行目へ)   // v5.1.128: マウス/キーで触ったら🙈を外す(プログラムの移動= kind 無しでは外さない)
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { meosVeilPaint(e.textEditor); }));   // v5.1.128: 🙈は見えている所の真ん中へ

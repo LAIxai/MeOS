@@ -38,7 +38,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_vault_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn, _vaultParked, meosVaultRawSync, _meosViewMem, meosVaultUnlockedCount, meosVaultLock, bumpMode: () => { _meosModeEpoch++; }, meosVeilMonkeyHit, meosVeilRepaintIfMoved, setBare: (b) => { _meosVeilBare = b; }, getBare: () => _meosVeilBare, meosVeilBtnSpot };
+module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn, _vaultParked, meosVaultRawSync, _meosViewMem, meosVaultUnlockedCount, meosVaultLock, bumpMode: () => { _meosModeEpoch++; }, meosVeilMonkeyHit, meosVeilRepaintIfMoved, setBare: (b) => { _meosVeilBare = b; }, getBare: () => _meosVeilBare, meosVeilBtnSpot, _vaultWriteKeys };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
@@ -241,22 +241,41 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
     ok(!T.getVeil(), '🙈: 解錠中の膜が無ければ覆わない');
     stub.window.visibleTextEditors = [];
   }
-  // v5.1.172: Rawの解錠中の膜= 鍵を控えへ移す(エディターは暗号文に戻る)/Rawを出たら戻す/施錠で控えも捨てる
+  // v5.1.172/177: Rawの解錠中の膜= エディターの中身を暗号文の1行へ替え、鍵は控えへ/Rawを出たら平文へ戻す/施錠で控えも捨てる
   {
     const P4 = '/raw.md', VU4 = { path: P4, scheme: 'meos-vault', toString: () => 'meos-vault:' + P4 }, K4 = 'file://' + P4;
-    const L = ['# t', '// {▼mCN=R_open // c}', 'secret', '// {▲mCN=R_open //}'];
-    const doc = { version: 1, uri: VU4, languageId: 'markdown', lineCount: L.length, lineAt: (i) => ({ text: L[i] }) };
+    let L = ['# t', '// {▼mCN=R_open // c}', 'secret', 'line2', '// {▲mCN=R_open //}'];
+    let ver = 1;
+    const doc = { get version() { return ver; }, uri: VU4, languageId: 'markdown', get lineCount() { return L.length; }, lineAt: (i) => ({ text: L[i] }), eol: 1, isDirty: false, save: async () => true };
+    stub.WorkspaceEdit = class { constructor() { this.ops = []; } replace(u, r, t) { this.ops.push({ r, t }); } };
+    stub.workspace.applyEdit = async (we) => {
+      for (const o of we.ops.slice().sort((a, b) => b.r.start.line - a.r.start.line)) {
+        const a = L.slice(0, o.r.start.line), b = L.slice(o.r.end.line + 1);
+        const head = L[o.r.start.line].slice(0, o.r.start.character), tail = L[o.r.end.line].slice(o.r.end.character);
+        L = a.concat((head + o.t + tail).split('\n'), b);
+      }
+      ver++; return true;
+    };
     T._vaultKeys.set(K4, new Map([['R_open', 'pw']]));
     T._meosViewMem.set(VU4.toString(), { R_open: 'raw' }); T.bumpMode();
     await T.meosVaultRawSync(doc);
-    ok(!T._vaultKeys.has(K4) && T._vaultParked.get(K4) && T._vaultParked.get(K4).get('R_open') === 'pw', 'v5.1.172: Rawになった解錠中の膜は、鍵を控えへ(画面は暗号文)');
+    ok(L.length === 4 && L[2].indexOf(T._MEOS_ENC_PREFIX) === 0 && !L.join('\n').includes('secret'), 'v5.1.177: Rawになった解錠中の膜は、エディターの中身が暗号文の1行に(読み直さない)');
+    ok(!T._vaultKeys.has(K4) && T._vaultParked.get(K4) && T._vaultParked.get(K4).get('R_open') === 'pw', 'v5.1.172: 鍵は控えへ');
     ok(T.meosVaultUnlockedCount().n >= 1, 'v5.1.172: 控えた鍵も「開いている」に数える');
-    T._meosViewMem.set(VU4.toString(), {}); T.bumpMode(); doc.version = 2;
+    // Rawの間に膜の中へ行を足した= 暗号文の行は開けてから一緒に包む(二重に包まない)
+    L.splice(3, 0, 'added'); ver++;
     await T.meosVaultRawSync(doc);
-    ok(T._vaultKeys.get(K4) && T._vaultKeys.get(K4).get('R_open') === 'pw' && !T._vaultParked.has(K4), 'v5.1.172: Rawを出たら、合言葉なしで鍵を戻す(平文へ)');
-    T._meosViewMem.set(VU4.toString(), { '': 'raw' }); T.bumpMode(); doc.version = 3;
+    ok(L.length === 4 && L[2].indexOf(T._MEOS_ENC_PREFIX) === 0 && T.meosDecryptText(L[2].slice(T._MEOS_ENC_PREFIX.length).trim(), 'pw') === 'secret\nline2\nadded', 'v5.1.177: Rawの間に足した行は、中の暗号文を開けてから一緒に1行へ包む');
+    T._meosViewMem.set(VU4.toString(), {}); T.bumpMode();
     await T.meosVaultRawSync(doc);
-    ok(T._vaultParked.has(K4) && !T._vaultKeys.has(K4), 'v5.1.172: ファイルの地がRawでも暗号文へ');
+    ok(L.join('\n') === '# t\n// {▼mCN=R_open // c}\nsecret\nline2\nadded\n// {▲mCN=R_open //}', 'v5.1.177: Rawを出たら、合言葉なしで平文へ戻す');
+    ok(T._vaultKeys.get(K4) && T._vaultKeys.get(K4).get('R_open') === 'pw' && !T._vaultParked.has(K4), 'v5.1.172: 鍵も戻す');
+    await T.meosVaultRawSync(doc);
+    ok(L.length === 6, 'v5.1.177: 望む姿と同じなら何もしない');
+    T._meosViewMem.set(VU4.toString(), { '': 'raw' }); T.bumpMode();
+    await T.meosVaultRawSync(doc);
+    ok(T._vaultParked.has(K4) && L.length === 4, 'v5.1.172: ファイルの地がRawでも暗号文へ');
+    ok(T._vaultWriteKeys(K4) && T._vaultWriteKeys(K4).get('R_open') === 'pw', 'v5.1.177: 書く口は控えた鍵でも暗号化する(取り消しで平文が戻っても書ける)');
     const r = await T.meosVaultLock(K4);
     ok(r && !T._vaultParked.has(K4) && !T._vaultKeys.has(K4), 'v5.1.172: 施錠すると控えた鍵も捨てる');
     T._meosViewMem.delete(VU4.toString()); T.bumpMode();
