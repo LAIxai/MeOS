@@ -38615,7 +38615,8 @@ function meosTcwSegs(text, cap) {
   const out = []; let cur = '', w = 0;
   for (const ch of Array.from(String(text || ''))) {
     const c = meosStrWidth(ch);
-    if (w + c > cap + 1e-9 && cur) { const k = cur.lastIndexOf(' '); if (k > 0 && meosStrWidth(cur.slice(k)) < cap * 0.5) { out.push(cur.slice(0, k)); cur = cur.slice(k + 1); w = meosStrWidth(cur); } else { out.push(cur); cur = ''; w = 0; } }
+    // ★v5.1.203(俊克 am08:53 v5.1.202_0838 2枚目): 幅5の列で「比較級」が「比較/級」に割れた= 全角3つを1.67で数えると5.01桁(実際は5.00)。v5.1.202 と同じ境目の端数→ 0.1桁までは収まると見る
+    if (w + c > cap + 0.1 && cur) { const k = cur.lastIndexOf(' '); if (k > 0 && meosStrWidth(cur.slice(k)) < cap * 0.5) { out.push(cur.slice(0, k)); cur = cur.slice(k + 1); w = meosStrWidth(cur); } else { out.push(cur); cur = ''; w = 0; } }
     cur += ch; w += c;
   }
   out.push(cur); return out;
