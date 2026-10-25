@@ -38,7 +38,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_vault_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn, _vaultParked, meosVaultRawSync, _meosViewMem, meosVaultUnlockedCount, meosVaultLock, bumpMode: () => { _meosModeEpoch++; } };
+module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn, _vaultParked, meosVaultRawSync, _meosViewMem, meosVaultUnlockedCount, meosVaultLock, bumpMode: () => { _meosModeEpoch++; }, meosVeilMonkeyHit, meosVeilRepaintIfMoved, setBare: (b) => { _meosVeilBare = b; }, getBare: () => _meosVeilBare };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
@@ -193,7 +193,29 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
     T.meosVeilSet(true);
     { const c5 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
       ok(c5.length === 3, 'v5.1.171: 無操作の🙈はカーソルの行も覆う'); }
-    T.meosVeilSet(false); delete ed.selections;
+    T.meosVeilSet(false);
+    // v5.1.173: 見猿= 指のポインタで押せる。駒の行の0桁にマウスで落ちたら見猿を押した= その膜を全部見せ、行が替わったら1行だけへ
+    stub.TextEditorSelectionChangeKind = stub.TextEditorSelectionChangeKind || { Keyboard: 1, Mouse: 2, Command: 3 };
+    { got.clear(); ed.selections = [{ active: new Position(0, 0) }]; ed.selection = { active: new Position(0, 0), isEmpty: true };
+      T.meosVeilPaint(ed);
+      const mk6 = Array.from(got.values()).find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.contentText === '🙈') || [];
+      ok(mk6.length === 1 && /pointer-events: auto; cursor: /.test(mk6[0].renderOptions.before.textDecoration), 'v5.1.173: 見猿は指のポインタで押せる(pointer-events: auto)');
+      const at = mk6[0].range.start.line;
+      ed.selection = { active: new Position(at, 3), isEmpty: true };
+      ok(!T.meosVeilMonkeyHit({ textEditor: ed, kind: 2 }), 'v5.1.173: 駒の行でも0桁でなければ見猿ではない(ふつうのクリック)');
+      ed.selection = { active: new Position(at, 0), isEmpty: true };
+      ok(!T.meosVeilMonkeyHit({ textEditor: ed, kind: 1 }), 'v5.1.173: キーで0桁に来ても見猿ではない');
+      const h = T.meosVeilMonkeyHit({ textEditor: ed, kind: 2 });
+      ok(h && h.id === 'V_open', 'v5.1.173: マウスで駒の行の0桁= 見猿を押した');
+      T.setBare({ uri: VU3.toString(), id: h.id, line: at }); ed.selections = [{ active: new Position(at, 0) }];
+      got.clear(); T.meosVeilPaint(ed);
+      const c7 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
+      ok(!c7.length, 'v5.1.173: 押した膜は全部見せる');
+      ed.selection = { active: new Position(at + 1, 0), isEmpty: true }; ed.selections = [{ active: new Position(at + 1, 0) }];
+      got.clear(); T.meosVeilRepaintIfMoved(ed);
+      const c8 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
+      ok(!T.getBare() && c8.length === 2 && c8.every(r => r.start.line !== at + 1), 'v5.1.173: 行が替わったら、その行だけ見せて他は覆う'); }
+    delete ed.selections; delete ed.selection;
     T._vaultKeys.delete(K3);
     T.meosVeilPaint(ed);
     ok(Array.from(got.values()).every(r => r.length === 0), '施錠すると(鍵が無い)覆いも見猿も消える');
