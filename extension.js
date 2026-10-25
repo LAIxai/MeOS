@@ -23829,7 +23829,10 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         const _ch = meosAwayChairSpot(editor.document, _ln, editor);   // v5.1.19: 🪑を押した= 🪑→🛋️→💺 を巡る(全体で1つの設定)
         if (_ch && editor.selection.active.character === _ch.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosAwaySetSlot(meosAwaySlot() % 3 + 1); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }
         const _vbs = meosVeilBtnSpot(editor.document, _ln, editor);   // v5.1.175: 小さい🙈を押した= その膜を全部見せる
-        if (_vbs && editor.selection.active.character === _vbs.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); _meosVeilBare = { uri: editor.document.uri.toString(), id: _vbs.id, line: _ln }; meosVeilPaint(editor); meosCalmRefresh(editor); return; }
+        if (_vbs && editor.selection.active.character === _vbs.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); _meosVeilBare = { uri: editor.document.uri.toString(), id: _vbs.id, line: _ln }; meosVeilPaint(editor);
+          // ★v5.1.179(俊克 am11:33 改良2「折り畳んだ状態で小さい🙈をクリックしても何も起きない。膜を展開して、中を丸見えにしたほうが良い」): 畳んでいたら▼と同じ口で開く(バッジの⊖/⊕も揃う)
+          try { const _pv = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === _ln && p.id === _vbs.id); if (_pv && isPairFolded(editor, _pv)) await setPairFoldStateAndMstat(editor, _pv, false); } catch (_) { }
+          meosCalmRefresh(editor); return; }
         const _lb = meosLegacyBtnSpot(editor.document, _ln, editor);   // v5.1.38: 🏦 遺産膜の🔄= 長さを選んで延長
         if (_lb && editor.selection.active.character === _lb.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosLegacyContinueAsk(_lb.name, editor); return; } }   // ★v5.1.31(俊克「🪑をクリックするとRawに切り替わってしまう」): ⏰のボタンと同じ= 抑止を掛けて行頭へ寄せる
       // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
@@ -34492,6 +34495,7 @@ if(encPassInput){encPassInput.type='password';_encEyeSync();
 encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':(op==='shield')?'long passphrase (20+ chars or 4+ words) — 🎲 makes one':(op==='shieldOld')?'1/2 passphrase now — to open it':(op==='shieldNew')?'2/2 new long passphrase for 🛡️ — 🎲 makes one':(op==='legacyShield')?'passphrase of this 🛡️ membrane — Go makes it 🏦':(op==='legacy')?'passphrase of the 🔐 membrane — click Go to seal it':'passphrase — click Go to unlock';
 }if(encPassRow)encPassRow.style.display='flex';setTimeout(()=>{try{encPassInput&&encPassInput.focus();}catch(_){}},0);}
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
+window.addEventListener('focus',function(){try{if(encPassRow&&encPassRow.style.display==='flex'&&encPassInput&&encPassInput.style.display!=='none'&&document.activeElement===encPassInput){encPassInput.blur();encPassInput.focus();}}catch(_){}}); /* ★v5.1.179(俊克 am11:33 改良1「🔓をクリックした時、入力枠に文字カーソルが最初点滅しない。でも、ペーストするとそこに入る」): 欄に焦点を当てたのは Me Dock が前に出る前= 点滅が始まらない。Me Dock に焦点が来たら当て直す */
 function hideEncPass(){if(!window.__encSub&&(_encPendingOp==='shieldOld'||_encPendingOp==='shieldNew'||_encPendingOp==='legacyShield'))vscode.postMessage({type:'encTypeCancel'});   /* v5.1.75: 種類の切り替えを✕/Escで止めた= 絵を戻す */
 _encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';_encEyeSync();
 }_encPendingOp='';}
