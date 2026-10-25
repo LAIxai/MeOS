@@ -691,16 +691,6 @@ This VSCodium extension's source code is released under the **MIT
 License**. See `LICENSE` in the repository root. The extension is
 freely available for use, study, modification, and redistribution.
 
-### Sounds — third-party
-
-The **EEK-EEK2** sound is resynthesized from
-["FX_Monkey_01.wav"](https://freesound.org/people/PeteBarry/sounds/493793/)
-by **PeteBarry** (freesound.org), licensed under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changes: three
-calls were measured every 10 ms (pitch, harmonics, breath noise) and the
-sound is rebuilt from those measurements each time, with extra high
-harmonics added; no sample of the original recording is included.
-
 ### Trademark — Common-Law ™ (Unregistered)
 
 **MeOS™** and **μOS™** are **unregistered common-law trademarks**
