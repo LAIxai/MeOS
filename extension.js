@@ -38654,12 +38654,12 @@ function meosTcwCompactLines(lines, W) {
     return line;
   });
 }
-let _meosTcwHide = null, _meosTcwPiece = null; const _meosTcwVirtual = new Map(); const _meosTcwSig = new Map();
+let _meosTcwHide = null, _meosTcwPiece = null, _meosTcwLine = null; const _meosTcwVirtual = new Map(); const _meosTcwSig = new Map();
 function meosTcwIsVirtual(doc, line) { try { const s = _meosTcwVirtual.get(doc.uri.toString()); return !!(s && s.has(line)); } catch (_) { return false; } }
 function meosApplyTableCellWrapDecorations(editor) {
   try {
     if (!editor || !editor.document || MEOS_RELEASE_PHASE < 3) return;
-    const doc = editor.document, uri = doc.uri.toString(), set = new Set(), hides = [], pieces = [], logs = [];
+    const doc = editor.document, uri = doc.uri.toString(), set = new Set(), hides = [], pieces = [], rules = [], logs = [];
     const W = meosFenceWrapColumn(doc);
     if (W > 0 && isMarkdownDocument(doc)) {
       const cur = (editor.selections || [editor.selection]).map(x => x.active.line), lhEm = meosVeilLineEm(doc), done = new Set();
@@ -38672,8 +38672,17 @@ function meosApplyTableCellWrapDecorations(editor) {
         try { if (meosModeAtLine(doc, blk.start) === 'raw') continue; } catch (_) { }
         const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
         const L = meosTcwLayout(lines, W); if (!L) continue;
+        // ★v5.1.199(俊克 10.26 am00:13 改良1「セル折り返しをしたケースで、細い横罫線が引かれていない」): 行の罫線の装飾(手を引かせた)と同じ線を自分で引く=
+        //   各行が取っている段(ソースの段 R)の下端に細い線(panel.border 2px)・区切りの行は --- を描かず下に太い線(foreground 3px)・表の上端に細い線
+        const tw = L.c.reduce((p, q) => p + q, 0) + 3 * L.nc + 1, em = (x) => Math.round(x * lhEm * 1000) / 1000;
+        const rule = (ln2, rowsDown, px, col) => rules.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '',
+          textDecoration: 'none; position: absolute; left: 0; top: calc(' + em(rowsDown) + 'em - ' + px + 'px); width: ' + tw + 'ch; height: ' + px + 'px; background: ' + col + '; z-index: 2; pointer-events: none;' } } });
+        rule(blk.start, 0, 2, 'var(--vscode-panel-border)');   // 上端= 最初の行の上に
         for (let i = 0; i < lines.length; i++) {
           const ln2 = blk.start + i, t = lines[i]; set.add(ln2); hides.push(new vscode.Range(ln2, 0, ln2, t.length));
+          const Ri = Math.max(L.rows[i].h, meosTcwRowsOf(t, W));
+          if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
+          if (L.rows[i].sep) { logs.push((ln2 + 1) + ':sep'); continue; }   // 区切りの行の --- は描かない(太い線だけ)
           L.rows[i].vis.forEach((v, j) => { if (j >= t.length) return;
             pieces.push({ range: new vscode.Range(ln2, j, ln2, j), renderOptions: { before: { contentText: v.replace(/ /g, ' '),
               textDecoration: 'none; position: absolute; left: 0; top: ' + (Math.round(j * lhEm * 1000) / 1000) + 'em; white-space: pre; z-index: 3; pointer-events: none; color: ' + fg + ' !important; -webkit-text-fill-color: ' + fg + ' !important;' } } }); });
@@ -38687,8 +38696,10 @@ function meosApplyTableCellWrapDecorations(editor) {
     _meosTcwVirtual.set(uri, set);
     if (hides.length && !_meosTcwHide) _meosTcwHide = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (pieces.length && !_meosTcwPiece) _meosTcwPiece = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (rules.length && !_meosTcwLine) _meosTcwLine = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (_meosTcwHide) editor.setDecorations(_meosTcwHide, hides);
     if (_meosTcwPiece) editor.setDecorations(_meosTcwPiece, pieces);
+    if (_meosTcwLine) editor.setDecorations(_meosTcwLine, rules);
   } catch (_) { }
 }
 async function meosFormatTableAtCursor(editor) {
