@@ -201,12 +201,22 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
       const mk6 = Array.from(got.values()).find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.contentText === '🙈') || [];
       ok(mk6.length === 1 && /pointer-events: auto; cursor: /.test(mk6[0].renderOptions.before.textDecoration), 'v5.1.173: 見猿は指のポインタで押せる(pointer-events: auto)');
       const at = mk6[0].range.start.line;
-      ed.selection = { active: new Position(at, 3), isEmpty: true };
-      ok(!T.meosVeilMonkeyHit({ textEditor: ed, kind: 2 }), 'v5.1.173: 駒の行でも0桁でなければ見猿ではない(ふつうのクリック)');
+      const bd6 = Array.from(got.values()).find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.contentText === '' && r[0].renderOptions.before.backgroundColor) || [];
+      ok(bd6.length === 3 && bd6.every(b => /pointer-events: auto; cursor: /.test(b.renderOptions.before.textDecoration)), 'v5.1.174: 見猿が出ている間は白い板も押せる(指のポインタ)');
+      ed.selection = { active: new Position(2, 7), isEmpty: true };
+      ok((T.meosVeilMonkeyHit({ textEditor: ed, kind: 2 }) || {}).line === 2, 'v5.1.174: 実測の形(駒の1行上・行末)に落ちても見猿を押した');
+      ed.selection = { active: new Position(5, 0), isEmpty: true };
+      ok(!T.meosVeilMonkeyHit({ textEditor: ed, kind: 2 }), 'v5.1.174: 閉じの行は見猿ではない(▲のボタンと取り合わない)');
       ed.selection = { active: new Position(at, 0), isEmpty: true };
       ok(!T.meosVeilMonkeyHit({ textEditor: ed, kind: 1 }), 'v5.1.173: キーで0桁に来ても見猿ではない');
       const h = T.meosVeilMonkeyHit({ textEditor: ed, kind: 2 });
       ok(h && h.id === 'V_open', 'v5.1.173: マウスで駒の行の0桁= 見猿を押した');
+      T.setBare({ uri: VU3.toString(), id: h.id, line: at }); ed.selections = [{ active: new Position(at, 0) }];
+      { got.clear(); T.meosVeilPaint(ed); const bd7 = Array.from(got.values()).find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.backgroundColor) || [];
+        ok(!bd7.length, 'v5.1.174: 全部見せている間は板が無い'); }
+      ed.selections = [{ active: new Position(0, 0) }]; T.setBare(null); got.clear(); T.meosVeilPaint(ed); ed.selections = [{ active: new Position(4, 0) }]; got.clear(); T.meosVeilPaint(ed);
+      { const bd9 = Array.from(got.values()).find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.backgroundColor) || [];
+        ok(bd9.length === 2 && bd9.every(b => /pointer-events: none/.test(b.renderOptions.before.textDecoration)), 'v5.1.174: カーソルが膜の中(見猿なし)なら板はふつう(押せる物ではない)'); }
       T.setBare({ uri: VU3.toString(), id: h.id, line: at }); ed.selections = [{ active: new Position(at, 0) }];
       got.clear(); T.meosVeilPaint(ed);
       const c7 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
