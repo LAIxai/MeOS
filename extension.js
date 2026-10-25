@@ -18318,6 +18318,8 @@ const _meosVeilLast = new WeakMap();   // editor -> 最後に描いた時のカ�
 //   ★v5.1.174(俊克 am09:32 テスト= 口を押したら1行だけ見えた・実測 [veilClick] 行=161180 桁=7 駒の行=161181):
 //     エディターは絵の駒でなく「マウスの下の本文の位置」にカーソルを置く(字の無い所は行末へ寄せる= 横の位置は分からない)。
 //     → 見猿だけは見分けられない。見猿が出ている間は、白い板ごと押せる物にする(板も指のポインタ・中身の行のどこを押しても全部見せる)。
+//   ★v5.1.175(俊克 am10:08): 見猿・板を押した= 1行目だけ見せる(カーソルを1行目へ)= 絶対防衛圏(1行目には合言葉などを書かない決まり)。
+//     全部見せるのは開始行の小さい🙈だけ(meosVeilBtnSpot)。
 //   押したら、その膜だけ全部見せる(_meosVeilBare)。カーソルの行が替わったら(キーでもマウスでも)解いて、カーソルの行だけ見せる姿へ。
 //   無操作の🙈の見猿を押した時も同じ(🙈を外して、その膜は全部見せる)。
 const _meosVeilAnchors = new WeakMap();   // editor -> [{ line, id }]= 最後に描いた見猿の駒の行
@@ -18328,7 +18330,7 @@ function meosVeilMonkeyHit(e) {   // 見猿を押した= マウスで、駒の�
     if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse || !sel || !sel.isEmpty) return null;
     const a = (_meosVeilAnchors.get(ed) || []).find(x => x.from <= sel.active.line && sel.active.line <= x.to);   // v5.1.174: 見猿が出ている膜の中身の行ならどこでも
     try { if ((_meosVeilAnchors.get(ed) || []).length) meosDbg('[veilClick] 行=' + (sel.active.line + 1) + ' 桁=' + sel.active.character + ' 駒の行=' + (_meosVeilAnchors.get(ed) || []).map(x => x.line + 1).join(',') + (a ? ' → 見猿' : '')); } catch (_) { }   // 落ちた桁を残す(当たりを測る)
-    return a ? { id: a.id, line: sel.active.line } : null;
+    return a ? { id: a.id, line: sel.active.line, from: a.from } : null;
   } catch (_) { return null; }
 }
 function meosVeilCursorLines(editor) {
@@ -18336,10 +18338,13 @@ function meosVeilCursorLines(editor) {
   try { for (const sel of (editor.selections || [editor.selection])) if (sel && sel.active) s.add(sel.active.line); } catch (_) { }
   return s;
 }
-function meosVeilRepaintIfMoved(editor) {   // カーソルの行が替わった時だけ描き直す(同じ行の中を動くだけなら何もしない)
+function meosVeilRepaintIfMoved(editor, kind) {   // カーソルの行が替わった時だけ描き直す(同じ行の中を動くだけなら何もしない)
   try {
     if (!editor || !meosIsVaultDoc(editor.document)) return;
-    if (_meosVeilBare && _meosVeilBare.uri === editor.document.uri.toString() && editor.selection.active.line !== _meosVeilBare.line) _meosVeilBare = null;   // v5.1.173: 行が替わったら全部見せるのを解く
+    if (_meosVeilBare && _meosVeilBare.uri === editor.document.uri.toString() && editor.selection.active.line !== _meosVeilBare.line) {   // v5.1.173: 行が替わったら全部見せるのを解く
+      if (kind === undefined) _meosVeilBare.line = editor.selection.active.line;   // v5.1.175: プログラムの移動(🙈を押した後にカーソルを戻す等)では解かない
+      else _meosVeilBare = null;
+    }
     const k = _meosVeilOn ? '*' : Array.from(meosVeilCursorLines(editor)).join(',');
     if (_meosVeilLast.get(editor) !== k) meosVeilPaint(editor);
   } catch (_) { }
@@ -18837,6 +18842,18 @@ function meosAwayChairSpot(doc, i, editor) {
     return { col: b.col + 1 };
   } catch (_) { return null; }
 }
+// ★v5.1.175(俊克 10.25 am10:08「🙈ボタンを開始膜に追加して、それをクリックすると、全体を見せる。でかい🙈や白い目隠しをクリックした時は、1行目だけを見せる」):
+//   解錠中の膜の開始行の小さい🙈= 押すとその膜を全部見せる。作りは🪑と同じ(札= 見えない全角空白・絵は上に重ねる)。
+//   置き場= ' //' の直後(🔐と🪑の間には空いた桁が無い= 同じ桁に札を2つ置くと、どちらを押したか分からない)。
+function meosVeilBtnSpot(doc, i, editor) {
+  try {
+    const b = meosVaultLineHints(doc, i, editor) && meosVaultBtnSpot(doc, i);
+    if (!b || b.kind !== 'lock') return null;
+    const t = doc.lineAt(i).text || '';
+    if (t.substr(b.col, 3) !== ' //') return null;
+    return { col: b.col + 3, id: b.id };
+  } catch (_) { return null; }
+}
 // ★v5.1.74: 暗号文の行の種類= 🏦(遺伝子が有る)> 🛡️(行の頭の印)> 🔐。名前は1つ上の開始行から。
 function meosVaultMarkerType(doc, i, text, lgMeta) {
   try {
@@ -19099,7 +19116,7 @@ function meosVaultActivate(context) {
     context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.vaultLockAll', () => meosVaultLockAll('now')));
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { if (meosIsVaultDoc(e.document) && e.contentChanges.length) { _vaultTouch(); _vaultArmAutoSave(e.document);
       if (_meosVeilOn && !meosVaultUnlockedCount().n) meosVeilSet(false); else for (const ed of (vscode.window.visibleTextEditors || [])) if (ed.document === e.document) meosVeilPaint(ed); } }));   // v5.1.128: 施錠で字が替わったら覆いも付け直す(v5.1.171: 常の目隠しも)
-    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) { _vaultTouch(); const _hit = meosVeilMonkeyHit(e); if (_hit) { _meosVeilBare = { uri: e.textEditor.document.uri.toString(), id: _hit.id, line: _hit.line }; if (_meosVeilOn) meosVeilSet(false); else meosVeilPaint(e.textEditor); } else if (_meosVeilOn && e.kind) meosVeilSet(false); else meosVeilRepaintIfMoved(e.textEditor); } }));   // v5.1.173: 見猿を押した= その膜を全部見せる   // v5.1.128: マウス/キーで触ったら🙈を外す(プログラムの移動= kind 無しでは外さない)
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (meosIsVaultDoc(e.textEditor.document)) { _vaultTouch(); const _hit = meosVeilMonkeyHit(e); if (_hit) { _meosVeilBare = null; try { const at = new vscode.Position(_hit.from, 0); e.textEditor.selection = new vscode.Selection(at, at); } catch (_) { } if (_meosVeilOn) meosVeilSet(false); else meosVeilPaint(e.textEditor); } else if (_meosVeilOn && e.kind) meosVeilSet(false); else meosVeilRepaintIfMoved(e.textEditor, e.kind); } }));   // v5.1.173: 見猿を押した / v5.1.175: 見猿・板を押した= 1行目だけ見せる(カーソルを1行目へ)   // v5.1.128: マウス/キーで触ったら🙈を外す(プログラムの移動= kind 無しでは外さない)
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { meosVeilPaint(e.textEditor); }));   // v5.1.128: 🙈は見えている所の真ん中へ
     // ★v5.1.8(俊克 pm00:45「ほとんどずっと、Finderの日記ファイルをWクリックしたものを使っている」):
     //   入口のタブが開いているのに Finder から同じ日記を開くと、file: のタブがもう1つできる= 2つの口から同じファイルを書く
@@ -23748,6 +23765,8 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         if (_vb && (_vb.marker ? editor.selection.active.character >= _vb.col : editor.selection.active.character === _vb.col)) { if (!_vb.head && _vb.kind === 'lock') { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); } await meosVaultBtnPress(editor, _vb, _ln); return; }   // v5.1.31: 解錠中の🔐も⏰のボタンと同じく、押した行を生の字にしない
         const _ch = meosAwayChairSpot(editor.document, _ln, editor);   // v5.1.19: 🪑を押した= 🪑→🛋️→💺 を巡る(全体で1つの設定)
         if (_ch && editor.selection.active.character === _ch.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosAwaySetSlot(meosAwaySlot() % 3 + 1); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }
+        const _vbs = meosVeilBtnSpot(editor.document, _ln, editor);   // v5.1.175: 小さい🙈を押した= その膜を全部見せる
+        if (_vbs && editor.selection.active.character === _vbs.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); _meosVeilBare = { uri: editor.document.uri.toString(), id: _vbs.id, line: _ln }; meosVeilPaint(editor); meosCalmRefresh(editor); return; }
         const _lb = meosLegacyBtnSpot(editor.document, _ln, editor);   // v5.1.38: 🏦 遺産膜の🔄= 長さを選んで延長
         if (_lb && editor.selection.active.character === _lb.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosLegacyContinueAsk(_lb.name, editor); return; } }   // ★v5.1.31(俊克「🪑をクリックするとRawに切り替わってしまう」): ⏰のボタンと同じ= 抑止を掛けて行頭へ寄せる
       // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
@@ -29593,7 +29612,10 @@ function applyEncDecorations(editor) {
       const b = meosVaultLineHints(doc, i, editor) && meosVaultBtnSpot(doc, i);
       if (b && (b.kind === 'lock' || b.head)) { const tl = (doc.lineAt(i).text || '').length; skins.push({ range: new vscode.Range(i, Math.max(0, b.col - 1), i, Math.min(tl, b.col + 2)) });
         const ch = meosAwayChairSpot(doc, i, editor);   // v5.1.19: 🪑の絵(札の右に立ち、左へはみ出して札に重なる)
-        if (ch) chairs.push({ range: new vscode.Range(i, ch.col, i, ch.col), renderOptions: { before: { contentText: '\u200e' + MEOS_AWAY_GLYPHS[meosAwaySlot() - 1] + '\u200e', textDecoration: 'none; position: relative; pointer-events: none; display: inline-block; width: 0; direction: rtl; white-space: nowrap; line-height: 1.2; z-index: 1;' } } }); }
+        if (ch) chairs.push({ range: new vscode.Range(i, ch.col, i, ch.col), renderOptions: { before: { contentText: '\u200e' + MEOS_AWAY_GLYPHS[meosAwaySlot() - 1] + '\u200e', textDecoration: 'none; position: relative; pointer-events: none; display: inline-block; width: 0; direction: rtl; white-space: nowrap; line-height: 1.2; z-index: 1;' } } });
+        const vb = meosVeilBtnSpot(doc, i, editor);   // v5.1.175: 小さい🙈の絵(🪑と同じ作り)
+        if (vb) { chairs.push({ range: new vscode.Range(i, vb.col, i, vb.col), renderOptions: { before: { contentText: '\u200e\ud83d\ude48\u200e', textDecoration: 'none; position: relative; pointer-events: none; display: inline-block; width: 0; direction: rtl; white-space: nowrap; line-height: 1.2; z-index: 1;' } } });
+          skins.push({ range: new vscode.Range(i, Math.max(0, vb.col - 1), i, Math.min(tl, vb.col + 1)) }); } }
     }
     // ★v5.1.16(俊克 pm02:47「スクロールする時、暗号化してある部分に暗号化されたコードがちらっと見えることがある」):
     //   隠すのが見えている行だけ= スクロールで入ってきた行は、次の描き直し(デバウンス)までの一瞬だけ生の暗号文だった。
@@ -45036,7 +45058,8 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
               out.push(_ih);
             }
             { const _vh = meosVaultLineHints(document, ln, _ed89); if (_vh && !_vh.marker && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) { out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label));
-              const _ch = meosAwayChairSpot(document, ln, _ed89); if (_ch) out.push(new vscode.InlayHint(new vscode.Position(ln, _ch.col), '\u3000')); } }   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
+              const _ch = meosAwayChairSpot(document, ln, _ed89); if (_ch) out.push(new vscode.InlayHint(new vscode.Position(ln, _ch.col), '\u3000'));
+              const _vb = meosVeilBtnSpot(document, ln, _ed89); if (_vb) out.push(new vscode.InlayHint(new vscode.Position(ln, _vb.col), '\u3000')); } }   // v5.1.175: 小さい🙈の札   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
             { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
           }
 

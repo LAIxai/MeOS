@@ -38,7 +38,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_vault_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn, _vaultParked, meosVaultRawSync, _meosViewMem, meosVaultUnlockedCount, meosVaultLock, bumpMode: () => { _meosModeEpoch++; }, meosVeilMonkeyHit, meosVeilRepaintIfMoved, setBare: (b) => { _meosVeilBare = b; }, getBare: () => _meosVeilBare };
+module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn, _vaultParked, meosVaultRawSync, _meosViewMem, meosVaultUnlockedCount, meosVaultLock, bumpMode: () => { _meosModeEpoch++; }, meosVeilMonkeyHit, meosVeilRepaintIfMoved, setBare: (b) => { _meosVeilBare = b; }, getBare: () => _meosVeilBare, meosVeilBtnSpot };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
@@ -211,6 +211,9 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
       ok(!T.meosVeilMonkeyHit({ textEditor: ed, kind: 1 }), 'v5.1.173: キーで0桁に来ても見猿ではない');
       const h = T.meosVeilMonkeyHit({ textEditor: ed, kind: 2 });
       ok(h && h.id === 'V_open', 'v5.1.173: マウスで駒の行の0桁= 見猿を押した');
+      ok(h && h.from === 2, 'v5.1.175: 見猿・板を押した= 1行目(中身の最初の行)へ');
+      { const vb = T.meosVeilBtnSpot(doc, 1); const t1 = L[1]; ok(vb && vb.id === 'V_open' && t1.slice(vb.col - 3, vb.col) === ' //', 'v5.1.175: 小さい🙈の札は開始行の // の直後'); }
+      ok(!T.meosVeilBtnSpot(doc, 2) && !T.meosVeilBtnSpot(doc, 5), 'v5.1.175: 小さい🙈は開始行だけ');
       T.setBare({ uri: VU3.toString(), id: h.id, line: at }); ed.selections = [{ active: new Position(at, 0) }];
       { got.clear(); T.meosVeilPaint(ed); const bd7 = Array.from(got.values()).find(r => r.length && r[0].renderOptions && r[0].renderOptions.before.backgroundColor) || [];
         ok(!bd7.length, 'v5.1.174: 全部見せている間は板が無い'); }
@@ -221,8 +224,11 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
       got.clear(); T.meosVeilPaint(ed);
       const c7 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
       ok(!c7.length, 'v5.1.173: 押した膜は全部見せる');
+      ed.selection = { active: new Position(0, 0), isEmpty: true }; ed.selections = [{ active: new Position(0, 0) }];
+      got.clear(); T.meosVeilRepaintIfMoved(ed, undefined);
+      { const c10 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || []; ok(T.getBare() && !c10.length, 'v5.1.175: プログラムの移動(押した後にカーソルを戻す)では全部見せるのを解かない'); }
       ed.selection = { active: new Position(at + 1, 0), isEmpty: true }; ed.selections = [{ active: new Position(at + 1, 0) }];
-      got.clear(); T.meosVeilRepaintIfMoved(ed);
+      got.clear(); T.meosVeilRepaintIfMoved(ed, 2);
       const c8 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
       ok(!T.getBare() && c8.length === 2 && c8.every(r => r.start.line !== at + 1), 'v5.1.173: 行が替わったら、その行だけ見せて他は覆う'); }
     delete ed.selections; delete ed.selection;
