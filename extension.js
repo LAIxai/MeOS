@@ -18259,6 +18259,10 @@ function meosVeilPaint(editor) {
       const rowsOf = (cols) => wrap > 0 ? Math.max(1, Math.ceil(cols / wrap)) : 1;
       let visRows = 0; for (const v of vis) for (let i = v[0]; i <= v[1]; i++) visRows += rowsOf(meosRenderCols(doc.lineAt(i).text || ''));
       const covered = new Set();
+      // ★v5.1.178(俊克 am11:16 改良1「解錠した暗号膜を折り畳むと、コメントも小さい🙈も出ない。auto-saved も表示されない」):
+      //   Monaco は畳んで隠れた行の装飾を畳みの境目(開始行の行末)に描くことがある(v5.1.9 の⛔で実測)= 隠れた中身の行の白い板が開始行に被る。
+      //   → v5.1.2 と同じ決まり= 畳んで隠れた行には掛けない。隠れた行= 見えている範囲と範囲の間(上下の画面外は v5.1.16 と同じく先に掛けておく)。
+      const folded = (i) => { for (let j = 0; j + 1 < vis.length; j++) if (i > vis[j][1] && i < vis[j + 1][0]) return true; return false; };
       for (const p of collectPairs(doc, { excludeIndex: false })) {
         if (!keys.has(p.id) || p.end - p.start < 2 || p.id === open) continue;
         const cols = [];
@@ -18268,6 +18272,7 @@ function meosVeilPaint(editor) {
         for (let i = p.start + 1; i < p.end; i++) {
           if (covered.has(i)) continue; covered.add(i);
           if (bare && bare.has(i)) continue;
+          if (folded(i)) continue;   // v5.1.178
           lines.push(new vscode.Range(i, 0, i, (doc.lineAt(i).text || '').length));
           const bo = { range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '', backgroundColor: MEOS_VEIL_PAPER,
             textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + W + 'ch; height: ' + (rowsOf(cols[i - p.start - 1]) * 100) + '%; z-index: 30; pointer-events: none;' } } };

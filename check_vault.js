@@ -194,6 +194,10 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
     { const c5 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
       ok(c5.length === 3, 'v5.1.171: 無操作の🙈はカーソルの行も覆う'); }
     T.meosVeilSet(false);
+    // v5.1.178: 畳んで隠れた中身の行には掛けない(Monaco が隠れた行の装飾を開始行の行末に描くことがある)
+    { const keepVis = ed.visibleRanges; ed.visibleRanges = [new Range(0, 0, 1, 0), new Range(5, 0, 6, 0)]; got.clear(); T.meosVeilPaint(ed);
+      const all9 = Array.from(got.values()); ok(all9.every(r => r.length === 0), 'v5.1.178: 畳んだ膜(中身の行が見えていない)には白い板も見猿も掛けない');
+      ed.visibleRanges = keepVis; got.clear(); T.meosVeilPaint(ed); }
     // v5.1.173: 見猿= 指のポインタで押せる。駒の行の0桁にマウスで落ちたら見猿を押した= その膜を全部見せ、行が替わったら1行だけへ
     stub.TextEditorSelectionChangeKind = stub.TextEditorSelectionChangeKind || { Keyboard: 1, Mouse: 2, Command: 3 };
     { got.clear(); ed.selections = [{ active: new Position(0, 0) }]; ed.selection = { active: new Position(0, 0), isEmpty: true };
