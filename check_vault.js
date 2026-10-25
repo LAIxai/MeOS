@@ -225,8 +225,8 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
       const c7 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];
       ok(!c7.length, 'v5.1.173: 押した膜は全部見せる');
       ed.selection = { active: new Position(0, 0), isEmpty: true }; ed.selections = [{ active: new Position(0, 0) }];
-      got.clear(); T.meosVeilRepaintIfMoved(ed, undefined);
-      { const c10 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || []; ok(T.getBare() && !c10.length, 'v5.1.175: プログラムの移動(押した後にカーソルを戻す)では全部見せるのを解かない'); }
+      got.clear(); T.meosVeilRepaintIfMoved(ed, 3);
+      { const c10 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || []; ok(T.getBare() && !c10.length, 'v5.1.176: 拡張の移動(種類=Command・押した後にカーソルを戻す)では全部見せるのを解かない'); }
       ed.selection = { active: new Position(at + 1, 0), isEmpty: true }; ed.selections = [{ active: new Position(at + 1, 0) }];
       got.clear(); T.meosVeilRepaintIfMoved(ed, 2);
       const c8 = Array.from(got.values()).find(r => r.length && r[0] instanceof Range) || [];

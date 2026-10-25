@@ -18342,8 +18342,13 @@ function meosVeilRepaintIfMoved(editor, kind) {   // カーソルの行が替わ
   try {
     if (!editor || !meosIsVaultDoc(editor.document)) return;
     if (_meosVeilBare && _meosVeilBare.uri === editor.document.uri.toString() && editor.selection.active.line !== _meosVeilBare.line) {   // v5.1.173: 行が替わったら全部見せるのを解く
-      if (kind === undefined) _meosVeilBare.line = editor.selection.active.line;   // v5.1.175: プログラムの移動(🙈を押した後にカーソルを戻す等)では解かない
-      else _meosVeilBare = null;
+      // v5.1.175: プログラムの移動(🙈を押した後にカーソルを戻す等)では解かない
+      // ★v5.1.176(俊克 am10:21 バグ1「小さい🙈をクリックすると全体が見えるんだけど、数秒後に目隠しされてしまう」・実測 [park] 1.2秒後に 161185 → 161182:0):
+      //   拡張がカーソルを動かした時も、VSCodium は種類を Command で知らせる(undefined ではない)= 押した後の戻しを人の移動と取り違えて解いていた。
+      //   → 解くのはキーかマウスで動いた時だけ。
+      const K = vscode.TextEditorSelectionChangeKind || {};
+      if (kind === K.Keyboard || kind === K.Mouse) _meosVeilBare = null;
+      else _meosVeilBare.line = editor.selection.active.line;
     }
     const k = _meosVeilOn ? '*' : Array.from(meosVeilCursorLines(editor)).join(',');
     if (_meosVeilLast.get(editor) !== k) meosVeilPaint(editor);
@@ -18712,6 +18717,7 @@ async function meosVaultUnlock(editor, passArg) {
   _vaultTouch();
   const range = new vscode.Range(pair.start + 1, 0, pair.start + 1, t.length);
   try { if (editor.selection.active.line > pair.start) { const at = new vscode.Position(pair.start, 0); editor.selection = new vscode.Selection(at, at); } } catch (_) { }   // v5.1.171: 開ける前にカーソルを開始行へ= 始めから全部覆った姿
+  try { if (editor.selection.active.line === pair.start) setRefNoRaw(doc, pair.start); } catch (_) { }   // ★v5.1.176(俊克 改良1「解錠した時、current行が開始膜なので、膜をRaw表示にせず、小さい🙈を見えるように」): 開始行を生の字にしない= 🔐🪑🙈が見える
   await editor.edit(eb => { eb.replace(range, plain); });
   try { await doc.save(); } catch (_) { }
   try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) { }
