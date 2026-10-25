@@ -38625,6 +38625,7 @@ function meosTcwRowStr(cells, c) {   // 桁揃え= 目標の桁へ(全角の端�
   cells.forEach((t, k) => { X += c[k] + 3; s += ' ' + t; x += 1 + meosStrWidth(t); const p = Math.max(1, Math.round(X - 1 - x)); s += ' '.repeat(p) + '|'; x += p + 1; });
   return s;
 }
+const _meosTcwNeedCache = new Map();
 function meosTcwLayout(lines, W) {
   if (!(W > 0) || !lines.length) return null;
   if (lines.some(t => t.indexOf('<!--') >= 0)) return null;
@@ -38632,7 +38633,15 @@ function meosTcwLayout(lines, W) {
   const nc = Math.max(...rs.map(r => r.length)); const vis = rs.map(r => r.map(x => meosStripHiddenForWidth(x)));
   const nat = new Array(nc).fill(1); vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { nat[k] = Math.max(nat[k], Math.ceil(meosStrWidth(t))); }); });
   const tot = (x) => x.reduce((p, q) => p + q, 0) + 3 * nc + 1;
-  if (tot(nat) <= W) return null;   // 収まる= 今まで通り
+  // ★v5.1.200(俊克 am00:31 バグ1「今あなたがここで書いた表は、なぜ整形しても、セル折り返しにならないのか?」): 字の幅の合計(46桁)は幅50に収まるので入らないと判断していた。
+  //   ところが今までの整形では区切りの行がちょうど50桁(--- は3つ以上)になり、全角1.67の端数が積もって行が50桁をわずかに越えて折れていた(どの行も段2)。
+  //   → 入るかは「今までの整形にした時に1行でも折れるか」で決める(字の幅だけで決めない)。字の幅が収まる表は列を削らずに揃える。
+  let need = tot(nat) > W - 1;
+  if (!need) { const key = W + '\n' + lines.join('\n'); let hit = _meosTcwNeedCache.get(key);
+    if (hit === undefined) { hit = false; try { const f = meosFormatTableLines(lines.map(x => x.trim())); hit = !!(f && f.some(l => meosTcwRowsOf(l, W) > 1)); } catch (_) { }
+      if (_meosTcwNeedCache.size > 300) _meosTcwNeedCache.clear(); _meosTcwNeedCache.set(key, hit); }
+    need = hit; }
+  if (!need) return null;   // 今までの整形で収まる= 今まで通り
   const c = nat.slice(); let g = 0; while (tot(c) > W - 1 && g++ < 4000) { const k = c.indexOf(Math.max(...c)); if (c[k] <= 3) break; c[k]--; }
   if (tot(c) > W - 1) return null;
   const rows = vis.map((r, i) => {
