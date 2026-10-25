@@ -16975,7 +16975,7 @@ async function meosApplyModeToScope(doc, key, next, name) {
   const cur = view[key] || inh;                    // 今効いている値
   // ★書くのは、外側と違う時だけ＝ 同じ値を選んだら消す(受け継ぎに戻る)。ファイルに要らない行を残さない。
   if (next === inh) delete view[key]; else view[key] = next;
-  if (next === cur) { meosPostViewMode(); return next; }   // 見え方that変わらない= 描き直さない
+  if (next === cur) { meosPostViewMode(); try { await meosVaultRawSync(doc); } catch (_) { } return next; }   // 見え方that変わらない= 描き直さない(v5.1.172: 錠の姿だけは突き合わせる)
   _meosModeEpoch++;
   meosScheduleViewMetaWrite(doc);   // v4.0.445: 覚えるのはメタ膜(ファイルと一緒に旅する)
   // ★v4.1.1104: **モードthat変わった事を名乗らせる**。今日、私はモードの効き目を3度推測して外した。
@@ -16992,6 +16992,7 @@ async function meosApplyModeToScope(doc, key, next, name) {
   try { if (edA) await meosSyncFcFoldForCursor(edA); } catch (_) { }
   try { if (edA) await meosApplyFoldForMode(edA, key, next, cur); } catch (_) { }   // v4.1.1104
   meosReleaseMstatSync();          // v4.1.1106: 畳みthat落ち着いた= ここから先の姿は人の意思
+  try { await meosVaultRawSync(doc); } catch (_) { }   // v5.1.172: Rawの解錠中の膜は暗号文へ/Rawを出たら平文へ
   meosPostViewMode();
   vscode.window.setStatusBarMessage('MeOS: ' + (name ? (name + ' — ') : '') + MEOS_VIEW_MODE_BAR[next], 2200);
   return next;
@@ -18177,7 +18178,7 @@ async function meosAwayLeave(idle) {
         try { await vscode.window.showTextDocument(d); await vscode.commands.executeCommand('workbench.action.files.revert'); } catch (_) { }
       }
     }
-    _vaultKeys.clear(); _vaultKeyCache.clear(); _meosAwayIdle = null;   // v5.1.51
+    _vaultKeys.clear(); _vaultParked.clear(); _vaultKeyCache.clear(); _meosAwayIdle = null;   // v5.1.51 / v5.1.172: Rawで控えた鍵も
     if (_meosAwayFast) { clearInterval(_meosAwayFast); _meosAwayFast = null; }   // v5.1.52
     try { meosDbg('[away] ' + Math.round((idle || 0) / 1000) + 's 無操作 → 保存・施錠・終了'); } catch (_) { }
     try { await extensionContext.globalState.update('meosAwayClosed', { at: Date.now(), slot: meosAwaySlot(), mins: meosAwayMins()[meosAwaySlot() - 1] }); } catch (_) { }   // v5.1.50: 次に開いた時に一度だけ知らせる
@@ -18345,6 +18346,7 @@ function meosVeilSet(on) {
   for (const ed of (vscode.window.visibleTextEditors || [])) meosVeilPaint(ed);
 }
 const _vaultKeys = new Map();   // fileUri文字列 -> Map(膜名 -> 合言葉)
+const _vaultParked = new Map(); // v5.1.172: fileUri文字列 -> Map(膜名 -> 合言葉)= Rawの間だけ控えた鍵(画面は暗号文)
 const _vaultSeen = new Map();   // fileUri文字列 -> Set(このセッションで一度でも解錠した膜名)=守り①
 const _vaultGen = new Map();    // fileUri文字列 -> 世代(鍵が変わるたび+1=statのmtimeに足してVSCodeに読み直させる)
 let _vaultLastTouch = Date.now();
@@ -18684,12 +18686,16 @@ async function meosVaultUnlock(editor, passArg) {
   try { refresh(editor); } catch (_) { }
   try { updateMeDockMode(); } catch (_) { }
   try { meosVeilPaint(editor); } catch (_) { } meosVeilMinimapSync();   // v5.1.171
+  try { await meosVaultRawSync(doc); } catch (_) { }   // v5.1.172: Rawの中で開けたら、暗号文の姿のまま(鍵は控える)
   vscode.window.setStatusBarMessage('MeOS 🔓: unlocked here only — the disk keeps the ciphertext. Locks itself after 30 min idle.', 5000);
 }
 // 施錠: 未保存は保存(=暗号化)してから鍵を捨て、エディターを暗号文の姿へ読み直す。id省略=そのファイルの全部。
 async function meosVaultLock(fileKey, id) {
+  const pk = _vaultParked.get(fileKey);   // v5.1.172: Rawで控えた鍵も捨てる(画面は元から暗号文= 読み直さない)
+  const hadPk = !!(pk && (id ? pk.has(id) : pk.size));
+  if (pk) { if (id) pk.delete(id); else pk.clear(); if (!pk.size) _vaultParked.delete(fileKey); }
   const keys = _vaultKeys.get(fileKey);
-  if (!keys || !keys.size) return false;
+  if (!keys || !keys.size) { if (hadPk) { try { updateMeDockMode(); } catch (_) { } meosVeilMinimapSync(); } return hadPk; }
   for (const d of _vaultDocsOf(fileKey)) { if (d.isDirty) { try { await d.save(); } catch (_) { } } }
   if (_vaultDocsOf(fileKey).some(d => d.isDirty)) { vscode.window.showWarningMessage('MeOS 🔐: could not save before locking — the membranes stay unlocked. Save the file, then lock again.'); return false; }
   if (id) keys.delete(id); else keys.clear();
@@ -18702,13 +18708,48 @@ async function meosVaultLock(fileKey, id) {
 }
 async function meosVaultLockAll(reason) {
   let n = 0;
-  for (const k of Array.from(_vaultKeys.keys())) { if (await meosVaultLock(k)) n++; }
+  for (const k of Array.from(new Set([..._vaultKeys.keys(), ..._vaultParked.keys()]))) { if (await meosVaultLock(k)) n++; }   // v5.1.172: Rawで控えた鍵も
   if (n) vscode.window.setStatusBarMessage('MeOS 🔐: locked' + (reason ? ' (' + reason + ')' : '') + ' — the editor shows the ciphertext again.', 5000);
   return n;
 }
+// ★★v5.1.172(俊克 10.25 am09:15 改良1「Rawモードでは、以前から、暗号化状態にならないというバグがあった」):
+//   Raw= ディスクの姿をそのまま見せるモード。なのに解錠中の膜は、Rawでも平文のまま(目隠しの板で隠れていただけ)。
+//   → 解錠中の膜がRawになったら、鍵を控え(_vaultParked)へ移して読み直す= エディターは暗号文の1行(🔒MeOS-enc)に戻る。
+//     Rawを出たら控えの鍵を戻して読み直す= 合言葉を訊かずに平文へ。施錠(🔐・全部・🪑の自動施錠・🪑の終了)は控えの鍵も捨てる。
+//   突き合わせ= 望む姿(その膜のモードが raw か)と今の姿(鍵が _vaultKeys か _vaultParked か)を比べ、違う膜だけ動かす。
+//   呼ぶ所= モードを決める1か所(meosApplyModeToScope)と解錠の後。
+let _vaultRawBusy = false, _vaultRawAgain = false;
+async function meosVaultRawSync(doc) {
+  if (!doc || !meosIsVaultDoc(doc)) return;
+  if (_vaultRawBusy) { _vaultRawAgain = true; return; }
+  _vaultRawBusy = true;
+  try {
+    do {
+      _vaultRawAgain = false;
+      const k = _vaultKeyOf(doc.uri);
+      const keys = _vaultKeys.get(k), pk = _vaultParked.get(k);
+      if (!(keys && keys.size) && !(pk && pk.size)) break;
+      const raw = (p) => { try { return meosModeAtLine(doc, p.start) === 'raw'; } catch (_) { return false; } };
+      const park = [], back = [];
+      for (const p of collectPairs(doc, { excludeIndex: false })) {
+        if (keys && keys.has(p.id) && raw(p)) park.push(p.id);
+        else if (pk && pk.has(p.id) && !raw(p)) back.push(p.id);
+      }
+      if (!park.length && !back.length) break;
+      for (const d of _vaultDocsOf(k)) { if (d.isDirty) { try { await d.save(); } catch (_) { } } }   // 書きかけは先に暗号で保存(読み直しは未保存だと効かない)
+      if (_vaultDocsOf(k).some(d => d.isDirty)) { vscode.window.showWarningMessage('MeOS 🔐: could not save — the unlocked membranes still show their plain text in Raw. Save the file, then switch again.'); break; }
+      if (park.length) { if (!_vaultParked.has(k)) _vaultParked.set(k, new Map()); const to = _vaultParked.get(k); for (const id of park) { to.set(id, keys.get(id)); keys.delete(id); } if (!keys.size) _vaultKeys.delete(k); }
+      if (back.length) { if (!_vaultKeys.has(k)) _vaultKeys.set(k, new Map()); const to = _vaultKeys.get(k); for (const id of back) { to.set(id, pk.get(id)); pk.delete(id); } if (!pk.size) _vaultParked.delete(k); }
+      try { meosDbg('[vaultRaw] 暗号文へ=' + park.join(',') + ' 平文へ=' + back.join(',')); } catch (_) { }
+      await _vaultReload(k);
+      try { for (const ed of (vscode.window.visibleTextEditors || [])) if (ed.document === doc) { meosVeilPaint(ed); refresh(ed); } } catch (_) { }
+      try { updateMeDockMode(); } catch (_) { }
+    } while (_vaultRawAgain);
+  } finally { _vaultRawBusy = false; }
+}
 function _vaultTouch() { _vaultLastTouch = Date.now(); }
 // v5.1.66: 解錠中の膜の数とファイルの数(Me Dock の UL)。
-function meosVaultUnlockedCount() { let n = 0, f = 0; for (const m of _vaultKeys.values()) { if (m && m.size) { n += m.size; f++; } } return { n, f }; }
+function meosVaultUnlockedCount() { let n = 0; const fs = new Set(); for (const mp of [_vaultKeys, _vaultParked]) for (const [k, m] of mp) { if (m && m.size) { n += m.size; fs.add(k); } } return { n, f: fs.size }; }   // v5.1.172: Rawで控えた鍵も「開いている」に数える(Rawを出れば合言葉なしで戻る)
 // 入口のエディターで、カーソルの膜が「解錠中(鍵あり)」か。🔐ボタンを「今すぐ施錠」に使う判定。
 function meosVaultUnlockedPair(editor) {
   try {
@@ -19039,7 +19080,7 @@ function meosVaultActivate(context) {
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { meosVaultRedirectFileTab(ed).catch(() => { }); if (ed) meosVeilPaint(ed); }));
     meosVeilMinimapSync();   // v5.1.171: 解錠したまま終わった(🪑など)ら、止めたミニマップをここで戻す   // v5.1.128: 前に出た入口のタブも覆う
     const iv = setInterval(() => {
-      if (_vaultKeys.size && Date.now() - _vaultLastTouch >= meosAwayMs()) { meosVaultLockAll('idle ' + meosAwayMins()[meosAwaySlot() - 1] + ' min').catch(() => { }); }   // v5.1.19: 時間は🪑の席と同じ
+      if ((_vaultKeys.size || _vaultParked.size) && Date.now() - _vaultLastTouch >= meosAwayMs()) { meosVaultLockAll('idle ' + meosAwayMins()[meosAwaySlot() - 1] + ' min').catch(() => { }); }   // v5.1.19: 時間は🪑の席と同じ
       meosAwayCheck();   // v5.1.19: 🪑 離席(Mac 全体の無操作)
     }, 15 * 1000);   // v5.1.10(俊克 👍2「3分待ったら30秒遅れくらいで施錠された」): 見張りを60秒→15秒ごとに(遅れは最大15秒)
     context.subscriptions.push({ dispose() { clearInterval(iv); } });
