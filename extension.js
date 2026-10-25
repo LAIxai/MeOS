@@ -38661,7 +38661,10 @@ function meosTcwCompactLines(lines, W) {
   return rs.map((r, i) => {
     if (i === L.sep) return '|' + r.map(x => { const t = x.replace(/\s/g, ''); return (t.startsWith(':') ? ':' : '') + '-' + (t.length > 1 && t.endsWith(':') ? ':' : ''); }).join('|') + '|';
     let line = '| ' + r.join(' | ') + ' |'; const need = L.rows[i].h; let g = 0;
-    while (meosTcwRowsOf(line, W) < need && g++ < 600) line = line.slice(0, -1) + ' |';
+    // ★v5.1.202(俊克 am08:28「表ボタンの整形機能では直らない」): 段の行がちょうど50.01桁で止まっていた= 全角を1.67で数えると折れるが、
+    //   Monaco は実際の比(Menlo+Hiragino= 1/0.6= 1.6667)で数えるので50.00桁= 折れずに1段のまま→ 2段目の「字」が次の行に重なった。
+    //   → 境目すれすれで止めない= 幅を0.1桁広く見ても要る段に届くまで空白を足す(端数の違いで段が減らない)
+    while ((meosTcwRowsOf(line, W) < need || meosTcwRowsOf(line, W + 0.1) < need) && g++ < 600) line = line.slice(0, -1) + ' |';
     return line;
   });
 }
