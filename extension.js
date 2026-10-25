@@ -22051,6 +22051,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
 }
 function _refreshInner(editor) {
   activeEditor = editor;
+  try { meosApplyTableCellWrapDecorations(editor); } catch (_) {} // v5.1.198: セルの中の折り返し(先に決める= 下の表の装飾が meosTableInfo で手を引く)
   try { meosApplyTableMergeDecorations(editor); } catch (_) {} // v0.9.999158: セル横結合の装飾(Raw時は関数内で解除)
   try { meosApplyTableCalcDecorations(editor); } catch (_) {} // v3.0.7.1: 表計算 Σ/Π の装飾(Raw/隔離時は関数内で解除)
   try { meosApplyTableRowLineDecorations(editor); } catch (_) {} // v3.1.9: 縦結合の行罫線方式(Raw/隔離時は関数内で解除)
@@ -38590,6 +38591,106 @@ async function meosTableFromSelection(editor) {
   vscode.window.setStatusBarMessage('MeOS: ' + rows.length + ' rows × ' + rows[0].length + ' columns → table ▦', 2200);
   return true;
 }
+// ★★★v5.1.198(俊克 10.25 pm10:48〜11:54「表で、1つのセルに入る長い文章をセルの中で折り返す」→「`<!-- Mew!FC br -->`…」→「折れた2段目を利用して、2セル目を折り返したように見せる= 醜いアヒルの子を逆手に取る」
+//   →「実装してみようよ。駄目だったら戻せばいい。折り返し幅で対処すればいいケースと、今回の機能を利用するケースがある」): セルの中の折り返し(試作)。
+//   ★測った(Monaco 0.52 の台・MeOS/tmp/cell-wrap-proto/): ①装飾で隠した字も折り返しの段を取る ②装飾の before(CSS ::before)は折り返しの計算に入らない
+//     = 表の行が何段を取るかはソースの長さだけで決まる。→ 長いセルのある行は元々何段かに折れている= その段に、見せかけの表の続きの段を ::before で重ねる(目隠しの板と同じ作り)。
+//   ・入る表= 折り返し幅(wordWrapColumn)に収まらない表だけ。収まる表は今まで通り(折り返し幅を広げれば入らない)。結合・計算の印(<!--)がある表は入らない。
+//   ・表ボタン= 入る表は空白で揃えない詰めた形に整形し、段が足りない行は最後のセルの中(閉じの | の手前)に空白を足す(GFM はセルの前後の空白を読まない= GitHub の見え方は同じ)。
+//   ・描く= カーソルが表の外の時だけ。字は透明・各段の頭に見せかけの段を絶対位置で。カーソルが表に入ったら本物の表(ほかの表の装飾も戻る)。
+//   ・段の数は VS Code から訊けない→ Monaco の折り返し(simple)を写して数える(全角は表の幅の係数・空白の後と全角の前後で折れる)。
+function meosTcwMonacoFull(cp) { return (cp >= 0x2E80 && cp <= 0xD7AF) || (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFF01 && cp <= 0xFF5E); }
+function meosTcwRowsOf(text, W) {
+  const fw = (typeof _meosTableCjkW === 'number' && _meosTableCjkW > 1) ? _meosTableCjkW : 1.67;
+  const a = Array.from(String(text || '')); let rows = 1, col = 0, brkCol = -1, prevSp = false, prevFull = false;
+  for (let i = 0; i < a.length; i++) {
+    const cp = a[i].codePointAt(0), big = cp > 0xFFFF, full = big || meosTcwMonacoFull(cp), w = big ? 2 : (full ? fw : 1);
+    if (i > 0 && a[i] !== ' ' && (prevSp || full || prevFull)) brkCol = col;
+    if (col > 0 && col + w > W + 1e-9) { rows++; col = (brkCol > 0) ? (col - brkCol) : 0; brkCol = -1; }
+    col += w; prevSp = a[i] === ' '; prevFull = full;
+  }
+  return rows;
+}
+function meosTcwSegs(text, cap) {
+  const out = []; let cur = '', w = 0;
+  for (const ch of Array.from(String(text || ''))) {
+    const c = meosStrWidth(ch);
+    if (w + c > cap + 1e-9 && cur) { const k = cur.lastIndexOf(' '); if (k > 0 && meosStrWidth(cur.slice(k)) < cap * 0.5) { out.push(cur.slice(0, k)); cur = cur.slice(k + 1); w = meosStrWidth(cur); } else { out.push(cur); cur = ''; w = 0; } }
+    cur += ch; w += c;
+  }
+  out.push(cur); return out;
+}
+function meosTcwRowStr(cells, c) {   // 桁揃え= 目標の桁へ(全角の端数は次の列へ持ち越す)
+  let s = '|', x = 1, X = 1;
+  cells.forEach((t, k) => { X += c[k] + 3; s += ' ' + t; x += 1 + meosStrWidth(t); const p = Math.max(1, Math.round(X - 1 - x)); s += ' '.repeat(p) + '|'; x += p + 1; });
+  return s;
+}
+function meosTcwLayout(lines, W) {
+  if (!(W > 0) || !lines.length) return null;
+  if (lines.some(t => t.indexOf('<!--') >= 0)) return null;
+  const rs = lines.map(t => meosSplitTableRow(t)); const sep = rs.findIndex(r => meosIsTableSeparator(r)); if (sep < 0) return null;
+  const nc = Math.max(...rs.map(r => r.length)); const vis = rs.map(r => r.map(x => meosStripHiddenForWidth(x)));
+  const nat = new Array(nc).fill(1); vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { nat[k] = Math.max(nat[k], Math.ceil(meosStrWidth(t))); }); });
+  const tot = (x) => x.reduce((p, q) => p + q, 0) + 3 * nc + 1;
+  if (tot(nat) <= W) return null;   // 収まる= 今まで通り
+  const c = nat.slice(); let g = 0; while (tot(c) > W - 1 && g++ < 4000) { const k = c.indexOf(Math.max(...c)); if (c[k] <= 3) break; c[k]--; }
+  if (tot(c) > W - 1) return null;
+  const rows = vis.map((r, i) => {
+    if (i === sep) return { vis: ['|' + c.map(x => '-'.repeat(x + 2)).join('|') + '|'], h: 1, sep: true };
+    const sg = c.map((x, k) => meosTcwSegs(r[k] || '', x)); const h = Math.max(...sg.map(q => q.length)); const v = [];
+    for (let j = 0; j < h; j++) v.push(meosTcwRowStr(c.map((x, k) => sg[k][j] || ''), c));
+    return { vis: v, h };
+  });
+  return { c, rows, sep, nc };
+}
+// 表ボタン: 入る表= 詰めた形＋足りない段の空白。入らない表は null(今まで通りの整形)
+function meosTcwCompactLines(lines, W) {
+  const L = meosTcwLayout(lines, W); if (!L) return null;
+  const rs = lines.map(t => meosSplitTableRow(t));
+  return rs.map((r, i) => {
+    if (i === L.sep) return '|' + r.map(x => { const t = x.replace(/\s/g, ''); return (t.startsWith(':') ? ':' : '') + '-' + (t.length > 1 && t.endsWith(':') ? ':' : ''); }).join('|') + '|';
+    let line = '| ' + r.join(' | ') + ' |'; const need = L.rows[i].h; let g = 0;
+    while (meosTcwRowsOf(line, W) < need && g++ < 600) line = line.slice(0, -1) + ' |';
+    return line;
+  });
+}
+let _meosTcwHide = null, _meosTcwPiece = null; const _meosTcwVirtual = new Map(); const _meosTcwSig = new Map();
+function meosTcwIsVirtual(doc, line) { try { const s = _meosTcwVirtual.get(doc.uri.toString()); return !!(s && s.has(line)); } catch (_) { return false; } }
+function meosApplyTableCellWrapDecorations(editor) {
+  try {
+    if (!editor || !editor.document || MEOS_RELEASE_PHASE < 3) return;
+    const doc = editor.document, uri = doc.uri.toString(), set = new Set(), hides = [], pieces = [], logs = [];
+    const W = meosFenceWrapColumn(doc);
+    if (W > 0 && isMarkdownDocument(doc)) {
+      const cur = (editor.selections || [editor.selection]).map(x => x.active.line), lhEm = meosVeilLineEm(doc), done = new Set();
+      const fg = 'var(--vscode-editor-foreground)';
+      for (const vr of meosScanSpans(editor, doc)) for (let ln = vr[0]; ln <= vr[1]; ln++) {
+        if (done.has(ln)) continue;
+        const blk = meosTableBlockRange(doc, ln); if (!blk) { done.add(ln); continue; }
+        for (let i = blk.start; i <= blk.end; i++) done.add(i);
+        if (cur.some(c => c >= blk.start && c <= blk.end)) continue;   // 書く時= 本物の表
+        try { if (meosModeAtLine(doc, blk.start) === 'raw') continue; } catch (_) { }
+        const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
+        const L = meosTcwLayout(lines, W); if (!L) continue;
+        for (let i = 0; i < lines.length; i++) {
+          const ln2 = blk.start + i, t = lines[i]; set.add(ln2); hides.push(new vscode.Range(ln2, 0, ln2, t.length));
+          L.rows[i].vis.forEach((v, j) => { if (j >= t.length) return;
+            pieces.push({ range: new vscode.Range(ln2, j, ln2, j), renderOptions: { before: { contentText: v.replace(/ /g, ' '),
+              textDecoration: 'none; position: absolute; left: 0; top: ' + (Math.round(j * lhEm * 1000) / 1000) + 'em; white-space: pre; z-index: 3; pointer-events: none; color: ' + fg + ' !important; -webkit-text-fill-color: ' + fg + ' !important;' } } }); });
+          logs.push((ln2 + 1) + ':R' + meosTcwRowsOf(t, W) + '/h' + L.rows[i].h);
+        }
+        const sig = uri + '#' + blk.start + '#' + W + '#' + logs.join(',');
+        if (_meosTcwSig.get(uri + '#' + blk.start) !== sig) { _meosTcwSig.set(uri + '#' + blk.start, sig); try { meosDbg('[tcw] 表 ' + (blk.start + 1) + '〜' + (blk.end + 1) + ' 幅=' + W + ' 列=' + L.c.join(',') + ' 行(ソースの段/要る段)= ' + logs.join(' ')); } catch (_) { } }
+        logs.length = 0;
+      }
+    }
+    _meosTcwVirtual.set(uri, set);
+    if (hides.length && !_meosTcwHide) _meosTcwHide = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (pieces.length && !_meosTcwPiece) _meosTcwPiece = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (_meosTcwHide) editor.setDecorations(_meosTcwHide, hides);
+    if (_meosTcwPiece) editor.setDecorations(_meosTcwPiece, pieces);
+  } catch (_) { }
+}
 async function meosFormatTableAtCursor(editor) {
   if (!editor) { vscode.window.setStatusBarMessage('MeOS: アクティブなエディタがありません', 2000); return; }
   const doc = editor.document;
@@ -38618,8 +38719,9 @@ async function meosFormatTableAtCursor(editor) {
   for (let i = blk.start; i <= blk.end; i++) raw.push(doc.lineAt(i).text);
   const indent = (raw[0].match(/^\s*/) || [''])[0];
   let funcMap = null; try { if (MEOS_METEX) funcMap = meosFuncRegistry(doc); } catch (_) {} // v3.1.40: 関数電卓セルを結果幅で整形する為、定義(表の外)を集めたレジストリを渡す
-  const formatted = meosFormatTableAt(doc, blk, raw, funcMap);
+  let formatted = meosFormatTableAt(doc, blk, raw, funcMap);
   if (!formatted) { vscode.window.setStatusBarMessage('MeOS: 区切り行 |---| が見つかりません(GFMテーブルではない)', 2800); return; }
+  try { const _W = meosFenceWrapColumn(doc); const _cl = meosTcwCompactLines(raw.map(l => l.trim()), _W); if (_cl) { formatted = _cl; meosDbg('[tcw] 表ボタン= 詰めた整形 幅=' + _W + ' 行=' + _cl.length); vscode.window.setStatusBarMessage('MeOS: the table is wider than the wrap width ' + _W + ' — cells wrap inside (click outside the table to see it)', 4000); } } catch (_) { }   // v5.1.198: 折り返し幅に収まらない表= セルの中で折り返す形
   const withIndent = formatted.map(l => indent + l);
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, new vscode.Range(blk.start, 0, blk.end, doc.lineAt(blk.end).text.length), withIndent.join('\n'));
@@ -38902,6 +39004,7 @@ function meosRowCellCount(text) { const n = meosRowPipePositions(text).length; r
 function meosCellIndexAtChar(text, ch) { const ps = meosRowPipePositions(text); if (ps.length < 2) return 0; for (let k = 0; k < ps.length - 1; k++) { if (ch > ps[k] && ch <= ps[k + 1]) return k; } return ch <= ps[0] ? 0 : ps.length - 2; }
 function meosCellContentPos(text, k) { const ps = meosRowPipePositions(text); if (ps.length < 2) return 0; if (k < 0) k = 0; if (k > ps.length - 2) k = ps.length - 2; let c = ps[k] + 1; while (c < ps[k + 1] && text.charAt(c) === ' ') c++; if (c >= ps[k + 1]) c = Math.min(ps[k] + 2, ps[k + 1]); return c; }
 function meosTableInfo(doc, line) {
+  if (meosTcwIsVirtual(doc, line)) return null;   // v5.1.198: セルの中で折り返して描いている表= ほかの表の装飾は手を引く
   const blk = meosTableBlockRange(doc, line); if (!blk) return null;
   let sep = -1; const rows = [];
   for (let i = blk.start; i <= blk.end; i++) { if (sep < 0 && meosIsTableSeparator(meosSplitTableRow(doc.lineAt(i).text))) sep = i; }
@@ -39284,7 +39387,7 @@ function meosApplyTableRowLineDecorations(editor) {
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const blockCache = new Map();
     function blockFor(ln) {
-      const blk = meosTableBlockRange(doc, ln); if (!blk) return null;
+      const blk = meosTableBlockRange(doc, ln); if (!blk) return null; if (meosTcwIsVirtual(doc, blk.start)) return null;   /* v5.1.198: セルの中で折り返して描いている表には罫線を引かない */
       if (blockCache.has(blk.start)) return blockCache.get(blk.start);
       const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
       const rows = lines.map(meosSplitTableRow); let sepIdx = -1;
