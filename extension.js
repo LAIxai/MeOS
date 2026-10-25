@@ -38626,11 +38626,13 @@ function meosTcwRowStr(cells, c) {   // 桁揃え= 目標の桁へ(全角の端�
   return s;
 }
 const _meosTcwNeedCache = new Map();
+// v5.1.201(俊克 am00:39 改良1「インラインコードの表示がおかしい」): 見せかけの字= 隠れる印を外した字から、インラインコードの ` を外し、\| は | にする(幅もこの字で数える)
+function meosTcwDisplay(x) { return String(meosStripHiddenForWidth(x) || '').replace(/`([^`]*)`/g, '$1').replace(/\\\|/g, '|'); }
 function meosTcwLayout(lines, W) {
   if (!(W > 0) || !lines.length) return null;
   if (lines.some(t => t.indexOf('<!--') >= 0)) return null;
   const rs = lines.map(t => meosSplitTableRow(t)); const sep = rs.findIndex(r => meosIsTableSeparator(r)); if (sep < 0) return null;
-  const nc = Math.max(...rs.map(r => r.length)); const vis = rs.map(r => r.map(x => meosStripHiddenForWidth(x)));
+  const nc = Math.max(...rs.map(r => r.length)); const vis = rs.map(r => r.map(x => meosTcwDisplay(x)));
   const nat = new Array(nc).fill(1); vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { nat[k] = Math.max(nat[k], Math.ceil(meosStrWidth(t))); }); });
   const tot = (x) => x.reduce((p, q) => p + q, 0) + 3 * nc + 1;
   // ★v5.1.200(俊克 am00:31 バグ1「今あなたがここで書いた表は、なぜ整形しても、セル折り返しにならないのか?」): 字の幅の合計(46桁)は幅50に収まるので入らないと判断していた。
@@ -38663,12 +38665,12 @@ function meosTcwCompactLines(lines, W) {
     return line;
   });
 }
-let _meosTcwHide = null, _meosTcwPiece = null, _meosTcwLine = null; const _meosTcwVirtual = new Map(); const _meosTcwSig = new Map();
+let _meosTcwHide = null, _meosTcwPiece = null, _meosTcwLine = null, _meosTcwCover = null; const _meosTcwVirtual = new Map(); const _meosTcwSig = new Map();
 function meosTcwIsVirtual(doc, line) { try { const s = _meosTcwVirtual.get(doc.uri.toString()); return !!(s && s.has(line)); } catch (_) { return false; } }
 function meosApplyTableCellWrapDecorations(editor) {
   try {
     if (!editor || !editor.document || MEOS_RELEASE_PHASE < 3) return;
-    const doc = editor.document, uri = doc.uri.toString(), set = new Set(), hides = [], pieces = [], rules = [], logs = [];
+    const doc = editor.document, uri = doc.uri.toString(), set = new Set(), hides = [], pieces = [], rules = [], covers = [], logs = [];
     const W = meosFenceWrapColumn(doc);
     if (W > 0 && isMarkdownDocument(doc)) {
       const cur = (editor.selections || [editor.selection]).map(x => x.active.line), lhEm = meosVeilLineEm(doc), done = new Set();
@@ -38685,11 +38687,13 @@ function meosApplyTableCellWrapDecorations(editor) {
         //   各行が取っている段(ソースの段 R)の下端に細い線(panel.border 2px)・区切りの行は --- を描かず下に太い線(foreground 3px)・表の上端に細い線
         const tw = L.c.reduce((p, q) => p + q, 0) + 3 * L.nc + 1, em = (x) => Math.round(x * lhEm * 1000) / 1000;
         const rule = (ln2, rowsDown, px, col) => rules.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '',
-          textDecoration: 'none; position: absolute; left: 0; top: calc(' + em(rowsDown) + 'em - ' + px + 'px); width: ' + tw + 'ch; height: ' + px + 'px; background: ' + col + '; z-index: 2; pointer-events: none;' } } });
+          textDecoration: 'none; position: absolute; left: 0; top: calc(' + em(rowsDown) + 'em - ' + px + 'px); width: ' + tw + 'ch; height: ' + px + 'px; background: ' + col + '; z-index: 4; pointer-events: none;' } } });
         rule(blk.start, 0, 2, 'var(--vscode-panel-border)');   // 上端= 最初の行の上に
         for (let i = 0; i < lines.length; i++) {
           const ln2 = blk.start + i, t = lines[i]; set.add(ln2); hides.push(new vscode.Range(ln2, 0, ln2, t.length));
           const Ri = Math.max(L.rows[i].h, meosTcwRowsOf(t, W));
+          // v5.1.201: 下を覆う板= その行が取る段の全部を地の色で(ソースに掛かった装飾= インラインコードの板などが透けない)。重なり= 覆う板(2) < 見せかけの字(3) < 罫線(4)
+          covers.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '', textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + (tw + 1) + 'ch; height: ' + em(Ri) + 'em; background: var(--vscode-editor-background); z-index: 2; pointer-events: none;' } } });
           if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
           if (L.rows[i].sep) { logs.push((ln2 + 1) + ':sep'); continue; }   // 区切りの行の --- は描かない(太い線だけ)
           L.rows[i].vis.forEach((v, j) => { if (j >= t.length) return;
@@ -38706,6 +38710,8 @@ function meosApplyTableCellWrapDecorations(editor) {
     if (hides.length && !_meosTcwHide) _meosTcwHide = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (pieces.length && !_meosTcwPiece) _meosTcwPiece = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (rules.length && !_meosTcwLine) _meosTcwLine = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (covers.length && !_meosTcwCover) _meosTcwCover = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (_meosTcwCover) editor.setDecorations(_meosTcwCover, covers);
     if (_meosTcwHide) editor.setDecorations(_meosTcwHide, hides);
     if (_meosTcwPiece) editor.setDecorations(_meosTcwPiece, pieces);
     if (_meosTcwLine) editor.setDecorations(_meosTcwLine, rules);
