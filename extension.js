@@ -14095,7 +14095,7 @@ function meosHelperSound() {
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'THUMP' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'thump-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.0.18: 閉じていても V-helper が足ダン
-    if (name === 'EEK-EEK' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'eek-v5.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.1.134: 🐒も閉じていても鳴るようヘルパーへ
+    if (name === 'EEK-EEK' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'eek-v6.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.1.134: 🐒も閉じていても鳴るようヘルパーへ
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
     if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); for (let ms = 500; ms <= 1000; ms += 100) { const src = meosGrowlPath(ms / 1000), dst = path.join(meosHelperDir(), 'growl-v6-' + ms + '.wav'); if (src && !fs.existsSync(dst)) fs.copyFileSync(src, dst); } file = path.join(meosHelperDir(), 'growl-v6-1000.wav'); } catch (_) { } }   // v4.2.621 / v4.2.629: 長さ6本を全部渡す(ヘルパーが選ぶ)
     if (name === 'ROCKET' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'rocket-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); const _fsrc = meosRocketPath(true), _fdst = path.join(meosHelperDir(), 'rocket-v2-fade.wav'); if (_fsrc && !fs.existsSync(_fdst)) fs.copyFileSync(_fsrc, _fdst); file = dst; } catch (_) { } }   // v4.2.667
@@ -16291,16 +16291,22 @@ function meosThumpPath() {
 //   v5.1.134 の一から計算した声だけを残す(v5.1.181/183 の素材から測った表は外した= 作者の名前を書く欄も要らない)。
 //   高い音= 倍音8→14本・下がり方 1.2→0.9・7kHz の山・息 0.12→0.22(重心 2915→3604Hz)。16kHz の手前で倍音を弱める(本数が替わる所で段にならない)。
 //   間の別の音= 声の終わりが -18dB から急に0へ切れていた(プツッ)→ 終わりの18%を0まで滑らかに下げる。3声目は 0.82秒・高さ16%上。
-let _meosEekFile = '';
+// ★v5.1.186(俊克 10.25 pm05:07「3音を1/f揺らぎで強弱を付けよう。そして、低い倍音を足してみよう」):
+//   強弱= 3声それぞれの大きさを Mew と同じ Voss-McCartney の1/f(n回目は n の末尾の0の数の段だけ引き直す)で。Mew の4段・0.55〜1.15倍では続く3声がほぼ同じ(差1dB)
+//     → 3段に減らし、大きさを dB で振る((平均-0.5)×36dB)= 続く3声でも数dBの差。
+//     鳴るたびに作り直す(作るのは20ミリ秒ほど)= 毎回少しずつ違う強弱。V-helper の写しは最初に作った1本のまま。
+//   低い倍音= 地声の 1/2倍(0.35)と 1.5倍(0.25)= 悲鳴の声が割れて濁る所(声の中ほどで強く、頭と尻は弱い)。
+let _meosEekFile = '', _meosEekRows = [Math.random(), Math.random(), Math.random()], _meosEekN = 0;
+function meosEekGain() { _meosEekN++; let k = 0, n = _meosEekN; while (k < 2 && !(n & 1)) { n >>= 1; k++; } _meosEekRows[k] = Math.random(); const x = _meosEekRows.reduce((a, b) => a + b, 0) / _meosEekRows.length; return Math.pow(10, (x - 0.5) * 36 / 20); }   // 3段・大きさは dB で振る(±9dB ほど)= 続く3声でも差が聞こえる
 function meosEekPath() {
-  if (_meosEekFile) { try { if (require('fs').existsSync(_meosEekFile)) return _meosEekFile; } catch (_) { } }
   try {
     const os = require('os'), fs = require('fs'), path = require('path');
+    const EEK_LOW = 0.9;   // v5.1.186: 低い倍音の強さ
     const rate = 44100, L = 1.25, n = Math.round(L * rate), T = 0.28, calls = [[0.02, 1.0], [0.42, 1.08], [0.82, 1.16]];   // v5.1.185(俊克「キー、キー、キーの3音にしよう」)
     let seed = 20261022; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    const smp = new Float64Array(n); let peak = 0;
+    const smp = new Float64Array(n), gs = new Float64Array(n).fill(1); let peak = 0;
     for (const [t0, up] of calls) {
-      let ph = 0, hp = 0, lp = 0;
+      let ph = 0, hp = 0, lp = 0; const gn = meosEekGain();   // v5.1.186: 1/f の強弱(丸めた後に掛ける= tanh で潰れない)
       const i0 = Math.round(t0 * rate), m = Math.round(T * rate);
       for (let j = 0; j < m && i0 + j < n; j++) {
         const t = j / rate, u = t / T;
@@ -16308,23 +16314,24 @@ function meosEekPath() {
         const f = (1250 + 900 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.15)), 0.5)) * up * jit;
         ph += 2 * Math.PI * f / rate;
         let v = 0;
-        for (let k = 1; k <= 14; k++) { const fk = f * k; if (fk > 16000) break; const top = Math.min(1, (16000 - fk) / 2500); const form = 1 + 0.8 * Math.exp(-Math.pow((fk - 3000) / 900, 2)) + 0.5 * Math.exp(-Math.pow((fk - 5200) / 1200, 2)) + 0.6 * Math.exp(-Math.pow((fk - 7200) / 1600, 2)); v += Math.sin(ph * k + k * 0.7) * form * top / Math.pow(k, 0.9); }   // v5.1.184: 高い音を足す(倍音8→14本・下がり方 1.2→0.9・7kHz の山)
+        for (let k = 1; k <= 14; k++) { const fk = f * k; if (fk > 16000) break; const top = Math.min(1, (16000 - fk) / 2500); const form = 1 + 0.8 * Math.exp(-Math.pow((fk - 3000) / 900, 2)) + 0.5 * Math.exp(-Math.pow((fk - 5200) / 1200, 2)) + 0.6 * Math.exp(-Math.pow((fk - 7200) / 1600, 2)); v += Math.sin(ph * k + k * 0.7) * form * top / Math.pow(k, 0.9); }
+        { const mid = Math.sin(Math.PI * Math.min(1, u * 1.1)); v += (EEK_LOW * Math.sin(ph * 0.5 + 0.3) + EEK_LOW * 0.7 * Math.sin(ph * 1.5 + 1.1)) * mid; }   // v5.1.186: 低い倍音(1/2倍・1.5倍)   // v5.1.184: 高い音を足す(倍音8→14本・下がり方 1.2→0.9・7kHz の山)
         const wn = rnd() * 2 - 1; hp = 0.85 * (hp + wn - lp); lp = wn;   // 高い所だけの息
         const rough = 1 - 0.3 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 70 * t));
         const env = Math.min(1, t / 0.012) * (u > 0.75 ? Math.exp(-(u - 0.75) * 9) : 1) * (u > 0.82 ? 0.5 + 0.5 * Math.cos(Math.PI * (u - 0.82) / 0.18) : 1);   // v5.1.185: 終わりは0まで滑らかに(-18dB から急に切れて「プツッ」と別の音に聞こえた)
-        smp[i0 + j] += (v * 0.55 * rough + hp * 0.22) * env;   // v5.1.184: 息 0.12→0.22
+        smp[i0 + j] += (v * 0.55 * rough + hp * 0.22) * env; gs[i0 + j] = gn;   // v5.1.184: 息 0.12→0.22
       }
     }
-    for (let i = 0; i < n; i++) { smp[i] = Math.tanh(2 * smp[i]) / Math.tanh(2); if (Math.abs(smp[i]) > peak) peak = Math.abs(smp[i]); }
+    for (let i = 0; i < n; i++) { smp[i] = Math.tanh(2 * smp[i]) / Math.tanh(2) * gs[i]; if (Math.abs(smp[i]) > peak) peak = Math.abs(smp[i]); }
     const buf = Buffer.alloc(44 + n * 2);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
     buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
     const k = peak > 0 ? 0.95 / peak : 1; for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, smp[i] * k)) * 32767), 44 + i * 2);
-    const f = path.join(os.tmpdir(), 'meos-eek-v5.wav');
+    const f = path.join(os.tmpdir(), 'meos-eek-v6-' + (_meosEekN & 1 ? 'a' : 'b') + '.wav');   // v5.1.186: 鳴るたびに作り直す= 2本を交互に(鳴っている最中のファイルに書かない)
     fs.writeFileSync(f, buf); _meosEekFile = f; return f;
-  } catch (_) { return null; }
+  } catch (_) { return _meosEekFile || null; }
 }
 // ★v4.2.667: 🚀ROCKET= 俊克がアラームアプリの試作用に用意したフリー素材(On-Jin ～音人～「ロケット発射」)の最初の3秒を同梱していた
 // ★★v4.2.669(俊克「周波数解析して、合成してはどうか?」「1個目を」): 素材のファイルを配らない= 元の0〜3秒を 25ms×20帯域(40〜12000Hz・対数)で測った
