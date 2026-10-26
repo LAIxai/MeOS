@@ -36563,6 +36563,11 @@ function toggleMeDock(editorOverride) {
             await vscode.commands.executeCommand('workbench.action.focus' + ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'][_tab.group.viewColumn - 1] + 'EditorGroup');
             await vscode.commands.executeCommand('workbench.action.openEditorAtIndex', _tab.group.tabs.indexOf(_tab));
           }
+          // ★v5.1.212(俊克 10.27 am00:30 改良1「エディターをアクティブにして、直ぐに入力ができるように」): 押したのは Me Dock(webview)なので、
+          //   タブを選んでも打鍵は Me Dock に残る→ 選んだタブのエディタへ焦点を戻す(家の口 meosFocusBack= 同じ文書を見せ直すだけで飛ばない)
+          try { await new Promise(r => setTimeout(r, 60)); const _u = _tab.input && _tab.input.uri ? _tab.input.uri.toString() : '';
+            const _ed = vscode.window.visibleTextEditors.find(e => e.viewColumn === _tab.group.viewColumn && e.document.uri.toString() === _u);
+            if (_ed) await meosFocusBack(_ed); } catch (_) { }
           try { meosDbg('[openRecent] タブを選んだ 列=' + _tab.group.viewColumn + ' 番=' + _tab.group.tabs.indexOf(_tab) + ' 名=' + ((_tab.input && _tab.input.uri && _tab.input.uri.scheme) || '')); } catch (_) { }
           return;
         }
