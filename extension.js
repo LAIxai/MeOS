@@ -35923,9 +35923,12 @@ function autoShowMeDockForEditor(editor) {
     meDockAutoTimer = null;
     if (!editor || !editor.document) return;
     setMeDockTargetEditor(editor);
-    if (!meDockPanel) toggleMeDock(editor);
+    // ★v5.1.215(俊克 10.27 am00:50 バグ1「最初の1回だけフォーカスされ、その後はされない」→ 測った= 切り替えるたびに Me Dock を作り直し、
+    //   新しい面が焦点を取っていた([dock] wvFocus on が焦点を戻した0.3秒後)。→ 文書が替わった時の作り直しは焦点を取らない(手で開いた時は今まで通り)
+    if (!meDockPanel) { _meDockCreatePreserveFocus = true; try { toggleMeDock(editor); } finally { _meDockCreatePreserveFocus = false; } }
   }, 80);
 }
+let _meDockCreatePreserveFocus = false;
 
 
 // {* ▼mCN=0868_ZOOM_ME_LOAD // v0.9.434 Me Lens line range loader (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
@@ -36272,7 +36275,7 @@ function toggleMeDock(editorOverride) {
   meDockPanel = vscode.window.createWebviewPanel(
     'meDock',
     'Me Dock' + (_mdVer ? ' v' + _mdVer : ''),
-    vscode.ViewColumn.Beside,
+    _meDockCreatePreserveFocus ? { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true } : vscode.ViewColumn.Beside,   // v5.1.215
     { enableScripts: true, retainContextWhenHidden: true }
   );
 
@@ -44474,6 +44477,12 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (_meosCaretProbing) return; try { meosPuzzleCrownAtCaret(e); } catch (_) { } }));   // v4.2.563
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => meosPostCaretDay(false)));
+  // ★v5.1.215(俊克 am01:04 改良1「切り替える度に、カレント行の位置がだんだん下にズレて行く・だいぶ前からの症状」): 測る= 離れる時と戻った後(0/0.5/1.5/3秒)に、
+  //   カーソル行が窓の上端から何行目に見えているかを [caretDrift] へ。どの時刻にずれるかで犯人(Me Dock の作り直し・畳み・見張り)を分ける
+  { let _cdPrev = null; const _cdNote = (ed, tag) => { try { if (!ed || !ed.document) return; const vr = ed.visibleRanges && ed.visibleRanges[0]; const c = ed.selection.active.line;
+      meosDbg('[caretDrift] ' + tag + ' ' + ed.document.uri.scheme + ':' + require('path').basename(ed.document.uri.path) + ' カーソル=' + (c + 1) + ' 上端=' + (vr ? vr.start.line + 1 : '?') + ' 段差=' + (vr ? c - vr.start.line : '?')); } catch (_) { } };
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (_cdPrev && _cdPrev !== ed) _cdNote(_cdPrev, '離れる'); _cdPrev = ed || _cdPrev;
+      if (ed) for (const ms of [0, 500, 1500, 3000]) setTimeout(() => _cdNote(ed, '戻って' + ms + 'ms'), ms); })); }
   // ★v5.0.0-27(俊克 バグ1「閉じた膜の右端の⋯にホーバーすると選択指・クリックすると展開される。開閉は▼▲だけが担うべき」):
   //   ⋯は VS Code 自身の畳みの印で、押すと VS Code が開く(拡張からは消せない・押させない事もできない)。
   //   → 見分けて畳み直す: マウスで膜の頭の行の行末に着地し、その直前は畳まれていて、直後に開いていたら= ⋯を押した。▼▲は行頭なので当たらない
