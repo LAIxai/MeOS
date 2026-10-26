@@ -3480,6 +3480,7 @@ let suppressAutoUnfoldUntil = 0;
 let disposables = [];
 let mstatsSyncing = false;
 let mstatsRestoreDone = new Set();
+let mstatsRestoreFinished = new Set();   // v5.1.222: 畳み直しまで終わった文書(起動時の位置戻しはこの後)
 let mstatsSyncTimer = null;
 // v0.9.633: single debounced timer for the mSTAT badge metadata edit (was an
 // un-cleared setTimeout per refresh → stacked edits firing 260ms behind every
@@ -5425,6 +5426,7 @@ async function restoreMstatsForEditor(editor) {
     try {
       vscode.window.showTextDocument(editor.document, editor.viewColumn, false).then(_focusBack, _focusBack);
     } catch (_) { _focusBack(); }
+    mstatsRestoreFinished.add(key);
   }, 180);
 }
 
@@ -44391,7 +44393,7 @@ function meosLastLineFinish(why) {                        // v4.0.309: ここを
   _meosLastLineDone = true; _meosLastLineReady = true;
   try { meosDbg('[lastLine] ' + why); } catch (_) { }
 }
-function meosRestoreLastLineOnStart(attempt) {
+function meosRestoreLastLineOnStart(attempt, wait) {
   if (_meosLastLineDone) return;
   try {
     if (!vscode.workspace.getConfiguration('laiMembrane').get('restoreLastLineOnStart', true)) { meosLastLineFinish('設定でoff'); return; }
@@ -44399,6 +44401,30 @@ function meosRestoreLastLineOnStart(attempt) {
     if (!ed || !ed.document) { if ((attempt || 0) < 10) setTimeout(() => meosRestoreLastLineOnStart((attempt || 0) + 1), 1500); else meosLastLineFinish('エディタが見つからない'); return; }
     const doc = ed.document;
     if (!meosDocFsPath(doc) || !meosIsProseDoc(doc)) { meosLastLineFinish('散文のファイルでない'); return; }   // v5.1.7: 入口の文書も
+    // ★v5.1.222(俊克 10.27 am08:11「VSCmを再起動すると、3行目が表示されてしまうので、Ⓣボタンの飛び先に飛ぶようにしよう。
+    //   膜の先頭ではなく、いつものように、最後にいた場所。日記の無いファイルなら、最後にいた場所」):
+    //   ★真因= 戻すのが**⊖の畳み直し(restoreMstatsForEditor)より先**だった。畳み直しは、カーソルを畳む範囲の外
+    //     (=一番外側の膜の頭・3行目)へ逃がしてから畳むので、戻した行が上書きされていた(ログ= 行382へ戻した→1秒後カーソル=4)。
+    //   → **畳み直しが終わるのを待ってから**戻す(最長12秒で諦めて戻す)。
+    const _wait = wait || 0;
+    if (!mstatsRestoreFinished.has(String(doc.uri)) && _wait < 40) { setTimeout(() => meosRestoreLastLineOnStart(attempt, _wait + 1), 300); return; }
+    //   ★日記なら Ⓣ と同じ飛び先= 今日の膜(無ければ今日より前で一番新しい日)の、最後にいた行(jumpToWorkingTocItem)。
+    //     Ⓣと違い、今日の膜が無くても新しい日は作らない(起動時に驚かせない)。
+    try {
+      const _n = new Date(), _tk = _n.getFullYear() * 10000 + (_n.getMonth() + 1) * 100 + _n.getDate();
+      let _hit = null, _bk = -1;
+      for (const o of (collectAllOpenMembranes(doc) || [])) {
+        const dt = parseDiaryDateFromName(o.id); if (!dt) continue;
+        const k = dt.y * 10000 + dt.mo * 100 + dt.d;
+        if (k <= _tk && (k > _bk || (k === _bk && o.start < _hit.start))) { _bk = k; _hit = o; }
+      }
+      if (_hit) {
+        setMeDockTargetEditor(ed);
+        jumpToWorkingTocItem(_hit.id);
+        meosLastLineFinish('Ⓣの飛び先へ ' + _hit.id + ' ' + doc.uri.fsPath);
+        return;
+      }
+    } catch (e) { meosDbg('[lastLine] 日記の判定で例外 ' + e); }
     const ln = Math.max(0, Math.min(doc.lineCount - 1, Math.trunc(Number(meosLastLineMap()[doc.uri.fsPath]) || 0)));
     if (!(ln > 0)) { meosLastLineFinish('記憶が無い(または先頭) ' + doc.uri.fsPath); return; }   // 起動時に驚かせない
     const p = new vscode.Position(ln, 0);
