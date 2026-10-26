@@ -35916,6 +35916,16 @@ function autoShowMeDockForEditor(editor) {
   meDockAutoLastUri = uri;
   setMeDockTargetEditor(editor);
 
+  // ★★v5.1.219(俊克 am02:52「📌を押すと先頭を表示する・Line表示は162042のまま・矢印キーでそこへ」= カーソルは正しいのに画面だけ先頭):
+  //   測った= 切り替えるたびに Me Dock を閉じて作り直していた→ Me Dock のグループが消える(日記が全幅)→ 新しい面が横に出る(半分)→ 覚えた幅へ戻す
+  //   ([dockWidth] 戻した)= 日記のエディタが1回の切替で3度も組み直され、その後に画面だけ先頭([caretDrift] 上端=1・カーソルはそのまま)。焦点も新しい面が取っていた(v5.1.215)。
+  //   → 開いている時は**作り直さない**= 宛先を替えて中身だけ描き直す(家の口 meosMeDockRedraw= ロック解除の後と同じ)。閉じている時だけ今まで通り作る
+  if (meDockPanel) {
+    if (meDockAutoTimer) { clearTimeout(meDockAutoTimer); meDockAutoTimer = null; }
+    try { meosMeDockRedraw(); } catch (_) { }
+    return;
+  }
+
   // Different document: discard the stale Dock first, then create a fresh one.
   disposeMeDockPanelForAutoShow();
 
