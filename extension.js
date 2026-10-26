@@ -38639,11 +38639,35 @@ function meosTcwRowStr(cells, c, al) {   // 桁揃え= 目標の桁へ(全角の
 const _meosTcwNeedCache = new Map();
 // v5.1.201(俊克 am00:39 改良1「インラインコードの表示がおかしい」): 見せかけの字= 隠れる印を外した字から、インラインコードの ` を外し、\| は | にする(幅もこの字で数える)
 function meosTcwDisplay(x) { return String(meosStripHiddenForWidth(x) || '').replace(/`([^`]*)`/g, '$1').replace(/\\\|/g, '|'); }
+// ★v5.1.208(俊克 pm04:43「中途半端にするよりは、セル折り返しの仕上げもやったほうが良い」= 引き継ぎ①): 見せかけの字に飾りを残す=
+//   セルの字を1字ずつ飾り(b 太字 / i 斜体 / c インラインコード / l リンク)付きで返す。印は私用の番兵(U+E140〜)に置き換えてから meosStripHiddenForWidth に通し、
+//   残った番兵で飾りを数える。字が meosTcwDisplay と1字でも違えば飾りは捨てる(幅の計算を今までと1つにする)
+function meosTcwStyled(x) {
+  const plain = meosTcwDisplay(x); const none = { text: plain, st: Array.from(plain).map(() => '') };
+  try {
+    let t = String(x || ''); const codes = [];
+    t = t.replace(/(`+)([^`]*?)\1/g, (m, q, inner) => { codes.push(inner); return '\uE14A' + String.fromCharCode(0xE200 + codes.length - 1) + '\uE14B'; });
+    t = t.replace(/(?<!\!)\[([^\]\n]+)\]\(([^()\s<][^()\n]*)\)/g, '\uE148$1\uE149');
+    t = t.replace(/\*\*\*([^*\n]+?)\*\*\*/g, '\uE140\uE144$1\uE145\uE141').replace(/\*\*([^*\n]+?)\*\*/g, '\uE140$1\uE141')
+      .replace(/(?<![*A-Za-z0-9])\*([^*\n]+?)\*(?![*A-Za-z0-9])/g, '\uE144$1\uE145').replace(/(?<![_A-Za-z0-9])_([^_\n]+?)_(?![_A-Za-z0-9])/g, '\uE144$1\uE145');
+    t = String(meosStripHiddenForWidth(t) || '').replace(/\\\|/g, '|');
+    const ch = [], st = []; let b = 0, it = 0, cd = 0, ln = 0;
+    for (const u of Array.from(t)) {
+      const cp = u.codePointAt(0);
+      if (cp === 0xE140) b++; else if (cp === 0xE141) b = Math.max(0, b - 1); else if (cp === 0xE144) it++; else if (cp === 0xE145) it = Math.max(0, it - 1);
+      else if (cp === 0xE148) ln++; else if (cp === 0xE149) ln = Math.max(0, ln - 1); else if (cp === 0xE14A) cd++; else if (cp === 0xE14B) cd = Math.max(0, cd - 1);
+      else if (cp >= 0xE200 && cp < 0xE200 + codes.length) { for (const v of Array.from(codes[cp - 0xE200])) { ch.push(v); st.push('c' + (ln ? 'l' : '')); } }
+      else { ch.push(u); st.push((b ? 'b' : '') + (it ? 'i' : '') + (ln ? 'l' : '') + (cd ? 'c' : '')); }
+    }
+    if (ch.join('') !== plain) return none;
+    return { text: plain, st };
+  } catch (_) { return none; }
+}
 function meosTcwLayout(lines, W) {
   if (!(W > 0) || !lines.length) return null;
   if (lines.some(t => t.indexOf('<!--') >= 0)) return null;
   const rs = lines.map(t => meosSplitTableRow(t)); const sep = rs.findIndex(r => meosIsTableSeparator(r)); if (sep < 0) return null;
-  const nc = Math.max(...rs.map(r => r.length)); const vis = rs.map(r => r.map(x => meosTcwDisplay(x)));
+  const nc = Math.max(...rs.map(r => r.length)); const sty = rs.map((r, i) => i === sep ? [] : r.map(x => meosTcwStyled(x))); const vis = rs.map((r, i) => i === sep ? r : sty[i].map(o => o.text));   // v5.1.208: 飾り付き
   const nat = new Array(nc).fill(1); vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { nat[k] = Math.max(nat[k], Math.ceil(meosStrWidth(t))); }); });
   const tot = (x) => x.reduce((p, q) => p + q, 0) + 3 * nc + 1;
   // ★v5.1.200(俊克 am00:31 バグ1「今あなたがここで書いた表は、なぜ整形しても、セル折り返しにならないのか?」): 字の幅の合計(46桁)は幅50に収まるので入らないと判断していた。
@@ -38662,7 +38686,19 @@ function meosTcwLayout(lines, W) {
     if (i === sep) return { vis: ['|' + c.map(x => '-'.repeat(x + 2)).join('|') + '|'], h: 1, sep: true };
     const sg = c.map((x, k) => meosTcwSegs(r[k] || '', x)); const h = Math.max(...sg.map(q => q.length)); const v = [];
     for (let j = 0; j < h; j++) v.push(meosTcwRowStr(c.map((x, k) => sg[k][j] || ''), c, al));
-    return { vis: v, h };
+    // ★v5.1.208: 描く駒= 縦線と、セルの字を飾りの同じ塊ごとに、桁の位置(半角=1)を決めて置く(1本の字で描くと飾りを部分に掛けられない)。
+    //   縦線は目標の桁そのもの(端数を空白で丸めない)= 全角1.67の端数で縦線が揺れない
+    const P = [0]; for (let k = 0; k < c.length; k++) P.push(P[k] + c[k] + 3);
+    const stOf = c.map((x, k) => { const full = Array.from((r[k] || '')), fs = (sty[i][k] && sty[i][k].st) || []; let p = 0;
+      return sg[k].map(seg => { const a = Array.from(seg); if (a.length && full.slice(p, p + a.length).join('') !== seg && full[p] === ' ') p++; const o = fs.slice(p, p + a.length); p += a.length; return o; }); });
+    const pc = [];
+    for (let j = 0; j < h; j++) { const row = P.map(x => ({ x, t: '|', st: 'p' }));
+      c.forEach((cw, k) => { const seg = sg[k][j] || ''; if (!seg) return; const a = Array.from(seg), ss = stOf[k][j] || [], w0 = meosStrWidth(seg), free = Math.max(0, cw - w0);
+        let x = P[k] + 2 + ((al[k] === 'r') ? free : (al[k] === 'c' ? Math.floor(free / 2 + 0.25) : 0)), run = '', rs0 = null;
+        const flush = () => { if (run) { row.push({ x, t: run, st: rs0 || '' }); x += meosStrWidth(run); } run = ''; };
+        a.forEach((u, q) => { const s0 = ss[q] || ''; if (rs0 !== null && s0 !== rs0) flush(); rs0 = s0; run += u; }); flush(); });
+      pc.push(row); }
+    return { vis: v, h, pc };
   });
   return { c, rows, sep, nc };
 }
@@ -38711,9 +38747,13 @@ function meosApplyTableCellWrapDecorations(editor) {
           covers.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '', textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + (tw + 1) + 'ch; height: ' + em(Ri) + 'em; background: var(--vscode-editor-background); z-index: 2; pointer-events: none;' } } });
           if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
           if (L.rows[i].sep) { logs.push((ln2 + 1) + ':sep'); continue; }   // 区切りの行の --- は描かない(太い線だけ)
-          L.rows[i].vis.forEach((v, j) => { if (j >= t.length) return;
-            pieces.push({ range: new vscode.Range(ln2, j, ln2, j), renderOptions: { before: { contentText: v.replace(/ /g, ' '),
-              textDecoration: 'none; position: absolute; left: 0; top: ' + (Math.round(j * lhEm * 1000) / 1000) + 'em; white-space: pre; z-index: 3; pointer-events: none; color: ' + fg + ' !important; -webkit-text-fill-color: ' + fg + ' !important;' } } }); });
+          // ★v5.1.208: 段ごとに駒(縦線・飾りの塊)を桁の位置(ch)に置く。太字=太く/斜体=傾け/インラインコード=クリームの板(家の板と同じ #f3e6c4・濃い茶の字)/リンク=リンクの色＋下線
+          (L.rows[i].pc || []).forEach((row, j) => { if (j >= t.length) return; const top = (Math.round(j * lhEm * 1000) / 1000) + 'em';
+            row.forEach(pz => { const s0 = pz.st || '', code = s0.indexOf('c') >= 0, link = s0.indexOf('l') >= 0, col = code ? '#3b3020' : (link ? 'var(--vscode-textLink-foreground)' : fg);
+              pieces.push({ range: new vscode.Range(ln2, j, ln2, j), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
+                textDecoration: (link ? 'underline' : 'none') + '; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
+                  + (s0.indexOf('b') >= 0 ? ' font-weight: bold;' : '') + (s0.indexOf('i') >= 0 ? ' font-style: italic;' : '')
+                  + (code ? ' background: #f3e6c4; border-radius: 4px; box-shadow: 0 0 0 1px #cbb98c;' : '') } } }); }); });
           logs.push((ln2 + 1) + ':R' + meosTcwRowsOf(t, W) + '/h' + L.rows[i].h);
         }
         const sig = uri + '#' + blk.start + '#' + W + '#' + logs.join(',');
