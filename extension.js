@@ -36553,6 +36553,19 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'openRecent') { // v4.0.303: ▾の履歴から選んだファイルを開く
       try {
         const _p = String(message.path || '');
+        // ★v5.1.211(俊克 10.26 pm04:29 別件1「📌/↩での切替で、再読み込みするので、表示位置が変わってしまう。タブを選択することはできないのか?」):
+        //   タブが在る時は**タブを選ぶ**(そのグループへ移り、何番目のタブかで開く= タブを押したのと同じ)。表示位置もタブが覚えている姿のまま。
+        //   真因= 日記は 🔐 の入口のタブ(vault の名)で開いていることがある。file: の名で開くと別の文書として開き直し、
+        //   meosVaultRedirectFileTab がそれを閉じて入口のタブへ戻す= 俊克の「再読み込み」に見えた。タブが無い時だけ今まで通り開く。
+        const _tab = meosTabForPath(_p);
+        if (_tab && _tab.group && _tab.group.viewColumn >= 1 && _tab.group.viewColumn <= 8 && (_tab.group.tabs || []).indexOf(_tab) >= 0) {
+          if (!(_tab.isActive && _tab.group.isActive)) {
+            await vscode.commands.executeCommand('workbench.action.focus' + ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'][_tab.group.viewColumn - 1] + 'EditorGroup');
+            await vscode.commands.executeCommand('workbench.action.openEditorAtIndex', _tab.group.tabs.indexOf(_tab));
+          }
+          try { meosDbg('[openRecent] タブを選んだ 列=' + _tab.group.viewColumn + ' 番=' + _tab.group.tabs.indexOf(_tab) + ' 名=' + ((_tab.input && _tab.input.uri && _tab.input.uri.scheme) || '')); } catch (_) { }
+          return;
+        }
         const d = await vscode.workspace.openTextDocument(vscode.Uri.file(_p));
         await vscode.window.showTextDocument(d, { viewColumn: meosColumnForPath(_p), preview: false }); // v4.0.305: 既に開いている所へ戻る
       } catch (_) { try { vscode.window.showInformationMessage('MeOS: could not open that file.'); } catch (__) {} }
