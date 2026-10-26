@@ -41,6 +41,8 @@ file, too, carries two layers in one — the text you read, and the comments tha
 > ## **Ai, Mai, MeOS 🐥**
 >
 > ## **You(AI) & I(LAI) 🐔**
+>
+> ## **Me, Mier, Mew 🐱**
 
 <!-- v5.1 の2本柱(🔐暗号の仮想化/🏦貸金庫膜)の節は、この上に書く(2026.10.21 時点で未記入)。 -->
 
