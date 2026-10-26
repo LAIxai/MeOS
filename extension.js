@@ -38776,7 +38776,7 @@ function meosApplyTableCellWrapDecorations(editor) {
             row.forEach(pz => { const s0 = pz.st || '', code = s0.indexOf('c') >= 0, link = s0.indexOf('l') >= 0, col = code ? '#3b3020' : (link ? 'var(--vscode-textLink-foreground)' : ((s0.indexOf('b') >= 0 && boldCol) ? boldCol : ((s0.indexOf('i') >= 0 && itCol) ? itCol : fg)));
               pieces.push({ range: new vscode.Range(ln2, j, ln2, j), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
                 textDecoration: (link ? 'underline' : 'none') + '; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
-                  + (s0.indexOf('b') >= 0 ? ' font-weight: bold;' : '') + (s0.indexOf('i') >= 0 ? ' font-style: italic;' : '')
+                  + (s0.indexOf('b') >= 0 ? ' font-weight: 900; -webkit-text-stroke: 0.5px currentcolor;' : '')   /* ★v5.1.210(俊克 pm11:59「太字に見えない・74行目の表の外の太字と同じ太さに」): 実機(CDP)で測った= 表の外の太字は MeOS の飾り font-weight 900 ＋ 縁取り0.5px・見せかけは bold(700)だった→ 同じ値に */ + (s0.indexOf('i') >= 0 ? ' font-style: italic;' : '')
                   + (code ? ' background: #f3e6c4; border-radius: 4px; box-shadow: 0 0 0 1px #cbb98c;' : '') } } }); }); });
           logs.push((ln2 + 1) + ':R' + meosTcwRowsOf(t, W) + '/h' + L.rows[i].h);
         }
