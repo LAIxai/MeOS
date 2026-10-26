@@ -10465,6 +10465,14 @@ function postFixedWorkingTocSnapshot() {
   try { postGithubWizardState('sync'); } catch (_) {}
 }
 
+// ★v5.1.223(俊克 10.27 am08:44 改良1「飛んだ先の行が、エディターの表示領域の下の方になってしまう。上から5行目くらいに」):
+//   着地の行を上端に置いてから、見た目の行で4行だけ下げる(折り返しも1行と数える= editorScroll)。焦点のあるエディタにだけ効く
+async function meosRevealNearTop(ed, line) {
+  try {
+    ed.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.AtTop);
+    if (vscode.window.activeTextEditor === ed && line > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'line', value: 4 });
+  } catch (_) { }
+}
 function jumpToWorkingTocItem(rawKey, citeN) {
   // v0.9.694 (Phase 2c 俊克 pm00:44): H-TOC click is ALWAYS a one-way ⇒ jump now — the
   // citation(citeN) bidirectional 🔴 path is abolished (Current Me 統合). Force citeN=null so
@@ -10559,8 +10567,7 @@ function jumpToWorkingTocItem(rawKey, citeN) {
           // v0.9.850: 記憶した行へ着地(畳まれていればrevealで自然に展開=続きから書ける)。
           const mp = new vscode.Position(memLine, 0);
           ed.selection = new vscode.Selection(mp, mp);
-          const mt = ed.document.lineAt(memLine).text || '';
-          ed.revealRange(new vscode.Range(memLine, 0, memLine, Math.max(1, mt.length)), vscode.TextEditorRevealType.InCenter);
+          meosRevealNearTop(ed, memLine);   // v5.1.223: 中央でなく上から5行目
         } else {
           ed.selection = new vscode.Selection(r.start, r.start);
           ed.revealRange(new vscode.Range(i, 0, i, Math.max(1, text.length)), vscode.TextEditorRevealType.InCenter);
@@ -44551,8 +44558,8 @@ function activate(context) {
     //   カーソルは正しい行に居るので、→ ← を1回ずつ= VS Code がカーソルの行を見せに行く(覚えは要らない)。字が選ばれている時・別のエディタが前の時は触らない
     const _putBack = async (ed, tag) => { try { if (!ed || !ed.document || ed.document.isClosed || vscode.window.activeTextEditor !== ed) return; if (!ed.selection || !ed.selection.isEmpty) return;
       const c = ed.selection.active.line; const vis = (ed.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line); if (vis) return;
-      await vscode.commands.executeCommand('cursorRight'); await vscode.commands.executeCommand('cursorLeft');
-      meosDbg('[keepView] ' + tag + ' カーソル行が画面外→ → ← で見せた(カーソル=' + (c + 1) + ' 上端=' + ((ed.visibleRanges && ed.visibleRanges[0]) ? ed.visibleRanges[0].start.line + 1 : '?') + ')'); } catch (_) { } };
+      await meosRevealNearTop(ed, c);   // v5.1.223: → ← は下の端に見せるだけだった= 上から5行目へ
+      meosDbg('[keepView] ' + tag + ' カーソル行が画面外→ 上から5行目に見せた(カーソル=' + (c + 1) + ' 上端=' + ((ed.visibleRanges && ed.visibleRanges[0]) ? ed.visibleRanges[0].start.line + 1 : '?') + ')'); } catch (_) { } };
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor === vscode.window.activeTextEditor && e.textEditor === _cdPrev && Date.now() - (_cdPrevAt || 0) > 3500) _remember(e.textEditor); } catch (_) { } }));
     let _cdPrevAt = 0;
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (_cdPrev && _cdPrev !== ed) _cdNote(_cdPrev, '離れる'); _cdPrev = ed || _cdPrev; _cdPrevAt = Date.now();
