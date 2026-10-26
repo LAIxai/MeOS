@@ -41475,7 +41475,22 @@ async function meosAutoFoldSpecLines(editor, force) {
         if (_act && Date.now() - _act < 15000) { const _w1 = Date.now(); while ((_meosFoldServedAt.get(_ku) || 0) < _act && Date.now() - _w1 < 3000) await new Promise(r => setTimeout(r, 50));
           if ((_meosFoldServedAt.get(_ku) || 0) < _act) { meosFoldWhy('入ってきた後の畳み範囲が来ない(3秒)→ 今回は畳まない'); break; }
           if (Date.now() - (_meosFoldServedAt.get(_ku) || 0) < 120) await new Promise(r => setTimeout(r, 120)); } } catch (_) { }
+      // ★★v5.1.218(俊克 am02:45「全く変わらない。なぜ、その膜を閉じる処理を走らないようにできないのか? だったら、記憶している行数に飛べばいい」):
+      //   ①畳む直前に、今の画面で見えている物だけに絞る(切替直後の古い姿で選んだ画面外の 19行目などは畳まない= 一番外の膜を畳む入口を断つ)
+      //   ②それでもカーソルが動かされたら(VS Code が隠れたカーソルを外の膜の頭へ送った)、間違えて畳んだ外の膜を開き、覚えた行と画面の上端へ戻す
+      try { const _vrNow = editor.visibleRanges || []; const _before = heads.length;
+        heads = heads.filter(h => _vrNow.some(r => h >= r.start.line - 1 && h <= r.end.line + 1));
+        if (heads.length !== _before) meosFoldWhy('畳む直前に画面外を外した ' + _before + '→' + heads.length); } catch (_) { }
+      const _selB218 = editor.selection, _topB218 = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
       if (heads.length) await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
+      try { const _cNow = editor.selection.active.line, _cWas = _selB218 ? _selB218.active.line : -1;
+        if (_cWas >= 0 && _cNow !== _cWas && !heads.some(h => h === _cWas || h === _cWas - 1)) {
+          meosDbg('[fcFold] カーソルを動かされた ' + (_cWas + 1) + '→' + (_cNow + 1) + ' → 外の膜を開き、覚えた行へ戻す 上端=' + (_topB218 + 1));
+          try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [_cNow] }); } catch (_) { }
+          editor.selection = _selB218;
+          if (_topB218 >= 0) editor.revealRange(new vscode.Range(_topB218, 0, _topB218, 0), vscode.TextEditorRevealType.AtTop);
+          else editor.revealRange(_selB218, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        } } catch (_) { }
       try { meosDbg('[fcFold] ★一括で畳んだ blocks=' + heads.length + ' 画面上端 ' + _vt0 + '→' + ((editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1)); } catch (_) { } // v4.0.187
       // ★★★v4.2.43(俊克 pm01:53「全く改善されない。なぜ?」): ★★★**畳んだ後に、本当に畳まれたかを測る**。
       //   ログは `★一括で畳んだ` と言っているのに、俊克の画面では畳まれていない= **報告と実物that食い違う**。
