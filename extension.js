@@ -45484,6 +45484,8 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       const _prevCaret = lastCaretByEditorKey.get(_prevKey);
       prevLineBeforeSelectionChange = _prevCaret ? _prevCaret.line : -1;
       _meosPrevCaretPos = _prevCaret ? { line: _prevCaret.line, character: _prevCaret.character } : null;   // v5.1.104: 桁も(ボタンの後に戻す先)
+      // ★v5.1.216(俊克 am02:17「日記へ戻る時、その行を表示した瞬間ファイル先頭に飛ぶ」): 測る= 500行より大きいカーソルの跳びを、VS Code の言う種類(1=キー 2=マウス 3=命令 無し=拡張/復元)と共に [caretJump] へ
+      try { const _nl = e.selections && e.selections[0] ? e.selections[0].active.line : -1; if (_prevCaret && _nl >= 0 && Math.abs(_nl - _prevCaret.line) > 500) meosDbg('[caretJump] ' + (_prevCaret.line + 1) + '→' + (_nl + 1) + ' kind=' + (e.kind === undefined ? '無し' : e.kind) + ' ' + e.textEditor.document.uri.scheme + ':' + require('path').basename(e.textEditor.document.uri.path)); } catch (_) { }
       // Cursor-snap over hidden ranges must stay immediate so arrow-key navigation
       // moves naturally through decoration-hidden source bytes.
       if (maybeSkipHiddenPrefixOnKeyboard(e.textEditor, e.kind)) { refresh(e.textEditor); return; }
