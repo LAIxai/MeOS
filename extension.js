@@ -38614,19 +38614,26 @@ function meosTcwRowsOf(text, W) {
   }
   return rows;
 }
+// ★v5.1.207(俊克 pm03:37 テスト盤の検証 ①⑤⑥⑨⑬= 割った2段目の頭に「。」): 行頭禁則(句読点・閉じ括弧・小さい仮名・ー を段の頭に置かない)と行末禁則(開き括弧を段の尻に置かない)=
+//   割る所がその字の手前になったら、前の段の最後の1字を連れて次の段へ送る(追い出し)。前の段が1字だけの時は送らない(段が空になる)
+const MEOS_TCW_NO_HEAD = '、。，．,.)）」』】〕〉》］｝!?！？:：;；ー・ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ々ゝゞ', MEOS_TCW_NO_TAIL = '(（「『【〔〈《［｛';
 function meosTcwSegs(text, cap) {
   const out = []; let cur = '', w = 0;
   for (const ch of Array.from(String(text || ''))) {
     const c = meosStrWidth(ch);
+    if (w + c > cap + 0.1 && cur && (MEOS_TCW_NO_HEAD.indexOf(ch) >= 0 || MEOS_TCW_NO_TAIL.indexOf(Array.from(cur).pop()) >= 0) && !(cur.lastIndexOf(' ') > 0 && meosStrWidth(cur.slice(cur.lastIndexOf(' '))) < cap * 0.5)) {   // 空白で割る時(下)は禁則を見ない
+      const a = Array.from(cur); if (a.length > 1) { const last = a.pop(); out.push(a.join('')); cur = last; w = meosStrWidth(cur); }
+    }
     // ★v5.1.203(俊克 am08:53 v5.1.202_0838 2枚目): 幅5の列で「比較級」が「比較/級」に割れた= 全角3つを1.67で数えると5.01桁(実際は5.00)。v5.1.202 と同じ境目の端数→ 0.1桁までは収まると見る
     if (w + c > cap + 0.1 && cur) { const k = cur.lastIndexOf(' '); if (k > 0 && meosStrWidth(cur.slice(k)) < cap * 0.5) { out.push(cur.slice(0, k)); cur = cur.slice(k + 1); w = meosStrWidth(cur); } else { out.push(cur); cur = ''; w = 0; } }
     cur += ch; w += c;
   }
   out.push(cur); return out;
 }
-function meosTcwRowStr(cells, c) {   // 桁揃え= 目標の桁へ(全角の端数は次の列へ持ち越す)
+function meosTcwRowStr(cells, c, al) {   // 桁揃え= 目標の桁へ(全角の端数は次の列へ持ち越す)
   let s = '|', x = 1, X = 1;
-  cells.forEach((t, k) => { X += c[k] + 3; s += ' ' + t; x += 1 + meosStrWidth(t); const p = Math.max(1, Math.round(X - 1 - x)); s += ' '.repeat(p) + '|'; x += p + 1; });
+  // ★v5.1.207(俊克 pm03:37 テスト盤⑥「揃えの印が効いていない」): al[k]= 'c'(:---:)は真ん中・'r'(---:)は右へ寄せる= 字の前に空白を置く(GitHub の見え方と同じ)
+  cells.forEach((t, k) => { X += c[k] + 3; const w0 = meosStrWidth(t), a = al && al[k]; let lead = 0; if (t && (a === 'c' || a === 'r')) { const free = Math.max(0, (X - 1) - x - 1 - w0 - 1); lead = Math.max(0, a === 'r' ? Math.round(free) : Math.floor(free / 2 + 0.25)); } s += ' ' + ' '.repeat(lead) + t; x += 1 + lead + w0; const p = Math.max(1, Math.round(X - 1 - x)); s += ' '.repeat(p) + '|'; x += p + 1; });
   return s;
 }
 const _meosTcwNeedCache = new Map();
@@ -38650,10 +38657,11 @@ function meosTcwLayout(lines, W) {
   if (!need) return null;   // 今までの整形で収まる= 今まで通り
   const c = nat.slice(); let g = 0; while (tot(c) > W - 1 && g++ < 4000) { const k = c.indexOf(Math.max(...c)); if (c[k] <= 3) break; c[k]--; }
   if (tot(c) > W - 1) return null;
+  const al = rs[sep].map(x => { const t = String(x || '').replace(/\s/g, ''); const l = t.startsWith(':'), r = t.length > 1 && t.endsWith(':'); return (l && r) ? 'c' : (r ? 'r' : 'l'); });   // v5.1.207: 揃えの印
   const rows = vis.map((r, i) => {
     if (i === sep) return { vis: ['|' + c.map(x => '-'.repeat(x + 2)).join('|') + '|'], h: 1, sep: true };
     const sg = c.map((x, k) => meosTcwSegs(r[k] || '', x)); const h = Math.max(...sg.map(q => q.length)); const v = [];
-    for (let j = 0; j < h; j++) v.push(meosTcwRowStr(c.map((x, k) => sg[k][j] || ''), c));
+    for (let j = 0; j < h; j++) v.push(meosTcwRowStr(c.map((x, k) => sg[k][j] || ''), c, al));
     return { vis: v, h };
   });
   return { c, rows, sep, nc };
