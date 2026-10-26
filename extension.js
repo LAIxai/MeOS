@@ -38718,13 +38718,37 @@ function meosTcwCompactLines(lines, W) {
 }
 let _meosTcwHide = null, _meosTcwPiece = null, _meosTcwLine = null, _meosTcwCover = null; const _meosTcwVirtual = new Map(); const _meosTcwSig = new Map();
 function meosTcwIsVirtual(doc, line) { try { const s = _meosTcwVirtual.get(doc.uri.toString()); return !!(s && s.has(line)); } catch (_) { return false; } }
+// ★v5.1.209(俊克 pm11:09 改良1「見せかけの太字も、Raw と同じ青い色に」): Raw の太字/斜体の色はテーマの字の色(Monokai Dimmed= markup.bold, markup.italic #6089B4)。
+//   装飾は字の色(トークン)を借りられない→ 今のテーマの JSON を読み、markup.bold / markup.italic の色を拾う(テーマ名ごとに1回)。読めなければ地の字の色
+const _meosThemeTokCache = new Map();
+function meosThemeTokenColor(scope) {
+  try {
+    const name = String(vscode.workspace.getConfiguration('workbench').get('colorTheme') || ''); const key = name + '\n' + scope;
+    if (_meosThemeTokCache.has(key)) return _meosThemeTokCache.get(key);
+    let col = ''; const fs = require('fs'), path = require('path');
+    const read = (f, depth) => { if (depth > 4) return []; let j; try { j = JSON.parse(fs.readFileSync(f, 'utf8').replace(/\/\*[^]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1')); } catch (_) { return []; }
+      const own = Array.isArray(j.tokenColors) ? j.tokenColors : []; const base = j.include ? read(path.join(path.dirname(f), j.include), depth + 1) : []; return base.concat(own); };
+    for (const ext of vscode.extensions.all) { const th = (((ext.packageJSON || {}).contributes || {}).themes) || []; const t = th.find(x => x && (x.label === name || x.id === name));
+      if (!t || !t.path) continue; const toks = read(path.join(ext.extensionPath, t.path), 0);
+      for (const tk of toks) { const sc = Array.isArray(tk.scope) ? tk.scope : String(tk.scope || '').split(','); if (sc.some(x => String(x).trim() === scope) && tk.settings && tk.settings.foreground) col = tk.settings.foreground; }
+      break; }
+    _meosThemeTokCache.set(key, col); return col;
+  } catch (_) { return ''; }
+}
+// v5.1.209(俊克 バグ1「インラインコードの元の位置にクリーム色の下端が少し漏れ出している」): 行の高さは VS Code が px に丸める(13px×1.5=19.5→20px)。
+//   em(1.5)で数えると1段0.5px ずつ足りず、下を覆う板が短くなって元の板が覗いた→ 丸めた px ÷ 字の大きさ で数える
+function meosTcwLineEm(doc) {
+  try { const c = meosFenceCfg(doc); const fs = Number(c.get('fontSize')) || 14; let lh = Number(c.get('lineHeight')) || 0;
+    const px = Math.round(lh <= 0 ? fs * 1.5 : (lh < 8 ? lh * fs : lh)); return px / fs; } catch (_) { return meosVeilLineEm(doc); }
+}
 function meosApplyTableCellWrapDecorations(editor) {
   try {
     if (!editor || !editor.document || MEOS_RELEASE_PHASE < 3) return;
     const doc = editor.document, uri = doc.uri.toString(), set = new Set(), hides = [], pieces = [], rules = [], covers = [], logs = [];
     const W = meosFenceWrapColumn(doc);
     if (W > 0 && isMarkdownDocument(doc)) {
-      const cur = (editor.selections || [editor.selection]).map(x => x.active.line), lhEm = meosVeilLineEm(doc), done = new Set();
+      const cur = (editor.selections || [editor.selection]).map(x => x.active.line), lhEm = meosTcwLineEm(doc), done = new Set();
+      const boldCol = meosThemeTokenColor('markup.bold'), itCol = meosThemeTokenColor('markup.italic');   // v5.1.209
       const fg = 'var(--vscode-editor-foreground)';
       for (const vr of meosScanSpans(editor, doc)) for (let ln = vr[0]; ln <= vr[1]; ln++) {
         if (done.has(ln)) continue;
@@ -38744,12 +38768,12 @@ function meosApplyTableCellWrapDecorations(editor) {
           const ln2 = blk.start + i, t = lines[i]; set.add(ln2); hides.push(new vscode.Range(ln2, 0, ln2, t.length));
           const Ri = Math.max(L.rows[i].h, meosTcwRowsOf(t, W));
           // v5.1.201: 下を覆う板= その行が取る段の全部を地の色で(ソースに掛かった装飾= インラインコードの板などが透けない)。重なり= 覆う板(2) < 見せかけの字(3) < 罫線(4)
-          covers.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '', textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + (tw + 1) + 'ch; height: ' + em(Ri) + 'em; background: var(--vscode-editor-background); z-index: 2; pointer-events: none;' } } });
+          covers.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '', textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + (tw + 1) + 'ch; height: calc(' + em(Ri) + 'em + 1px); background: var(--vscode-editor-background); z-index: 2; pointer-events: none;' } } });
           if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
           if (L.rows[i].sep) { logs.push((ln2 + 1) + ':sep'); continue; }   // 区切りの行の --- は描かない(太い線だけ)
           // ★v5.1.208: 段ごとに駒(縦線・飾りの塊)を桁の位置(ch)に置く。太字=太く/斜体=傾け/インラインコード=クリームの板(家の板と同じ #f3e6c4・濃い茶の字)/リンク=リンクの色＋下線
           (L.rows[i].pc || []).forEach((row, j) => { if (j >= t.length) return; const top = (Math.round(j * lhEm * 1000) / 1000) + 'em';
-            row.forEach(pz => { const s0 = pz.st || '', code = s0.indexOf('c') >= 0, link = s0.indexOf('l') >= 0, col = code ? '#3b3020' : (link ? 'var(--vscode-textLink-foreground)' : fg);
+            row.forEach(pz => { const s0 = pz.st || '', code = s0.indexOf('c') >= 0, link = s0.indexOf('l') >= 0, col = code ? '#3b3020' : (link ? 'var(--vscode-textLink-foreground)' : ((s0.indexOf('b') >= 0 && boldCol) ? boldCol : ((s0.indexOf('i') >= 0 && itCol) ? itCol : fg)));
               pieces.push({ range: new vscode.Range(ln2, j, ln2, j), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
                 textDecoration: (link ? 'underline' : 'none') + '; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
                   + (s0.indexOf('b') >= 0 ? ' font-weight: bold;' : '') + (s0.indexOf('i') >= 0 ? ' font-style: italic;' : '')
