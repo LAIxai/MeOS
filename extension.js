@@ -3986,6 +3986,7 @@ function meosCloseGlyphColor(doc, startLine, openText, fallbackColor) {
 //   ★今度は**文字カーソルで数える**= 画面の一番上の段へ置き、1段ずつ下ろして、押した行に着くまでの段数を数える。
 //     押した行は画面の中に在るので、カーソルは画面の外へ出ない= 画面は1ミリも動かない。数える間は、カーソルの見張り(履歴・Me Dockの追従など)を休ませる。
 let _meosCaretProbing = false;
+const _meosFoldServedAt = new Map(), _meosActivatedAt = new Map();   // v5.1.217: 畳み範囲を渡した時刻/文書に入ってきた時刻(uri ごと)
 async function meosRowsAboveByCaret(editor, target) {
   let rows = -1;
   _meosCaretProbing = true;
@@ -37488,6 +37489,7 @@ class MembraneFoldingProvider {
       const _out = meosFcOutMembranes(document, _caret);
       // v4.2.425: VS Code に渡した畳みの形の名札(畳む側が「取り直しが済んだか」を確かめる)
       try { MembraneFoldingProvider._lastSig = String(document.uri) + '@' + document.version + '|' + Array.from(_out).join(','); } catch (_) { }
+      try { _meosFoldServedAt.set(String(document.uri), Date.now()); } catch (_) { }   // v5.1.217: この文書の畳み範囲を VS Code に渡した時刻
       // ★★★v4.2.368(俊克 バグ1「膜の最後のほうをクリックすると、先頭に飛んでしまう。5回やって毎回」):
       //   ★★★真因= VS Code は1ファイルの畳み範囲を editor.foldingMaximumRegions(既定5000)までしか持たず、超えた分は**深い物から捨てる**。
       //     生涯日記は 5220個= 5段目の FC の塊が捨てられ、「その行を畳め」が1つ外の膜を畳んで先頭へ跳んでいた(v4.0.188 と同じ見え方)。
@@ -41465,6 +41467,14 @@ async function meosAutoFoldSpecLines(editor, force) {
         try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: _open46 }); } catch (_) { }
       }
       try { for (const _h48 of heads) meosNoteReopen48(_h48); } catch (_) { }   // v4.2.48
+      // ★★v5.1.217(俊克 am02:17「日記へ戻る時、その行を表示した瞬間ファイル先頭に飛ぶ」→ am02:29「インストール直後も先頭に飛んだまま」):
+      //   測った= 畳み始めて20ms でカーソルが 162039→3 (kind=3)。editor.fold は**その行を含む一番内側の範囲**を畳む。タブを切り替えた直後は
+      //   VS Code がまだこの文書の畳み範囲を取り直しておらず、FC の小さな範囲が無い→ 一番外の膜(3行目= 日記まるごと)を畳み、隠れたカーソルを3行目へ送っていた。
+      //   → 入ってきた(切替・起動)後は、VS Code がこの文書の範囲を**入ってきた後に**取りに来るまで待つ(最大3秒)。来なければ今回は畳まない
+      try { const _ku = String(editor.document.uri), _act = _meosActivatedAt.get(_ku) || 0;
+        if (_act && Date.now() - _act < 15000) { const _w1 = Date.now(); while ((_meosFoldServedAt.get(_ku) || 0) < _act && Date.now() - _w1 < 3000) await new Promise(r => setTimeout(r, 50));
+          if ((_meosFoldServedAt.get(_ku) || 0) < _act) { meosFoldWhy('入ってきた後の畳み範囲が来ない(3秒)→ 今回は畳まない'); break; }
+          if (Date.now() - (_meosFoldServedAt.get(_ku) || 0) < 120) await new Promise(r => setTimeout(r, 120)); } } catch (_) { }
       if (heads.length) await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
       try { meosDbg('[fcFold] ★一括で畳んだ blocks=' + heads.length + ' 画面上端 ' + _vt0 + '→' + ((editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1)); } catch (_) { } // v4.0.187
       // ★★★v4.2.43(俊克 pm01:53「全く改善されない。なぜ?」): ★★★**畳んだ後に、本当に畳まれたかを測る**。
@@ -44448,7 +44458,7 @@ function activate(context) {
   //   折り返しが止まり、外へ出した行は畳める。選択範囲があればその行すべて・無ければカーソル行。
   //   ★下から上へ書き換える(行を足すと下の行番号がずれるため)。
   // v4.0.139: FC付きの指定行を「開いた時に1回だけ」畳む。手で開いた人と喧嘩しないよう、文書につき1回。
-  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (ed) setTimeout(() => { try { meosAutoFoldSpecLines(ed); } catch (_) { } }, 400); }));
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (ed) { try { _meosActivatedAt.set(String(ed.document.uri), Date.now()); } catch (_) { } setTimeout(() => { try { meosAutoFoldSpecLines(ed); } catch (_) { } }, 400); } }));
   // v4.0.327: 一括で畳むのは**見えている分だけ**になったので、**入ってきた分**を畳む合図をここで受ける。
   //   スクロール中は連続で鳴るので待ってからにする(熱い道に仕事を足さない・相手が0件なら即帰る作り)。
   let _meosFcScrollTimer = null;
@@ -44580,6 +44590,7 @@ function activate(context) {
   }));
   context.subscriptions.push(vscode.window.onDidChangeWindowState(st => { if (st && st.focused) setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 500); }));
   // v4.0.140: 起動直後は「まだアクティブでない/範囲が未計算」で空振りしやすいso、間を空けて3回ぶつける(済みなら即returnするso無駄は無い)。
+  try { for (const _e of vscode.window.visibleTextEditors) _meosActivatedAt.set(String(_e.document.uri), Date.now()); } catch (_) { }   // v5.1.217: 起動(インストール直後)も「入ってきた」= 範囲を取りに来るまで畳まない
   for (const _ms of [1200, 3000, 6000]) { try { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, _ms); } catch (_) { } }
   // ★v4.0.460: 起動時に**もう開いているファイル**の予定も仕掛け直す(タブの復元は onDidOpenTextDocument より前に済んでいることthatある)。
   //   読んだ印(_meosClockLoaded)thatあるので、二重には仕掛からない。
