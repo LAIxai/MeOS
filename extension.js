@@ -33202,6 +33202,8 @@ if(fj)fj.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropag
  var _p=fj.getAttribute('data-jump')||'';if(!_p)return;
  fp.classList.remove('on');if(typeof hideTocTip==='function')hideTocTip();
  vscode.postMessage({type:'openRecent',path:_p});});
+/* ★v5.1.214(俊克 am00:50 バグ1「最初に切り替えた時だけフォーカスされ、その後は何度切り替えてもフォーカスされない」): 測る= Me Dock(webview)が焦点を得た/失った時刻を meos-debug.log へ([dock] wvFocus) */
+window.addEventListener('focus',function(){try{vscode.postMessage({type:'dockDbg',text:'wvFocus on'});}catch(e){}});window.addEventListener('blur',function(){try{vscode.postMessage({type:'dockDbg',text:'wvFocus off'});}catch(e){}});
 fp.addEventListener('click',function(ev){var pn=ev.target&&ev.target.closest?ev.target.closest('[data-pin]'):null;
 if(pn){ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'pinRecent',path:pn.getAttribute('data-pin')});return;}
 var x=ev.target&&ev.target.closest?ev.target.closest('[data-close]'):null;
@@ -36570,7 +36572,7 @@ function toggleMeDock(editorOverride) {
           //   → 待たない。①その文書を見せる ②最後に標準の「エディタ群へ焦点」を、Me Dock の自動表示の後(250ms)に置く
           const _u = _tab.input && _tab.input.uri ? _tab.input.uri.toString() : '';
           const _ed = vscode.window.visibleTextEditors.find(e => e.viewColumn === _tab.group.viewColumn && e.document.uri.toString() === _u);
-          const _focusBack = () => setTimeout(() => { try { vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); } catch (_) { } }, 250);
+          const _focusBack = () => { for (const ms of [250, 700]) setTimeout(() => { try { vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); meosDbg('[openRecent] 焦点を戻す ' + ms + 'ms 前の窓=' + (vscode.window.state.focused ? '焦点あり' : '無し') + ' active=' + (vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.uri.scheme : 'なし')); } catch (_) { } }, ms); };   // v5.1.214: 2度目(700ms)= 後から取り返されても戻す
           try { if (_ed) vscode.window.showTextDocument(_ed.document, { viewColumn: _ed.viewColumn, preserveFocus: false }).then(_focusBack, _focusBack); else _focusBack(); } catch (_) { _focusBack(); }
           try { meosDbg('[openRecent] タブを選んだ 列=' + _tab.group.viewColumn + ' 番=' + _tab.group.tabs.indexOf(_tab) + ' 名=' + ((_tab.input && _tab.input.uri && _tab.input.uri.scheme) || '') + ' エディタ=' + (_ed ? 'あり' : 'なし')); } catch (_) { }
           return;
