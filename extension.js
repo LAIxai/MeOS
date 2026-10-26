@@ -36565,10 +36565,14 @@ function toggleMeDock(editorOverride) {
           }
           // ★v5.1.212(俊克 10.27 am00:30 改良1「エディターをアクティブにして、直ぐに入力ができるように」): 押したのは Me Dock(webview)なので、
           //   タブを選んでも打鍵は Me Dock に残る→ 選んだタブのエディタへ焦点を戻す(家の口 meosFocusBack= 同じ文書を見せ直すだけで飛ばない)
-          try { await new Promise(r => setTimeout(r, 60)); const _u = _tab.input && _tab.input.uri ? _tab.input.uri.toString() : '';
-            const _ed = vscode.window.visibleTextEditors.find(e => e.viewColumn === _tab.group.viewColumn && e.document.uri.toString() === _u);
-            if (_ed) await meosFocusBack(_ed); } catch (_) { }
-          try { meosDbg('[openRecent] タブを選んだ 列=' + _tab.group.viewColumn + ' 番=' + _tab.group.tabs.indexOf(_tab) + ' 名=' + ((_tab.input && _tab.input.uri && _tab.input.uri.scheme) || '')); } catch (_) { }
+          // ★v5.1.213(俊克 am00:39 バグ1「切り替えた直後、エディターにフォーカスされない。なぜ?」): 家の教え(v4.0.358)を写し忘れていた=
+          //   焦点が webview に在る間は showTextDocument を await すると返らないことがあり、Me Dock の自動表示とも焦点を取り合う。
+          //   → 待たない。①その文書を見せる ②最後に標準の「エディタ群へ焦点」を、Me Dock の自動表示の後(250ms)に置く
+          const _u = _tab.input && _tab.input.uri ? _tab.input.uri.toString() : '';
+          const _ed = vscode.window.visibleTextEditors.find(e => e.viewColumn === _tab.group.viewColumn && e.document.uri.toString() === _u);
+          const _focusBack = () => setTimeout(() => { try { vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); } catch (_) { } }, 250);
+          try { if (_ed) vscode.window.showTextDocument(_ed.document, { viewColumn: _ed.viewColumn, preserveFocus: false }).then(_focusBack, _focusBack); else _focusBack(); } catch (_) { _focusBack(); }
+          try { meosDbg('[openRecent] タブを選んだ 列=' + _tab.group.viewColumn + ' 番=' + _tab.group.tabs.indexOf(_tab) + ' 名=' + ((_tab.input && _tab.input.uri && _tab.input.uri.scheme) || '') + ' エディタ=' + (_ed ? 'あり' : 'なし')); } catch (_) { }
           return;
         }
         const d = await vscode.workspace.openTextDocument(vscode.Uri.file(_p));
