@@ -38107,8 +38107,10 @@ function meosDocLines(doc) {
   return lines;
 }
 function meosCharWidth(cp) {
-  // 真の全角(漢字・かな・全角・CJK約物・ハングル・CJK拡張)= _meosTableCjkW幅。絵文字(✅💥)や曖昧幅記号(★→①)はエディタでほぼ半角=1幅。
-  return ((cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
+  // 真の全角(漢字・かな・全角・CJK約物・ハングル・CJK拡張)= _meosTableCjkW幅。絵文字(✅💥)や曖昧幅記号(★→)はエディタでほぼ半角=1幅。
+  // ★v5.1.204(俊克 am09:25「3行目の崩れは直せそう」= ①〜⑦、⑫、⑬ の行だけ縦線が右へ): 丸数字は半角と思っていたが、測ると Menlo に字が無く
+  //   Hiragino に落ちて漢字と同じ幅(1.661)。→ ①〜⓿(2460〜24FF)と ❶〜➓(2776〜2793)は全角(★→ は測っても 1.0 のまま)
+  return ((cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2460 && cp <= 0x24FF) || (cp >= 0x2776 && cp <= 0x2793) || (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
     (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0xA000 && cp <= 0xA4CF) ||
     (cp >= 0xAC00 && cp <= 0xD7A3) || (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFE10 && cp <= 0xFE6F) ||
     (cp >= 0xFF00 && cp <= 0xFF60) || (cp >= 0xFFE0 && cp <= 0xFFE6) ||
