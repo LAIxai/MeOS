@@ -44516,8 +44516,19 @@ function activate(context) {
   //   カーソル行が窓の上端から何行目に見えているかを [caretDrift] へ。どの時刻にずれるかで犯人(Me Dock の作り直し・畳み・見張り)を分ける
   { let _cdPrev = null; const _cdNote = (ed, tag) => { try { if (!ed || !ed.document) return; const vr = ed.visibleRanges && ed.visibleRanges[0]; const c = ed.selection.active.line;
       meosDbg('[caretDrift] ' + tag + ' ' + ed.document.uri.scheme + ':' + require('path').basename(ed.document.uri.path) + ' カーソル=' + (c + 1) + ' 上端=' + (vr ? vr.start.line + 1 : '?') + ' 段差=' + (vr ? c - vr.start.line : '?')); } catch (_) { } };
-    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (_cdPrev && _cdPrev !== ed) _cdNote(_cdPrev, '離れる'); _cdPrev = ed || _cdPrev;
-      if (ed) for (const ms of [0, 500, 1500, 3000]) setTimeout(() => _cdNote(ed, '戻って' + ms + 'ms'), ms); })); }
+    // ★★v5.1.220(俊克 am03:00「さっきと変わらない」・am02:45「記憶している行数に飛べばいいんじゃないのか? 前もそうしていた」):
+    //   離れる時のカーソル行と画面の上端を文書ごとに覚え、戻って 0.8/1.5/3秒に「カーソルは覚えた行のままなのに画面に居ない」なら、覚えた上端へ戻す
+    //   (画面だけを先頭へ送る相手はまだ名乗っていない= 名乗るまでの守り。カーソルが動いた= 人が動かした時は触らない)
+    const _keep = new Map(); const _vu = (ed) => { try { return ed.document.uri.toString(); } catch (_) { return ''; } };
+    const _remember = (ed) => { try { const vr = ed.visibleRanges && ed.visibleRanges[0]; if (vr && vr.start.line > 0) _keep.set(_vu(ed), { caret: ed.selection.active.line, top: vr.start.line, at: Date.now() }); } catch (_) { } };
+    const _putBack = (ed, tag) => { try { const k = _keep.get(_vu(ed)); if (!k || !ed.document || ed.document.isClosed) return; const c = ed.selection.active.line; if (c !== k.caret) return;
+      const vis = (ed.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line); if (vis) return;
+      ed.revealRange(new vscode.Range(k.top, 0, k.top, 0), vscode.TextEditorRevealType.AtTop); meosDbg('[keepView] ' + tag + ' 画面だけ動かされた→ 覚えた上端 ' + (k.top + 1) + ' へ戻す(カーソル=' + (c + 1) + ')'); } catch (_) { } };
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor === vscode.window.activeTextEditor && e.textEditor === _cdPrev && Date.now() - (_cdPrevAt || 0) > 3500) _remember(e.textEditor); } catch (_) { } }));
+    let _cdPrevAt = 0;
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (_cdPrev && _cdPrev !== ed) _cdNote(_cdPrev, '離れる'); _cdPrev = ed || _cdPrev; _cdPrevAt = Date.now();
+      if (ed) { for (const ms of [0, 500, 1500, 3000]) setTimeout(() => _cdNote(ed, '戻って' + ms + 'ms'), ms);
+        for (const ms of [800, 1500, 3000]) setTimeout(() => _putBack(ed, ms + 'ms'), ms); } })); }
   // ★v5.0.0-27(俊克 バグ1「閉じた膜の右端の⋯にホーバーすると選択指・クリックすると展開される。開閉は▼▲だけが担うべき」):
   //   ⋯は VS Code 自身の畳みの印で、押すと VS Code が開く(拡張からは消せない・押させない事もできない)。
   //   → 見分けて畳み直す: マウスで膜の頭の行の行末に着地し、その直前は畳まれていて、直後に開いていたら= ⋯を押した。▼▲は行頭なので当たらない
