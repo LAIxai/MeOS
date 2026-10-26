@@ -44521,9 +44521,12 @@ function activate(context) {
     //   (画面だけを先頭へ送る相手はまだ名乗っていない= 名乗るまでの守り。カーソルが動いた= 人が動かした時は触らない)
     const _keep = new Map(); const _vu = (ed) => { try { return ed.document.uri.toString(); } catch (_) { return ''; } };
     const _remember = (ed) => { try { const vr = ed.visibleRanges && ed.visibleRanges[0]; if (vr && vr.start.line > 0) _keep.set(_vu(ed), { caret: ed.selection.active.line, top: vr.start.line, at: Date.now() }); } catch (_) { } };
-    const _putBack = (ed, tag) => { try { const k = _keep.get(_vu(ed)); if (!k || !ed.document || ed.document.isClosed) return; const c = ed.selection.active.line; if (c !== k.caret) return;
-      const vis = (ed.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line); if (vis) return;
-      ed.revealRange(new vscode.Range(k.top, 0, k.top, 0), vscode.TextEditorRevealType.AtTop); meosDbg('[keepView] ' + tag + ' 画面だけ動かされた→ 覚えた上端 ' + (k.top + 1) + ' へ戻す(カーソル=' + (c + 1) + ')'); } catch (_) { } };
+    // ★v5.1.221(俊克 am03:50「駄目だこりゃ。いっそのこと、矢印→、←を1回ずつ出してみなよ」): 220 の「覚えた上端」は覚えが空で1度も動かなかった。
+    //   カーソルは正しい行に居るので、→ ← を1回ずつ= VS Code がカーソルの行を見せに行く(覚えは要らない)。字が選ばれている時・別のエディタが前の時は触らない
+    const _putBack = async (ed, tag) => { try { if (!ed || !ed.document || ed.document.isClosed || vscode.window.activeTextEditor !== ed) return; if (!ed.selection || !ed.selection.isEmpty) return;
+      const c = ed.selection.active.line; const vis = (ed.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line); if (vis) return;
+      await vscode.commands.executeCommand('cursorRight'); await vscode.commands.executeCommand('cursorLeft');
+      meosDbg('[keepView] ' + tag + ' カーソル行が画面外→ → ← で見せた(カーソル=' + (c + 1) + ' 上端=' + ((ed.visibleRanges && ed.visibleRanges[0]) ? ed.visibleRanges[0].start.line + 1 : '?') + ')'); } catch (_) { } };
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor === vscode.window.activeTextEditor && e.textEditor === _cdPrev && Date.now() - (_cdPrevAt || 0) > 3500) _remember(e.textEditor); } catch (_) { } }));
     let _cdPrevAt = 0;
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (_cdPrev && _cdPrev !== ed) _cdNote(_cdPrev, '離れる'); _cdPrev = ed || _cdPrev; _cdPrevAt = Date.now();
