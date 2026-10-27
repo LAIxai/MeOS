@@ -30431,6 +30431,9 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tile.md-dot::after{content:'';position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}
 .md-tile.md-dot.md-last::after{background:#e53935}
 .md-tiles.md-armed .md-tile.md-last{transform:scale(2);z-index:6;position:relative}
+/* v5.1.267(俊克 am01:40 改良1「シフトを押すとパズルのtipが下の Format Me に被さる。⏰0y…の拡大のように、ヘッダーの四角枠を下へ引き伸ばす」): 構えている間はヘッダーの枠の下を広げる(⏰と同じ :has の作法) */
+header.title{transition:padding-bottom .15s ease}
+header.title:has(.md-tiles.md-armed){padding-bottom:58px}
 .md-ttile .tt-mode{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:2;cursor:var(--meos-hand)}   /* v4.2.777-3(俊克「puzzleのⓉの右肩に⓪〜③(常に)・▼はホーバーの時だけ」): タイルの中に置く= 並べ替えで一緒に動き、幅は取らない / v4.2.777-4(俊克 改良3「緑だとⓉと一体化し過ぎる。他のボタンのように別の色に」): 右肩の↻と同じ金茶の丸に白い数字 */
 .md-ttile .tt-mode.tt-empty{background:#c9b48a;color:#5b4a26}   /* v4.2.777-4: 原型が未登録の番号= 薄く(▾で登録する) */
 .md-ttile .tt-caret{position:absolute;left:100%;top:50%;transform:translate(-1px,-50%);font-size:.5em;line-height:1;padding:.1em .15em;border:1px solid #888;border-radius:4px;background:#fff;color:#000;z-index:2;opacity:0;visibility:hidden;transition:opacity .12s ease .5s,visibility 0s linear .62s;cursor:var(--meos-hand)}   /* v4.2.777-4(俊克 改良1「拡大した時の隙間で縮小してしまう。くっつけて」改良2「▼は黒、地を白」): Ⓣに1px重ねる= 隙間を通らずに▾へ乗れる */
