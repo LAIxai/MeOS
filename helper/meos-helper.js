@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.1.164) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.1.237) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -9,6 +9,7 @@
 //     (閉じていれば VSCodium が起き、拡張が膜へ飛んで鐘を引き継ぐ)。拡張が起きたらこちらの鐘は止める。
 //   ★メニューバーの持ち主はこれ1つ= VSCodium が開いていても⏰は2つ並ばない。
 ObjC.import('Cocoa');
+ObjC.import('CoreGraphics');   // v5.1.237: ポインターを運ぶ(CGWarpMouseCursorPosition)
 ObjC.bindFunction('kill', ['int', ['int', 'int']]);
 ObjC.bindFunction('CGEventSourceFlagsState', ['unsigned long long', ['int']]);   // v4.2.742: 左右の区別まで入った修飾キーの状態(機械の状態= 1)
 function run(argv) {
@@ -598,7 +599,23 @@ function run(argv) {
   //   焦点が編集画面に在ると、キーは Me Dock に届かない。→ 拡張が mods-want を置いている間(ポインターが Me Dock の上)だけ、
   //   0.1秒ごとに Mac の修飾キーの状態を見て、変わった時だけ mods.json に書く(拡張がそれを Me Dock へ渡す)。
   let modsLast = -1;
+  // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):
+  //   Me Dock の🔰に乗るとロゴごと右下へ2.2倍に膨らむ= ポインターの下の図形が逃げる。拡張が warp-ptr.json(実の画素での片道)を置いたら、
+  //   今のポインターをその分だけ運ぶ(画素→ポイントは、ポインターが居る画面の倍率で割る)。Web ページの中からはポインターを動かせない
+  const warpPtr = () => {
+    const wp = dir + '/warp-ptr.json', fm = $.NSFileManager.defaultManager;
+    if (!fm.fileExistsAtPath(wp)) return;
+    let o = null; try { o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(wp, $.NSUTF8StringEncoding, null))); } catch (e) {}
+    try { fm.removeItemAtPathError(wp, null); } catch (e) {}
+    if (!o || !(Date.now() - Number(o.t) < 1500)) return;   // 古い頼みは捨てる(遅れて運ぶと、もう別の所に居る)
+    const p = $.NSEvent.mouseLocation, scr = $.NSScreen.screens; let bs = 2;
+    for (let i = 0; i < scr.count; i++) { const f = scr.objectAtIndex(i).frame; if (p.x >= f.origin.x && p.x < f.origin.x + f.size.width && p.y >= f.origin.y && p.y < f.origin.y + f.size.height) { bs = Number(scr.objectAtIndex(i).backingScaleFactor) || 2; break; } }
+    const h = scr.objectAtIndex(0).frame.size.height, x = p.x + Number(o.dx) / bs, y = (h - p.y) + Number(o.dy) / bs;
+    try { $.CGWarpMouseCursorPosition({ x: x, y: y }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {}
+    hlog('warpPtr dx=' + o.dx + ' dy=' + o.dy + ' bs=' + bs + ' from=' + p.x.toFixed(1) + ',' + (h - p.y).toFixed(1) + ' to=' + x.toFixed(1) + ',' + y.toFixed(1));
+  };
   const modsTick = () => {
+    try { warpPtr(); } catch (e) {}
     if (!$.NSFileManager.defaultManager.fileExistsAtPath(dir + '/mods-want')) { modsLast = -1; return; }
     let f = 0; try { f = Number($.CGEventSourceFlagsState(1)) || 0; } catch (e) {} if (!f) f = Number($.NSEvent.modifierFlags) || 0;   // v4.2.742(俊克「エディタから入ると左右どちらも濃紺」): NSEvent は左右を返さない→ CG の機械の状態を先に
     const k = (f & 0x20000 ? 1 : 0) | (f & 0x40000 ? 2 : 0) | (f & 0x80000 ? 4 : 0) | (f & 0x100000 ? 8 : 0) | (f & 0x2 ? 16 : 0) | (f & 0x4 ? 32 : 0);   // v4.2.741: 左右の Shift(機械の左=0x2・右=0x4)

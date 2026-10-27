@@ -14173,6 +14173,17 @@ function meosHelperWrite(text, menu, owner, anchor) {
 // ★v4.2.738(俊克 ②): ポインターが Me Dock の上に在る間だけ mods-want を置く→ V-helper が修飾キーを見て mods.json に書く→ Me Dock へ渡す
 let _meosModsWatch = null;
 const _meosModsWhy = { hover: false, puzzle: false };   // v4.2.776-26: 見張る理由は2つ(どちらかが在れば mods-want を置く)
+// ★v5.1.237(俊克 pm00:53 改良1「🔰にホーバーしたときに、拡大と同時に、ポインターの位置を拡大した図形の同じ位置に移動できないか?」・pm01:05「macユーザーに最大のメリットを」):
+//   Me Dock(Web ページ)からはポインターを動かせない→ V-helper に頼む。片道は Me Dock が実の画素で測って渡す(物差しの換算は1か所= 画素→ポイントは V-helper)
+function meosPtrWarp(m) {
+  if (!meosRealHost() || !meosVHelperOn()) return;
+  try {
+    const fs = require('fs'), path = require('path'), dir = meosHelperDir();
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify({ dx: Number(m.dx) || 0, dy: Number(m.dy) || 0, t: Date.now() }));
+    meosDbg('[ptrWarp] dx=' + (Number(m.dx) || 0).toFixed(1) + ' dy=' + (Number(m.dy) || 0).toFixed(1) + ' q=' + JSON.stringify(m.q) + ' o=' + JSON.stringify(m.o) + ' z=' + m.z + ' dpr=' + m.dpr + ' on=' + m.on);
+  } catch (_) { }
+}
 function meosModsWant(on, why) {
   if (!meosRealHost()) return;
   try {
@@ -30312,6 +30323,7 @@ body.vscode-light .dev-vsix-btn,body.vscode-high-contrast-light .dev-vsix-btn{ba
 .bg-badge{position:absolute;left:21px;top:12px;width:32px;height:32px;display:flex;align-items:flex-start;justify-content:flex-start;font-size:28px;line-height:1;z-index:8;cursor:var(--meos-hand);user-select:none;
   transform-origin:-29px -18px;transition:scale .15s ease;
   filter:grayscale(1) opacity(.4) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
+.bg-badge>*{pointer-events:none}   /* v5.1.237: 乗った点は🔰の箱の中の位置で測る(中の字や絵を的にしない) */
 .bg-badge:hover{filter:grayscale(1) opacity(.75) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
 body.meos-beginner .bg-badge{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
 .ml-split:has(.meos-logo:hover) .bg-badge{scale:2.2}
@@ -35677,11 +35689,17 @@ lg.addEventListener('pointercancel',()=>{p=null;document.body.classList.remove('
 (function(){const bg=document.getElementById('meos-bg');if(!bg)return;
 /* v5.1.235(俊克 pm00:35「tipはシンプルに1行で。逆回りは説明しなくて良い」): 🔰/王冠と数字は同じ1行 */const TIPS={'1':'Beginner Lv1','2':'Beginner Lv2','3':'Full-spec'};const cur=()=>document.body.classList.contains('meos-beginner')?(document.body.classList.contains('meos-bg1')?'1':'2'):'3';function tip(){bg.setAttribute('data-tip',TIPS[cur()]);}tip();
 bg.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
+/* v5.1.237: 外から🔰(王冠)や数字に乗った= ロゴごと右下へ2.2倍に膨らむ→ ポインターの下の点が膨らんだ後に居る所まで、V-helper にポインターを運んでもらう。
+   片道= (乗った点−ロゴの左上[拡大の原点])×(2.2−1)。部品の中の位置(offset)で測り、Me Dock の拡大(zoom)と画面の画素(dpr)を掛けて実の画素で渡す */
+const __ms=bg.parentNode;const __warp=(el,ev)=>{try{if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(ev.target!==el)return;const lg=document.getElementById('meos-logo');if(!lg)return;
+const ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX,qy=el.offsetTop+ev.offsetY,z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,d=window.devicePixelRatio||1,k=1.2*z*d;
+vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});}catch(_){}};
+bg.addEventListener('pointerover',ev=>__warp(bg,ev));
 /* v5.1.230(俊克 am11:44「いっそのことOptクリックは廃止して、③のときに灰色の初心者マークにする。これで3プリセットを切り替える」): 🔰を押しても右肩の数字と同じ= ①→②→③(Shiftで逆) */
 bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));try{showTocTip(ev);}catch(_){}});
 /* v5.1.228: 右肩の数字= ①超初心者 ⇄ ②初心者 / v5.1.229: ③=通常モード。クリックで①→②→③→①・Shift+クリックで逆回り(Ⓣの⓪〜③と同じ) */
 const lv=document.getElementById('meos-bg-lv');if(lv){const ltip=()=>lv.setAttribute('data-tip',TIPS[cur()]);ltip();
-lv.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
+lv.addEventListener('pointerdown',ev=>{ev.stopPropagation();});lv.addEventListener('pointerover',ev=>__warp(lv,ev));
 lv.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const cur=Number(lv.textContent)||3,m=ev.shiftKey?(cur+1)%3+1:cur%3+1;lv.textContent=String(m);const on=m<3;
 if(on!==document.body.classList.contains('meos-beginner')){document.body.classList.toggle('meos-beginner',on);vscode.postMessage({type:'meosBeginner',on:on});}
 if(on){document.body.classList.toggle('meos-bg1',m===1);vscode.postMessage({type:'meosBeginnerLv',lv:m});}tip();ltip();if(ev.isTrusted){try{showTocTip(ev);}catch(_){}}/* v5.1.236(俊克 pm00:47 バグ1「ポインター位置を変えずに切り替えると、tipが切り替わらない」): tip は mousemove でしか描き直されない= 押した所でその場で描き直す */});}})();
@@ -37357,6 +37375,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'dwCaretDayAsk') { _meosCaretDayKey = null; meosPostCaretDay(true); return; }   // v5.0.0-24
     if (message && message.type === 'diaryTplSet') { await meosDiaryTplSet(message); return; }   // v4.2.777-5
     if (message && message.type === 'diaryTplMenu') { await meosDiaryTplMenu(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }   // v4.2.777-3
+    if (message && message.type === 'ptrWarp') { meosPtrWarp(message); return; }   // v5.1.237: 🔰に乗った時、膨らんだ図形の同じ所へポインターを運ぶ(V-helper)
     if (message && message.type === 'meosBeginnerLv') { try { extensionContext.globalState.update('meosBeginnerLv', message.lv === 2 ? 2 : 1); } catch (_) { } return; }   // v5.1.228: ①②
     if (message && message.type === 'meosBeginner') { try { extensionContext.globalState.update('meosBeginner', !!message.on); } catch (_) { } return; }   // v5.1.226: 🔰モードの覚え
     if (message && message.type === 'warpToDate') { meosWarpToDate(message); return; }   // v4.2.777-1: 中身は meosWarpToDate へ(Me Dock が無い時の Ⓣ も使う)
