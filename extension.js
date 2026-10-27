@@ -35698,8 +35698,8 @@ const __ms=bg.parentNode;let __wDone=false,__wAt=0;__ms.addEventListener('pointe
    まだ膨らみ切っていない図形の外に着地→ :hover が外れて縮む→ ポインターだけ取り残される。V-helper が速く答えた時ほど起きる。
    → 運んだら群れに ml-big を付けて膨らみを保ち、群れから出て 0.35秒たっても戻らない時だけ外す */
 const __warp=(el,ev)=>{try{if(__wDone)return;if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(ev.target!==el)return;{const _sc=parseFloat(getComputedStyle(el).scale);if(_sc>1.05)return;}/* v5.1.239: まだ膨らんでいる(縮み戻る途中)所へ乗った= 片道の前提(1倍→2.2倍)が違う→運ばない */const lg=document.getElementById('meos-logo');if(!lg)return;
-const z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX/z,qy=el.offsetTop+ev.offsetY/z,d=window.devicePixelRatio||1,k=1.2*z*d;/* v5.1.241: offsetX はヘッダーの zoom が掛かった物差し= ÷z で部品の物差しへ(赤×と同じ出し方 v4.2.527) */
-__wDone=true;__wAt=Date.now();__ms.classList.add('ml-big');try{window.__redShift&&window.__redShift(1.2*(qx-ox),1.2*(qy-oy));}catch(_){}vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,sx:ev.screenX,sy:ev.screenY,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});/* v5.1.239: 乗った点の画面の位置も渡す / v5.1.240: 実測= screenX はもう Mac のポイント(×dpr÷2 で VSCodium の拡大1.728倍だけ大きく出ていた)→そのまま渡す */}catch(_){}};
+const z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX,qy=el.offsetTop+ev.offsetY,d=window.devicePixelRatio||1,k=1.2*z*d;/* v5.1.242(俊克 pm01:50 バグ1「離れた位置に移動してしまう」): v5.1.241 の offsetX÷z は誤り= 実測で行き過ぎ(dx 105→151)。この部品の上の offsetX は既に部品の物差し(v5.1.240 までの式で合っていた)→ 戻す */
+__wDone=true;__wAt=Date.now();__ms.classList.add('ml-big');try{window.__redAt&&window.__redAt(ev,1.2*(qx-ox),1.2*(qy-oy));}catch(_){}vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,sx:ev.screenX,sy:ev.screenY,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});/* v5.1.239: 乗った点の画面の位置も渡す / v5.1.240: 実測= screenX はもう Mac のポイント(×dpr÷2 で VSCodium の拡大1.728倍だけ大きく出ていた)→そのまま渡す */}catch(_){}};
 bg.addEventListener('pointerover',ev=>__warp(bg,ev));{const __lg=document.getElementById('meos-logo');if(__lg)__lg.addEventListener('pointerover',ev=>__warp(__lg,ev));}
 /* v5.1.230(俊克 am11:44「いっそのことOptクリックは廃止して、③のときに灰色の初心者マークにする。これで3プリセットを切り替える」): 🔰を押しても右肩の数字と同じ= ①→②→③(Shiftで逆) */
 bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));try{showTocTip(ev);}catch(_){}});
@@ -35801,8 +35801,9 @@ return 'hand';}   /* v4.2.635: 手の駒の絵の上も選択指 */
 const HPT={hand:'17.5deg',palm:'15.5deg',grip:'6.5deg'};
 /* ★v5.1.241(俊克 pm01:43 改良1「赤×が同時に移動しないで、置き去りになることもある」): V-helper がポインターを運んでも Me Dock にはポインターの動きが届かない(次に動かすまで)
    → 運ぶ片道(ヘッダーの物差し)だけ、赤×もその場で動かす */
-window.__redShift=(dx,dy)=>{try{const x=parseFloat(redC.style.left),y=parseFloat(redC.style.top);if(isFinite(x)&&isFinite(y)){redC.style.left=(x+dx)+'px';redC.style.top=(y+dy)+'px';}}catch(_){}};
-function moveRed(ev){try{redC.style.setProperty('--hpt',HPT[handShape(ev)]);}catch(_){}const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
+/* v5.1.242(俊克「×が置き去りにされることも何度か」): 乗った時の動き(pointermove)が後から来て赤×を乗った点へ戻していた→ 乗った点＋片道へ置き、運び終わるまで(0.25秒)は動きで描き直さない */
+let __redHold=0;window.__redAt=(ev,dx,dy)=>{try{const p=hdrPt(ev);if(!p)return;redC.classList.add('on');redC.style.left=(p.x+dx)+'px';redC.style.top=(p.y+dy)+'px';__redHold=Date.now()+250;}catch(_){}};
+function moveRed(ev){if(Date.now()<__redHold)return;try{redC.style.setProperty('--hpt',HPT[handShape(ev)]);}catch(_){}const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
 hdr.addEventListener('pointerleave',()=>{if(!press)redC.classList.remove('on');});
 /* v4.2.527(俊克 バグ2「OSの橙がOの中心から大きく外れる」・改良2「OSの長い赤い+が見えない」): 手を替えてもページは読み直されず、ボタンの印(class)だけが替わる。
