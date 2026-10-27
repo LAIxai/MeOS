@@ -10572,7 +10572,7 @@ function jumpToWorkingTocItem(rawKey, citeN) {
         suppressAutoUnfoldUntil = Date.now() + 700;
         if (memLine >= 0) {
           // v0.9.850: 記憶した行へ着地(畳まれていればrevealで自然に展開=続きから書ける)。
-          const mp = new vscode.Position(memLine, 0);
+          const mp = new vscode.Position(memLine, savedMeCursorCol(ed.document, key, memLine));   // v5.1.225: 桁も
           ed.selection = new vscode.Selection(mp, mp);
           meosRevealNearTop(ed, memLine);   // v5.1.223: 中央でなく上から5行目
         } else {
@@ -22280,19 +22280,28 @@ function recordMeCursor(editor) {
   try { pairs = collectPairs(editor.document).filter(p => p.start <= line && line <= p.end); } catch (_) { pairs = [pair]; }
   if (!pairs.length) return;
   const m = getMeCursorMap(editor.document);
+  // ★v5.1.225(俊克 am09:18 改良1「最後にいた場所の先頭に文字カーソルが表示される。文字カーソルのいた場所も記憶できないか?」):
+  //   行の差と並べて、行の中の桁も覚える(m.__col= 膜名→桁。m[膜名] は今までどおり数字= 読む口を変えない)
+  const col = editor.selection.active.character;
+  const cols = (m.__col && typeof m.__col === 'object') ? m.__col : (m.__col = {});
   let changed = false;
   for (const p of pairs) {
     const pid = String(p.id || '').trim();
-    if (!pid) continue;
+    if (!pid || pid === '__col') continue;
     const off = line - p.start;
     const span = p.end - p.start;
     if (off <= 0 || off >= span) continue;
     if (m[pid] !== off) { m[pid] = off; changed = true; }
+    if (cols[pid] !== col) { cols[pid] = col; changed = true; }
   }
   if (!changed) return;
   if (_meCursorSaveTimer) clearTimeout(_meCursorSaveTimer);
   const doc = editor.document;
   _meCursorSaveTimer = setTimeout(() => { try { if (extensionContext) extensionContext.globalState.update(meCursorKey(doc), m); } catch (_) {} }, 800);
+}
+// v5.1.225: その膜で最後にいた行の中の桁(覚えが無ければ 0)。行の長さで切る
+function savedMeCursorCol(document, membraneId, line) {
+  try { const c = (getMeCursorMap(document).__col || {})[String(membraneId || '').trim()]; return (typeof c === 'number' && c > 0) ? Math.min(c, document.lineAt(line).text.length) : 0; } catch (_) { return 0; }
 }
 // 開始膜行 pairStart の膜について、記憶した行を返す(無効/開始膜行そのもの/範囲外なら -1)。
 function savedMeCursorLine(document, membraneId, pairStart, pairEnd) {
@@ -44390,7 +44399,7 @@ function meosNoteLastLine(editor) {
     const doc = editor && editor.document;
     if (!doc || !meosDocFsPath(doc) || !meosIsProseDoc(doc)) return;   // v5.1.7: 入口の文書も
     const m = meosLastLineMap();
-    m[doc.uri.fsPath] = editor.selection.active.line;
+    m[doc.uri.fsPath] = [editor.selection.active.line, editor.selection.active.character];   // v5.1.225: 桁も(古い覚えは数字だけ)
     if (_meosLastLineTimer) return;                       // 書き出しは手が止まってから1回だけ
     _meosLastLineTimer = setTimeout(() => {
       _meosLastLineTimer = null;
@@ -44439,9 +44448,10 @@ function meosRestoreLastLineOnStart(attempt, wait) {
         return;
       }
     } catch (e) { meosDbg('[lastLine] 日記の判定で例外 ' + e); }
-    const ln = Math.max(0, Math.min(doc.lineCount - 1, Math.trunc(Number(meosLastLineMap()[doc.uri.fsPath]) || 0)));
+    const _mem = meosLastLineMap()[doc.uri.fsPath], _memLn = Array.isArray(_mem) ? _mem[0] : _mem;
+    const ln = Math.max(0, Math.min(doc.lineCount - 1, Math.trunc(Number(_memLn) || 0)));
     if (!(ln > 0)) { meosLastLineFinish('記憶が無い(または先頭) ' + doc.uri.fsPath); return; }   // 起動時に驚かせない
-    const p = new vscode.Position(ln, 0);
+    const p = new vscode.Position(ln, Math.max(0, Math.min(doc.lineAt(ln).text.length, Math.trunc(Number(Array.isArray(_mem) ? _mem[1] : 0) || 0))));   // v5.1.225: 桁も
     ed.selection = new vscode.Selection(p, p);             // カーソルを置く= 畳まれていればVS Codeが開いて見せる
     ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter);
     // ★v4.0.310(俊克「そのままだったので、**飛んだかどうか分らない**」): 静かに1行だけ名乗る。
