@@ -30403,7 +30403,7 @@ body.meos-beginner #enc-copy,body.meos-beginner #gh-wizard,
 body.meos-beginner #nav-center .bird-ev-label,body.meos-beginner #nav-scroll,body.meos-beginner #nav-create-toc,
 body.meos-beginner #nav-center .toc-nav-row>.toc-axis,body.meos-beginner #nav-center .me-axis-wrap,body.meos-beginner #nav-center .me-flip-row,
 body.meos-beginner .dock-lead .tms-title,body.meos-beginner .dock-lead .clk-wrap,
-body.meos-beginner #edit-mode-select,body.meos-beginner .edit-me-word,body.meos-beginner #me-title-word,body.meos-beginner #zoom-scope-indicator,body.meos-beginner #zoom-me-panel{display:none!important}
+body.meos-beginner #edit-mode-select,body.meos-beginner #zoom-scope-indicator,body.meos-beginner #zoom-me-panel{display:none!important}
 /* ★v5.1.261(俊克 pm08:49「②と③の間にもう一つ。①②③/⑨にして⑨をフルスペック」「③= ②に Re-install・上付/下付・文字数・TOP/E・Add to H-TOC と H-TOC」「②に💬」):
    ①②だけで隠す(③で出す)物= 下。⚜️と🐙(1日1回)と Timed Me-System の時計は③でも隠す */
 body.meos-beginner:not(.meos-lv3) .row2-vsix>:not(.th-split):not(.sd-split),body.meos-beginner:not(.meos-lv3) #format-tools .fmt-cell:has(#fmt-metex),
@@ -30747,6 +30747,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 body:has(#hidx-box.hidx-closed) #edit-mode-select{display:none}
 body:has(#hidx-box.hidx-closed) .edit-me-word{display:inline}
 #zoom-scope-indicator{display:none!important}
+body.meos-beginner .edit-me-word{display:inline!important}   /* v5.1.264(俊克 am00:42 改良1「①〜③でも Edit Me の見出しを」): 🔰の段は H-IDX に関係なくいつも見出し */
 
 .inline-title .me-word.pending{color:#b8bcc2}
 /* v4.0.426(俊克): 壊れた膜の警告ボタン。押せる時だけ目に入る= 押せない時は素の灰色で黙っている。
@@ -30765,6 +30766,9 @@ body:has(#hidx-box.hidx-closed) .edit-me-word{display:inline}
 .nm-split{position:relative;display:inline-flex;flex:none}
 /* v5.1.262(俊克 pm11:47 改良1「New.mdを右肩のボタンと一緒に拡大。初心者が最初に押すボタンだからこそ存在感を」): ボタンも数字も約1.4倍 */
 .nm-split .new-md-btn{font-size:15px;padding:4px 12px;border-radius:8px}
+/* v5.1.264(俊克 am00:42 バグ1「New.mdと肩のボタンが同時に拡大しない」= 乗った時に一緒に膨らむ、の意味だった): 乗ると箱ごと(ボタン＋数字)右端を軸に1.3倍 */
+.nm-split{transform-origin:right center;transition:scale .15s ease}
+.nm-split:hover{scale:1.3;z-index:5}
 /* 改良2「王冠の⑨のみ青色でなく別の色」: ⑨= 金(王冠と同じ家族) */
 .nm-lv[data-lv="9"],body:not(.meos-beginner) .bg-lv{background:#b8860b}
 /* (スクショで気づいた) 🔰の段で上の行が短いと、はみ出した🔰が次の行(テーマ)に被る→ ロゴの箱に🔰の丈を持たせる */
