@@ -17830,10 +17830,34 @@ async function openGithubPage() {
 }
 // v0.9.991: 作家向け「新規mdファイル作成」ボタン(俊克 6/23 pm01:09: プログラマーは通常メニューに慣れているが作家は不慣れ→Edit Meパネル右端からワンクリックで)。
 // メニューを辿らせず、空のMarkdownファイルを即開く。保存(Cmd+S)時にOSのダイアログで名前と置き場所を決める=VSCode純正のNew Fileと同じ最短導線。
-async function createNewMdFile() {
+// ★v5.1.251(俊克 pm03:42「一番良いのは、日記の昨日と今日の膜の例を最初から入れて置くこと。日記として直ぐに書き始められることが、敷居を低くする」):
+//   ①②= 昨日と今日の日記の膜(新しい日が上・今日は赤・昨日は茶= Ⓣ が作る日と同じ作り)。②は昨日に見出しと表の見本も。カーソルは今日の中
+//   ③= 今までの1つの膜(New note)
+async function meosNewMdDiarySample(editor, lv) {
+  const doc = editor.document, now = new Date(), y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const day = (d, body, color) => {
+    const tpl = meosDiaryDefaultTpl(doc), lines = [tpl.lines[0]].concat(body, tpl.lines.slice(1 + MEOS_DIARY_DEFAULT_BODY.length));
+    const id = meosDiaryRename(tpl.id, { y: d.getFullYear(), mo: d.getMonth() + 1, d: d.getDate() }, false);
+    const out = meosDiaryBlockFrom(lines, tpl.id, id), last = out.length - 1;
+    try { out[last] = setMstatBadgeColorInText(out[last], color); } catch (_) { }
+    return out;
+  };
+  const today = day(now, ['Today: ', 'Done: ', 'Tomorrow: '], 'R');
+  const yBody = ['Today: Started a diary in MeOS.', 'Done: Pressed 📝 New .md.', 'Tomorrow: Press Ⓣ to jump back to today.'];
+  if (lv === 2) yBody.push('', '## Notes', '', '| Time | What |', '|---|---|', '| 07:00 | Woke up |', '| 22:00 | Wrote this diary |', '');
+  const yesterday = day(y, yBody, 'N');
+  await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), today.join('\n') + '\n\n' + yesterday.join('\n') + '\n'); });
+  const pos = new vscode.Position(1, 'Today: '.length);
+  editor.selection = new vscode.Selection(pos, pos);
+  try { refresh(editor); } catch (_) { }
+  vscode.window.setStatusBarMessage('MeOS: a diary with yesterday and today — write today’s line, then Cmd+S to save', 5000);
+}
+async function createNewMdFile(lv) {
   try {
     const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: '' });
     const editor = await vscode.window.showTextDocument(doc, { preview: false });
+    lv = [1, 2, 3].includes(Number(lv)) ? Number(lv) : meosNewMdLv();
+    if (lv !== 3) { await meosNewMdDiarySample(editor, lv); return; }
     // v0.9.994: 新規ファイルを「動くお手本」にする(俊克 6/23 pm02:49)。万人が最初に辿る動線
     //   New .md → 膜をCreate → Add to Hyper TOC を自動化: ①ファイル全体を包む膜を1つ自動生成
     //   ②生成日時を膜のタイムスタンプ(可視コメント)に ③Hyper TOCへ自動登録(手動Addと同経路)。
@@ -30168,6 +30192,8 @@ function meosBeginnerOn() {
   } catch (_) { return false; }
 }
 function meosBeginnerLv() { try { return extensionContext.globalState.get('meosBeginnerLv') === 2 ? 2 : 1; } catch (_) { return 1; } }   // v5.1.228: ①超初心者(既定) / ②初心者
+// v5.1.251: New .md の見本の段。覚えが無ければ🔰の段(③=通常)に合わせる
+function meosNewMdLv() { try { const v = extensionContext.globalState.get('meosNewMdLv'); if ([1, 2, 3].includes(v)) return v; return meosBeginnerOn() ? meosBeginnerLv() : 3; } catch (_) { return 3; } }
 function meosDockTiles() { try { let o = extensionContext.globalState.get('meDockTiles'); if (typeof o === 'string' && o.length === 6) o = o + 'T';   /* v4.2.622: 旧6字の覚えも Ⓣ は最後へ */ return meosDockTilesValid(o) ? o : MEOS_DOCK_ALL; } catch (_) { return MEOS_DOCK_ALL; } }
 // ★v4.2.776-11(俊克「puzzleをコンプリートしたら赤が金色に。一度金色になったら、そのまま。黄金騎士ガロは死ぬまで黄金」):
 //   仕掛けのある並びを全種類見つけたら、最後にクリックした字の点が金色= 以後は並びに関わらず金のまま(globalState meosPuzzleGold)
@@ -30321,6 +30347,7 @@ body.vscode-light .dev-vsix-btn,body.vscode-high-contrast-light .dev-vsix-btn{ba
 /* ★v5.1.226(俊克 10.27 am10:32「初心者モードを作ろう。Me Dockを必要最小限に絞り込む」「ロゴマークの右腰に🔰ボタン。クリックで通常モード・Optクリックで🔰モード」):
    🔰はロゴの右腰(.mz-br と同じ角の駒)。🔰モード= 濃い・通常= 薄い灰。
    v5.1.227(俊克 am10:47 改良1/2): 🔰の左上をロゴの赤道(右端)に接して2倍(32px)・ロゴが膨らむ時は同じ原点(ロゴの左上)から一緒に2.2倍・初心者マークのシールのように白い輪郭 */
+:root{--meos-lv-bg:#2563eb}   /* v5.1.251: 🔰の数字と New .md の数字の地の色(同じ1つ)= 青(茶の Ⓣ ⓪〜③ と見分ける) */
 .ml-split{position:relative;display:flex;flex:0 0 auto;align-self:flex-start}
 .bg-badge{position:absolute;left:21px;top:12px;width:30px;height:31px;display:flex;align-items:flex-start;justify-content:flex-start;font-size:28px;line-height:1;z-index:8;cursor:var(--meos-hand);user-select:none;
   transform-origin:-29px -18px;transition:scale .15s ease;
@@ -30340,7 +30367,7 @@ body:not(.meos-beginner) .bg-badge:hover{filter:brightness(1.12)}
 body:not(.meos-beginner) .bg-lv{left:36px;top:10px;transform-origin:-44px -16px}   /* v5.1.234(俊克 pm00:26 改良2): ③は王冠の右端の山に刺さる位置 */   /* ③は王冠の三つ山を隠さないよう、数字を右の山の下へ */
 /* v5.1.228(俊克 am11:16 改良1「🔰の右肩に①〜でレベルを切り替え・①が超初心者」): 🔰の右肩の数字= Ⓣの右肩の⓪〜③(.tt-mode)と同じ駒。
    v5.1.229(俊克 am11:40「③で通常modeにすれば、一々切り替える必要もなく試せる」): ③=通常モード= 数字はいつも出す */
-.bg-lv{position:absolute;left:35px;top:7px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:9;cursor:var(--meos-hand);user-select:none;transform-origin:-43px -13px;transition:scale .15s ease}
+.bg-lv{position:absolute;left:35px;top:7px;width:15px;height:15px;border-radius:50%;background:var(--meos-lv-bg);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:9;cursor:var(--meos-hand);user-select:none;transform-origin:-43px -13px;transition:scale .15s ease}
 .ml-split:has(.meos-logo:hover) .bg-lv{scale:2.2}
 /* 🔰モードで隠す部品(見た目だけ= 記法やキー操作はそのまま効く)。残す= ロゴ・ファイル名・Me Dockのタイル(Ⓣ)・Format Me の BI/##/表・Current Me・Edit/Create・膜の板・Hyper TOC */
 /* v5.1.227(俊克 am10:47 👍1): 🔔(音)とテーマ・取消(~~)・折り返し(表と対)・暗号化(📋は隠す)・Line/←→/#/Raw も残す
@@ -30696,6 +30723,9 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .new-md-btn{flex:none;font-size:11px;font-weight:800;padding:2px 9px;border:1px solid #116329;border-radius:6px;background:#1a7f37;color:#fff;cursor:var(--meos-hand);line-height:1.3;white-space:nowrap}
 .new-md-btn:hover{background:#2da44e}
 .new-md-btn:active{background:#116329}
+/* v5.1.251(俊克 pm03:42「New.mdボタンの右肩に①〜③。🔰のレベルに対応した見本を入れたmdを作る・①〜③の地の色を🔰と同じ色(今のとは違う色)」): 右肩の数字= 🔰の数字と同じ駒・同じ色 */
+.nm-split{position:relative;display:inline-flex;flex:none}
+.nm-lv{position:absolute;top:-7px;right:-7px;width:15px;height:15px;border-radius:50%;background:var(--meos-lv-bg);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:2;cursor:var(--meos-hand);user-select:none}
 .me-name-wrap.hidden,.zoom-me-panel.hidden,.ref-create-panel.hidden{display:none}
 .ref-create-panel{display:grid;gap:5px;padding:2px 0}
 .ref-sym-row{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
@@ -32135,7 +32165,7 @@ color:#ffffff;z-index:4;padding:0}
 
 
 <div class="inline-panel" id="new-rename-panel">
-  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom / Reference"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option><option value="reference">Reference</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button></div>
+  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom / Reference"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option><option value="reference">Reference</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><span class="nm-split"><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button><span class="nm-lv" id="new-md-lv">${meosNewMdLv()}</span></span></div>
   <div class="me-name-wrap" id="me-name-wrap"><div class="name-tint" id="me-name-tint" aria-hidden="true"></div><input class="name-input" id="me-name-input" value="${esc(initial.value)}"/></div>
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
@@ -34766,7 +34796,10 @@ if(ghDisconnectBtn)ghDisconnectBtn.addEventListener('click',()=>vscode.postMessa
 /* v4.0.86: 失効の姿で押された時は確認を出さない(答えが1つしかないので) */
 const ghPush=document.getElementById('gh-push');if(ghPush)ghPush.addEventListener('click',()=>vscode.postMessage({type:'toggleGithubAutoSync'}));
 const ghOpen=document.getElementById('gh-open');if(ghOpen)ghOpen.addEventListener('click',()=>vscode.postMessage({type:'openGithubPage'}));
-const newMdBtn=document.getElementById('new-md-btn');if(newMdBtn)newMdBtn.addEventListener('click',()=>vscode.postMessage({type:'createNewMdFile'}));
+const newMdBtn=document.getElementById('new-md-btn');if(newMdBtn)newMdBtn.addEventListener('click',()=>{const _l=document.getElementById('new-md-lv');vscode.postMessage({type:'createNewMdFile',lv:Number(_l&&_l.textContent)||3});});
+/* v5.1.251: New .md の右肩の数字= 作る見本の段(①②= 昨日と今日の日記・③= 1つの膜)。押すと①→②→③(Shiftで逆) */
+{const nl=document.getElementById('new-md-lv');if(nl){const NT={'1':'New .md Lv1 — a diary: yesterday and today','2':'New .md Lv2 — a diary with a heading and a table','3':'New .md Lv3 — one membrane'};const nt=()=>nl.setAttribute('data-tip',NT[nl.textContent]||NT['3']);nt();
+nl.addEventListener('pointerdown',ev=>{ev.stopPropagation();});nl.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const c=Number(nl.textContent)||3,m=ev.shiftKey?(c+1)%3+1:c%3+1;nl.textContent=String(m);nt();vscode.postMessage({type:'newMdLv',lv:m});try{showTocTip(ev);}catch(_){}});}}
  /* v0.9.991: 作家向け新規mdファイル作成 */
 window.addEventListener('message',ev=>{const msg=ev.data;if(!msg)return;if(msg.type==='githubSyncState'){if(ghPush){ghPush.classList.toggle('gh-on',!!msg.on);
 var gitInfo=(msg.gitInstalled===false)?' | ⚠ git not installed (tap for help)':(msg.gitVersion?(' | git ✓ '+msg.gitVersion):'');
@@ -35765,7 +35798,7 @@ document.addEventListener('pointermove',()=>hoverSet(true),true);document.docume
 window.addEventListener('message',ev=>{const m=ev.data;if(!m||m.type!=='mods'||!__hov)return;if(m.sl!==undefined){sideSet(!!m.sl,!!m.sr,__sl,__sr);__sl=!!m.sl;__sr=!!m.sr;}modsSet({Shift:m.s,Control:m.c,Meta:m.m,Alt:m.o});});
 function modsFrom(ev){modsSet({Shift:ev.shiftKey,Control:ev.ctrlKey,Meta:ev.metaKey,Alt:ev.altKey});}
 /* ★v4.2.736(俊克 改良2「Shiftで逆回りになるボタンでは青×のまま・そういう機能のないボタンでは無印」): Opt と同じ規則= 地の上と効く部品= 色の× / 効かない部品= 何も出さない */
-const MOD_SEL={shift:'#meos-bg,#meos-bg-lv,#dw-dial,#tt-mode,#fmt-hl-cycle,#fmt-st-cycle,#fmt-head-cycle,#fmt-mtx-cycle,#ww-ring,#fmt-table-wwcycle,#raw-toggle,#dw-scope,#bm-cycle,#bm-pending-btn,#mew-dup-see-clock,#mew-dup-see-all,#clk-pring,#meos-logo,#iv-img,#hand-pick,#fmt-table-merge',ctrl:'#bm-pending-btn,#iv-img,#hand-pick',cmd:'#bm-pending-btn,#iv-img,#hand-pick,#fmt-table-merge'};/* v4.2.776-1(俊克 改良2「🤝↓のときにSky×を出すべき」): 🤝は Shift(↓)も Cmd(減らす)も効く *//* ★v4.2.753(俊克「このポインターボタンの上では、仕様に反して、G⌥Y⌘P⌃ のシミュレーションとして色を変えよう」): ポインターボタン(#hand-pick)だけは効かなくても色の×を出す= tip の G⌥Y⌘P⌃sum の見本 */
+const MOD_SEL={shift:'#meos-bg,#meos-bg-lv,#new-md-lv,#dw-dial,#tt-mode,#fmt-hl-cycle,#fmt-st-cycle,#fmt-head-cycle,#fmt-mtx-cycle,#ww-ring,#fmt-table-wwcycle,#raw-toggle,#dw-scope,#bm-cycle,#bm-pending-btn,#mew-dup-see-clock,#mew-dup-see-all,#clk-pring,#meos-logo,#iv-img,#hand-pick,#fmt-table-merge',ctrl:'#bm-pending-btn,#iv-img,#hand-pick',cmd:'#bm-pending-btn,#iv-img,#hand-pick,#fmt-table-merge'};/* v4.2.776-1(俊克 改良2「🤝↓のときにSky×を出すべき」): 🤝は Shift(↓)も Cmd(減らす)も効く *//* ★v4.2.753(俊克「このポインターボタンの上では、仕様に反して、G⌥Y⌘P⌃ のシミュレーションとして色を変えよう」): ポインターボタン(#hand-pick)だけは効かなくても色の×を出す= tip の G⌥Y⌘P⌃sum の見本 */
 function modsShow(){const top=MORD[MORD.length-1]||'';const k=top==='Control'?'ctrl':(top==='Meta'?'cmd':(top==='Shift'?'shift':''));let v=!!k&&!!lastPt;if(v){try{const t=lastPt.t;if(t&&t.closest&&t.closest(BTN_SEL)&&!t.closest(MOD_SEL[k]))v=false;}catch(_){}}document.body.classList.toggle('meos-shift',v);try{shx.c.classList.toggle('mx-ctrl',k==='ctrl');shx.c.classList.toggle('mx-cmd',k==='cmd');shx.c.classList.toggle('mx-shr',k==='shift'&&SSIDE==='R');shx.w.classList.toggle('on',v);if(v)at(shx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.732: Shift の間= Me Dock のどこでも青の× */
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
@@ -37162,7 +37195,8 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'copySecretAutoWipe') { await copySelectionAutoWipe(); return; }
     if (message && message.type === 'githubCommitPush') { await githubCommitPush(); return; }
     if (message && message.type === 'openGithubPage') { await openGithubPage(); return; }
-    if (message && message.type === 'createNewMdFile') { await createNewMdFile(); return; }
+    if (message && message.type === 'newMdLv') { try { extensionContext.globalState.update('meosNewMdLv', [1, 2, 3].includes(message.lv) ? message.lv : 3); } catch (_) { } return; }   // v5.1.251
+    if (message && message.type === 'createNewMdFile') { await createNewMdFile(message.lv); return; }
     if (message && message.type === 'referenceMeCreate') { await referenceMeCreate(); return; } // v0.9.99968: Reference Me
     if (message && message.type === 'toggleGithubAutoSync') { toggleGithubAutoSync(); return; }
     if (message && message.type === 'githubConnect') { await githubConnectWizard(message.profileUrl || '', message.pat || '', message.isPrivate !== false); return; }
