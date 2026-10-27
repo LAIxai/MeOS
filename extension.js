@@ -17849,9 +17849,10 @@ async function meosNewMdDiarySample(editor, lv) {
   const yBody = ['Today: Started a diary in MeOS.', 'Done: Pressed 📝 New .md.', 'Tomorrow: Press Ⓣ to jump back to today.'];
   // ★v5.1.255(俊克 pm07:08「New.md②: 日記リストからワープしてみよう、と書いておこう。表は空で出す時の結合をベースに、行折り返し50でセルの折り返しが分かる長い文字列。表ボタンを押して整形してみよう」):
   //   表はわざと整形前(生)の姿= 押すと揃う。結合は表ボタンの空の表と同じ(→2 と ↓2)
-  if (lv === 2) yBody.push('', '## Try these', '',
+  if (lv >= 2) yBody.push('', '## Try these', '',
     '1. Press the green date button (like 27T) in Me Dock, pick a day from the diary list, and warp there.',
-    '2. Put the caret in the table below and press the table button ▦ to tidy it up.', '',
+    '2. Put the caret in the table below and press the table button ▦ to tidy it up.',
+    ...(lv === 3 ? ['3. Select a word, then press A in Format Me to make it superscript or subscript.', '4. With the caret in today, press Add to Hyper TOC — today joins the Hyper TOC at the bottom of Me Dock.', '5. Press TOP in Navigate Me to jump to the top of the file, and E to jump to the end.'] : []), '',
     '| <!--🤝→2--> A title that spans two columns | | Note |', '|-|-|-|',
     '| 07:00 | Woke up, made green tea, and wrote the first lines of this diary before breakfast | <!--🤝↓2--> One cell, two rows |',
     '| 22:00 | Pressed the table button and watched the long text wrap inside its cell | |', '');
@@ -17870,12 +17871,12 @@ function meosUntitledUri(base) {
 }
 async function createNewMdFile(lv) {
   try {
-    lv = [1, 2, 3].includes(Number(lv)) ? Number(lv) : meosNewMdLv();
+    lv = [1, 2, 3, 9].includes(Number(lv)) ? Number(lv) : meosNewMdLv();   // v5.1.262: ①②③= 日記の見本(③は練習が多い)・⑨= 1つの膜
     let doc;
-    try { doc = await vscode.workspace.openTextDocument(meosUntitledUri(lv === 3 ? 'New note' : 'My diary')); if (doc.languageId !== 'markdown') doc = await vscode.languages.setTextDocumentLanguage(doc, 'markdown'); }
+    try { doc = await vscode.workspace.openTextDocument(meosUntitledUri(lv === 9 ? 'New note' : 'My diary')); if (doc.languageId !== 'markdown') doc = await vscode.languages.setTextDocumentLanguage(doc, 'markdown'); }
     catch (_) { doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: '' }); }
     const editor = await vscode.window.showTextDocument(doc, { preview: false });
-    if (lv !== 3) { await meosNewMdDiarySample(editor, lv); return; }
+    if (lv !== 9) { await meosNewMdDiarySample(editor, lv); return; }
     // v0.9.994: 新規ファイルを「動くお手本」にする(俊克 6/23 pm02:49)。万人が最初に辿る動線
     //   New .md → 膜をCreate → Add to Hyper TOC を自動化: ①ファイル全体を包む膜を1つ自動生成
     //   ②生成日時を膜のタイムスタンプ(可視コメント)に ③Hyper TOCへ自動登録(手動Addと同経路)。
@@ -30212,7 +30213,7 @@ function meosBeginnerOn() {
 function meosBeginnerLv() { try { const v = extensionContext.globalState.get('meosBeginnerLv'); return [1, 2, 3].includes(v) ? v : 1; } catch (_) { return 1; } }   // v5.1.261: ③も   // v5.1.228: ①超初心者(既定) / ②初心者
 // v5.1.251: New .md の見本の段。覚えが無ければ🔰の段(③=通常)に合わせる
 function meosTipsOn() { try { return extensionContext.globalState.get('meosTipsOn') === true; } catch (_) { return false; } }   // v5.1.256: 既定は出さない(? を押すと出る)
-function meosNewMdLv() { try { const v = extensionContext.globalState.get('meosNewMdLv'); if ([1, 2, 3].includes(v)) return v; return meosBeginnerOn() ? Math.min(2, meosBeginnerLv()) : 3; } catch (_) { return 3; } }
+function meosNewMdLv() { try { const v = extensionContext.globalState.get('meosNewMdLv'); if ([1, 2, 3, 9].includes(v)) return v; return meosBeginnerOn() ? meosBeginnerLv() : 9; } catch (_) { return 9; } }   // v5.1.262: 🔰と同じ①②③⑨
 function meosDockTiles() { try { let o = extensionContext.globalState.get('meDockTiles'); if (typeof o === 'string' && o.length === 6) o = o + 'T';   /* v4.2.622: 旧6字の覚えも Ⓣ は最後へ */ return meosDockTilesValid(o) ? o : MEOS_DOCK_ALL; } catch (_) { return MEOS_DOCK_ALL; } }
 // ★v4.2.776-11(俊克「puzzleをコンプリートしたら赤が金色に。一度金色になったら、そのまま。黄金騎士ガロは死ぬまで黄金」):
 //   仕掛けのある並びを全種類見つけたら、最後にクリックした字の点が金色= 以後は並びに関わらず金のまま(globalState meosPuzzleGold)
@@ -30755,7 +30756,14 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .new-md-btn:active{background:#116329}
 /* v5.1.251(俊克 pm03:42「New.mdボタンの右肩に①〜③。🔰のレベルに対応した見本を入れたmdを作る・①〜③の地の色を🔰と同じ色(今のとは違う色)」): 右肩の数字= 🔰の数字と同じ駒・同じ色 */
 .nm-split{position:relative;display:inline-flex;flex:none}
-.nm-lv{position:absolute;top:-7px;right:-7px;width:15px;height:15px;border-radius:50%;background:var(--meos-lv-bg);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:2;cursor:var(--meos-hand);user-select:none}
+/* v5.1.262(俊克 pm11:47 改良1「New.mdを右肩のボタンと一緒に拡大。初心者が最初に押すボタンだからこそ存在感を」): ボタンも数字も約1.4倍 */
+.nm-split .new-md-btn{font-size:15px;padding:4px 12px;border-radius:8px}
+/* 改良2「王冠の⑨のみ青色でなく別の色」: ⑨= 金(王冠と同じ家族) */
+.nm-lv[data-lv="9"],body:not(.meos-beginner) .bg-lv{background:#b8860b}
+/* (スクショで気づいた) 🔰の段で上の行が短いと、はみ出した🔰が次の行(テーマ)に被る→ ロゴの箱に🔰の丈を持たせる */
+body.meos-beginner .ml-split{min-height:44px}
+
+.nm-lv{position:absolute;top:-9px;right:-9px;width:20px;height:20px;border-radius:50%;background:var(--meos-lv-bg);color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:2;cursor:var(--meos-hand);user-select:none}
 .me-name-wrap.hidden,.zoom-me-panel.hidden,.ref-create-panel.hidden{display:none}
 .ref-create-panel{display:grid;gap:5px;padding:2px 0}
 .ref-sym-row{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
@@ -32195,7 +32203,7 @@ color:#ffffff;z-index:4;padding:0}
 
 
 <div class="inline-panel" id="new-rename-panel">
-  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom / Reference"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option><option value="reference">Reference</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><span class="nm-split"><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button><span class="nm-lv" id="new-md-lv">${meosNewMdLv()}</span></span></div>
+  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom / Reference"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option><option value="reference">Reference</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><span class="nm-split"><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button><span class="nm-lv" id="new-md-lv" data-lv="${meosNewMdLv()}">${meosNewMdLv()}</span></span></div>
   <div class="me-name-wrap" id="me-name-wrap"><div class="name-tint" id="me-name-tint" aria-hidden="true"></div><input class="name-input" id="me-name-input" value="${esc(initial.value)}"/></div>
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
@@ -34827,10 +34835,10 @@ if(ghDisconnectBtn)ghDisconnectBtn.addEventListener('click',()=>vscode.postMessa
 const ghPush=document.getElementById('gh-push');if(ghPush)ghPush.addEventListener('click',()=>vscode.postMessage({type:'toggleGithubAutoSync'}));
 const ghOpen=document.getElementById('gh-open');if(ghOpen)ghOpen.addEventListener('click',()=>vscode.postMessage({type:'openGithubPage'}));
 {const tb=document.getElementById('tips-btn');if(tb){tb.addEventListener('pointerdown',ev=>{ev.stopPropagation();});tb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const on=!document.body.classList.contains('meos-tips');document.body.classList.toggle('meos-tips',on);tb.setAttribute('data-tip',on?'Tips: on | Click to hide tips.':'Tips: off | Click to show tips.');try{showTocTip(ev);}catch(_){}vscode.postMessage({type:'tipsOn',on:on});});}}   /* v5.1.256: ? = tip を出す/出さない */
-const newMdBtn=document.getElementById('new-md-btn');if(newMdBtn)newMdBtn.addEventListener('click',()=>{const _l=document.getElementById('new-md-lv');vscode.postMessage({type:'createNewMdFile',lv:Number(_l&&_l.textContent)||3});});
+const newMdBtn=document.getElementById('new-md-btn');if(newMdBtn)newMdBtn.addEventListener('click',()=>{const _l=document.getElementById('new-md-lv');vscode.postMessage({type:'createNewMdFile',lv:Number(_l&&_l.textContent)||9});});
 /* v5.1.251: New .md の右肩の数字= 作る見本の段(①②= 昨日と今日の日記・③= 1つの膜)。押すと①→②→③(Shiftで逆) */
-{const nl=document.getElementById('new-md-lv');if(nl){const NT={'1':'New .md Lv1 — a diary: yesterday and today','2':'New .md Lv2 — a diary with a heading and a table','3':'New .md Lv3 — one membrane'};const nt=()=>nl.setAttribute('data-tip',NT[nl.textContent]||NT['3']);nt();
-nl.addEventListener('pointerdown',ev=>{ev.stopPropagation();});nl.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const c=Number(nl.textContent)||3,m=ev.shiftKey?(c+1)%3+1:c%3+1;nl.textContent=String(m);nt();vscode.postMessage({type:'newMdLv',lv:m});try{showTocTip(ev);}catch(_){}});}}
+{const nl=document.getElementById('new-md-lv');if(nl){const NT={'1':'New .md Lv1 — a diary: yesterday and today','2':'New .md Lv2 — a diary with things to try','3':'New .md Lv3 — a diary with more things to try','9':'New .md Full-spec — one membrane'};const nt=()=>nl.setAttribute('data-tip',NT[nl.textContent]||NT['9']);nt();
+nl.addEventListener('pointerdown',ev=>{ev.stopPropagation();});nl.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const SEQ=[1,2,3,9],ci=Math.max(0,SEQ.indexOf(Number(nl.textContent))),m=SEQ[(ci+(ev.shiftKey?SEQ.length-1:1))%SEQ.length];nl.textContent=String(m);nl.setAttribute('data-lv',String(m));nt();vscode.postMessage({type:'newMdLv',lv:m});try{showTocTip(ev);}catch(_){}});}}
  /* v0.9.991: 作家向け新規mdファイル作成 */
 window.addEventListener('message',ev=>{const msg=ev.data;if(!msg)return;if(msg.type==='githubSyncState'){if(ghPush){ghPush.classList.toggle('gh-on',!!msg.on);
 var gitInfo=(msg.gitInstalled===false)?' | ⚠ git not installed (tap for help)':(msg.gitVersion?(' | git ✓ '+msg.gitVersion):'');
@@ -37230,7 +37238,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'githubCommitPush') { await githubCommitPush(); return; }
     if (message && message.type === 'openGithubPage') { await openGithubPage(); return; }
     if (message && message.type === 'tipsOn') { try { extensionContext.globalState.update('meosTipsOn', !!message.on); } catch (_) { } return; }   // v5.1.256
-    if (message && message.type === 'newMdLv') { try { extensionContext.globalState.update('meosNewMdLv', [1, 2, 3].includes(message.lv) ? message.lv : 3); } catch (_) { } return; }   // v5.1.251
+    if (message && message.type === 'newMdLv') { try { extensionContext.globalState.update('meosNewMdLv', [1, 2, 3, 9].includes(message.lv) ? message.lv : 9); } catch (_) { } return; }   // v5.1.251
     if (message && message.type === 'createNewMdFile') { await createNewMdFile(message.lv); return; }
     if (message && message.type === 'referenceMeCreate') { await referenceMeCreate(); return; } // v0.9.99968: Reference Me
     if (message && message.type === 'toggleGithubAutoSync') { toggleGithubAutoSync(); return; }
