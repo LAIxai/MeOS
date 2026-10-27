@@ -10468,9 +10468,16 @@ function postFixedWorkingTocSnapshot() {
 // ★v5.1.223(俊克 10.27 am08:44 改良1「飛んだ先の行が、エディターの表示領域の下の方になってしまう。上から5行目くらいに」):
 //   着地の行を上端に置いてから、見た目の行で4行だけ下げる(折り返しも1行と数える= editorScroll)。焦点のあるエディタにだけ効く
 async function meosRevealNearTop(ed, line) {
+  // ★v5.1.224(俊克 am08:52「5行目ではなく、真中よりやや下の位置になる」= 実測 カーソル=383 上端=367): 上端へ置いて editorScroll で4行下げる、は合わなかった(原因は未確定)。
+  //   → 先に中央へ見せ(上側の行が画面に入る)、画面に見えている行だけを数えて4つ上の行を決め、その行を上端へ(畳んで隠れた行は数えない)
   try {
-    ed.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.AtTop);
-    if (vscode.window.activeTextEditor === ed && line > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'line', value: 4 });
+    const _vis = (ln) => (ed.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line);
+    ed.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter);
+    for (let i = 0; i < 10 && !_vis(line); i++) await new Promise(r => setTimeout(r, 30));
+    let top = line, n = 0;
+    for (let ln = line - 1; ln >= 0 && n < 4; ln--) { if (!_vis(ln)) { if (ln < ((ed.visibleRanges || [])[0] || { start: { line: 0 } }).start.line) break; continue; } top = ln; n++; }
+    ed.revealRange(new vscode.Range(top, 0, top, 0), vscode.TextEditorRevealType.AtTop);
+    setTimeout(() => { try { const vr = ed.visibleRanges && ed.visibleRanges[0]; meosDbg('[nearTop] 行=' + (line + 1) + ' 上端に置いた行=' + (top + 1) + ' 実際の上端=' + (vr ? vr.start.line + 1 : '?')); } catch (_) { } }, 300);
   } catch (_) { }
 }
 function jumpToWorkingTocItem(rawKey, citeN) {
