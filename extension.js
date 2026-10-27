@@ -30433,7 +30433,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tiles.md-armed .md-tile.md-last{transform:scale(2);z-index:6;position:relative}
 /* v5.1.267(俊克 am01:40 改良1「シフトを押すとパズルのtipが下の Format Me に被さる。⏰0y…の拡大のように、ヘッダーの四角枠を下へ引き伸ばす」): 構えている間はヘッダーの枠の下を広げる(⏰と同じ :has の作法) */
 header.title{transition:padding-bottom .15s ease}
-header.title:has(.md-tiles.md-armed){padding-bottom:40px}   /* v5.1.268(俊克 am01:55「少し延ばし過ぎ。すべてのケースで▼を隠した上で、延ばす量を必要最小限に」): 58→40(スクショで tip の下端まで) */
+header.title:has(.md-tiles.md-armed),header.title:has(.md-tiles .md-tile:hover){padding-bottom:40px}   /* v5.1.270(俊克 am02:31「ポインターでMeDockⓉの字が拡大した時も、枠を下に引き伸ばそう。てっきり対応していると思い込んでいた」): 字に乗った時も同じだけ伸ばす */   /* v5.1.268(俊克 am01:55「少し延ばし過ぎ。すべてのケースで▼を隠した上で、延ばす量を必要最小限に」): 58→40(スクショで tip の下端まで) */
 .title-left:has(.md-tiles.md-armed) .hidx-toggle{opacity:0;pointer-events:none}   /* v5.1.268: 構えている間は、どの字でも▼を隠す(今までは Ⓣ の時だけ) */
 .md-ttile .tt-mode{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:2;cursor:var(--meos-hand)}   /* v4.2.777-3(俊克「puzzleのⓉの右肩に⓪〜③(常に)・▼はホーバーの時だけ」): タイルの中に置く= 並べ替えで一緒に動き、幅は取らない / v4.2.777-4(俊克 改良3「緑だとⓉと一体化し過ぎる。他のボタンのように別の色に」): 右肩の↻と同じ金茶の丸に白い数字 */
 .md-ttile .tt-mode.tt-empty{background:#c9b48a;color:#5b4a26}   /* v4.2.777-4: 原型が未登録の番号= 薄く(▾で登録する) */
