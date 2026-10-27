@@ -35666,16 +35666,16 @@ if(!window.__mdJumble)vscode.postMessage({type:'meosLogoOpen',git:!!(q.shift||ev
 lg.addEventListener('pointercancel',()=>{p=null;document.body.classList.remove('meos-gripping');});})();
 /* v5.1.226: 🔰= クリックで通常モードへ・Opt+クリックで🔰モードへ */
 (function(){const bg=document.getElementById('meos-bg');if(!bg)return;
-function tip(){bg.setAttribute('data-tip',document.body.classList.contains('meos-beginner')?'Beginner mode 🔰 | Me Dock shows only the basics. Click → show every part.':'Opt+click → Beginner mode 🔰 | Show only the basics of Me Dock.');}tip();
+function tip(){bg.setAttribute('data-tip',document.body.classList.contains('meos-beginner')?'Beginner mode 🔰 | Me Dock shows only the basics. Click → next level (Shift+click → back).':'Level 3 — every part 🔰 | The full Me Dock. Click → Level 1 (Shift+click → Level 2).');}tip();
 bg.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
-bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const on=!!ev.altKey;if(on===document.body.classList.contains('meos-beginner'))return;document.body.classList.toggle('meos-beginner',on);tip();vscode.postMessage({type:'meosBeginner',on:on});try{window.__bgLvSync();}catch(_){}});
+/* v5.1.230(俊克 am11:44「いっそのことOptクリックは廃止して、③のときに灰色の初心者マークにする。これで3プリセットを切り替える」): 🔰を押しても右肩の数字と同じ= ①→②→③(Shiftで逆) */
+bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));});
 /* v5.1.228: 右肩の数字= ①超初心者 ⇄ ②初心者 / v5.1.229: ③=通常モード。クリックで①→②→③→①・Shift+クリックで逆回り(Ⓣの⓪〜③と同じ) */
 const lv=document.getElementById('meos-bg-lv');if(lv){const LT={'1':'Level 1 — first steps | Only the very basics of Me Dock.','2':'Level 2 — beginner | A few more parts.','3':'Level 3 — every part | The full Me Dock.'};const ltip=()=>lv.setAttribute('data-tip',(LT[lv.textContent]||LT['3'])+' Click → next level (Shift+click → back).');ltip();
-window.__bgLvSync=()=>{lv.textContent=document.body.classList.contains('meos-beginner')?(document.body.classList.contains('meos-bg1')?'1':'2'):'3';ltip();};   /* 🔰のOpt+クリックで戻る時は、覚えている①②へ(meos-bg1 は通常モードの間も残しておく) */
 lv.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
 lv.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const cur=Number(lv.textContent)||3,m=ev.shiftKey?(cur+1)%3+1:cur%3+1;lv.textContent=String(m);const on=m<3;
-if(on!==document.body.classList.contains('meos-beginner')){document.body.classList.toggle('meos-beginner',on);tip();vscode.postMessage({type:'meosBeginner',on:on});}
-if(on){document.body.classList.toggle('meos-bg1',m===1);vscode.postMessage({type:'meosBeginnerLv',lv:m});}ltip();});}})();
+if(on!==document.body.classList.contains('meos-beginner')){document.body.classList.toggle('meos-beginner',on);vscode.postMessage({type:'meosBeginner',on:on});}
+tip();if(on){document.body.classList.toggle('meos-bg1',m===1);vscode.postMessage({type:'meosBeginnerLv',lv:m});}ltip();});}})();
 // {* ▲mCN=dock_js_logo *}
 // {* ▼mCN=dock_js_handdrag // v4.2.522 手の駒を捨てて次の手へ・当たりの赤い十字 *}
 (function(){const hdr=document.querySelector('header.title');const hp=document.getElementById('hand-pick');if(!hdr||!hp)return;
@@ -35723,7 +35723,7 @@ document.addEventListener('pointermove',()=>hoverSet(true),true);document.docume
 window.addEventListener('message',ev=>{const m=ev.data;if(!m||m.type!=='mods'||!__hov)return;if(m.sl!==undefined){sideSet(!!m.sl,!!m.sr,__sl,__sr);__sl=!!m.sl;__sr=!!m.sr;}modsSet({Shift:m.s,Control:m.c,Meta:m.m,Alt:m.o});});
 function modsFrom(ev){modsSet({Shift:ev.shiftKey,Control:ev.ctrlKey,Meta:ev.metaKey,Alt:ev.altKey});}
 /* ★v4.2.736(俊克 改良2「Shiftで逆回りになるボタンでは青×のまま・そういう機能のないボタンでは無印」): Opt と同じ規則= 地の上と効く部品= 色の× / 効かない部品= 何も出さない */
-const MOD_SEL={shift:'#dw-dial,#tt-mode,#fmt-hl-cycle,#fmt-st-cycle,#fmt-head-cycle,#fmt-mtx-cycle,#ww-ring,#fmt-table-wwcycle,#raw-toggle,#dw-scope,#bm-cycle,#bm-pending-btn,#mew-dup-see-clock,#mew-dup-see-all,#clk-pring,#meos-logo,#iv-img,#hand-pick,#fmt-table-merge',ctrl:'#bm-pending-btn,#iv-img,#hand-pick',cmd:'#bm-pending-btn,#iv-img,#hand-pick,#fmt-table-merge'};/* v4.2.776-1(俊克 改良2「🤝↓のときにSky×を出すべき」): 🤝は Shift(↓)も Cmd(減らす)も効く *//* ★v4.2.753(俊克「このポインターボタンの上では、仕様に反して、G⌥Y⌘P⌃ のシミュレーションとして色を変えよう」): ポインターボタン(#hand-pick)だけは効かなくても色の×を出す= tip の G⌥Y⌘P⌃sum の見本 */
+const MOD_SEL={shift:'#meos-bg,#meos-bg-lv,#dw-dial,#tt-mode,#fmt-hl-cycle,#fmt-st-cycle,#fmt-head-cycle,#fmt-mtx-cycle,#ww-ring,#fmt-table-wwcycle,#raw-toggle,#dw-scope,#bm-cycle,#bm-pending-btn,#mew-dup-see-clock,#mew-dup-see-all,#clk-pring,#meos-logo,#iv-img,#hand-pick,#fmt-table-merge',ctrl:'#bm-pending-btn,#iv-img,#hand-pick',cmd:'#bm-pending-btn,#iv-img,#hand-pick,#fmt-table-merge'};/* v4.2.776-1(俊克 改良2「🤝↓のときにSky×を出すべき」): 🤝は Shift(↓)も Cmd(減らす)も効く *//* ★v4.2.753(俊克「このポインターボタンの上では、仕様に反して、G⌥Y⌘P⌃ のシミュレーションとして色を変えよう」): ポインターボタン(#hand-pick)だけは効かなくても色の×を出す= tip の G⌥Y⌘P⌃sum の見本 */
 function modsShow(){const top=MORD[MORD.length-1]||'';const k=top==='Control'?'ctrl':(top==='Meta'?'cmd':(top==='Shift'?'shift':''));let v=!!k&&!!lastPt;if(v){try{const t=lastPt.t;if(t&&t.closest&&t.closest(BTN_SEL)&&!t.closest(MOD_SEL[k]))v=false;}catch(_){}}document.body.classList.toggle('meos-shift',v);try{shx.c.classList.toggle('mx-ctrl',k==='ctrl');shx.c.classList.toggle('mx-cmd',k==='cmd');shx.c.classList.toggle('mx-shr',k==='shift'&&SSIDE==='R');shx.w.classList.toggle('on',v);if(v)at(shx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.732: Shift の間= Me Dock のどこでも青の× */
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
@@ -35754,7 +35754,7 @@ document.addEventListener('pointermove',ev=>{if(press||!relXY)return;if(Math.abs
    緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
 /* ★v4.2.601(俊克「最小幅にドラッグした時に、自動で+δの幅を追加しよう」): 自分の幅(四角の物差し)を拡張へ知らせる= 動きが止まって0.7秒後に1回 */
 let __mdWT=null;window.addEventListener('resize',()=>{clearTimeout(__mdWT);__mdWT=setTimeout(()=>{try{vscode.postMessage({type:'dockWidthPx',w:Math.round(document.documentElement.getBoundingClientRect().width)});}catch(_){}},700);});
-const OPT_SEL='#meos-bg,#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring,#hand-pick';/* v4.2.753: ポインターボタンは G⌥Y⌘P⌃ の見本= Opt でも緑(v4.2.567 の「緑は消す」をここだけ破る) */
+const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring,#hand-pick';/* v4.2.753: ポインターボタンは G⌥Y⌘P⌃ の見本= Opt でも緑(v4.2.567 の「緑は消す」をここだけ破る) */
 /* ★v4.2.735(俊克「どこでもOptを押すと緑×を出して、効かないボタンの上に移動すると無印に」): 地の上= 緑(キー配列の確かめにも)・Opt が効く部品= 緑・効かない部品(ボタン/tip の在る物/文字タイル)= 何も出さない(赤も隠す) */
 function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false,btn=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;btn=!!v&&!!lastPt&&!!lastPt.t&&!!lastPt.t.closest&&!!lastPt.t.closest(BTN_SEL);
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
