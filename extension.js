@@ -30315,13 +30315,15 @@ body.vscode-light .dev-vsix-btn,body.vscode-high-contrast-light .dev-vsix-btn{ba
 .bg-badge:hover{filter:grayscale(1) opacity(.75) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
 body.meos-beginner .bg-badge{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
 .ml-split:has(.meos-logo:hover) .bg-badge{scale:2.2}
+/* v5.1.234(俊克 pm00:26 改良1): 🔰/王冠/数字に乗った時も、ロゴごと一緒に膨らむ(膨らんだ先の🔰を押す= ロゴと同じ作法) */
+.ml-split:has(.bg-badge:hover,.bg-lv:hover) .meos-logo,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .bg-badge,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .bg-lv{scale:2.2}
 /* v5.1.232(俊克 pm00:14「モード③は🔰の上下逆の形にして、三つ山の王冠のような形に」): ③= 金の王冠(左が金・右がクリーム・紺の縁・白い輪郭= 🔰と同じ作り)。自前の SVG */
-.bg-badge .bg-crown{display:none;width:30px;height:23px;margin:4px 0 0 -1px}   /* v5.1.233(俊克 pm00:2x 改良1/2): 白い輪郭をロゴに接し・下を切って横長の王冠に */
+.bg-badge .bg-crown{display:none;width:30px;height:23px;margin:4px 0 0 -3px}   /* v5.1.233(俊克 pm00:2x 改良1/2): 白い輪郭をロゴに接し・下を切って横長の王冠に */
 body:not(.meos-beginner) .bg-badge{filter:none}
 body:not(.meos-beginner) .bg-badge .bg-g{display:none}
 body:not(.meos-beginner) .bg-badge .bg-crown{display:block}
 body:not(.meos-beginner) .bg-badge:hover{filter:brightness(1.12)}
-body:not(.meos-beginner) .bg-lv{left:49px;top:22px;transform-origin:-57px -28px}   /* ③は王冠の三つ山を隠さないよう、数字を右の山の下へ */
+body:not(.meos-beginner) .bg-lv{left:36px;top:10px;transform-origin:-44px -16px}   /* v5.1.234(俊克 pm00:26 改良2): ③は王冠の右端の山に刺さる位置 */   /* ③は王冠の三つ山を隠さないよう、数字を右の山の下へ */
 /* v5.1.228(俊克 am11:16 改良1「🔰の右肩に①〜でレベルを切り替え・①が超初心者」): 🔰の右肩の数字= Ⓣの右肩の⓪〜③(.tt-mode)と同じ駒。
    v5.1.229(俊克 am11:40「③で通常modeにすれば、一々切り替える必要もなく試せる」): ③=通常モード= 数字はいつも出す */
 .bg-lv{position:absolute;left:35px;top:7px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:9;cursor:var(--meos-hand);user-select:none;transform-origin:-43px -13px;transition:scale .15s ease}
