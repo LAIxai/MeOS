@@ -30305,17 +30305,25 @@ body.vscode-light .dev-vsix-btn,body.vscode-high-contrast-light .dev-vsix-btn{ba
 .meos-logo .ml-jumble{display:none;font-size:29px;line-height:36px;text-align:center;pointer-events:none}
 .meos-logo.ml-on .ml-img{display:none}.meos-logo.ml-on .ml-jumble{display:block}
 /* ★v5.1.226(俊克 10.27 am10:32「初心者モードを作ろう。Me Dockを必要最小限に絞り込む」「ロゴマークの右腰に🔰ボタン。クリックで通常モード・Optクリックで🔰モード」):
-   🔰はロゴの右腰(.mz-br と同じ角の駒)。🔰モード= 濃い・通常= 薄い灰。ロゴが膨らむ間は隠す(大きなロゴに被らない) */
+   🔰はロゴの右腰(.mz-br と同じ角の駒)。🔰モード= 濃い・通常= 薄い灰。
+   v5.1.227(俊克 am10:47 改良1/2): 🔰の左上をロゴの赤道(右端)に接して2倍(32px)・ロゴが膨らむ時は同じ原点(ロゴの左上)から一緒に2.2倍・初心者マークのシールのように白い輪郭 */
 .ml-split{position:relative;display:flex;flex:0 0 auto;align-self:flex-start}
-.bg-badge{position:absolute;right:6px;bottom:0;transform:translate(45%,35%);width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;z-index:8;cursor:var(--meos-hand);opacity:.3;filter:grayscale(1);user-select:none}
-.bg-badge:hover{opacity:.7}
-body.meos-beginner .bg-badge{opacity:1;filter:none}
-.ml-split:has(.meos-logo:hover) .bg-badge{visibility:hidden}
+.bg-badge{position:absolute;left:21px;top:12px;width:32px;height:32px;display:flex;align-items:flex-start;justify-content:flex-start;font-size:28px;line-height:1;z-index:8;cursor:var(--meos-hand);user-select:none;
+  transform-origin:-29px -18px;transition:scale .15s ease;
+  filter:grayscale(1) opacity(.4) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
+.bg-badge:hover{filter:grayscale(1) opacity(.75) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
+body.meos-beginner .bg-badge{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
+.ml-split:has(.meos-logo:hover) .bg-badge{scale:2.2}
 /* 🔰モードで隠す部品(見た目だけ= 記法やキー操作はそのまま効く)。残す= ロゴ・ファイル名・Me Dockのタイル(Ⓣ)・Format Me の BI/##/表・Current Me・Edit/Create・膜の板・Hyper TOC */
-body.meos-beginner #hand-pick,body.meos-beginner .mz-split,body.meos-beginner #standards-toggle,body.meos-beginner .title-row-btns,
+/* v5.1.227(俊克 am10:47 👍1): 🔔(音)とテーマ・取消(~~)・折り返し(表と対)・暗号化(📋は隠す)・Line/←→/#/Raw も残す */
+body.meos-beginner #hand-pick,body.meos-beginner .mz-split,body.meos-beginner #standards-toggle,
+body.meos-beginner #paste-lag,body.meos-beginner .row2-vsix>:not(.th-split):not(.sd-split),
 body.meos-beginner #hidx-box,body.meos-beginner #hidx-toggle,
-body.meos-beginner #format-tools .fmt-cell:not(:has(#fmt-highlight,#fmt-heading,#fmt-table)),
-body.meos-beginner #encrypt-me-row,body.meos-beginner #gh-wizard,body.meos-beginner #nav-center,
+body.meos-beginner #format-tools .fmt-cell:not(:has(#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-table,#ww-btn)),
+body.meos-beginner #format-tools .os-cell,
+body.meos-beginner #enc-copy,body.meos-beginner #gh-wizard,
+body.meos-beginner #nav-center .bird-ev-label,body.meos-beginner #nav-scroll,body.meos-beginner #nav-center .top-eof-unit,body.meos-beginner #nav-create-toc,
+body.meos-beginner #nav-center .toc-nav-row>.toc-axis,body.meos-beginner #nav-center .me-axis-wrap,body.meos-beginner #nav-center .me-flip-row,body.meos-beginner #nav-center .mark-nav,
 body.meos-beginner .dock-lead .tms-title,body.meos-beginner .dock-lead .clk-wrap{display:none!important}
 .title-actions{flex-wrap:wrap;justify-content:flex-end;margin-left:auto;row-gap:6px}
 .title-row2{flex-wrap:wrap;row-gap:6px}
@@ -35729,7 +35737,7 @@ document.addEventListener('pointermove',ev=>{if(press||!relXY)return;if(Math.abs
    緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
 /* ★v4.2.601(俊克「最小幅にドラッグした時に、自動で+δの幅を追加しよう」): 自分の幅(四角の物差し)を拡張へ知らせる= 動きが止まって0.7秒後に1回 */
 let __mdWT=null;window.addEventListener('resize',()=>{clearTimeout(__mdWT);__mdWT=setTimeout(()=>{try{vscode.postMessage({type:'dockWidthPx',w:Math.round(document.documentElement.getBoundingClientRect().width)});}catch(_){}},700);});
-const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring,#hand-pick';/* v4.2.753: ポインターボタンは G⌥Y⌘P⌃ の見本= Opt でも緑(v4.2.567 の「緑は消す」をここだけ破る) */
+const OPT_SEL='#meos-bg,#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring,#hand-pick';/* v4.2.753: ポインターボタンは G⌥Y⌘P⌃ の見本= Opt でも緑(v4.2.567 の「緑は消す」をここだけ破る) */
 /* ★v4.2.735(俊克「どこでもOptを押すと緑×を出して、効かないボタンの上に移動すると無印に」): 地の上= 緑(キー配列の確かめにも)・Opt が効く部品= 緑・効かない部品(ボタン/tip の在る物/文字タイル)= 何も出さない(赤も隠す) */
 function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false,btn=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;btn=!!v&&!!lastPt&&!!lastPt.t&&!!lastPt.t.closest&&!!lastPt.t.closest(BTN_SEL);
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
