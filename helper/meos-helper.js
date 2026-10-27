@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.1.243) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.1.244) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -619,7 +619,9 @@ function run(argv) {
     // ★v5.1.243(俊克 pm01:57 バグ1「右上から近づくと、右上にズレる」): 実測= 右上から入ると、頼みから運ぶまでの間に左下へ動き続けている(04:58:25 で 9pt)。
     //   v5.1.239 の abs はその動きを捨てていた(×0)・それ以前の rel は等倍で足していた(×1)。図形は2.2倍に膨らむので、その間の動きも2.2倍して足すのが正しい
     //   = 着地= 乗った点＋片道＋(今−乗った点)×2.2(= 今の点を、膨らんだ図形の同じ点へ)
-    if (isFinite(ex) && isFinite(ey) && Math.abs(ex - cx) < 200 && Math.abs(ey - cy) < 200) { x = ex + Number(o.dx) / bs + 2.2 * (cx - ex); y = ey + Number(o.dy) / bs + 2.2 * (cy - ey); how = 'abs'; }
+    // ★v5.1.244(俊克 pm02:23 バグ1「真上から真下へ動かすと、深く入り込んだ所へ移動する」): ×2.2 は手の動きまで膨らませた(05:26:04 下へ6pt→14pt押し込んだ)。
+    //   手の動きは画面の上の動き= 図形が膨らんでも手は等倍で動いている→ 等倍で足す(= 今の位置＋片道)。×0(abs)も×2.2も外れ= 等倍(rel)に落ち着く。乗った点は記録だけ
+    how = (isFinite(ex) && isFinite(ey)) ? 'rel(moved ' + (cx - ex).toFixed(1) + ',' + (cy - ey).toFixed(1) + ')' : 'rel';
     try { $.CGWarpMouseCursorPosition({ x: x, y: y }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {}
     hlog('warpPtr ' + how + ' dx=' + Number(o.dx).toFixed(1) + ' dy=' + Number(o.dy).toFixed(1) + ' bs=' + bs + ' entry=' + (isFinite(ex) ? ex.toFixed(1) + ',' + ey.toFixed(1) : '?') + ' now=' + cx.toFixed(1) + ',' + cy.toFixed(1) + ' to=' + x.toFixed(1) + ',' + y.toFixed(1));
   };
