@@ -14183,7 +14183,7 @@ function meosPtrWarp(m) {
   try {
     const fs = require('fs'), path = require('path'), dir = meosHelperDir();
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify({ dx: Number(m.dx) || 0, dy: Number(m.dy) || 0, sx: Number(m.sx), sy: Number(m.sy), t: Date.now() }));
+    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify({ dx: Number(m.dx) || 0, dy: Number(m.dy) || 0, sx: Number(m.sx), sy: Number(m.sy), center: !!m.center, t: Date.now() }));   // v5.1.266: center を渡し忘れていた(255〜265 は中央でなく相対で運んでいた)
     meosDbg('[ptrWarp] dx=' + (Number(m.dx) || 0).toFixed(1) + ' dy=' + (Number(m.dy) || 0).toFixed(1) + ' q=' + JSON.stringify(m.q) + ' o=' + JSON.stringify(m.o) + ' z=' + m.z + ' dpr=' + m.dpr + ' on=' + m.on);
   } catch (_) { }
 }
@@ -35787,7 +35787,7 @@ const z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,ox=lg.offsetLeft,oy=
 /* ★v5.1.255(俊克 pm07:08 改良1「🔰が拡大した時、ポインターを🔰の中央に常に出す。ロゴに入れた時はロゴの中央」): 行き先= 膨らんだ図形の中央(乗った点と同じ点、はやめる)。
    中央(部品の物差し)= ロゴ(18,18)・🔰(14,15)・王冠(12,15.5)・数字(7.5,7.5)。膨らんだ後の中央= 原点＋(中央−原点)×2.2。片道= そこ−乗った点 */
 const _bgn=document.body.classList.contains('meos-beginner'),_c=el===lg?[18,18]:(el.id==='meos-bg-lv'?[7.5,7.5]:(_bgn?[14,15]:[12,15.5])),cx=el.offsetLeft+_c[0],cy=el.offsetTop+_c[1],tx=ox+(cx-ox)*2.2,ty=oy+(cy-oy)*2.2,k1=z*d;
-__wDone=true;__wAt=Date.now();__ms.classList.add('ml-big');__land={q:[cx,cy],t:Date.now()+270};try{window.__redAt&&window.__redAt(ev,tx-qx,ty-qy);}catch(_){}const _msg={type:'ptrWarp',center:true,dx:(tx-qx)*k1,dy:(ty-qy)*k1,sx:ev.screenX,sy:ev.screenY,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id};setTimeout(()=>{try{vscode.postMessage(_msg);}catch(_){}},150);/* v5.1.249(俊克 pm03:01「次ので最後に」): 実測で着地は ±2px に収まった。残る違和感= 膨らむ途中(0.15秒)に運ばれ、図形がまだ追いついていない一瞬。→ 膨らみ切ってから運ぶ(その間の手の動きは V-helper が等倍で足す) *//* v5.1.239: 乗った点の画面の位置も渡す / v5.1.240: 実測= screenX はもう Mac のポイント(×dpr÷2 で VSCodium の拡大1.728倍だけ大きく出ていた)→そのまま渡す */}catch(_){}};
+__wDone=true;__wAt=Date.now();__ms.classList.add('ml-big');__land={q:[cx,cy],t:Date.now()+270};try{window.__redAt&&window.__redAt(ev,tx-qx,ty-qy);}catch(_){}const _msg={type:'ptrWarp',center:true,dx:(tx-qx)*k1,dy:(ty-qy)*k1,sx:ev.screenX,sy:ev.screenY,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id};vscode.postMessage(_msg);/* ★v5.1.266(俊克 am00:56「拡大してからマウスが移動するまで2秒くらい間が開く。拡大と移動を同時に」): 実測= 頼みが拡張に届く時刻がいつも x.59秒= Me Dock(webview)の setTimeout は1秒刻みに丸められていた(裏の枠の時計の間引き)→ 遅らせずにすぐ頼む *//* v5.1.249(俊克 pm03:01「次ので最後に」): 実測で着地は ±2px に収まった。残る違和感= 膨らむ途中(0.15秒)に運ばれ、図形がまだ追いついていない一瞬。→ 膨らみ切ってから運ぶ(その間の手の動きは V-helper が等倍で足す) *//* v5.1.239: 乗った点の画面の位置も渡す / v5.1.240: 実測= screenX はもう Mac のポイント(×dpr÷2 で VSCodium の拡大1.728倍だけ大きく出ていた)→そのまま渡す */}catch(_){}};
 bg.addEventListener('pointerover',ev=>__warp(bg,ev));/* v5.1.245(俊克 pm02:33「真中の上から近づくと左方向に飛ぶ」): 片道の式は「入った時の相対座標×倍率」そのもの= 合っているかを測る。運んだ後の最初の動きで、
    ポインターの下の点(部品の物差し)が、乗った点と同じかを [ptrLand] に書く(同じなら式も換算も正しい) */
 let __land=null;__ms.addEventListener('pointermove',ev=>{try{if(!__land||Date.now()<__land.t||Date.now()-__land.t>1500)return;const t=ev.target;if(!(t===bg||t.id==='meos-bg-lv'||t.id==='meos-logo'))return;const _z2=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,q2=[t.offsetLeft+ev.offsetX/_z2,t.offsetTop+ev.offsetY/_z2];
