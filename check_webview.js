@@ -143,3 +143,17 @@ catch (e) { console.log('webview script: SYNTAX ERROR -> ' + e.message + '  (詳
     console.log('webview regex: OK (正規表現のエスケープthatテンプレートで潰れていない)');
   }
 }
+// ★v5.1.252(俊克 10.27 pm06:21「取消線ボタンが動作しなくなった。229から」): data-phase を '<body>' の文字の置き換えで足していたので、
+//   body に class を付けた日(v5.1.226/229)から黙って消え、phase≥2/4 の物(Format の🚫・H-TOC の右クリック)が止まっていた。
+//   → body の開き札に data-phase が直に書いてあるか・'<body>' を探す置き換えが残っていないかを見る
+{
+  const bi = src.indexOf('</head><body');
+  const tag = bi >= 0 ? src.slice(bi + 7, src.indexOf('>', bi + 7) + 1) : '';
+  const repl = /\.replace\(\s*['"]<body>['"]/.test(src);
+  if (!/data-phase="\$\{MEOS_RELEASE_PHASE\}"/.test(tag) || repl) {
+    console.log('webview phase: NG -> body の開き札に data-phase が無い/「<body>」を探す置き換えが残っている  ' + tag.slice(0, 80));
+    process.exitCode = 1;
+  } else {
+    console.log('webview phase: OK (body の開き札に data-phase が直に書いてある)');
+  }
+}
