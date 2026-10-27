@@ -30764,17 +30764,15 @@ body.meos-beginner .edit-me-word{display:inline!important}   /* v5.1.264(俊克 
 .new-md-btn:active{background:#116329}
 /* v5.1.251(俊克 pm03:42「New.mdボタンの右肩に①〜③。🔰のレベルに対応した見本を入れたmdを作る・①〜③の地の色を🔰と同じ色(今のとは違う色)」): 右肩の数字= 🔰の数字と同じ駒・同じ色 */
 .nm-split{position:relative;display:inline-flex;flex:none}
-/* v5.1.262(俊克 pm11:47 改良1「New.mdを右肩のボタンと一緒に拡大。初心者が最初に押すボタンだからこそ存在感を」): ボタンも数字も約1.4倍 */
-.nm-split .new-md-btn{font-size:15px;padding:4px 12px;border-radius:8px}
 /* v5.1.264(俊克 am00:42 バグ1「New.mdと肩のボタンが同時に拡大しない」= 乗った時に一緒に膨らむ、の意味だった): 乗ると箱ごと(ボタン＋数字)右端を軸に1.3倍 */
 .nm-split{transform-origin:right center;transition:scale .15s ease}
-.nm-split:hover{scale:1.3;z-index:5}
+.nm-split:hover{scale:1.5;z-index:5}   /* v5.1.265(俊克 am00:51「通常サイズは元に戻そう。拡大した時に大きくなった気がしない」): 普段は元の大きさ・乗ると1.5倍 */
 /* 改良2「王冠の⑨のみ青色でなく別の色」: ⑨= 金(王冠と同じ家族) */
 .nm-lv[data-lv="9"],body:not(.meos-beginner) .bg-lv{background:#b8860b}
 /* (スクショで気づいた) 🔰の段で上の行が短いと、はみ出した🔰が次の行(テーマ)に被る→ ロゴの箱に🔰の丈を持たせる */
 body.meos-beginner .ml-split{min-height:44px}
 
-.nm-lv{position:absolute;top:-9px;right:-9px;width:20px;height:20px;border-radius:50%;background:var(--meos-lv-bg);color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:2;cursor:var(--meos-hand);user-select:none}
+.nm-lv{position:absolute;top:-7px;right:-7px;width:15px;height:15px;border-radius:50%;background:var(--meos-lv-bg);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:2;cursor:var(--meos-hand);user-select:none}
 .me-name-wrap.hidden,.zoom-me-panel.hidden,.ref-create-panel.hidden{display:none}
 .ref-create-panel{display:grid;gap:5px;padding:2px 0}
 .ref-sym-row{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
