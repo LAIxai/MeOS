@@ -31066,6 +31066,7 @@ body.meos-gripping,body.meos-gripping *{cursor:var(--meos-grip)!important}   /* 
 .membrane-actions{width:142px}
 .color-pop{display:none;position:fixed;z-index:50;padding:5px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.24);gap:3px;flex-direction:column}
 .color-pop.on{display:flex}
+body.cpop-open .dock-stick{z-index:auto}   /* v5.1.269: 色メニューを開いている間だけ、貼り付いたヘッダーを Mepy より下の層へ(上に開いたメニューが潜らない) */
 .swatch{width:25px;height:25px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;font-size:14px;padding:0;line-height:1}
 .swatch.active::after{content:'✓';position:absolute;font-weight:900;color:#111;text-shadow:0 0 2px #fff,0 0 2px #fff}
 .swatch-wrap{position:relative;display:grid;place-items:center}
@@ -35392,14 +35393,15 @@ if(fixedTocName){
   });
 }
 if(colorBtn)colorBtn.addEventListener('click',ev=>{ev.preventDefault();renderColorButton();const willOpen=!colorPop.classList.contains('on');
-colorPop.classList.toggle('on',willOpen);if(!willOpen)return;const r=colorBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=colorPop.offsetHeight||220;
+colorPop.classList.toggle('on',willOpen);if(!willOpen){document.body.classList.remove('cpop-open');return;}const r=colorBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=colorPop.offsetHeight||220;
 const w=colorPop.offsetWidth||38;const left=Math.min(Math.max(6,r.left),window.innerWidth-w-6);colorPop.style.left=left+'px';
-/* v5.1.231(俊克 am11:47 改良2「①②のとき、Mepyの色設定の目をクリックして出るメニューが隠れてしまう」): 上に開く場所が貼り付いたヘッダーの下に無い時(🔰で Me Dock が短い)は、下に開く */let top=r.top-h-6;try{const _sk=document.getElementById('dock-stick'),_sb=_sk?_sk.getBoundingClientRect().bottom:0;if(top<_sb+4)top=Math.min(r.bottom+6,window.innerHeight-h-6);}catch(_){}colorPop.style.top=Math.max(6,top)+'px';});});
+/* ★v5.1.269(俊克 10.28 am02:22「Mepyの色メニューはバラバラ。⑨が一番バランスがいい。これをベースに。全て上向きにできるならその方が良い」): いつも上に開く(⑨と同じ)。
+   v5.1.231 の「下に開く」は捨てる(innerHeight は Me Dock の zoom の掛からない物差しで、②では行き先がずれて欠けていた)。上の貼り付いたヘッダーに潜る時は、開いている間だけヘッダーを下の層へ(body.cpop-open) */colorPop.style.top=Math.max(6,r.top-h-6)+'px';document.body.classList.add('cpop-open');});});
 if(colorPop)colorPop.addEventListener('click',ev=>{const b=ev.target&&ev.target.closest?ev.target.closest('.swatch'):null;
-if(!b)return;draftColor=b.getAttribute('data-code')||'G';draftDirty=true;colorPop.classList.remove('on');renderColorButton();
+if(!b)return;draftColor=b.getAttribute('data-code')||'G';draftDirty=true;colorPop.classList.remove('on');document.body.classList.remove('cpop-open');renderColorButton();
 renderMembraneTargetPanel();vscode.postMessage({type:'applyColorNow',color:draftColor,mode:currentMode,value:input.value,
 line:lineInput.value});input.focus();});
-document.addEventListener('click',ev=>{if(colorPop&&colorBtn&&colorPop.classList.contains('on')&&!colorPop.contains(ev.target)&&ev.target!==colorBtn)colorPop.classList.remove('on');
+document.addEventListener('click',ev=>{if(colorPop&&colorBtn&&colorPop.classList.contains('on')&&!colorPop.contains(ev.target)&&ev.target!==colorBtn)(colorPop.classList.remove('on'),document.body.classList.remove('cpop-open'));
 },true);
 histBack.addEventListener('click',()=>vscode.postMessage({type:'lineHistoryBack'}));
 histForward.addEventListener('click',()=>vscode.postMessage({type:'lineHistoryForward'}));
