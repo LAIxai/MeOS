@@ -35691,10 +35691,13 @@ lg.addEventListener('pointercancel',()=>{p=null;document.body.classList.remove('
 bg.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
 /* v5.1.237: 外から🔰(王冠)や数字に乗った= ロゴごと右下へ2.2倍に膨らむ→ ポインターの下の点が膨らんだ後に居る所まで、V-helper にポインターを運んでもらう。
    片道= (乗った点−ロゴの左上[拡大の原点])×(2.2−1)。部品の中の位置(offset)で測り、Me Dock の拡大(zoom)と画面の画素(dpr)を掛けて実の画素で渡す */
-const __ms=bg.parentNode;const __warp=(el,ev)=>{try{if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(ev.target!==el)return;const lg=document.getElementById('meos-logo');if(!lg)return;
+/* ★v5.1.238(俊克 pm01:22 バグ1「近づけると、ポインターがはじかれて遠ざかる」): 実測= 運んだ直後(膨らむ途中)に、もう一度「外から乗った」と数えて2度目を運んでいた(04:24:52.973→53.171)。
+   → 運ぶのは群れ(ロゴ・🔰・数字)に入って1回だけ。群れから出て、膨らみが戻った後(0.55秒)に数え直す。改良2: ロゴに外から乗った時も運ぶ */
+const __ms=bg.parentNode;let __wDone=false,__wAt=0;__ms.addEventListener('pointerleave',()=>{const f=()=>{try{if(!__ms.matches(':hover'))__wDone=false;}catch(_){__wDone=false;}};if(Date.now()-__wAt>550)f();else setTimeout(f,560);});
+const __warp=(el,ev)=>{try{if(__wDone)return;if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(ev.target!==el)return;const lg=document.getElementById('meos-logo');if(!lg)return;
 const ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX,qy=el.offsetTop+ev.offsetY,z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,d=window.devicePixelRatio||1,k=1.2*z*d;
-vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});}catch(_){}};
-bg.addEventListener('pointerover',ev=>__warp(bg,ev));
+__wDone=true;__wAt=Date.now();vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});}catch(_){}};
+bg.addEventListener('pointerover',ev=>__warp(bg,ev));{const __lg=document.getElementById('meos-logo');if(__lg)__lg.addEventListener('pointerover',ev=>__warp(__lg,ev));}
 /* v5.1.230(俊克 am11:44「いっそのことOptクリックは廃止して、③のときに灰色の初心者マークにする。これで3プリセットを切り替える」): 🔰を押しても右肩の数字と同じ= ①→②→③(Shiftで逆) */
 bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));try{showTocTip(ev);}catch(_){}});
 /* v5.1.228: 右肩の数字= ①超初心者 ⇄ ②初心者 / v5.1.229: ③=通常モード。クリックで①→②→③→①・Shift+クリックで逆回り(Ⓣの⓪〜③と同じ) */
