@@ -35678,13 +35678,13 @@ lg.addEventListener('pointercancel',()=>{p=null;document.body.classList.remove('
 /* v5.1.235(俊克 pm00:35「tipはシンプルに1行で。逆回りは説明しなくて良い」): 🔰/王冠と数字は同じ1行 */const TIPS={'1':'Beginner Lv1','2':'Beginner Lv2','3':'Full-spec'};const cur=()=>document.body.classList.contains('meos-beginner')?(document.body.classList.contains('meos-bg1')?'1':'2'):'3';function tip(){bg.setAttribute('data-tip',TIPS[cur()]);}tip();
 bg.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
 /* v5.1.230(俊克 am11:44「いっそのことOptクリックは廃止して、③のときに灰色の初心者マークにする。これで3プリセットを切り替える」): 🔰を押しても右肩の数字と同じ= ①→②→③(Shiftで逆) */
-bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));});
+bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));try{showTocTip(ev);}catch(_){}});
 /* v5.1.228: 右肩の数字= ①超初心者 ⇄ ②初心者 / v5.1.229: ③=通常モード。クリックで①→②→③→①・Shift+クリックで逆回り(Ⓣの⓪〜③と同じ) */
 const lv=document.getElementById('meos-bg-lv');if(lv){const ltip=()=>lv.setAttribute('data-tip',TIPS[cur()]);ltip();
 lv.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
 lv.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const cur=Number(lv.textContent)||3,m=ev.shiftKey?(cur+1)%3+1:cur%3+1;lv.textContent=String(m);const on=m<3;
 if(on!==document.body.classList.contains('meos-beginner')){document.body.classList.toggle('meos-beginner',on);vscode.postMessage({type:'meosBeginner',on:on});}
-if(on){document.body.classList.toggle('meos-bg1',m===1);vscode.postMessage({type:'meosBeginnerLv',lv:m});}tip();ltip();});}})();
+if(on){document.body.classList.toggle('meos-bg1',m===1);vscode.postMessage({type:'meosBeginnerLv',lv:m});}tip();ltip();if(ev.isTrusted){try{showTocTip(ev);}catch(_){}}/* v5.1.236(俊克 pm00:47 バグ1「ポインター位置を変えずに切り替えると、tipが切り替わらない」): tip は mousemove でしか描き直されない= 押した所でその場で描き直す */});}})();
 // {* ▲mCN=dock_js_logo *}
 // {* ▼mCN=dock_js_handdrag // v4.2.522 手の駒を捨てて次の手へ・当たりの赤い十字 *}
 (function(){const hdr=document.querySelector('header.title');const hp=document.getElementById('hand-pick');if(!hdr||!hp)return;
