@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.1.237) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.1.239) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -610,9 +610,16 @@ function run(argv) {
     if (!o || !(Date.now() - Number(o.t) < 1500)) return;   // 古い頼みは捨てる(遅れて運ぶと、もう別の所に居る)
     const p = $.NSEvent.mouseLocation, scr = $.NSScreen.screens; let bs = 2;
     for (let i = 0; i < scr.count; i++) { const f = scr.objectAtIndex(i).frame; if (p.x >= f.origin.x && p.x < f.origin.x + f.size.width && p.y >= f.origin.y && p.y < f.origin.y + f.size.height) { bs = Number(scr.objectAtIndex(i).backingScaleFactor) || 2; break; } }
-    const h = scr.objectAtIndex(0).frame.size.height, x = p.x + Number(o.dx) / bs, y = (h - p.y) + Number(o.dy) / bs;
+    // ★v5.1.239(俊克 pm01:31「10回くらいに1回、弾かれる。条件がよく分からない」): 実測= 頼まれてから運ぶまでの間(0.05〜0.1秒)にポインターが動き続けていると、
+    //   その動いた先から片道を足していた(04:33:04 乗った所より62ポイント下から運んだ)= 速く入るほど行き過ぎる。
+    //   → 乗った点の画面の位置(sx,sy)から片道を足す= 今どこに居ても、膨らんだ図形の同じ点へ置く。物差しが合わない時(今の位置と200ポイント以上違う)は今まで通り
+    const h = scr.objectAtIndex(0).frame.size.height, cx = p.x, cy = h - p.y;
+    let bx = cx, by = cy, how = 'rel';
+    const ex = Number(o.sx) / bs, ey = Number(o.sy) / bs;
+    if (isFinite(ex) && isFinite(ey) && Math.abs(ex - cx) < 200 && Math.abs(ey - cy) < 200) { bx = ex; by = ey; how = 'abs'; }
+    const x = bx + Number(o.dx) / bs, y = by + Number(o.dy) / bs;
     try { $.CGWarpMouseCursorPosition({ x: x, y: y }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {}
-    hlog('warpPtr dx=' + o.dx + ' dy=' + o.dy + ' bs=' + bs + ' from=' + p.x.toFixed(1) + ',' + (h - p.y).toFixed(1) + ' to=' + x.toFixed(1) + ',' + y.toFixed(1));
+    hlog('warpPtr ' + how + ' dx=' + Number(o.dx).toFixed(1) + ' dy=' + Number(o.dy).toFixed(1) + ' bs=' + bs + ' entry=' + (isFinite(ex) ? ex.toFixed(1) + ',' + ey.toFixed(1) : '?') + ' now=' + cx.toFixed(1) + ',' + cy.toFixed(1) + ' to=' + x.toFixed(1) + ',' + y.toFixed(1));
   };
   const modsTick = () => {
     try { warpPtr(); } catch (e) {}

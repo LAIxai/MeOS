@@ -14180,7 +14180,7 @@ function meosPtrWarp(m) {
   try {
     const fs = require('fs'), path = require('path'), dir = meosHelperDir();
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify({ dx: Number(m.dx) || 0, dy: Number(m.dy) || 0, t: Date.now() }));
+    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify({ dx: Number(m.dx) || 0, dy: Number(m.dy) || 0, sx: Number(m.sx), sy: Number(m.sy), t: Date.now() }));
     meosDbg('[ptrWarp] dx=' + (Number(m.dx) || 0).toFixed(1) + ' dy=' + (Number(m.dy) || 0).toFixed(1) + ' q=' + JSON.stringify(m.q) + ' o=' + JSON.stringify(m.o) + ' z=' + m.z + ' dpr=' + m.dpr + ' on=' + m.on);
   } catch (_) { }
 }
@@ -35694,9 +35694,9 @@ bg.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
 /* ★v5.1.238(俊克 pm01:22 バグ1「近づけると、ポインターがはじかれて遠ざかる」): 実測= 運んだ直後(膨らむ途中)に、もう一度「外から乗った」と数えて2度目を運んでいた(04:24:52.973→53.171)。
    → 運ぶのは群れ(ロゴ・🔰・数字)に入って1回だけ。群れから出て、膨らみが戻った後(0.55秒)に数え直す。改良2: ロゴに外から乗った時も運ぶ */
 const __ms=bg.parentNode;let __wDone=false,__wAt=0;__ms.addEventListener('pointerleave',()=>{const f=()=>{try{if(!__ms.matches(':hover'))__wDone=false;}catch(_){__wDone=false;}};if(Date.now()-__wAt>550)f();else setTimeout(f,560);});
-const __warp=(el,ev)=>{try{if(__wDone)return;if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(ev.target!==el)return;const lg=document.getElementById('meos-logo');if(!lg)return;
+const __warp=(el,ev)=>{try{if(__wDone)return;if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(ev.target!==el)return;{const _sc=parseFloat(getComputedStyle(el).scale);if(_sc>1.05)return;}/* v5.1.239: まだ膨らんでいる(縮み戻る途中)所へ乗った= 片道の前提(1倍→2.2倍)が違う→運ばない */const lg=document.getElementById('meos-logo');if(!lg)return;
 const ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX,qy=el.offsetTop+ev.offsetY,z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,d=window.devicePixelRatio||1,k=1.2*z*d;
-__wDone=true;__wAt=Date.now();vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});}catch(_){}};
+__wDone=true;__wAt=Date.now();vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,sx:ev.screenX*d,sy:ev.screenY*d,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});/* v5.1.239: 乗った点の画面の位置も渡す(sx,sy= 実の画素) */}catch(_){}};
 bg.addEventListener('pointerover',ev=>__warp(bg,ev));{const __lg=document.getElementById('meos-logo');if(__lg)__lg.addEventListener('pointerover',ev=>__warp(__lg,ev));}
 /* v5.1.230(俊克 am11:44「いっそのことOptクリックは廃止して、③のときに灰色の初心者マークにする。これで3プリセットを切り替える」): 🔰を押しても右肩の数字と同じ= ①→②→③(Shiftで逆) */
 bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));try{showTocTip(ev);}catch(_){}});
