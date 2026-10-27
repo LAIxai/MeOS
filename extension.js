@@ -17841,11 +17841,13 @@ async function createNewMdFile() {
     const now = new Date();
     const p = n => String(n).padStart(2, '0');
     // v0.9.995: 膜名=生成日時(これ自体がタイムスタンプ=膜の身元)。コメントは日時と重複させず役割ラベルに。
-    const name = '' + now.getFullYear() + p(now.getMonth() + 1) + p(now.getDate()) + '_' + p(now.getHours()) + p(now.getMinutes()) + p(now.getSeconds());
+    // ★v5.1.250(俊克 pm03:35「最初の一歩は New.md を押すこと」改良1「最初の膜が灰色というのは地味。膜名も、もう少し分かりやすいものに」):
+    //   名前= 読める言葉＋いつもの TS(Create の name_… と同じ形)・色= 青(B)
+    const name = 'New note_' + meosMembraneStamp(now);
     const comment = '🆕 file-membrane';     // 膜のコメント=役割ラベル(俊克 6/23 pm03:16: 日時の二重表記をやめる)
     const tocComment = '今日の課題#1';        // H-TOCのコメント=膜コメントと別の編集可能プレースホルダ(緑部分は編集できると伝える)
     const openLine = buildMembraneOpenLine(doc, '', name, comment, '');      // v4.0.331: バッジは閉じ膜の次の行へ
-    const closeLine = meosNewMembraneCloseBlock(doc, '', name, '');
+    const closeLine = meosNewMembraneCloseBlock(doc, '', name, '', '(📊⊕0+0D0B)');
     await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), openLine + '\n\n' + closeLine + '\n'); });
     // 開始膜行にカーソルを置き、手動の「Add to Hyper TOC」と同じ経路で目次へ登録。
     editor.selection = new vscode.Selection(0, 0, 0, 0);
