@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.1.240) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.1.243) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -614,10 +614,12 @@ function run(argv) {
     //   その動いた先から片道を足していた(04:33:04 乗った所より62ポイント下から運んだ)= 速く入るほど行き過ぎる。
     //   → 乗った点の画面の位置(sx,sy)から片道を足す= 今どこに居ても、膨らんだ図形の同じ点へ置く。物差しが合わない時(今の位置と200ポイント以上違う)は今まで通り
     const h = scr.objectAtIndex(0).frame.size.height, cx = p.x, cy = h - p.y;
-    let bx = cx, by = cy, how = 'rel';
+    let x = cx + Number(o.dx) / bs, y = cy + Number(o.dy) / bs, how = 'rel';
     const ex = Number(o.sx), ey = Number(o.sy);   // v5.1.240: 乗った点はもう Mac のポイント(screenX)
-    if (isFinite(ex) && isFinite(ey) && Math.abs(ex - cx) < 200 && Math.abs(ey - cy) < 200) { bx = ex; by = ey; how = 'abs'; }
-    const x = bx + Number(o.dx) / bs, y = by + Number(o.dy) / bs;
+    // ★v5.1.243(俊克 pm01:57 バグ1「右上から近づくと、右上にズレる」): 実測= 右上から入ると、頼みから運ぶまでの間に左下へ動き続けている(04:58:25 で 9pt)。
+    //   v5.1.239 の abs はその動きを捨てていた(×0)・それ以前の rel は等倍で足していた(×1)。図形は2.2倍に膨らむので、その間の動きも2.2倍して足すのが正しい
+    //   = 着地= 乗った点＋片道＋(今−乗った点)×2.2(= 今の点を、膨らんだ図形の同じ点へ)
+    if (isFinite(ex) && isFinite(ey) && Math.abs(ex - cx) < 200 && Math.abs(ey - cy) < 200) { x = ex + Number(o.dx) / bs + 2.2 * (cx - ex); y = ey + Number(o.dy) / bs + 2.2 * (cy - ey); how = 'abs'; }
     try { $.CGWarpMouseCursorPosition({ x: x, y: y }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {}
     hlog('warpPtr ' + how + ' dx=' + Number(o.dx).toFixed(1) + ' dy=' + Number(o.dy).toFixed(1) + ' bs=' + bs + ' entry=' + (isFinite(ex) ? ex.toFixed(1) + ',' + ey.toFixed(1) : '?') + ' now=' + cx.toFixed(1) + ',' + cy.toFixed(1) + ' to=' + x.toFixed(1) + ',' + y.toFixed(1));
   };
