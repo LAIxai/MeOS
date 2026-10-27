@@ -30436,10 +30436,10 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tiles{position:relative}.md-armtip{position:absolute;top:calc(100% + 12px);z-index:5;display:none;pointer-events:none;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400;white-space:pre-line;max-width:260px;width:max-content;line-height:1.4;box-shadow:0 2px 8px rgba(0,0,0,.2)}   /* v4.2.776-31: 構えの間の説明= .toc-tooltip と同じ姿 / v4.2.776-32(俊克 改良1「🔴をtipの上に被るように」): 字(z6)より下(z5)に置き、点が tip の上の縁に被る */   /* v4.2.776-26: Shift 長押しの間(と離して0.5秒)= 赤い点の字を拡大 */
 .md-tiles.md-gold .md-tile.md-dot.md-last::after{width:6px;height:6px;margin-left:-3px;bottom:-7px;background:#ffc400;box-shadow:0 0 0 .5px rgba(120,80,0,.8),0 0 3px #ffd54f}   /* v4.2.776-12(俊克「一回り大きく。金メダルのように重く価値がある」): 4px→6px */   /* v4.2.776-11: コンプリートしたら金(以後ずっと) */   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
 .title-row-dock .md-tiles{margin:0 0 -2px -5px}
-.title-ver-dock{margin-left:auto;align-self:flex-end}
+.title-ver-dock{margin-left:auto;align-self:flex-end;position:relative;top:-8px;left:-3px}   /* v5.1.258(俊克 pm07:53「?をもう少し角に。バージョン表示を北北西に進路を取れ!」): 版を上へ8・左へ3(?と重ならない) */
 /* v5.1.256(俊克 pm07:14「tipを表示/非表示するボタンを付けよう。最初から非表示にしておいて、知りたい時だけ押せばいい」): ? = 押すと tip が出る(青)・もう一度で出ない(灰)。既定は出ない
    v5.1.257(俊克 pm07:34「最小幅の③で版の左端が▼の下に隠れる。?はヘッダーの四角枠の右下角ギリギリに」): 行から外し、ヘッダー(.title= relative)の右下角に置く */
-.tips-btn{position:absolute;right:3px;bottom:3px;width:16px;height:16px;border-radius:50%;border:1px solid var(--meos-frame);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;line-height:1;color:var(--vscode-foreground);opacity:.45;cursor:var(--meos-hand);user-select:none;flex:none}
+.tips-btn{position:absolute;right:1px;bottom:1px;width:16px;height:16px;border-radius:50%;border:1px solid var(--meos-frame);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;line-height:1;color:var(--vscode-foreground);opacity:.45;cursor:var(--meos-hand);user-select:none;flex:none}
 .tips-btn:hover{opacity:.8}
 body.meos-tips .tips-btn{opacity:1;background:var(--meos-lv-bg);border-color:var(--meos-lv-bg);color:#fff}
 
