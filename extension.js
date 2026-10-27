@@ -30320,7 +30320,7 @@ body.vscode-light .dev-vsix-btn,body.vscode-high-contrast-light .dev-vsix-btn{ba
    🔰はロゴの右腰(.mz-br と同じ角の駒)。🔰モード= 濃い・通常= 薄い灰。
    v5.1.227(俊克 am10:47 改良1/2): 🔰の左上をロゴの赤道(右端)に接して2倍(32px)・ロゴが膨らむ時は同じ原点(ロゴの左上)から一緒に2.2倍・初心者マークのシールのように白い輪郭 */
 .ml-split{position:relative;display:flex;flex:0 0 auto;align-self:flex-start}
-.bg-badge{position:absolute;left:21px;top:12px;width:32px;height:32px;display:flex;align-items:flex-start;justify-content:flex-start;font-size:28px;line-height:1;z-index:8;cursor:var(--meos-hand);user-select:none;
+.bg-badge{position:absolute;left:21px;top:12px;width:30px;height:31px;display:flex;align-items:flex-start;justify-content:flex-start;font-size:28px;line-height:1;z-index:8;cursor:var(--meos-hand);user-select:none;
   transform-origin:-29px -18px;transition:scale .15s ease;
   filter:grayscale(1) opacity(.4) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
 .bg-badge>*{pointer-events:none}   /* v5.1.237: 乗った点は🔰の箱の中の位置で測る(中の字や絵を的にしない) */
@@ -30331,7 +30331,7 @@ body.meos-beginner .bg-badge{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0
 .ml-split.ml-big .meos-logo,.ml-split.ml-big .bg-badge,.ml-split.ml-big .bg-lv,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .meos-logo,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .bg-badge,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .bg-lv{scale:2.2}
 /* v5.1.232(俊克 pm00:14「モード③は🔰の上下逆の形にして、三つ山の王冠のような形に」): ③= 金の王冠(左が金・右がクリーム・紺の縁・白い輪郭= 🔰と同じ作り)。自前の SVG */
 .bg-badge .bg-crown{display:none;width:30px;height:23px;margin:4px 0 0 -3px}   /* v5.1.233(俊克 pm00:2x 改良1/2): 白い輪郭をロゴに接し・下を切って横長の王冠に */
-body:not(.meos-beginner) .bg-badge{filter:none}
+body:not(.meos-beginner) .bg-badge{filter:none;width:28px;height:27px}   /* v5.1.248: ③の当たりの箱= 見えている王冠(30×23・左へ3px)に合わせる */
 body:not(.meos-beginner) .bg-badge .bg-g{display:none}
 body:not(.meos-beginner) .bg-badge .bg-crown{display:block}
 body:not(.meos-beginner) .bg-badge:hover{filter:brightness(1.12)}
@@ -35699,11 +35699,12 @@ const __ms=bg.parentNode;let __wDone=false,__wAt=0;__ms.addEventListener('pointe
    → 運んだら群れに ml-big を付けて膨らみを保ち、群れから出て 0.35秒たっても戻らない時だけ外す */
 const __skip=(why,el)=>{try{vscode.postMessage({type:'dockDbg',text:'[ptrSkip] '+why+' on='+el.id+' big='+__ms.classList.contains('ml-big')+' scale='+getComputedStyle(el).scale+' since='+(Date.now()-__wAt)});}catch(_){}};/* v5.1.247: 運ばなかった訳も書く(俊克「左に飛んだ」の時に ptrWarp が1つも無かった) */
 const __warp=(el,ev)=>{try{if(ev.target!==el)return;if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(__wDone){__skip('done',el);return;}{const _sc=parseFloat(getComputedStyle(el).scale);if(_sc>1.05){__skip('scaled',el);return;}}/* v5.1.239: まだ膨らんでいる(縮み戻る途中)所へ乗った= 片道の前提(1倍→2.2倍)が違う→運ばない */const lg=document.getElementById('meos-logo');if(!lg)return;
-const z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX,qy=el.offsetTop+ev.offsetY,d=window.devicePixelRatio||1,k=1.2*z*d;/* v5.1.242(俊克 pm01:50 バグ1「離れた位置に移動してしまう」): v5.1.241 の offsetX÷z は誤り= 実測で行き過ぎ(dx 105→151)。この部品の上の offsetX は既に部品の物差し(v5.1.240 までの式で合っていた)→ 戻す */
+const z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX/z,qy=el.offsetTop+ev.offsetY/z,d=window.devicePixelRatio||1,k=1.2*z*d;/* ★v5.1.248: 実測(kx= 画面の動き÷offsetX = 1.728 = VSCodium の拡大だけ)= offsetX は Me Dock の zoom が掛かった物差し、offsetLeft は掛からない物差し→ offsetX÷z が正しい。
+   [ptrLand] の2回(05:55:39/44)がこの式の予測と 0.1px で一致。v5.1.241 で「行き過ぎ」に見えたのは、🔰の箱が見えている王冠より右へはみ出していて、王冠の右の空き(箱の端)から乗っていたから(05:52:13 箱の右端)→ 箱を図形に合わせる *//* v5.1.242(俊克 pm01:50 バグ1「離れた位置に移動してしまう」): v5.1.241 の offsetX÷z は誤り= 実測で行き過ぎ(dx 105→151)。この部品の上の offsetX は既に部品の物差し(v5.1.240 までの式で合っていた)→ 戻す */
 __wDone=true;__wAt=Date.now();__ms.classList.add('ml-big');__land={q:[qx,qy],t:Date.now()+120};try{window.__redAt&&window.__redAt(ev,1.2*(qx-ox),1.2*(qy-oy));}catch(_){}vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,sx:ev.screenX,sy:ev.screenY,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});/* v5.1.239: 乗った点の画面の位置も渡す / v5.1.240: 実測= screenX はもう Mac のポイント(×dpr÷2 で VSCodium の拡大1.728倍だけ大きく出ていた)→そのまま渡す */}catch(_){}};
 bg.addEventListener('pointerover',ev=>__warp(bg,ev));/* v5.1.245(俊克 pm02:33「真中の上から近づくと左方向に飛ぶ」): 片道の式は「入った時の相対座標×倍率」そのもの= 合っているかを測る。運んだ後の最初の動きで、
    ポインターの下の点(部品の物差し)が、乗った点と同じかを [ptrLand] に書く(同じなら式も換算も正しい) */
-let __land=null;__ms.addEventListener('pointermove',ev=>{try{if(!__land||Date.now()<__land.t||Date.now()-__land.t>1500)return;const t=ev.target;if(!(t===bg||t.id==='meos-bg-lv'||t.id==='meos-logo'))return;const q2=[t.offsetLeft+ev.offsetX,t.offsetTop+ev.offsetY];
+let __land=null;__ms.addEventListener('pointermove',ev=>{try{if(!__land||Date.now()<__land.t||Date.now()-__land.t>1500)return;const t=ev.target;if(!(t===bg||t.id==='meos-bg-lv'||t.id==='meos-logo'))return;const _z2=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,q2=[t.offsetLeft+ev.offsetX/_z2,t.offsetTop+ev.offsetY/_z2];
 vscode.postMessage({type:'dockDbg',text:'[ptrLand] on='+t.id+' q='+__land.q.map(v=>v.toFixed(1))+' q2='+q2.map(v=>v.toFixed(1))+' diff='+(q2[0]-__land.q[0]).toFixed(1)+','+(q2[1]-__land.q[1]).toFixed(1)+' ms='+(Date.now()-__land.t)+' scale='+getComputedStyle(t).scale+' scr='+ev.screenX+','+ev.screenY+' kx='+(window.__kx||[]).join('/')});__land=null;}catch(_){}});
 /* v5.1.246: 物差しを実物で測る= ヘッダーの膨らんでいない部品の上で、続けて2回動いた時の 画面の動き(ポイント)÷部品の中の動き(px)。式の 1.086 と比べる */
 {let __kp=null;document.querySelector('header.title').addEventListener('pointermove',ev=>{try{const t=ev.target;if(__ms.contains(t)){__kp=null;return;}if(__kp&&__kp.t===t){const dl=ev.offsetX-__kp.ox,ds=ev.screenX-__kp.sx;if(Math.abs(dl)>=4){window.__kx=(window.__kx||[]).concat([(ds/dl).toFixed(3)]).slice(-6);__kp=null;return;}}else __kp={t:t,ox:ev.offsetX,sx:ev.screenX};}catch(_){}});}{const __lg=document.getElementById('meos-logo');if(__lg)__lg.addEventListener('pointerover',ev=>__warp(__lg,ev));}
