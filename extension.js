@@ -35723,7 +35723,7 @@ if(!window.__mdJumble)vscode.postMessage({type:'meosLogoOpen',git:!!(q.shift||ev
 lg.addEventListener('pointercancel',()=>{p=null;document.body.classList.remove('meos-gripping');});})();
 /* v5.1.226: 🔰= クリックで通常モードへ・Opt+クリックで🔰モードへ */
 (function(){const bg=document.getElementById('meos-bg');if(!bg)return;
-/* v5.1.235(俊克 pm00:35「tipはシンプルに1行で。逆回りは説明しなくて良い」): 🔰/王冠と数字は同じ1行 */const TIPS={'1':'Beginner Lv1','2':'Beginner Lv2','3':'Full-spec'};const cur=()=>document.body.classList.contains('meos-beginner')?(document.body.classList.contains('meos-bg1')?'1':'2'):'3';function tip(){bg.setAttribute('data-tip',TIPS[cur()]);}tip();
+/* v5.1.235(俊克 pm00:35「tipはシンプルに1行で。逆回りは説明しなくて良い」): 🔰/王冠と数字は同じ1行 */const cur=()=>document.body.classList.contains('meos-beginner')?(document.body.classList.contains('meos-bg1')?'1':'2'):'3';function tip(){bg.removeAttribute('data-tip');}tip();/* v5.1.254(俊克 pm06:39「🔰マークのtipを全て削除。使っていると邪魔・見れば分かる」): 🔰と数字は tip を出さない */
 bg.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
 /* v5.1.237: 外から🔰(王冠)や数字に乗った= ロゴごと右下へ2.2倍に膨らむ→ ポインターの下の点が膨らんだ後に居る所まで、V-helper にポインターを運んでもらう。
    片道= (乗った点−ロゴの左上[拡大の原点])×(2.2−1)。部品の中の位置(offset)で測り、Me Dock の拡大(zoom)と画面の画素(dpr)を掛けて実の画素で渡す */
@@ -35747,7 +35747,7 @@ vscode.postMessage({type:'dockDbg',text:'[ptrLand] on='+t.id+' q='+__land.q.map(
 /* v5.1.230(俊克 am11:44「いっそのことOptクリックは廃止して、③のときに灰色の初心者マークにする。これで3プリセットを切り替える」): 🔰を押しても右肩の数字と同じ= ①→②→③(Shiftで逆) */
 bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));try{showTocTip(ev);}catch(_){}});
 /* v5.1.228: 右肩の数字= ①超初心者 ⇄ ②初心者 / v5.1.229: ③=通常モード。クリックで①→②→③→①・Shift+クリックで逆回り(Ⓣの⓪〜③と同じ) */
-const lv=document.getElementById('meos-bg-lv');if(lv){const ltip=()=>lv.setAttribute('data-tip',TIPS[cur()]);ltip();
+const lv=document.getElementById('meos-bg-lv');if(lv){const ltip=()=>lv.removeAttribute('data-tip');ltip();
 lv.addEventListener('pointerdown',ev=>{ev.stopPropagation();});lv.addEventListener('pointerover',ev=>__warp(lv,ev));
 lv.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const cur=Number(lv.textContent)||3,m=ev.shiftKey?(cur+1)%3+1:cur%3+1;lv.textContent=String(m);const on=m<3;
 if(on!==document.body.classList.contains('meos-beginner')){document.body.classList.toggle('meos-beginner',on);vscode.postMessage({type:'meosBeginner',on:on});}
