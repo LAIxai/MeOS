@@ -30373,6 +30373,7 @@ body:not(.meos-beginner) .bg-lv{left:36px;top:10px;transform-origin:-44px -16px}
 /* v5.1.227(俊克 am10:47 👍1): 🔔(音)とテーマ・取消(~~)・折り返し(表と対)・暗号化(📋は隠す)・Line/←→/#/Raw も残す
    v5.1.228: ここまでが②(初心者)。①(超初心者)は下の meos-bg1 で、さらにテーマ・取消・暗号化・Navigate を隠す。
    ①②とも Current Me・Hyper TOC・膜の生成の Edit/Me/Zoom・Add to Hyper TOC は隠す
+   v5.1.253(俊克 pm06:34「🔰レベル2に Current Me を入れよう。文字数カウントは③で」): ②は Current Me の上の段(名前・行・N・▼⇄▼▲)だけ見せ、文字数の段(.toc-pin-chars)は①②とも隠す。①は #cur-box ごと隠れる
    v5.1.231(俊克 am11:47 改良1): ⏰0y…(#os-btn)はどのモードでも出す・一番下の Hyper TOC の行(#tms-wrap)も①②では隠す */
 body.meos-beginner #hand-pick,body.meos-beginner .mz-split,body.meos-beginner #standards-toggle,
 body.meos-beginner #paste-lag,body.meos-beginner .row2-vsix>:not(.th-split):not(.sd-split),
@@ -30382,7 +30383,7 @@ body.meos-beginner #enc-copy,body.meos-beginner #gh-wizard,
 body.meos-beginner #nav-center .bird-ev-label,body.meos-beginner #nav-scroll,body.meos-beginner #nav-center .top-eof-unit,body.meos-beginner #nav-create-toc,
 body.meos-beginner #nav-center .toc-nav-row>.toc-axis,body.meos-beginner #nav-center .me-axis-wrap,body.meos-beginner #nav-center .me-flip-row,body.meos-beginner #nav-center .mark-nav,
 body.meos-beginner .dock-lead .tms-title,body.meos-beginner .dock-lead .clk-wrap,
-body.meos-beginner #toc-pin-bar,body.meos-beginner #fixed-toc,body.meos-beginner #tms-wrap,body.meos-beginner #op-add-toc,
+body.meos-beginner .toc-pin-chars,body.meos-beginner #fixed-toc,body.meos-beginner #tms-wrap,body.meos-beginner #op-add-toc,
 body.meos-beginner #edit-mode-select,body.meos-beginner #me-title-word,body.meos-beginner #zoom-scope-indicator,body.meos-beginner #zoom-me-panel{display:none!important}
 body.meos-beginner.meos-bg1 .th-split,body.meos-beginner.meos-bg1 #format-tools .fmt-cell:has(#fmt-strike),body.meos-beginner.meos-bg1 #cur-box,body.meos-beginner.meos-bg1 #encrypt-me-row,body.meos-beginner.meos-bg1 #nav-box,body.meos-beginner.meos-bg1 #nav-center{display:none!important}
 .title-actions{flex-wrap:wrap;justify-content:flex-end;margin-left:auto;row-gap:6px}
