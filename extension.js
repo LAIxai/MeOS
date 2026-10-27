@@ -30322,17 +30322,17 @@ body.meos-beginner .bg-badge{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0
 /* 🔰モードで隠す部品(見た目だけ= 記法やキー操作はそのまま効く)。残す= ロゴ・ファイル名・Me Dockのタイル(Ⓣ)・Format Me の BI/##/表・Current Me・Edit/Create・膜の板・Hyper TOC */
 /* v5.1.227(俊克 am10:47 👍1): 🔔(音)とテーマ・取消(~~)・折り返し(表と対)・暗号化(📋は隠す)・Line/←→/#/Raw も残す
    v5.1.228: ここまでが②(初心者)。①(超初心者)は下の meos-bg1 で、さらにテーマ・取消・暗号化・Navigate を隠す。
-   ①②とも Current Me・Hyper TOC・膜の生成の Edit/Me/Zoom・Add to Hyper TOC は隠す */
+   ①②とも Current Me・Hyper TOC・膜の生成の Edit/Me/Zoom・Add to Hyper TOC は隠す
+   v5.1.231(俊克 am11:47 改良1): ⏰0y…(#os-btn)はどのモードでも出す・一番下の Hyper TOC の行(#tms-wrap)も①②では隠す */
 body.meos-beginner #hand-pick,body.meos-beginner .mz-split,body.meos-beginner #standards-toggle,
 body.meos-beginner #paste-lag,body.meos-beginner .row2-vsix>:not(.th-split):not(.sd-split),
 body.meos-beginner #hidx-box,body.meos-beginner #hidx-toggle,
-body.meos-beginner #format-tools .fmt-cell:not(:has(#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-table,#ww-btn)),
-body.meos-beginner #format-tools .os-cell,
+body.meos-beginner #format-tools .fmt-cell:not(:has(#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-table,#ww-btn,#os-btn)),
 body.meos-beginner #enc-copy,body.meos-beginner #gh-wizard,
 body.meos-beginner #nav-center .bird-ev-label,body.meos-beginner #nav-scroll,body.meos-beginner #nav-center .top-eof-unit,body.meos-beginner #nav-create-toc,
 body.meos-beginner #nav-center .toc-nav-row>.toc-axis,body.meos-beginner #nav-center .me-axis-wrap,body.meos-beginner #nav-center .me-flip-row,body.meos-beginner #nav-center .mark-nav,
 body.meos-beginner .dock-lead .tms-title,body.meos-beginner .dock-lead .clk-wrap,
-body.meos-beginner #toc-pin-bar,body.meos-beginner #fixed-toc,body.meos-beginner #op-add-toc,
+body.meos-beginner #toc-pin-bar,body.meos-beginner #fixed-toc,body.meos-beginner #tms-wrap,body.meos-beginner #op-add-toc,
 body.meos-beginner #edit-mode-select,body.meos-beginner #me-title-word,body.meos-beginner #zoom-scope-indicator,body.meos-beginner #zoom-me-panel{display:none!important}
 body.meos-beginner.meos-bg1 .th-split,body.meos-beginner.meos-bg1 #format-tools .fmt-cell:has(#fmt-strike),body.meos-beginner.meos-bg1 #cur-box,body.meos-beginner.meos-bg1 #encrypt-me-row,body.meos-beginner.meos-bg1 #nav-box,body.meos-beginner.meos-bg1 #nav-center{display:none!important}
 .title-actions{flex-wrap:wrap;justify-content:flex-end;margin-left:auto;row-gap:6px}
@@ -35286,7 +35286,7 @@ if(fixedTocName){
 if(colorBtn)colorBtn.addEventListener('click',ev=>{ev.preventDefault();renderColorButton();const willOpen=!colorPop.classList.contains('on');
 colorPop.classList.toggle('on',willOpen);if(!willOpen)return;const r=colorBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=colorPop.offsetHeight||220;
 const w=colorPop.offsetWidth||38;const left=Math.min(Math.max(6,r.left),window.innerWidth-w-6);colorPop.style.left=left+'px';
-colorPop.style.top=Math.max(6,r.top-h-6)+'px';});});
+/* v5.1.231(俊克 am11:47 改良2「①②のとき、Mepyの色設定の目をクリックして出るメニューが隠れてしまう」): 上に開く場所が貼り付いたヘッダーの下に無い時(🔰で Me Dock が短い)は、下に開く */let top=r.top-h-6;try{const _sk=document.getElementById('dock-stick'),_sb=_sk?_sk.getBoundingClientRect().bottom:0;if(top<_sb+4)top=Math.min(r.bottom+6,window.innerHeight-h-6);}catch(_){}colorPop.style.top=Math.max(6,top)+'px';});});
 if(colorPop)colorPop.addEventListener('click',ev=>{const b=ev.target&&ev.target.closest?ev.target.closest('.swatch'):null;
 if(!b)return;draftColor=b.getAttribute('data-code')||'G';draftDirty=true;colorPop.classList.remove('on');renderColorButton();
 renderMembraneTargetPanel();vscode.postMessage({type:'applyColorNow',color:draftColor,mode:currentMode,value:input.value,
