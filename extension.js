@@ -10576,8 +10576,11 @@ function jumpToWorkingTocItem(rawKey, citeN) {
           ed.selection = new vscode.Selection(mp, mp);
           meosRevealNearTop(ed, memLine);   // v5.1.223: 中央でなく上から5行目
         } else {
-          ed.selection = new vscode.Selection(r.start, r.start);
-          ed.revealRange(new vscode.Range(i, 0, i, Math.max(1, text.length)), vscode.TextEditorRevealType.InCenter);
+          // ★v5.1.255(俊克 pm07:08「日記リストでワープすると、デフォルトでは開始膜に飛ぶ。膜が Raw 表示になってしまうので、整形した表示に」):
+          //   覚えが無い時も、開始膜の行(カーソル行は生)には立たず、中身の1行目へ= 開始膜は整形のまま見える。中身が無い膜だけ開始膜に
+          const bl = (pairEnd > i + 1) ? i + 1 : i, bp = bl === i ? r.start : new vscode.Position(bl, 0);
+          ed.selection = new vscode.Selection(bp, bp);
+          meosRevealNearTop(ed, i);
         }
         refresh(ed);
       });
@@ -17844,7 +17847,14 @@ async function meosNewMdDiarySample(editor, lv) {
   };
   const today = day(now, ['Today: ', 'Done: ', 'Tomorrow: '], 'R');
   const yBody = ['Today: Started a diary in MeOS.', 'Done: Pressed 📝 New .md.', 'Tomorrow: Press Ⓣ to jump back to today.'];
-  if (lv === 2) yBody.push('', '## Notes', '', '| Time | What |', '|---|---|', '| 07:00 | Woke up |', '| 22:00 | Wrote this diary |', '');
+  // ★v5.1.255(俊克 pm07:08「New.md②: 日記リストからワープしてみよう、と書いておこう。表は空で出す時の結合をベースに、行折り返し50でセルの折り返しが分かる長い文字列。表ボタンを押して整形してみよう」):
+  //   表はわざと整形前(生)の姿= 押すと揃う。結合は表ボタンの空の表と同じ(→2 と ↓2)
+  if (lv === 2) yBody.push('', '## Try these', '',
+    '1. Press the green date button (like 27T) in Me Dock, pick a day from the diary list, and warp there.',
+    '2. Put the caret in the table below and press the table button ▦ to tidy it up.', '',
+    '| <!--🤝→2--> A title that spans two columns | | Note |', '|-|-|-|',
+    '| 07:00 | Woke up, made green tea, and wrote the first lines of this diary before breakfast | <!--🤝↓2--> One cell, two rows |',
+    '| 22:00 | Pressed the table button and watched the long text wrap inside its cell | |', '');
   const yesterday = day(y, yBody, 'N');
   await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), today.join('\n') + '\n\n' + yesterday.join('\n') + '\n'); });
   const pos = new vscode.Position(1, 'Today: '.length);
@@ -17852,11 +17862,19 @@ async function meosNewMdDiarySample(editor, lv) {
   try { refresh(editor); } catch (_) { }
   vscode.window.setStatusBarMessage('MeOS: a diary with yesterday and today — write today’s line, then Cmd+S to save', 5000);
 }
+// ★v5.1.255(俊克 pm07:08「New.md①なのに、ファイル名が -2 なのが分かり難い」): 名無し(Untitled-2)をやめ、名前の付いた未保存の文書にする(保存の時もこの名前が出る)。同じ名前が開いていれば 2, 3…
+function meosUntitledUri(base) {
+  const open = new Set((vscode.workspace.textDocuments || []).filter(d => d.uri.scheme === 'untitled').map(d => d.uri.path));
+  for (let n = 1; n < 100; n++) { const nm = base + (n > 1 ? ' ' + n : '') + '.md'; if (!open.has(nm)) return vscode.Uri.from({ scheme: 'untitled', path: nm }); }
+  return vscode.Uri.from({ scheme: 'untitled', path: base + ' ' + Date.now() + '.md' });
+}
 async function createNewMdFile(lv) {
   try {
-    const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: '' });
-    const editor = await vscode.window.showTextDocument(doc, { preview: false });
     lv = [1, 2, 3].includes(Number(lv)) ? Number(lv) : meosNewMdLv();
+    let doc;
+    try { doc = await vscode.workspace.openTextDocument(meosUntitledUri(lv === 3 ? 'New note' : 'My diary')); if (doc.languageId !== 'markdown') doc = await vscode.languages.setTextDocumentLanguage(doc, 'markdown'); }
+    catch (_) { doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: '' }); }
+    const editor = await vscode.window.showTextDocument(doc, { preview: false });
     if (lv !== 3) { await meosNewMdDiarySample(editor, lv); return; }
     // v0.9.994: 新規ファイルを「動くお手本」にする(俊克 6/23 pm02:49)。万人が最初に辿る動線
     //   New .md → 膜をCreate → Add to Hyper TOC を自動化: ①ファイル全体を包む膜を1つ自動生成
@@ -35736,8 +35754,11 @@ const __ms=bg.parentNode;let __wDone=false,__wAt=0;__ms.addEventListener('pointe
 const __skip=(why,el)=>{try{vscode.postMessage({type:'dockDbg',text:'[ptrSkip] '+why+' on='+el.id+' big='+__ms.classList.contains('ml-big')+' scale='+getComputedStyle(el).scale+' since='+(Date.now()-__wAt)});}catch(_){}};/* v5.1.247: 運ばなかった訳も書く(俊克「左に飛んだ」の時に ptrWarp が1つも無かった) */
 const __warp=(el,ev)=>{try{if(ev.target!==el)return;if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(__wDone){__skip('done',el);return;}{const _sc=parseFloat(getComputedStyle(el).scale);if(_sc>1.05){__skip('scaled',el);return;}}/* v5.1.239: まだ膨らんでいる(縮み戻る途中)所へ乗った= 片道の前提(1倍→2.2倍)が違う→運ばない */const lg=document.getElementById('meos-logo');if(!lg)return;
 const z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX/z,qy=el.offsetTop+ev.offsetY/z,d=window.devicePixelRatio||1,k=1.2*z*d;/* ★v5.1.248: 実測(kx= 画面の動き÷offsetX = 1.728 = VSCodium の拡大だけ)= offsetX は Me Dock の zoom が掛かった物差し、offsetLeft は掛からない物差し→ offsetX÷z が正しい。
-   [ptrLand] の2回(05:55:39/44)がこの式の予測と 0.1px で一致。v5.1.241 で「行き過ぎ」に見えたのは、🔰の箱が見えている王冠より右へはみ出していて、王冠の右の空き(箱の端)から乗っていたから(05:52:13 箱の右端)→ 箱を図形に合わせる *//* v5.1.242(俊克 pm01:50 バグ1「離れた位置に移動してしまう」): v5.1.241 の offsetX÷z は誤り= 実測で行き過ぎ(dx 105→151)。この部品の上の offsetX は既に部品の物差し(v5.1.240 までの式で合っていた)→ 戻す */
-__wDone=true;__wAt=Date.now();__ms.classList.add('ml-big');__land={q:[qx,qy],t:Date.now()+270};try{window.__redAt&&window.__redAt(ev,1.2*(qx-ox),1.2*(qy-oy));}catch(_){}const _msg={type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,sx:ev.screenX,sy:ev.screenY,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id};setTimeout(()=>{try{vscode.postMessage(_msg);}catch(_){}},150);/* v5.1.249(俊克 pm03:01「次ので最後に」): 実測で着地は ±2px に収まった。残る違和感= 膨らむ途中(0.15秒)に運ばれ、図形がまだ追いついていない一瞬。→ 膨らみ切ってから運ぶ(その間の手の動きは V-helper が等倍で足す) *//* v5.1.239: 乗った点の画面の位置も渡す / v5.1.240: 実測= screenX はもう Mac のポイント(×dpr÷2 で VSCodium の拡大1.728倍だけ大きく出ていた)→そのまま渡す */}catch(_){}};
+   [ptrLand] の2回(05:55:39/44)がこの式の予測と 0.1px で一致。v5.1.241 で「行き過ぎ」に見えたのは、🔰の箱が見えている王冠より右へはみ出していて、王冠の右の空き(箱の端)から乗っていたから(05:52:13 箱の右端)→ 箱を図形に合わせる */
+/* ★v5.1.255(俊克 pm07:08 改良1「🔰が拡大した時、ポインターを🔰の中央に常に出す。ロゴに入れた時はロゴの中央」): 行き先= 膨らんだ図形の中央(乗った点と同じ点、はやめる)。
+   中央(部品の物差し)= ロゴ(18,18)・🔰(14,15)・王冠(12,15.5)・数字(7.5,7.5)。膨らんだ後の中央= 原点＋(中央−原点)×2.2。片道= そこ−乗った点 */
+const _bgn=document.body.classList.contains('meos-beginner'),_c=el===lg?[18,18]:(el.id==='meos-bg-lv'?[7.5,7.5]:(_bgn?[14,15]:[12,15.5])),cx=el.offsetLeft+_c[0],cy=el.offsetTop+_c[1],tx=ox+(cx-ox)*2.2,ty=oy+(cy-oy)*2.2,k1=z*d;
+__wDone=true;__wAt=Date.now();__ms.classList.add('ml-big');__land={q:[cx,cy],t:Date.now()+270};try{window.__redAt&&window.__redAt(ev,tx-qx,ty-qy);}catch(_){}const _msg={type:'ptrWarp',center:true,dx:(tx-qx)*k1,dy:(ty-qy)*k1,sx:ev.screenX,sy:ev.screenY,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id};setTimeout(()=>{try{vscode.postMessage(_msg);}catch(_){}},150);/* v5.1.249(俊克 pm03:01「次ので最後に」): 実測で着地は ±2px に収まった。残る違和感= 膨らむ途中(0.15秒)に運ばれ、図形がまだ追いついていない一瞬。→ 膨らみ切ってから運ぶ(その間の手の動きは V-helper が等倍で足す) *//* v5.1.239: 乗った点の画面の位置も渡す / v5.1.240: 実測= screenX はもう Mac のポイント(×dpr÷2 で VSCodium の拡大1.728倍だけ大きく出ていた)→そのまま渡す */}catch(_){}};
 bg.addEventListener('pointerover',ev=>__warp(bg,ev));/* v5.1.245(俊克 pm02:33「真中の上から近づくと左方向に飛ぶ」): 片道の式は「入った時の相対座標×倍率」そのもの= 合っているかを測る。運んだ後の最初の動きで、
    ポインターの下の点(部品の物差し)が、乗った点と同じかを [ptrLand] に書く(同じなら式も換算も正しい) */
 let __land=null;__ms.addEventListener('pointermove',ev=>{try{if(!__land||Date.now()<__land.t||Date.now()-__land.t>1500)return;const t=ev.target;if(!(t===bg||t.id==='meos-bg-lv'||t.id==='meos-logo'))return;const _z2=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,q2=[t.offsetLeft+ev.offsetX/_z2,t.offsetTop+ev.offsetY/_z2];

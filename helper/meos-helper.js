@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.1.244) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.1.255) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -622,6 +622,8 @@ function run(argv) {
     // ★v5.1.244(俊克 pm02:23 バグ1「真上から真下へ動かすと、深く入り込んだ所へ移動する」): ×2.2 は手の動きまで膨らませた(05:26:04 下へ6pt→14pt押し込んだ)。
     //   手の動きは画面の上の動き= 図形が膨らんでも手は等倍で動いている→ 等倍で足す(= 今の位置＋片道)。×0(abs)も×2.2も外れ= 等倍(rel)に落ち着く。乗った点は記録だけ
     how = (isFinite(ex) && isFinite(ey)) ? 'rel(moved ' + (cx - ex).toFixed(1) + ',' + (cy - ey).toFixed(1) + ')' : 'rel';
+    // ★v5.1.255(俊克「🔰の中央に常に出す」): 行き先が図形の中央の時は、乗った点から片道(手のその後の動きは足さない= いつも中央)
+    if (o.center && isFinite(ex) && isFinite(ey) && Math.abs(ex - cx) < 200 && Math.abs(ey - cy) < 200) { x = ex + Number(o.dx) / bs; y = ey + Number(o.dy) / bs; how = 'center'; }
     try { $.CGWarpMouseCursorPosition({ x: x, y: y }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {}
     hlog('warpPtr ' + how + ' dx=' + Number(o.dx).toFixed(1) + ' dy=' + Number(o.dy).toFixed(1) + ' bs=' + bs + ' entry=' + (isFinite(ex) ? ex.toFixed(1) + ',' + ey.toFixed(1) : '?') + ' now=' + cx.toFixed(1) + ',' + cy.toFixed(1) + ' to=' + x.toFixed(1) + ',' + y.toFixed(1));
   };
