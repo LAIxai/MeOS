@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.1.239) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.1.240) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -615,7 +615,7 @@ function run(argv) {
     //   → 乗った点の画面の位置(sx,sy)から片道を足す= 今どこに居ても、膨らんだ図形の同じ点へ置く。物差しが合わない時(今の位置と200ポイント以上違う)は今まで通り
     const h = scr.objectAtIndex(0).frame.size.height, cx = p.x, cy = h - p.y;
     let bx = cx, by = cy, how = 'rel';
-    const ex = Number(o.sx) / bs, ey = Number(o.sy) / bs;
+    const ex = Number(o.sx), ey = Number(o.sy);   // v5.1.240: 乗った点はもう Mac のポイント(screenX)
     if (isFinite(ex) && isFinite(ey) && Math.abs(ex - cx) < 200 && Math.abs(ey - cy) < 200) { bx = ex; by = ey; how = 'abs'; }
     const x = bx + Number(o.dx) / bs, y = by + Number(o.dy) / bs;
     try { $.CGWarpMouseCursorPosition({ x: x, y: y }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {}

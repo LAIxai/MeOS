@@ -30328,7 +30328,7 @@ body.vscode-light .dev-vsix-btn,body.vscode-high-contrast-light .dev-vsix-btn{ba
 body.meos-beginner .bg-badge{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)}
 .ml-split:has(.meos-logo:hover) .bg-badge{scale:2.2}
 /* v5.1.234(俊克 pm00:26 改良1): 🔰/王冠/数字に乗った時も、ロゴごと一緒に膨らむ(膨らんだ先の🔰を押す= ロゴと同じ作法) */
-.ml-split:has(.bg-badge:hover,.bg-lv:hover) .meos-logo,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .bg-badge,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .bg-lv{scale:2.2}
+.ml-split.ml-big .meos-logo,.ml-split.ml-big .bg-badge,.ml-split.ml-big .bg-lv,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .meos-logo,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .bg-badge,.ml-split:has(.bg-badge:hover,.bg-lv:hover) .bg-lv{scale:2.2}
 /* v5.1.232(俊克 pm00:14「モード③は🔰の上下逆の形にして、三つ山の王冠のような形に」): ③= 金の王冠(左が金・右がクリーム・紺の縁・白い輪郭= 🔰と同じ作り)。自前の SVG */
 .bg-badge .bg-crown{display:none;width:30px;height:23px;margin:4px 0 0 -3px}   /* v5.1.233(俊克 pm00:2x 改良1/2): 白い輪郭をロゴに接し・下を切って横長の王冠に */
 body:not(.meos-beginner) .bg-badge{filter:none}
@@ -35693,10 +35693,13 @@ bg.addEventListener('pointerdown',ev=>{ev.stopPropagation();});
    片道= (乗った点−ロゴの左上[拡大の原点])×(2.2−1)。部品の中の位置(offset)で測り、Me Dock の拡大(zoom)と画面の画素(dpr)を掛けて実の画素で渡す */
 /* ★v5.1.238(俊克 pm01:22 バグ1「近づけると、ポインターがはじかれて遠ざかる」): 実測= 運んだ直後(膨らむ途中)に、もう一度「外から乗った」と数えて2度目を運んでいた(04:24:52.973→53.171)。
    → 運ぶのは群れ(ロゴ・🔰・数字)に入って1回だけ。群れから出て、膨らみが戻った後(0.55秒)に数え直す。改良2: ロゴに外から乗った時も運ぶ */
-const __ms=bg.parentNode;let __wDone=false,__wAt=0;__ms.addEventListener('pointerleave',()=>{const f=()=>{try{if(!__ms.matches(':hover'))__wDone=false;}catch(_){__wDone=false;}};if(Date.now()-__wAt>550)f();else setTimeout(f,560);});
+const __ms=bg.parentNode;let __wDone=false,__wAt=0;__ms.addEventListener('pointerleave',()=>{const f=()=>{try{if(!__ms.matches(':hover')){__wDone=false;__ms.classList.remove('ml-big');}}catch(_){__wDone=false;__ms.classList.remove('ml-big');}};setTimeout(f,Math.max(350,560-(Date.now()-__wAt)));});
+/* ★v5.1.240(俊克 pm01:38「最後に3回くらい連続して弾かれた」): 実測= 3回とも片道は正しかった(乗った点と今の位置が同じ)。弾かれたのは運んだ後= 膨らむ途中(0.15秒)に運ばれると、
+   まだ膨らみ切っていない図形の外に着地→ :hover が外れて縮む→ ポインターだけ取り残される。V-helper が速く答えた時ほど起きる。
+   → 運んだら群れに ml-big を付けて膨らみを保ち、群れから出て 0.35秒たっても戻らない時だけ外す */
 const __warp=(el,ev)=>{try{if(__wDone)return;if(ev.relatedTarget&&__ms.contains(ev.relatedTarget))return;if(ev.target!==el)return;{const _sc=parseFloat(getComputedStyle(el).scale);if(_sc>1.05)return;}/* v5.1.239: まだ膨らんでいる(縮み戻る途中)所へ乗った= 片道の前提(1倍→2.2倍)が違う→運ばない */const lg=document.getElementById('meos-logo');if(!lg)return;
 const ox=lg.offsetLeft,oy=lg.offsetTop,qx=el.offsetLeft+ev.offsetX,qy=el.offsetTop+ev.offsetY,z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1,d=window.devicePixelRatio||1,k=1.2*z*d;
-__wDone=true;__wAt=Date.now();vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,sx:ev.screenX*d,sy:ev.screenY*d,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});/* v5.1.239: 乗った点の画面の位置も渡す(sx,sy= 実の画素) */}catch(_){}};
+__wDone=true;__wAt=Date.now();__ms.classList.add('ml-big');vscode.postMessage({type:'ptrWarp',dx:(qx-ox)*k,dy:(qy-oy)*k,sx:ev.screenX,sy:ev.screenY,q:[qx,qy],o:[ox,oy],z:z,dpr:d,on:el.id});/* v5.1.239: 乗った点の画面の位置も渡す / v5.1.240: 実測= screenX はもう Mac のポイント(×dpr÷2 で VSCodium の拡大1.728倍だけ大きく出ていた)→そのまま渡す */}catch(_){}};
 bg.addEventListener('pointerover',ev=>__warp(bg,ev));{const __lg=document.getElementById('meos-logo');if(__lg)__lg.addEventListener('pointerover',ev=>__warp(__lg,ev));}
 /* v5.1.230(俊克 am11:44「いっそのことOptクリックは廃止して、③のときに灰色の初心者マークにする。これで3プリセットを切り替える」): 🔰を押しても右肩の数字と同じ= ①→②→③(Shiftで逆) */
 bg.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const lv=document.getElementById('meos-bg-lv');if(lv)lv.dispatchEvent(new MouseEvent('click',{bubbles:false,shiftKey:ev.shiftKey}));try{showTocTip(ev);}catch(_){}});
