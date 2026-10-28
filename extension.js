@@ -38857,16 +38857,36 @@ async function meosTableFromSelection(editor) {
 //   ・入る表= 折り返し幅(wordWrapColumn)に収まらない表だけ。収まる表は今まで通り(折り返し幅を広げれば入らない)。結合・計算の印(<!--)がある表は入らない。
 //   ・表ボタン= 入る表は空白で揃えない詰めた形に整形し、段が足りない行は最後のセルの中(閉じの | の手前)に空白を足す(GFM はセルの前後の空白を読まない= GitHub の見え方は同じ)。
 //   ・描く= カーソルが表の外の時だけ。字は透明・各段の頭に見せかけの段を絶対位置で。カーソルが表に入ったら本物の表(ほかの表の装飾も戻る)。
-//   ・段の数は VS Code から訊けない→ Monaco の折り返し(simple)を写して数える(全角は表の幅の係数・空白の後と全角の前後で折れる)。
-function meosTcwMonacoFull(cp) { return (cp >= 0x2E80 && cp <= 0xD7AF) || (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFF01 && cp <= 0xFF5E); }
+//   ・段の数は VS Code から訊けない→ Monaco の折り返し(simple)を写して数える(全角は表の幅の係数・折れる所は v5.1.271 で Monaco 本体の分類をそのまま)。
+function meosTcwMonacoFull(cp) { return (cp >= 0x2E80 && cp <= 0xD7AF) || (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFF01 && cp <= 0xFF5E) || (cp >= 0xFFE0 && cp <= 0xFFE6); }
+// ★v5.1.271(俊克 pm01:35 v5.1.270_0128 2枚目「表ボタンで整形した結果にもバグが残っている」= 私が書いた先行例の表で、作りの列が1段足りず次の行へ重なった):
+//   真因= 写しが「空白の後と全角の前後」でしか折らなかった。Monaco は ) ] } ? | / & . , ; の後でも折り(URL の / や . で細かく折れる= 段が減る)、
+//   。、ー」や小さい仮名の前では折らない(禁則)。→ VSCodium 本体(workbench.desktop.main.js の H3n / sBi / 分類器)をそのまま写す。
+//   字の分類= 1 前で折る(wordWrapBreakBeforeCharacters)/ 2 後で折る(wordWrapBreakAfterCharacters)/ 3 かな・漢字(どちらでも折る。2 より先に見る)
+const MEOS_TCW_BRK_BEFORE = '([{\u2018\u201C\u3008\u300A\u300C\u300E\u3010\u3014\uFF08\uFF3B\uFF5B\uFF62\xA3\xA5\uFF04\uFFE1\uFFE5+\uFF0B';
+const MEOS_TCW_BRK_AFTER = ' \t})]?|/&.,;\xA2\xB0\u2032\u2033\u2030\u2103\u3001\u3002\uFF61\uFF64\uFFE0\uFF0C\uFF0E\uFF1A\uFF1B\uFF1F\uFF01\uFF05\u30FB\uFF65\u309D\u309E\u30FD\u30FE\u30FC\u30A1\u30A3\u30A5\u30A7\u30A9\u30C3\u30E3\u30E5\u30E7\u30EE\u30F5\u30F6\u3041\u3043\u3045\u3047\u3049\u3063\u3083\u3085\u3087\u308E\u3095\u3096\u31F0\u31F1\u31F2\u31F3\u31F4\u31F5\u31F6\u31F7\u31F8\u31F9\u31FA\u31FB\u31FC\u31FD\u31FE\u31FF\u3005\u303B\uFF67\uFF68\uFF69\uFF6A\uFF6B\uFF6C\uFF6D\uFF6E\uFF6F\uFF70\u201D\u3009\u300B\u300D\u300F\u3011\u3015\uFF09\uFF3D\uFF5D\uFF63';
+let _meosTcwBrkMap = null;
+function meosTcwBrkClass(cp) {
+  if ((cp >= 0x3040 && cp <= 0x30FF) || (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF)) return 3;
+  if (!_meosTcwBrkMap) { _meosTcwBrkMap = new Map(); for (const c of MEOS_TCW_BRK_BEFORE) _meosTcwBrkMap.set(c.charCodeAt(0), 1); for (const c of MEOS_TCW_BRK_AFTER) _meosTcwBrkMap.set(c.charCodeAt(0), 2); }
+  return _meosTcwBrkMap.get(cp) || 0;
+}
 function meosTcwRowsOf(text, W) {
   const fw = (typeof _meosTableCjkW === 'number' && _meosTableCjkW > 1) ? _meosTableCjkW : 1.67;
-  const a = Array.from(String(text || '')); let rows = 1, col = 0, brkCol = -1, prevSp = false, prevFull = false;
-  for (let i = 0; i < a.length; i++) {
-    const cp = a[i].codePointAt(0), big = cp > 0xFFFF, full = big || meosTcwMonacoFull(cp), w = big ? 2 : (full ? fw : 1);
-    if (i > 0 && a[i] !== ' ' && (prevSp || full || prevFull)) brkCol = col;
-    if (col > 0 && col + w > W + 1e-9) { rows++; col = (brkCol > 0) ? (col - brkCol) : 0; brkCol = -1; }
-    col += w; prevSp = a[i] === ' '; prevFull = full;
+  const p = String(text || ''), v = p.length; if (v <= 1) return 1;
+  const wOf = (c) => c === 9 ? 4 : ((meosTcwMonacoFull(c) || c < 32) ? fw : 1);
+  let rows = 1, last = 0, brk = 0, brkX = 0, lim = W, x, i0 = 1, pc = p.charCodeAt(0), pk;
+  if (pc >= 0xD800 && pc <= 0xDBFF) { x = 2; pc = p.charCodeAt(1); i0 = 2; pk = 0; } else { x = wOf(pc); pk = meosTcwBrkClass(pc); }
+  for (let i = i0; i < v; i++) {
+    const at = i; let c = p.charCodeAt(i), k, w;
+    if (c >= 0xD800 && c <= 0xDBFF) { i++; k = 0; w = 2; } else { k = meosTcwBrkClass(c); w = wOf(c); }
+    if (c !== 32 && ((pk === 2 && k !== 2) || (pk !== 1 && k === 1) || (pk === 3 && k !== 2) || (k === 3 && pk !== 1))) { brk = at; brkX = x; }   // 折れる所(sBi)
+    x += w;
+    if (x > lim + 1e-9) {
+      if (brk === 0 || x - brkX > W) { brk = at; brkX = x - w; }   // 折れる所が無い/遠すぎる= この字の手前で折る
+      if (brk > last) { rows++; last = brk; lim = brkX + W; brk = 0; }
+    }
+    pc = c; pk = k;
   }
   return rows;
 }
