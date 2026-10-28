@@ -36951,7 +36951,10 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'dockHover') { meosModsWant(!!message.on, 'hover'); return; }   // v4.2.738
-    if (message && message.type === 'dockDbg') { try { meosDbg('[dock] ' + String(message.text || '')); } catch (_) { } return; }   // ★v4.2.128: Me Dock の座標を実物で測る(俊克「OSボタンのtipが完全に被っている」)
+    if (message && message.type === 'dockDbg') { try { meosDbg('[dock] ' + String(message.text || '')); } catch (_) { }
+      // ★v5.1.276: Me Dock に焦点が入った/出た= カーソルの表を見せかけで描くかが変わる→ 描き直す
+      const _wf = /^wvFocus (on|off)$/.exec(String(message.text || '')); if (_wf) { _meosDockFocused = _wf[1] === 'on'; try { const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (ed) meosApplyTableCellWrapDecorations(ed); } catch (_) { } }
+      return; }   // ★v4.2.128: Me Dock の座標を実物で測る(俊克「OSボタンのtipが完全に被っている」)
     if (message && message.type === 'clkPanelOpen') {   // v4.2.393: ⏰▾ の設定の窓が開いている間だけ、カーソルの場所を判定して送る
       _meosClkPanelOpen = !!message.on; if (_meosClkPanelOpen) meosPostClkTarget(); return;
     }
@@ -39003,6 +39006,7 @@ function meosTcwCompactLines(lines, W) {
 //   ・入る表= カーソルのある表で、区切りの行が詰めた形(|-|-| = 表ボタンで詰めた印)の表だけ。手で揃えた表・カーソルの無い表はソースに触らない(10.27 の決め)
 //   ・↻ は幅と折り返しを続けて書く(設定の知らせが2回)→ 0.3秒まとめてから1回。選択中は動かない(表ボタンは選択を表にする道へ入る)
 //   ・幅を広げて表が収まると表ボタンは揃えた形に戻す(区切りが |---| になる)→ 押した表を見出しの中身で覚えておき(この起動の間)、狭め直した時も入れる
+let _meosDockFocused = false;   // v5.1.276: Me Dock(webview)に焦点があるか(wvFocus on/off)
 let _meosTcwWidthTimer = null; const _meosTcwPressed = new Set();
 function meosTcwPressKey(doc, blk) { try { return doc.uri.toString() + '\n' + meosSplitTableRow(doc.lineAt(blk.start).text).map(x => String(x).trim()).join('|'); } catch (_) { return ''; } }
 function meosTcwIsCompactSep(t) { return /^\s*\|(?:\s*:?-:?\s*\|)+\s*$/.test(String(t || '')); }
@@ -39059,7 +39063,9 @@ function meosApplyTableCellWrapDecorations(editor) {
         if (done.has(ln)) continue;
         const blk = meosTableBlockRange(doc, ln); if (!blk) { done.add(ln); continue; }
         for (let i = blk.start; i <= blk.end; i++) done.add(i);
-        if (cur.some(c => c >= blk.start && c <= blk.end)) continue;   // 書く時= 本物の表
+        // ★v5.1.276(俊克 pm08:08「ワープで開始膜に着地した時のように、カーソルが表の外にあるように見せかければいい」): Me Dock に焦点がある間(折り返し幅の摘みを動かしている間)は、
+        //   カーソルの表も見せかけで描く= 幅を変えるたびに整形し直した表(②)をその場で見られる。エディターへ戻れば本物の表(書く時)
+        if (!_meosDockFocused && cur.some(c => c >= blk.start && c <= blk.end)) continue;   // 書く時= 本物の表
         try { if (meosModeAtLine(doc, blk.start) === 'raw') continue; } catch (_) { }
         const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
         const L = meosTcwLayout(lines, W); if (!L) continue;
