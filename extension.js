@@ -38946,7 +38946,7 @@ function meosTcwStyled(x) {
     return { text: plain, st };
   } catch (_) { return none; }
 }
-function meosTcwLayout(lines, W) {
+function meosTcwLayout(lines, W, draw) {
   if (!(W > 0) || !lines.length) return null;
   if (lines.some(t => t.indexOf('<!--') >= 0)) return null;
   const rs = lines.map(t => meosSplitTableRow(t)); const sep = rs.findIndex(r => meosIsTableSeparator(r)); if (sep < 0) return null;
@@ -38961,7 +38961,9 @@ function meosTcwLayout(lines, W) {
     if (hit === undefined) { hit = false; try { const f = meosFormatTableLines(lines.map(x => x.trim())); hit = !!(f && f.some(l => meosTcwRowsOf(l, W) > 1)); } catch (_) { }
       if (_meosTcwNeedCache.size > 300) _meosTcwNeedCache.clear(); _meosTcwNeedCache.set(key, hit); }
     need = hit; }
-  if (!need) return null;   // 今までの整形で収まる= 今まで通り
+  // ★v5.1.279(俊克 am02:28「162915行と162916行を一体化して、その中心に最初の見出しの文字を表示する= 一般的なツールに相当する」): 描く時(draw)は折れない表も見せかけで描く
+  //   = どの表も見出し＋区切りの行が1つの帯になる(描いて見せる道具には区切りの空の段が無い)。▦の整形(詰めた形にするか)は今まで通り「折れる時だけ」
+  if (!need && !draw) return null;   // 今までの整形で収まる= 今まで通り
   const c = nat.slice(); let g = 0; while (tot(c) > W - 1 && g++ < 4000) { const k = c.indexOf(Math.max(...c)); if (c[k] <= 3) break; c[k]--; }
   if (tot(c) > W - 1) return null;
   const al = rs[sep].map(x => { const t = String(x || '').replace(/\s/g, ''); const l = t.startsWith(':'), r = t.length > 1 && t.endsWith(':'); return (l && r) ? 'c' : (r ? 'r' : 'l'); });   // v5.1.207: 揃えの印
@@ -39074,7 +39076,7 @@ function meosApplyTableCellWrapDecorations(editor) {
         if (!_meosDockFocused && cur.some(c => c >= blk.start && c <= blk.end)) continue;   // 書く時= 本物の表
         try { if (meosModeAtLine(doc, blk.start) === 'raw') continue; } catch (_) { }
         const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
-        const L = meosTcwLayout(lines, W); if (!L) continue;
+        const L = meosTcwLayout(lines, W, true); if (!L) continue;
         // ★v5.1.199(俊克 10.26 am00:13 改良1「セル折り返しをしたケースで、細い横罫線が引かれていない」): 行の罫線の装飾(手を引かせた)と同じ線を自分で引く=
         //   各行が取っている段(ソースの段 R)の下端に細い線(panel.border 2px)・区切りの行は --- を描かず下に太い線(foreground 3px)・表の上端に細い線
         const tw = L.c.reduce((p, q) => p + q, 0) + 3 * L.nc + 1, em = (x) => Math.round(x * lhEm * 1000) / 1000;
@@ -39323,7 +39325,7 @@ function meosStatus(m) { try { vscode.window.setStatusBarMessage(m, 1800); } cat
 async function meosTableDupRow(editor) {
   if (!editor) return;
   const doc = editor.document; const cur = editor.selection.active;
-  const info = meosTableInfo(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
+  const info = meosTableInfoAny(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
   if (cur.line === info.sep) { meosStatus('MeOS: 区切り行は複製できません'); return; }
   const lineText = doc.lineAt(cur.line).text;
   const we = new vscode.WorkspaceEdit();
@@ -39340,7 +39342,7 @@ async function meosTableDupRow(editor) {
 async function meosTableMerge(editor, dir, dec) {   // ★v4.2.776-1: dec= 同じ向きの印の数を1つ減らす・1になったら印ごと消す
   if (!editor) return;
   const doc = editor.document; const cur = editor.selection.active;
-  const info = meosTableInfo(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
+  const info = meosTableInfoAny(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
   if (cur.line === info.sep) { meosStatus('MeOS: 区切り行は結合できません'); return; }
   const text = doc.lineAt(cur.line).text; const ps = meosRowPipePositions(text);
   if (ps.length < 2) return;
@@ -39373,7 +39375,7 @@ async function meosTableMerge(editor, dir, dec) {   // ★v4.2.776-1: dec= 同�
 async function meosTableDelRow(editor) {
   if (!editor) return;
   const doc = editor.document; const cur = editor.selection.active;
-  const info = meosTableInfo(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
+  const info = meosTableInfoAny(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
   if (cur.line === info.sep) { meosStatus('MeOS: 区切り行は削除できません'); return; }
   const we = new vscode.WorkspaceEdit();
   const range = (cur.line < doc.lineCount - 1) ? new vscode.Range(cur.line, 0, cur.line + 1, 0)
@@ -39386,7 +39388,7 @@ async function meosTableDelRow(editor) {
 async function meosTableColOp(editor, op) { // op: 'dup' | 'del'
   if (!editor) return;
   const doc = editor.document; const cur = editor.selection.active;
-  const info = meosTableInfo(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
+  const info = meosTableInfoAny(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
   const blk = info.blk;
   const curCells = meosSplitTableRow(doc.lineAt(cur.line).text);
   const origCol = meosCellIndexAtChar(doc.lineAt(cur.line).text, cur.character);
@@ -39435,6 +39437,10 @@ function meosCellIndexAtChar(text, ch) { const ps = meosRowPipePositions(text); 
 function meosCellContentPos(text, k) { const ps = meosRowPipePositions(text); if (ps.length < 2) return 0; if (k < 0) k = 0; if (k > ps.length - 2) k = ps.length - 2; let c = ps[k] + 1; while (c < ps[k + 1] && text.charAt(c) === ' ') c++; if (c >= ps[k + 1]) c = Math.min(ps[k] + 2, ps[k + 1]); return c; }
 function meosTableInfo(doc, line) {
   if (meosTcwIsVirtual(doc, line)) return null;   // v5.1.198: セルの中で折り返して描いている表= ほかの表の装飾は手を引く
+  return meosTableInfoAny(doc, line);
+}
+// v5.1.279: 行・列の複製/削除/移動は、見せかけで描いている表でも効く(Me Dock に焦点がある間はカーソルの表も見せかけ= 手を引くと「表がありません」になる)
+function meosTableInfoAny(doc, line) {
   const blk = meosTableBlockRange(doc, line); if (!blk) return null;
   let sep = -1; const rows = [];
   for (let i = blk.start; i <= blk.end; i++) { if (sep < 0 && meosIsTableSeparator(meosSplitTableRow(doc.lineAt(i).text))) sep = i; }
@@ -39446,7 +39452,7 @@ function meosInTable(doc, line) { try { return !!meosTableInfo(doc, line); } cat
 async function meosTableNav(editor, dir) {
   if (!editor) return;
   const doc = editor.document; const cur = editor.selection.active;
-  const info = meosTableInfo(doc, cur.line); if (!info) return;
+  const info = meosTableInfoAny(doc, cur.line); if (!info) return;
   const { rows } = info; const sep = info.sep;
   const curText = doc.lineAt(cur.line).text;
   const onSep = (cur.line === sep);
@@ -39516,7 +39522,7 @@ let _meosInTableCtx = false;
 // v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
 function meosUpdateInTableContext(editor) {
   let v = false;
-  try { if (editor && editor.document && editor.selection) v = meosInTable(editor.document, editor.selection.active.line); } catch (_) {}
+  try { if (editor && editor.document && editor.selection) v = !!meosTableInfoAny(editor.document, editor.selection.active.line); } catch (_) {}   // v5.1.279: 見せかけで描いている表でも、カーソルが居れば表の中
   if (MEOS_RELEASE_PHASE < 3) v = false; // v1.0.0: テーブル未解禁フェーズでは inTable を常にfalse=セル移動keybindingを無効化
   if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} }
   // v4.0.400: bs/改行/fs を横取りするかどうか。変わった時だけ送る(打鍵の道に仕事を足さない)。
