@@ -38984,7 +38984,9 @@ function meosTcwCompactLines(lines, W) {
   const rs = lines.map(t => meosSplitTableRow(t));
   return rs.map((r, i) => {
     if (i === L.sep) return '|' + r.map(x => { const t = x.replace(/\s/g, ''); return (t.startsWith(':') ? ':' : '') + '-' + (t.length > 1 && t.endsWith(':') ? ':' : ''); }).join('|') + '|';
-    let line = '| ' + r.join(' | ') + ' |'; const need = L.rows[i].h; let g = 0;
+    // ★v5.1.272(俊克 pm05:37「見出しと中身の間に区切りの行が空の1段として挟まって間延びする」): 区切りの行(---)は字を描かない1段= 見出しの最後の段をそこに描く。
+    //   → 見出しの行は要る段より1段少なく整形する(貼っただけの表で「タ」が区切りの行へはみ出して正しく見えていた偶然を、決まりにした)
+    let line = '| ' + r.join(' | ') + ' |'; const need = (i === L.sep - 1) ? Math.max(1, L.rows[i].h - 1) : L.rows[i].h; let g = 0;
     // ★v5.1.202(俊克 am08:28「表ボタンの整形機能では直らない」): 段の行がちょうど50.01桁で止まっていた= 全角を1.67で数えると折れるが、
     //   Monaco は実際の比(Menlo+Hiragino= 1/0.6= 1.6667)で数えるので50.00桁= 折れずに1段のまま→ 2段目の「字」が次の行に重なった。
     //   → 境目すれすれで止めない= 幅を0.1桁広く見ても要る段に届くまで空白を足す(端数の違いで段が減らない)
@@ -39045,7 +39047,9 @@ function meosApplyTableCellWrapDecorations(editor) {
           const Ri = Math.max(L.rows[i].h, meosTcwRowsOf(t, W));
           // v5.1.201: 下を覆う板= その行が取る段の全部を地の色で(ソースに掛かった装飾= インラインコードの板などが透けない)。重なり= 覆う板(2) < 見せかけの字(3) < 罫線(4)
           covers.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '', textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + (tw + 1) + 'ch; height: calc(' + em(Ri) + 'em + 1px); background: var(--vscode-editor-background); z-index: 2; pointer-events: none;' } } });
-          if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
+          // v5.1.272: 見出しの最後の段が区切りの行に乗る時(ソースの段 < 要る段)は、見出しの細い線を引かない= その下端には区切りの行の太い線が来る
+          const headOnSep = (i === L.sep - 1) && meosTcwRowsOf(t, W) < Ri;
+          if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else if (!headOnSep) rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
           if (L.rows[i].sep) { logs.push((ln2 + 1) + ':sep'); continue; }   // 区切りの行の --- は描かない(太い線だけ)
           // ★v5.1.208: 段ごとに駒(縦線・飾りの塊)を桁の位置(ch)に置く。太字=太く/斜体=傾け/インラインコード=クリームの板(家の板と同じ #f3e6c4・濃い茶の字)/リンク=リンクの色＋下線
           (L.rows[i].pc || []).forEach((row, j) => { if (j >= t.length) return; const top = (Math.round(j * lhEm * 1000) / 1000) + 'em';
