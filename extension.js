@@ -39053,10 +39053,15 @@ function meosApplyTableCellWrapDecorations(editor) {
           covers.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '', textDecoration: 'none; position: absolute; left: 0; top: 0; width: ' + (tw + 1) + 'ch; height: calc(' + em(Ri) + 'em + 1px); background: var(--vscode-editor-background); z-index: 2; pointer-events: none;' } } });
           // v5.1.272: 見出しの最後の段が区切りの行に乗る時(ソースの段 < 要る段)は、見出しの細い線を引かない= その下端には区切りの行の太い線が来る
           const headOnSep = (i === L.sep - 1) && meosTcwRowsOf(t, W) < Ri;
-          if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else if (!headOnSep) rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
+          // ★v5.1.274(俊克 pm06:58「115行目と116行目の全体を1つの行のように見せて、文字を今の薄い罫線の辺りを中心に」): 見出しが自分の段に収まる時(区切りの行が空く時)は、
+          //   見出しの段＋区切りの行を1つの見出しの帯にする= 細い線を引かず、字を帯の上下の真ん中へ下げ、縦線は帯の上から下まで(Excel の上下中央揃え)
+          const headBand = (i === L.sep - 1) && !headOnSep, shift = headBand ? (Ri + 1 - L.rows[i].h) / 2 : 0;
+          if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else if (!headOnSep && !headBand) rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
+          if (headBand && L.rows[i].pc && L.rows[i].pc[0]) for (let k = 0; k <= Ri; k++) L.rows[i].pc[0].filter(pz => pz.st === 'p').forEach(pz => pieces.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: pz.t,
+            textDecoration: 'none; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + (Math.round(k * lhEm * 1000) / 1000) + 'em; white-space: pre; z-index: 3; pointer-events: none; color: ' + fg + ' !important; -webkit-text-fill-color: ' + fg + ' !important;' } } }));
           if (L.rows[i].sep) { logs.push((ln2 + 1) + ':sep'); continue; }   // 区切りの行の --- は描かない(太い線だけ)
           // ★v5.1.208: 段ごとに駒(縦線・飾りの塊)を桁の位置(ch)に置く。太字=太く/斜体=傾け/インラインコード=クリームの板(家の板と同じ #f3e6c4・濃い茶の字)/リンク=リンクの色＋下線
-          (L.rows[i].pc || []).forEach((row, j) => { if (j >= t.length) return; const top = (Math.round(j * lhEm * 1000) / 1000) + 'em';
+          (L.rows[i].pc || []).forEach((row, j) => { if (j >= t.length) return; const top = (Math.round((j + shift) * lhEm * 1000) / 1000) + 'em';
             row.forEach(pz => { const s0 = pz.st || '', code = s0.indexOf('c') >= 0, link = s0.indexOf('l') >= 0, col = code ? '#3b3020' : (link ? 'var(--vscode-textLink-foreground)' : ((s0.indexOf('b') >= 0 && boldCol) ? boldCol : ((s0.indexOf('i') >= 0 && itCol) ? itCol : fg)));
               pieces.push({ range: new vscode.Range(ln2, j, ln2, j), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
                 textDecoration: (link ? 'underline' : 'none') + '; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
