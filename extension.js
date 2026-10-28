@@ -10473,7 +10473,11 @@ async function meosRevealNearTop(ed, line) {
   try {
     const _vis = (ln) => (ed.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line);
     ed.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter);
-    for (let i = 0; i < 10 && !_vis(line); i++) await new Promise(r => setTimeout(r, 30));
+    // ★v5.1.273(俊克 pm06:39 バグ1「インストール直後や再起動の時、今日の日記の最後の位置に飛ぶが画面の中に入らない。Ⓣを押せば正しい」):
+    //   真因= 起動直後は VS Code が忙しく(34万行・Me Dock の組み直し)、中央へ見せた後の画面が0.3秒では動かない→ 待ちを諦めて**古い画面(365〜391)で**4行を数え、
+    //   上端を387に置いた= 着地の418は画面の下へ外れた(ログ [nearTop] 行=418 上端に置いた行=387)。→ 最長1.5秒待つ。それでも見えなければ数えず、4行上を上端に
+    for (let i = 0; i < 50 && !_vis(line); i++) await new Promise(r => setTimeout(r, 30));
+    if (!_vis(line)) { const t0 = Math.max(0, line - 4); ed.revealRange(new vscode.Range(t0, 0, t0, 0), vscode.TextEditorRevealType.AtTop); meosDbg('[nearTop] 行=' + (line + 1) + ' 1.5秒待っても画面が動かない→ 4行上(' + (t0 + 1) + ')を上端に'); return; }
     let top = line, n = 0;
     for (let ln = line - 1; ln >= 0 && n < 4; ln--) { if (!_vis(ln)) { if (ln < ((ed.visibleRanges || [])[0] || { start: { line: 0 } }).start.line) break; continue; } top = ln; n++; }
     ed.revealRange(new vscode.Range(top, 0, top, 0), vscode.TextEditorRevealType.AtTop);
