@@ -39021,7 +39021,13 @@ function meosTcwReformatOnWidth() {
       let sep = -1; for (let i = blk.start; i <= blk.end; i++) if (meosIsTableSeparator(meosSplitTableRow(doc.lineAt(i).text))) { sep = i; break; }
       if (sep < 0 || !(meosTcwIsCompactSep(doc.lineAt(sep).text) || _meosTcwPressed.has(meosTcwPressKey(doc, blk)))) { meosDbg('[tcw] 幅が変わった→ カーソルの表は詰めた形でない= 触らない'); return; }
       meosDbg('[tcw] 幅が変わった→ カーソルの表(' + (blk.start + 1) + '〜' + (blk.end + 1) + ')を幅 ' + meosFenceWrapColumn(doc) + ' で整形し直す');
+      // ★v5.1.278(俊克 am01:32 バグ1「54→55 に変えると表示がおかしくなる」): 実測= 整形の後、見せかけの表を描き直していなかった(Me Dock に焦点がある間は
+      //   activeTextEditor が空= 打鍵の後の描き直しが走らない)→ 整形前の飾りが書き換わった行へずれて残り、下に重なった。カーソルも置き換えた表の末尾(119)へ流れていた。
+      //   → カーソルを元の行・桁へ戻し、すぐ描き直す
+      const keep = ed.selection.active;
       await meosFormatTableAtCursor(ed);
+      try { const d2 = ed.document, ln = Math.min(keep.line, d2.lineCount - 1), p2 = new vscode.Position(ln, Math.min(keep.character, d2.lineAt(ln).text.length)); ed.selection = new vscode.Selection(p2, p2); } catch (_) { }
+      try { refresh(ed); } catch (_) { } try { meosApplyTableCellWrapDecorations(ed); } catch (_) { }
     } catch (e) { try { meosDbg('[tcw] 幅で整形し直す 例外 ' + e); } catch (_) { } }
   }, 300);
 }
