@@ -38998,6 +38998,29 @@ function meosTcwCompactLines(lines, W) {
     return line;
   });
 }
+// ★★v5.1.275(俊克 pm07:26「引継②の意味がやっと分かった。実装して」= 引き継ぎ②): 折り返し幅を変えたら、カーソルのある表だけ整形し直す。
+//   表ボタンが足した空白は、押した時の幅に合わせた量= 幅を変えると段が足りず次の行へ重なる/余って間延びする(v5.1.274_0710 で ① の「試み。」が「試作」に重なった)。
+//   ・入る表= カーソルのある表で、区切りの行が詰めた形(|-|-| = 表ボタンで詰めた印)の表だけ。手で揃えた表・カーソルの無い表はソースに触らない(10.27 の決め)
+//   ・↻ は幅と折り返しを続けて書く(設定の知らせが2回)→ 0.3秒まとめてから1回。選択中は動かない(表ボタンは選択を表にする道へ入る)
+//   ・幅を広げて表が収まると表ボタンは揃えた形に戻す(区切りが |---| になる)→ 押した表を見出しの中身で覚えておき(この起動の間)、狭め直した時も入れる
+let _meosTcwWidthTimer = null; const _meosTcwPressed = new Set();
+function meosTcwPressKey(doc, blk) { try { return doc.uri.toString() + '\n' + meosSplitTableRow(doc.lineAt(blk.start).text).map(x => String(x).trim()).join('|'); } catch (_) { return ''; } }
+function meosTcwIsCompactSep(t) { return /^\s*\|(?:\s*:?-:?\s*\|)+\s*$/.test(String(t || '')); }
+function meosTcwReformatOnWidth() {
+  if (_meosTcwWidthTimer) clearTimeout(_meosTcwWidthTimer);
+  _meosTcwWidthTimer = setTimeout(async () => {
+    _meosTcwWidthTimer = null;
+    try {
+      const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+      if (!ed || !ed.document || !isMarkdownDocument(ed.document) || !ed.selection || !ed.selection.isEmpty) return;
+      const doc = ed.document, blk = meosTableBlockRange(doc, ed.selection.active.line); if (!blk) return;
+      let sep = -1; for (let i = blk.start; i <= blk.end; i++) if (meosIsTableSeparator(meosSplitTableRow(doc.lineAt(i).text))) { sep = i; break; }
+      if (sep < 0 || !(meosTcwIsCompactSep(doc.lineAt(sep).text) || _meosTcwPressed.has(meosTcwPressKey(doc, blk)))) { meosDbg('[tcw] 幅が変わった→ カーソルの表は詰めた形でない= 触らない'); return; }
+      meosDbg('[tcw] 幅が変わった→ カーソルの表(' + (blk.start + 1) + '〜' + (blk.end + 1) + ')を幅 ' + meosFenceWrapColumn(doc) + ' で整形し直す');
+      await meosFormatTableAtCursor(ed);
+    } catch (e) { try { meosDbg('[tcw] 幅で整形し直す 例外 ' + e); } catch (_) { } }
+  }, 300);
+}
 let _meosTcwHide = null, _meosTcwPiece = null, _meosTcwLine = null, _meosTcwCover = null; const _meosTcwVirtual = new Map(); const _meosTcwSig = new Map();
 function meosTcwIsVirtual(doc, line) { try { const s = _meosTcwVirtual.get(doc.uri.toString()); return !!(s && s.has(line)); } catch (_) { return false; } }
 // ★v5.1.209(俊克 pm11:09 改良1「見せかけの太字も、Raw と同じ青い色に」): Raw の太字/斜体の色はテーマの字の色(Monokai Dimmed= markup.bold, markup.italic #6089B4)。
@@ -39117,6 +39140,7 @@ async function meosFormatTableAtCursor(editor) {
   if (!formatted) { vscode.window.setStatusBarMessage('MeOS: 区切り行 |---| が見つかりません(GFMテーブルではない)', 2800); return; }
   try { const _W = meosFenceWrapColumn(doc); const _cl = meosTcwCompactLines(raw.map(l => l.trim()), _W); if (_cl) { formatted = _cl; meosDbg('[tcw] 表ボタン= 詰めた整形 幅=' + _W + ' 行=' + _cl.length); vscode.window.setStatusBarMessage('MeOS: the table is wider than the wrap width ' + _W + ' — cells wrap inside (click outside the table to see it)', 4000); } } catch (_) { }   // v5.1.198: 折り返し幅に収まらない表= セルの中で折り返す形
   const withIndent = formatted.map(l => indent + l);
+  try { _meosTcwPressed.add(meosTcwPressKey(doc, blk)); } catch (_) { }   // v5.1.275: 押した表を覚える(見出しは整形で中身が変わらない)
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, new vscode.Range(blk.start, 0, blk.end, doc.lineAt(blk.end).text.length), withIndent.join('\n'));
   await vscode.workspace.applyEdit(we);
@@ -45295,6 +45319,7 @@ function activate(context) {
     //   ★→ 折り返し・字の大きさthat変わったら、その場で描き直す(望む姿と今の姿を突き合わせる)。
     if (e.affectsConfiguration('editor.wordWrap') || e.affectsConfiguration('editor.wordWrapColumn') || e.affectsConfiguration('editor.fontSize')) {
       try { for (const ed of vscode.window.visibleTextEditors) refresh(ed); } catch (_) { }
+      if (e.affectsConfiguration('editor.wordWrapColumn') || e.affectsConfiguration('editor.wordWrap')) { try { meosTcwReformatOnWidth(); } catch (_) { } }   // v5.1.275
     } }));
   // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
