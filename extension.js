@@ -30263,6 +30263,7 @@ function meDockHtml() {
   const meosVer = meosExtVersion(); // webviewヘッダ用(タブ名は createWebviewPanel 側で付与)
   const htocOpen = !!(extensionContext && extensionContext.globalState.get('htocOpen') === true);
   const MEOS_HX_TRI_DOWN = '<svg class="hx-tri" viewBox="0 0 10 7" width="10" height="7"><path d="M0 0H10L5 7Z"/></svg>', MEOS_HX_TRI_UP = '<svg class="hx-tri" viewBox="0 0 10 7" width="10" height="7"><path d="M0 7H10L5 0Z"/></svg>';   // v4.2.680(俊克 改良5「▼と▲の大きさがかなり違う」): 字でなく同じ大きさの三角の絵
+  const fmtCodeFence = !!(extensionContext && extensionContext.globalState.get('fmtCodeFence') === true);   // v5.1.280: Format Me の ` / ``` (既定= `)
   const hidxOpen = !!(extensionContext && extensionContext.globalState.get('hidxOpen') === true);   // ★v4.2.679(俊克「H-IDXをヘッダーの下へ・パズルの右の▼で開閉・普段は閉じておく。将来廃止しやすくする布石」): 既定=閉   // v4.2.251(俊克「H-TOCは通常は最小化しておく」): 既定=閉
   const fmtTipSeen = (() => { try { const v = extensionContext && extensionContext.globalState.get('fmtTipSeen'); return (v && typeof v === 'object') ? v : {}; } catch (_) { return {}; } })();   // v4.2.239: Format Meのtipを今日見たボタン
   const mdZoom = (extensionContext && Number(extensionContext.globalState.get('meDockZoom'))) || 1; // v3.1.16(俊克): Me Dock全体のズーム倍率(本家VS CodeでMe Dockが相対的に大きくなる件のバランス調整)
@@ -31347,6 +31348,7 @@ body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 .format-tools .fmt-btns{display:flex;gap:6px}
 .fmt-cell{display:inline-flex;align-items:stretch}
 .fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}
+.fmt-cell #fmt-code{border-radius:6px;border-right:1px solid rgba(210,140,0,.40);font-size:15px}   /* v5.1.280: コードボタンは▾の無い1枚= 右の角も丸め、右の線も引く。バッククォートは細い字so少し大きく */
 .fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:var(--meos-hand);border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}
 .fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-caret{background:#fff;color:#333}.fmt-caret:hover{background:#ffe9c7;color:#333}   /* ★v4.2.662(俊克 改良2「Format Me系の▼ボタンだけ白地になっていないのも地味。ファイル名ボタンのところも」): ▾は白地に黒 */
@@ -31357,7 +31359,7 @@ body[data-phase="1"] .fmt-table-cell,body[data-phase="2"] .fmt-table-cell{displa
 body[data-phase="1"] #idx-goto-image,body[data-phase="2"] #idx-goto-image,body[data-phase="3"] #idx-goto-image,body[data-phase="4"] #idx-goto-image{display:none}
 body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt-mv,body[data-phase="4"] .tt-mv{margin-left:auto}
 .fmt-lvl:hover{background:#c98a1a}
-#fmt-heading,#fmt-highlight,#fmt-strike{width:44px;min-width:44px;box-sizing:border-box;text-align:center;padding-left:0;padding-right:0}
+#fmt-heading,#fmt-highlight,#fmt-strike,#fmt-code{width:44px;min-width:44px;box-sizing:border-box;text-align:center;padding-left:0;padding-right:0}
 #fmt-bold{width:30px;min-width:30px;box-sizing:border-box;text-align:center;padding-left:0;padding-right:0}
 /* v3.1.74(俊克): 𝗕は最大2文字(BI)so固定30px(===等の44pxより狭く・B/I/BIで幅不変so↻連打可) */
 /* v3.1.77(俊克): v3.1.76の#fmt-metexパディング(↻で高さが微妙に変わる)を撤去しv3.1.75に戻す=はみ出しOK(上付き=上/下付き=下に延びて、高さ変化が見た目で分かる方が良い) */.fmt-pop{min-width:auto;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));border-color:var(--meos-frame)}
@@ -32163,7 +32165,8 @@ color:#ffffff;z-index:4;padding:0}
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · Opt-click = link just this once, with the underline you last chose (leave □ Link unchecked in the presets; the button shows that underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (copy a URL or an existing membrane name first and it is filled in for you — otherwise type it into the empty target) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;Opt → 👻 comment out — hidden, not deleted. Caret on the line brings it back.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span>
+<span class="fmt-cell fmt-cell-head fmt-code-cell"><button class="fmt-btn" id="fmt-code" data-tip="${fmtCodeFence ? 'Code block | Wraps the selected lines (or the caret line) in &#96;&#96;&#96; lines · on an empty line it puts an empty block · caret inside a block → removes the two &#96;&#96;&#96; lines · ↻ switches to &#96; inline code' : 'Inline code | Wraps the selection: &#96;text&#96; · nothing selected → &#96;&#96; with the caret between · caret inside &#96;…&#96; → removes it · ↻ switches to &#96;&#96;&#96; code block'}">${fmtCodeFence ? '&#96;&#96;&#96;' : '&#96;'}</button><span class="fmt-lvl" id="fmt-code-cycle" data-tip="Switch &#96; inline code ⇄ &#96;&#96;&#96; code block">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Select lines separated by tabs or spaces (e.g. a table copied from a web page) → turns them into a table. Otherwise: align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="16" viewBox="0 0 18 16" fill="none" stroke="currentColor" style="vertical-align:middle"><path d="M1.4 0.6H16.6" stroke-width="0.7" stroke-opacity="0.38"/><path d="M0.8 1.3V3.5M11.7 1.3V3.5M17.2 1.3V3.5" stroke-width="1.5"/><path d="M0.8 4.3V6.5M11.7 4.3V6.5M17.2 4.3V6.5" stroke-width="1.5"/><path d="M1.4 7.3H16.6" stroke-width="1.4"/><path d="M0.8 8.1V10.3M6.3 8.1V10.3M11.7 8.1V10.3M17.2 8.1V10.3" stroke-width="1.5"/><path d="M1.4 11H12.2" stroke-width="0.7" stroke-opacity="0.38"/><path d="M0.8 11.7V13.9M6.3 11.7V13.9M11.7 11.7V13.9M17.2 11.7V13.9" stroke-width="1.5"/><path d="M1.4 14.8H16.6" stroke-width="0.7" stroke-opacity="0.38"/></svg></button><!-- ★v5.1.188(俊克 10.25 pm05:35「表ボタンをGFMテーブルっぽく…今の▦は升目で整っているけど、GFMテーブルとは違う」→ pm05:43「2行か3行の表の形にして、結合用に引いている薄い横罫線も入れて…空のテーブルとして生成する形を横幅を半分に圧縮したような形」→ pm05:45「横に少し長く」→ pm05:49「4行が空テーブルと同じ感じなので決定」): 升目の絵(v0.9.999151)を、MeOS が描く空のテーブルの姿に= 縦線(左端・1/3・2/3・右端／上2行は真ん中が結合)・見出しの下の太い線・結合用の薄い横線(上下の端と下2行の左2セルの間)。18×16 --><span class="fmt-lvl" id="fmt-table-wwcycle" data-tip="Wrap presets | Same as ↻ on the wrap button: click to cycle the three wrap widths — without leaving the table button.">↻</span><span class="fmt-lvl fmt-merge" id="fmt-table-merge" data-tip="Merge cells | Click = 🤝→ the cell at the cursor joins the cell on its right. Click again: 3, 4… cells. Shift+Click = 🤝↓ joins the cell below. Cmd+Click (Cmd+Shift+Click for 🤝↓) = one cell fewer; at 1 the mark goes."><span class="mg-pm mg-plus">+</span>🤝→</span><!-- v4.2.776(俊克「テーブルボタンの右腰に🤝→ボタン・Shift同時押下で🤝↓・↻と縦に並べて▼に接するように」) --><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span><span class="fmt-cell ww-cell"><span class="ww-split"><span class="ww-ring" id="ww-ring" data-tip="Wrap presets | Three widths you keep: click to cycle. Drag the bar to change the one you are on — it is remembered in that slot.">↻</span><button class="ww-btn" id="ww-btn" data-tip="Wrap width | Drag the bar or type a number. Columns, so a full-width character is 2."><span id="ww-btn-val" class="ww-val">80</span>↩️</button><div class="ww-pop" id="ww-pop"><span class="ww-bar"><span class="ww-track" id="ww-track"></span><input type="range" class="ww-slider" id="ww-slider" min="40" max="200" step="1"/></span><input class="ww-num" id="ww-num" inputmode="numeric" spellcheck="false"/></div></span></span><!-- v4.2.590(俊克「折り返しボタンをFormat MeのTableボタンの右に。テーブル機能の助けになり、フォーマットという意味でも」) --><span class="fmt-cell ww-cell os-cell"><span class="ww-split os-split"><button class="ww-btn os-btn" id="os-btn" data-tip="Timers … | Opens the timer database membrane (just before the metadata — made if missing). Press ▶️ on a line to start that one, or copy a line into another membrane. Same as ⏰0y0d0h3m … in the menu bar."><span class="os-t">⏰<span class="os-n">0</span><sub>y</sub><span class="os-n">0</span><sub>d</sub><span class="os-n">0</span><sub>h</sub><span class="os-n">3</span>m …</span></button><span class="ww-ring clk-one" id="os-one" data-tip="One click \u2014 one hour, twice | Starts \u21ba\u21bb(0y0d1h0m0s)\u00d72 and warps you here at each bell. Change any digit or \u00d72 right in the line. Wherever the caret is, it makes a new membrane for it.">1</span>${process.platform === 'darwin' ? '<span class="ww-ring vh-ring' + (meosVHelperOn() ? ' on' : '') + '" id="os-vh" data-tip="' + (meosVHelperOn() ? '' : 'V-helper | The \u23f0 in the menu bar. Orange = it is there and stays resident: it keeps your \u23f0 ringing while ' + esc(meosAppName()) + ' is closed, and starts or quits ' + esc(meosAppName()) + ' from there, like the Dock. Grey = nothing in the menu bar. Click to switch.') + '" data-vh-tip="' + 'V-helper | The \u23f0 in the menu bar. Orange = it is there and stays resident: it keeps your \u23f0 ringing while ' + esc(meosAppName()) + ' is closed, and starts or quits ' + esc(meosAppName()) + ' from there, like the Dock. Grey = nothing in the menu bar. Click to switch.' + '"><span class="vh-g">\ud83d\udedf</span></span>' : ''}${process.platform === 'darwin' ? '<span class="ww-ring pk-ring' + (meosParkOn() ? ' on' : '') + '" id="os-pk" data-tip="Parking | Cream = the \u23f0 keeps its spot in the menu bar (Cmd+drag it there once). Grey = it goes to the far left each time and hides first (&lt;&lt;)."><span class="vh-g">\ud83c\udd7f\ufe0f</span></span>' : ''}</span></span><!-- v5.1.156(俊克 pm04:36 改良1「tipは灰色のときだけ」改良2「Timed Meのtipは無理に出さなくても…Format Meのと同じだと分かる」) --><!-- v5.1.155(俊克 10.24 pm04:24「V-helperボタンもoneショットボタンの下に。これも、One-stopボタンの1つ」): ①の下(右腰)に🛟 --><!-- v5.1.118(俊克 10.21 pm04:29「Format Me の⏰0y0d0h3m…の右肩にも oneショットボタンを」) --><!-- v5.1.93(俊克 10.20 am08:45 改良1「macOS以外はメニューバーがない。Format Meのボタンを復活して⏰Timersメニューの代わりに」): 押すと⏰のデータベース膜へ(v5.1.92で廃止した姿のまま・末尾に …) --><!-- v5.1.77(俊克 10.19 pm06:59〜07:14「oneショットタイマーが1番便利。①ボタンをクリックして、あとはFCで調整」「折り返しボタンのようにして、⏰1h→⏰7d→⏰1yを↻で切り替え。FCでは数字だけを修正」) -->
 <span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div><div class="mew-dup" id="mew-dup"><button class="mew-dup-x" id="mew-dup-x" data-tip="Close | Nothing is written. Esc does the same.">&#10005;</button><div class="mew-dup-title" id="mew-dup-title"></div><div class="mew-dup-body"><div>A clock is stored under its membrane&#8217;s name, so two timers under one name break both.</div><div>One timer under a repeated name is fine \u2014 nothing is competing for the key.</div><div>Renaming keeps every other membrane exactly as it is.</div></div><div class="mew-dup-line" id="mew-dup-row-clock"><span class="mew-dup-lbl" id="mew-dup-lbl-clock"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-clock" data-tip="Go and look at one of them. Press again for the next membrane with that name - shift-click steps back. The count reads name / how many names - which copy. Nothing is written, and the panel stays open.">&#128065; See one</button><button class="mew-dup-btn mew-dup-main" id="mew-dup-clock" data-tip="Rename only the membranes that carry a timer. Every other repeated name is left exactly as it is."></button></div><div class="mew-dup-line" id="mew-dup-row-all"><span class="mew-dup-lbl" id="mew-dup-lbl-all"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-all" data-tip="Go and look at one of the repeated names that has no timer, before deciding whether it was deliberate. Press again for the next - shift-click steps back. Nothing is written.">&#128065; See one</button><button class="mew-dup-btn" id="mew-dup-all" data-tip="Make every duplicate name unique, including the ones with no timer. A repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate."></button></div></div></span>
 <!-- {* ▲mCN=dock_format *} -->
@@ -34419,6 +34422,7 @@ window.__renderMew=function(n){const b=document.getElementById('mew-btn');if(!b)
 /* v4.0.106: 点灯は「印を出している間」だけ。数字は消灯中でも出す(何個あるかは常に分かる)。 */
 b.classList.toggle('on',c>0);/* v4.0.111(俊克): 点灯=直すものが在る合図。5秒(reveal)はガターの話so混ぜない */const s=document.getElementById('mew-n');
 if(s)s.textContent=c>0?String(c):'';};
+/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96);var fence=(b.textContent===Q+Q+Q);function paint(){b.textContent=fence?Q+Q+Q:Q;b.setAttribute('data-tip',fence?'Code block | Wraps the selected lines (or the caret line) in '+Q+Q+Q+' lines · on an empty line it puts an empty block · caret inside a block → removes the two '+Q+Q+Q+' lines · ↻ switches to '+Q+' inline code':'Inline code | Wraps the selection: '+Q+'text'+Q+' · nothing selected → '+Q+Q+' with the caret between · caret inside '+Q+'…'+Q+' → removes it · ↻ switches to '+Q+Q+Q+' code block');}b.addEventListener('click',function(){vscode.postMessage({type:'fmtCode',fence:fence});});if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();fence=!fence;paint();vscode.postMessage({type:'fmtCodeFence',on:fence});});})();
 const fmtTableBtn=document.getElementById('fmt-table');if(fmtTableBtn)fmtTableBtn.addEventListener('click',()=>vscode.postMessage({type:'formatTable'}));(function(){const ft=document.getElementById('format-tools');if(!ft)return;const tc=ft.querySelector('.fmt-table-cell'),ww=ft.querySelector('.ww-cell:not(.os-cell)');if(!tc||!ww)return;let tm=null;const off=()=>{clearTimeout(tm);tm=setTimeout(()=>{if(!tc.matches(':hover')&&!ww.matches(':hover'))ft.classList.remove('tbl-big');},500);};tc.addEventListener('mouseenter',()=>{clearTimeout(tm);ft.classList.add('tbl-big');});tc.addEventListener('mouseleave',off);ww.addEventListener('mouseenter',()=>{if(ft.classList.contains('tbl-big'))clearTimeout(tm);});ww.addEventListener('mouseleave',()=>{if(ft.classList.contains('tbl-big'))off();});})();   /* v5.1.191: 表が2倍の間だけ折り返しボタンを右へ(印 .tbl-big)= ずれた折り返しボタンに乗っている間は保ち、どちらにも居ない状態が0.5秒続いたら戻す */
 /* v0.9.999150: 表整形ボタン */
 const fmtTableCaret=document.getElementById('fmt-table-caret'),tablePop=document.getElementById('table-pop');function closeTablePop(){if(typeof closeClkPop==='function')closeClkPop();if(tablePop)tablePop.classList.remove('on');
@@ -36608,6 +36612,9 @@ function toggleMeDock(editorOverride) {
       return;
     }
     // v0.9.999150: Me Dock の表整形ボタン(▦)。カーソル行のGFMテーブルを桁揃え。
+    // v5.1.280: Format Me の ` / ``` ボタン(↻ で切り替えた方を覚えておく)
+    if (message && message.type === 'fmtCode') { await meosFormatCode(getMeDockTargetEditor() || vscode.window.activeTextEditor, !!message.fence); return; }
+    if (message && message.type === 'fmtCodeFence') { try { extensionContext.globalState.update('fmtCodeFence', !!message.on); } catch (_) {} return; }
     if (message && message.type === 'formatTable') {
       await meosFormatTableAtCursor(getMeDockTargetEditor() || vscode.window.activeTextEditor);
       return;
@@ -43882,6 +43889,77 @@ function meosFenceLines(doc) {
   const set = new Set();
   for (const b of meosFenceBlocks(doc)) for (let i = b.open; i <= b.close; i++) set.add(i);
   _meosFenceCache = { key, set }; return set;
+}
+// ★v5.1.280(俊克 10.29 am08:54「インラインコード､コードブロックを設定するボタンをFormat Meに追加しよう。↻ボタンで、[`]と[```]を切り替える」):
+//   Format Me の ` / ``` ボタン。押すたびに付ける⇄外す(== ~~ ## の🚫と同じく、中にいれば外す)。
+//   ` = 選んだ字を `…` で包む(何も選んでいなければ `` を置いて間にカーソル)・カーソルが `…` の中なら外す。
+//   ``` = 選んだ行(無ければカーソルの行)を ``` の行で挟む・カーソルが囲いの中なら開きと閉じの2行を消す。
+//   囲いの判定は meosFenceBlocks 1つ(板を描く所と同じ答え)→ [[feedback_one_source_for_mark_count_action]]
+async function meosFormatCode(editor, fence) {
+  if (!editor || !editor.document) return;
+  const doc = editor.document, sel = editor.selection;
+  if (fence) {
+    const ln = sel.active.line;
+    const blk = meosFenceBlocks(doc).find(b => b.open <= ln && ln <= b.close);
+    if (blk) {   // 外す= 閉じを先に消してから開きを消す(行番号がずれない)
+      await editor.edit(eb => {
+        eb.delete(doc.lineAt(blk.close).rangeIncludingLineBreak);
+        eb.delete(doc.lineAt(blk.open).rangeIncludingLineBreak);
+      });
+      return;
+    }
+    let a = sel.start.line, z = sel.end.line;
+    if (z > a && sel.end.character === 0) z--;   // 行頭まで選んだ時は、その行は含めない
+    const blank = (a === z && doc.lineAt(a).text.trim() === '');
+    const indent = (/^[ \t]*/.exec(doc.lineAt(a).text) || [''])[0];
+    if (blank) {   // 空の行= 開きと閉じを置いて、間の行にカーソル
+      await editor.edit(eb => eb.replace(doc.lineAt(a).range, indent + '```\n' + indent + '\n' + indent + '```'));
+      const p = new vscode.Position(a + 1, indent.length);
+      editor.selection = new vscode.Selection(p, p);
+      return;
+    }
+    await editor.edit(eb => {
+      eb.insert(new vscode.Position(z, doc.lineAt(z).text.length), '\n' + indent + '```');
+      eb.insert(new vscode.Position(a, 0), indent + '```\n');
+    });
+    const p = new vscode.Position(a, indent.length + 3);   // 開きの ``` の後ろ= 言語名を書く所
+    editor.selection = new vscode.Selection(p, p);
+    return;
+  }
+  const line = doc.lineAt(sel.active.line).text;
+  if (sel.isEmpty || sel.start.line === sel.end.line) {
+    // 外す= カーソル(選択)を含む `…` を探す(同じ数の ` で閉じる・CommonMark のコードスパン)
+    const re = /(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g; let m;
+    const s = sel.start.character, e = sel.end.character;
+    while ((m = re.exec(line))) {
+      const o = m.index, c = m.index + m[0].length;
+      const inside = sel.isEmpty ? (o < s && s < c) : (o <= s && e <= c);   // 何も選んでいない時は板の端の外(` の手前/後ろ)を中に数えない
+      if (inside) {
+        const n = m[1].length;
+        let inner = m[2];
+        if (n > 1 && /^ .* $/.test(inner)) inner = inner.slice(1, -1);   // `` ` `` の飾りの空白も外す
+        const L = sel.active.line;
+        await editor.edit(eb => eb.replace(new vscode.Range(L, o, L, c), inner));
+        editor.selection = new vscode.Selection(new vscode.Position(L, o), new vscode.Position(L, o + inner.length));
+        return;
+      }
+    }
+  }
+  if (sel.isEmpty) {
+    const p = sel.active;
+    await editor.edit(eb => eb.insert(p, '``'));
+    const q = new vscode.Position(p.line, p.character + 1);
+    editor.selection = new vscode.Selection(q, q);
+    return;
+  }
+  const txt = doc.getText(sel);
+  let n = 1; for (const r of (txt.match(/`+/g) || [])) n = Math.max(n, r.length + 1);   // 中に ` があれば1つ多い数で包む
+  const tick = '`'.repeat(n), pad = (n > 1 || /^`|`$/.test(txt)) ? ' ' : '';
+  const st = sel.start;
+  await editor.edit(eb => eb.replace(sel, tick + pad + txt + pad + tick));
+  const off = n + pad.length;
+  const endPos = doc.positionAt(doc.offsetAt(st) + off + txt.length);
+  editor.selection = new vscode.Selection(new vscode.Position(st.line, st.character + off), endPos);
 }
 function meosApplyCodeSpanDecorations(editor) {
   try {
