@@ -44319,7 +44319,7 @@ function meosApplyQuoteDecorations(editor) {
 }
 // {* ▲mCN=4283_QUOTE // *}
 let fenceFoldDeco = null;   // v5.1.49: 畳まれた板の頭に「⇐ click ⋯ to unfold」
-let fenceCapHideDeco = null, fenceCapInkDeco = null; const _fenceCapLineTypes = new Map();   // v5.1.295: 閉じの行に出す説明の1行目= 字ごとの種類
+let fenceCapHideDeco = null, fenceCapInkDeco = null; const _fenceCapLineTypes = new Map(); let _fenceCapPhType = null; const MEOS_FENCE_CAP_PH = 'Write a comment here';   // v5.1.299: 空の説明の欄   // v5.1.295: 閉じの行に出す説明の1行目= 字ごとの種類
  let _meosCapDbgSig = '';   // v5.1.294 測る口   // v5.1.114: 説明の行(閉じの直後の UFC)
 const MEOS_FENCE_CAP_INK = '#2f6fb3';   // v5.1.114: 説明の字= 中身の茶と分ける青
 // ★v5.1.114(俊克 10.21 am11:34「codeブロックの閉じ記号の空行に説明を書くのに利用すると良い・上と区別する色で」
@@ -44360,7 +44360,7 @@ function meosApplyCodeFenceDecorations(editor) {
     const _seen = (ln) => _vrs.some(r => r.start.line <= ln && ln <= r.end.line);
     const _foldHead = (ln) => _seen(ln) && !_seen(ln + 1) && _vrs.some(r => r.start.line > ln + 1);   // 次の行が隠れ、その先にまた見える= 畳まれている(画面の下端で切れているのとは違う)
     const paper = new Map();                                        // 型 → 置く行(予備の板と、字の側の紙)
-    const inks = [], ticks = [], langs = [], indents = [], folds = [], capHides = [], capInks = [], capLines = new Map();
+    const inks = [], ticks = [], langs = [], indents = [], folds = [], capHides = [], capInks = [], capLines = new Map(), capPh = [];
     if (!fenceCapHideDeco) {
       fenceCapHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       fenceCapInkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -44373,6 +44373,7 @@ function meosApplyCodeFenceDecorations(editor) {
       editor.setDecorations(fenceFoldDeco, folds);   // v5.1.49
       editor.setDecorations(fenceCapHideDeco, capHides); editor.setDecorations(fenceCapInkDeco, capInks);   // v5.1.114
       for (const t of _fenceCapLineTypes.values()) editor.setDecorations(t, capLines.get(t) || []);   // v5.1.295
+      if (_fenceCapPhType) editor.setDecorations(_fenceCapPhType, capPh);   // v5.1.299
       // ★v5.1.294 測る口(俊克 バグ1「時間とともに、コメントの最初の2文字が増殖して行く」= 本文は増えていない・画面だけ):
       //   渡した飾りの数と中身が変わった時だけ1行書く。渡しが1つのまま画面で増えるなら Monaco 側、渡しが増えるなら MeOS 側。
       try { const sig = capInks.map(c => { const r = c.range || c; return r.start.line + ':' + r.start.character + '-' + r.end.character + (c.renderOptions && c.renderOptions.after ? '=' + c.renderOptions.after.contentText : ''); }).join(' ') + ' | hide ' + capHides.map(r => r.start.line + ':' + r.start.character + '-' + r.end.character).join(' ');
@@ -44392,10 +44393,14 @@ function meosApplyCodeFenceDecorations(editor) {
         //     VS Codethat「今までに描いた行の中で一番長い行」で箱を決めているから(実測)。その箱から降りる。
         const _wrapCol = meosFenceWrapColumn(doc);   // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
         const _cap = meosFenceCaption(lines, b);                       // v5.1.114: 説明の行
+        // ★v5.1.299(俊克 pm02:00「母親がコメント空欄のまま『おやつは冷蔵庫に』と書く。子が『美味しかったよ』とコメントを書く」→ pm02:05「空欄の時は薄い色の枠・見せかけの字で薄く」):
+        //   空の説明の行(<!-- Mew!UFC  -->)= まだ書いていない返事の欄。今までは説明と読まず紙の外に生の行が出た→ 紙の足に入れ、閉じの行に薄い点線の枠と見せかけの字。
+        const _capE = (!_cap && b.close > b.open && /^\s*<!--\s*Mew!UFC\s*-->\s*$/.test(lines[b.close + 1] || '')) ? { line: b.close + 1 } : null;
         let _capW = 0;
         const _w = (() => {
           let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, meosRenderCols(lines[i] || ''));
           if (_cap) { const cc = meosRenderCols(_cap.text); if (cc > c) c = Math.max(c, Math.ceil(cc / 2)); }   // v5.1.114: 説明が2行に収まる幅まで広げる
+          if (_capE) c = Math.max(c, MEOS_FENCE_CAP_PH.length + 2);   // v5.1.299: 空の欄の見せかけの字が収まる幅
           c = Math.max(c, 7);   // ★v5.1.296(俊克 改良1「コード本文がない時、コメントが折り返される。幅の最小値をあと3文字分」): 中身の幅の下限= 7桁(今までの下限4桁+3)= 例文 Comment が1行に収まる
           if (_wrapCol) c = Math.min(c, _wrapCol);                    // 折り返った行は其処までしか出ていない
           _capW = c;
@@ -44409,6 +44414,7 @@ function meosApplyCodeFenceDecorations(editor) {
           _cap1 = chars.slice(0, k).join(''); _capRest = _cap1.length;
         }
         const _capLive = !!_cap && !raw.has(b.close) && !raw.has(_cap.line);   // カーソルが居る間は生のまま
+        const _capELive = !!_capE && !raw.has(b.close) && !raw.has(_capE.line);   // v5.1.299
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
@@ -44417,7 +44423,7 @@ function meosApplyCodeFenceDecorations(editor) {
           //     字は畳んであるso、その行はただの空行に見える。足の丸みは**最後の中身の行**へ。
           // ★v5.1.112(俊克 10.21 am10:23 改良2「最後の区切りマークが紙の外に残り、そこに入力できそうに見える。中に入れて空行として見せた方が良い」):
           //   閉じの ``` の行も紙に入れる(字は今までどおり隠す= 枠の字は見えない・紙の足の空行に見える)。v4.2.298 の「閉じの行に紙を敷かない」を取り消す。
-          const _last = _cap ? -1 : b.close;                           // 紙の足= 閉じの ``` の行(v5.1.114: 説明の行が在ればそちら)
+          const _last = (_cap || _capE) ? -1 : b.close;                           // 紙の足= 閉じの ``` の行(v5.1.114: 説明の行が在ればそちら)
           {
             const _kind = (ln === b.open) ? 'head' : ((ln === _last) ? 'foot' : 'body');
             // v4.2.280: その行that何段に折り返るか= 段の数だけ紙を高くする(折り返した段にも紙that続く)
@@ -44428,6 +44434,13 @@ function meosApplyCodeFenceDecorations(editor) {
             indents.push(L(ln));                                     // v4.2.281: 1桁ぶん右へ
           }
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(紙だけ残す)
+          if (ln === b.close && _capELive) {                           // v5.1.299: 空の欄= 閉じの ``` を畳み、薄い点線の枠に見せかけの字
+            if (t.length) { capHides.push(new vscode.Range(ln, 0, ln, t.length));
+              if (!_fenceCapPhType) _fenceCapPhType = vscode.window.createTextEditorDecorationType({ after: { contentText: MEOS_FENCE_CAP_PH, color: 'rgba(47,111,179,.5)', fontStyle: 'italic',
+                border: '1px dashed rgba(47,111,179,.45)', textDecoration: 'none; border-radius: 4px; padding: 0 0.5ch;' } });
+              capPh.push(new vscode.Range(ln, t.length, ln, t.length)); }
+            continue;
+          }
           if (ln === b.close && _capLive) {                            // v5.1.114: 閉じの ``` は幅ごと畳み、説明の1行目を見せる
             if (t.length) { capHides.push(new vscode.Range(ln, 0, ln, t.length));
               // ★v5.1.295(俊克 バグ2「青色の増殖コメントが消えない」): 測る口 [capDbg] で MeOS の渡しはいつも1つ= 増えるのも消えないのも Monaco の中。
@@ -44447,6 +44460,14 @@ function meosApplyCodeFenceDecorations(editor) {
             if (ln === b.open) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.lang || 'CB' } } });   // v5.1.291(俊克「コードブロックの見出しも CB とだけ」): 言語名が無い時の札 code→CB(Format Me のボタンの tip と同じ名)
             if (ln === b.open && b.close > b.open + 1 && _foldHead(ln)) folds.push(new vscode.Range(ln, t.length, ln, t.length));   // v5.1.49: 畳まれた板の頭
           } else if (t.length) inks.push(new vscode.Range(ln, 0, ln, t.length));
+        }
+        // v5.1.299: 空の欄の行= 紙の足(字は全部畳む= 生の <!-- Mew!UFC --> を見せない)。カーソルが来れば生に戻り、間に打てる
+        if (_capE && _capE.line >= vr[0] && _capE.line <= vr[1]) {
+          const ct = lines[_capE.line] || '';
+          const ty = meosFencePaperCapType(_w, 'foot', 1);
+          if (!paper.has(ty)) paper.set(ty, []);
+          paper.get(ty).push(L(_capE.line)); indents.push(L(_capE.line));
+          if (_capELive && ct.length) capHides.push(new vscode.Range(_capE.line, 0, _capE.line, ct.length));
         }
         // v5.1.114: 説明の行= 紙の足。1行目に出した分と包みは幅ごと畳み、残りを青の斜体で見せる
         if (_cap && _cap.line >= vr[0] && _cap.line <= vr[1]) {
