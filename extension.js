@@ -14032,7 +14032,8 @@ function meosFusenList() {
 }
 async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっていても取り違えない= 順番でなく種類＋印の日時で引く
   try {
-    const f = (kts.charAt(0) === 'i' ? _meosFusen.ic : _meosFusen.cb).find(x => x.ts === kts.slice(1)); if (!f) return;
+    const at = kts.indexOf('@'), ts = kts.slice(1, at < 0 ? undefined : at), ln = at < 0 ? -1 : Number(kts.slice(at + 1));   // v5.1.310: 同じ日時の印が2か所でも取り違えない(行も見る)
+    const g = (kts.charAt(0) === 'i' ? _meosFusen.ic : _meosFusen.cb), f = g.find(x => x.ts === ts && (ln < 0 || x.line === ln)) || g.find(x => x.ts === ts); if (!f) return;
     const doc = await vscode.workspace.openTextDocument(f.uri);
     const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
     const p = new vscode.Position(f.line, f.ch || 0);
@@ -14050,7 +14051,7 @@ function meosMenuBarTail() {
   return [
     { sep: true }, { id: 'tags', title: 'Tag&Go' },   // v4.2.311: 1行だけ。押すと部屋を今の姿で開く
     { id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL },
-    ...(function () { const g = meosFusenList(), o = [], it = (f) => ({ id: 'fusen:' + f.k + f.ts, title: f.title }); if (g.cb.length) o.push({ fusen: 'CB FUSEN', items: g.cb.map(it) }); if (g.ic.length) o.push({ fusen: 'IC FUSEN', items: g.ic.map(it) }); return o; })(),   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
+    ...(function () { const g = meosFusenList(), o = [], it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: f.title }); if (g.cb.length) o.push({ fusen: 'CB FUSEN', items: g.cb.map(it) }); if (g.ic.length) o.push({ fusen: 'IC FUSEN', items: g.ic.map(it) }); return o; })(),   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
     { sep: true }, { title: 'Spells', sub: [
       Object.assign({ id: 'raw', title: rt }, _rp), { id: 'dock', title: 'Me Dock open/close   (mememe)' },

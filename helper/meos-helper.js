@@ -291,6 +291,38 @@ function run(argv) {
   } } } });
   const mdel = $.MeOSMenuDelH.alloc.init;   // 強く持つ
   const tgt = $.MeOSHelperTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)
+  // ★v5.1.310(俊克 10.29 pm08:19 v5.1.309 バグ1「付箋がまったく表示されない・Tagのリストがズラッと出る」): v5.1.308 で拡張の JXA にだけ FUSEN の群を教え、
+  //   V-helper(こちら)の build に教えていなかった= 題の無い群の項目で $(undefined) が投げてメニューごと作れず、拡張が居ない時の並びに落ちていた。
+  //   → 同じ作りをこちらにも。群= 見出し＋常駐1＋5枠＋▲▼(メニューの中のボタン= 押しても閉じない)。
+  const pagers = [];
+  const pgPaint = (p) => {
+    const rest = p.its.slice(1);
+    for (let k = 0; k < p.slots.length; k++) { const it = rest[p.off + k], mi = p.slots[k];
+      if (it) { mi.title = $(it.title); mi.representedObject = $(it.id); mi.hidden = false; } else mi.hidden = true; }
+    const pages = Math.max(1, Math.ceil(rest.length / 5)), cur = Math.floor(p.off / 5) + 1;
+    try { p.up.enabled = p.off > 0; p.dn.enabled = p.off + 5 < rest.length; p.lab.stringValue = $(cur + ' / ' + pages); } catch (e) {}
+  };
+  ObjC.registerSubclass({ name: 'MeOSPagerH', methods: {
+    'pgUp:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off > 0) { p.off -= 5; pgPaint(p); } } catch (e) {} } },
+    'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); } } catch (e) {} } } } });
+  const pgt = $.MeOSPagerH.alloc.init;
+  function buildFusen(m, e) {
+    const hd = m.addItemWithTitleActionKeyEquivalent($(e.fusen), null, $('')); hd.enabled = false;
+    const its = e.items || [];
+    const add = (it, ind) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); else mi.hidden = true; mi.indentationLevel = ind; return mi; };
+    add(its[0], 1);
+    const p = { its: its, slots: [], off: 0 };
+    for (let k = 0; k < 5; k++) p.slots.push(add(its[1 + k], 2));
+    if (its.length > 6) {
+      const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 220, 26));
+      p.up = $.NSButton.buttonWithTitleTargetAction($('▲'), pgt, 'pgUp:'); p.up.frame = $.NSMakeRect(36, 2, 40, 22); p.up.tag = pagers.length; v.addSubview(p.up);
+      p.dn = $.NSButton.buttonWithTitleTargetAction($('▼'), pgt, 'pgDn:'); p.dn.frame = $.NSMakeRect(80, 2, 40, 22); p.dn.tag = pagers.length; v.addSubview(p.dn);
+      p.lab = $.NSTextField.labelWithString($('')); p.lab.frame = $.NSMakeRect(128, 5, 80, 16); v.addSubview(p.lab);
+      const pi = $.NSMenuItem.alloc.init; pi.view = v; m.addItem(pi);
+      pagers.push(p); pgPaint(p);
+    }
+    return hd;
+  }
   // ★v4.2.499(俊克「メニューバーからプルダウンした中に表示されるタイマーたちもリアルタイムに残時間を表示するように」):
   //   メニューを開いている間は作り替えない(v4.2.333)ので、中の行は開いた瞬間の値で止まっていた。
   //   → 並び(区切り・id・子メニュー)が同じなら、開いたままで**行の字だけ差し替える**。字の飾り(☐/⚓/赤い札)は styleItem 1つで付ける。
@@ -300,6 +332,8 @@ function run(argv) {
     const its = [];
     for (const e of entries) {
       if (e.sep) { m.addItem($.NSMenuItem.separatorItem); its.push(null); continue; }
+      if (e.fusen) { try { its.push(buildFusen(m, e)); } catch (x) { its.push(null); } continue; }   // v5.1.310
+      if (e.title == null) { its.push(null); continue; }   // v5.1.310: 知らない形の項目でメニューごと落とさない
       const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));
       if (e.sub) mi.submenu = build(e.sub); else { mi.target = tgt; mi.representedObject = $(e.id || ''); }
       if (e.indent) mi.indentationLevel = e.indent;
@@ -420,7 +454,7 @@ function run(argv) {
     if (idle) text = '\u23f0';
     item.visible = true;
     const mj = JSON.stringify(menu || []);
-    if (mj !== lastMenu && !tracking()) { lastMenu = mj; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; }
+    if (mj !== lastMenu && !tracking()) { lastMenu = mj; pagers.length = 0; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; }
     else if (mj !== lastMenu) {   // v4.2.499: 開いている間= 並びが同じなら字だけ差し替える
       const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' : ((e.id || '') + (e.sub ? '>' : ''))).join('|');
       if (nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {
