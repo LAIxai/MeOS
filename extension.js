@@ -31348,7 +31348,7 @@ body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 .format-tools .fmt-btns{display:flex;gap:6px}
 .fmt-cell{display:inline-flex;align-items:stretch}
 .fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}
-.fmt-cell #fmt-code{border-radius:6px;border-right:1px solid rgba(210,140,0,.40);font-size:15px}   /* v5.1.280: コードボタンは▾の無い1枚= 右の角も丸め、右の線も引く。バッククォートは細い字so少し大きく */
+.fmt-cell #fmt-code{border-radius:6px;border:1px solid #cbb98c;background:#f3e6c4;color:#3b3020;font-size:14px;width:28px;min-width:28px;padding:0;box-sizing:border-box;display:inline-flex;justify-content:center;align-items:flex-start;line-height:1.1}.fmt-cell #fmt-code:hover{background:#ead9ab}.fmt-code-cell .fmt-lvl{top:auto;bottom:-4px;right:auto;left:50%;margin-left:-7.5px}   /* v5.1.281(俊克 10.29 am09:07 改良1「表示と同じクリーム色のボタンに・幅をできるだけ狭く・上付きの文字なのでボタンの下が空いている→↻をそこに食い込ませる」): 地と字はインラインコードの板と同じ #f3e6c4/#cbb98c/#3b3020・幅はブロックの3つ並び(字25.3px＋枠2px)が収まる28pxで固定(↻で面が替わってもずれない)・字は上に寄せ、空いた下の真ん中に↻ */
 .fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:var(--meos-hand);border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}
 .fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-caret{background:#fff;color:#333}.fmt-caret:hover{background:#ffe9c7;color:#333}   /* ★v4.2.662(俊克 改良2「Format Me系の▼ボタンだけ白地になっていないのも地味。ファイル名ボタンのところも」): ▾は白地に黒 */
@@ -31359,7 +31359,7 @@ body[data-phase="1"] .fmt-table-cell,body[data-phase="2"] .fmt-table-cell{displa
 body[data-phase="1"] #idx-goto-image,body[data-phase="2"] #idx-goto-image,body[data-phase="3"] #idx-goto-image,body[data-phase="4"] #idx-goto-image{display:none}
 body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt-mv,body[data-phase="4"] .tt-mv{margin-left:auto}
 .fmt-lvl:hover{background:#c98a1a}
-#fmt-heading,#fmt-highlight,#fmt-strike,#fmt-code{width:44px;min-width:44px;box-sizing:border-box;text-align:center;padding-left:0;padding-right:0}
+#fmt-heading,#fmt-highlight,#fmt-strike{width:44px;min-width:44px;box-sizing:border-box;text-align:center;padding-left:0;padding-right:0}
 #fmt-bold{width:30px;min-width:30px;box-sizing:border-box;text-align:center;padding-left:0;padding-right:0}
 /* v3.1.74(俊克): 𝗕は最大2文字(BI)so固定30px(===等の44pxより狭く・B/I/BIで幅不変so↻連打可) */
 /* v3.1.77(俊克): v3.1.76の#fmt-metexパディング(↻で高さが微妙に変わる)を撤去しv3.1.75に戻す=はみ出しOK(上付き=上/下付き=下に延びて、高さ変化が見た目で分かる方が良い) */.fmt-pop{min-width:auto;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));border-color:var(--meos-frame)}
