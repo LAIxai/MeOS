@@ -43890,7 +43890,7 @@ function meosFenceBlocks(doc) {
     if (!m) continue;
     // ★v5.1.287(俊克 バグ1「コードブロック(赤)を入れると、その次の行以降がコードブロックになる」): ` の囲いの開きは、後ろに ` を含まない時だけ(CommonMark の info string の決まり)。
     //   行頭の ```` ``` ```` (` の板)を開きと読み、以後を全部囲いに飲んでいた。~ の囲いはこの決まりが無い。
-    if (!open) { if (m[1][0] === '`' && t.slice(t.indexOf(m[1]) + m[1].length).indexOf('`') >= 0) continue; open = { open: i, close: -1, ch: m[1][0], len: m[1].length, lang: (m[4] || '').trim() }; continue; }
+    if (!open) { if (m[1][0] === '`' && t.slice(t.indexOf(m[1]) + m[1].length).indexOf('`') >= 0) continue; open = { open: i, close: -1, ch: m[1][0], len: m[1].length, lang: (m[4] || '').trim(), info: t.slice(t.indexOf(m[1]) + m[1].length).trim() }; continue; }   // v5.1.303: info= ``` の後ろの字全部(付箋の見出し)
     // ★v4.2.256: 閉じの ``` は**開きと同じ字で、同じ数以上で、後ろに何も無い**時だけ(CommonMark)。
     //   ここを緩くすると、4個で包んだ囲みの中の ```js が閉じ扱いになり、板that途中で切れる(実測で出た)。
     if (m[1][0] === open.ch && m[1].length >= open.len && /^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*$/.test(t)) {
@@ -44471,7 +44471,8 @@ function meosApplyCodeFenceDecorations(editor) {
           }
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
-            if (ln === b.open && b.lang) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.lang } } });   // v5.1.291 code→CB → ★v5.1.302(俊克 pm03:06「CBと言うラベルも外して、付箋(sticky note)として使い易く。一般の人はこれを付箋として使えばいい」): 言語名が無い時は札を出さない(js 等を書いた時だけ出す)
+            if (ln === b.open && b.info) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.info } } });   // ★v5.1.303(俊克 pm03:18「CBと今表示している部分をクリックすると、そこに直接文字を入れられるように。FCが長くなり過ぎるのを防げる」): 開きの ``` の後ろ(info string)の字を全部、紙の一番上の段に出す= 付箋の見出し(「母より、2026.10.29(木)pm03:15.59」)。行は増えない。押せばその行が生になり、``` の後ろに打てる
+              // v5.1.291 code→CB → ★v5.1.302(俊克 pm03:06「CBと言うラベルも外して、付箋(sticky note)として使い易く。一般の人はこれを付箋として使えばいい」): 言語名が無い時は札を出さない(js 等を書いた時だけ出す)
             if (ln === b.open && b.close > b.open + 1 && _foldHead(ln)) folds.push(new vscode.Range(ln, t.length, ln, t.length));   // v5.1.49: 畳まれた板の頭
           } else if (t.length) inks.push(new vscode.Range(ln, 0, ln, t.length));
         }
