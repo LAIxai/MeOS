@@ -332,7 +332,7 @@ function run(argv) {
     const its = e.items || [], p = { name: e.fusen, its: its, slots: [], off: 0 };
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
-    try { const k = /^IC/.test(e.fusen) ? 'ic' : 'cb'; if (!(k in fusenIcons)) fusenIcons[k] = fusenIcon(k === 'ic' ? rgb(0x2f, 0x6f, 0xb3) : rgb(0xe0, 0x80, 0x3a)); if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}
+    try { const k = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'); if (!(k in fusenIcons)) { const h = parseInt(k.slice(1), 16); fusenIcons[k] = fusenIcon(rgb((h >> 16) & 255, (h >> 8) & 255, h & 255)); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
     p.hb.frame = $.NSMakeRect(14, 1, 220, 20); p.hb.tag = pagers.length; hv.addSubview(p.hb);
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd);
     const add = (it) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); mi.indentationLevel = 1; return mi; };
