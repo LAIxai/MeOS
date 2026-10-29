@@ -38902,6 +38902,66 @@ function meosTableRowsFromText(lines) {
   if (n < 2) return null;
   return rows.map(r => { const c = r.map(x => x.trim().replace(/\|/g, '\\|')); while (c.length < n) c.push(''); return c; });
 }
+function meosTableMdFromRows(rows, indent) {
+  const md = rows.map(r => '| ' + r.join(' | ') + ' |');
+  md.splice(1, 0, '|' + rows[0].map(() => '-').join('|') + '|');
+  return (meosFormatTableLines(md) || md).map(l => (indent || '') + l);
+}
+// ★v5.1.306(俊克 10.29 pm06:43「GFMの罫線指定の無いものでも、自動で罫線を追加しようよ」・例=宅配便の荷物状況をWebから貼った12行):
+//   **貼り付けた時だけ**、表らしい行の塊なら、すぐ表にする(Joplin流)。Cmd+Z 1回で貼った生の字に戻る(表にしたのは別の1手)。
+//   ★表らしさは厳しめ= 3行以上・どの行も60桁以内・Markdownの印(# - * > ``` <!-- |)で始まる行が無い・
+//     「名前と値」に分かれる行が3行以上かつ半分以上。ふつうの文章を貼っても表にならない。
+//   ★分け方= タブ → 2つ以上の空白(全角空白も) → 最後の1つの空白の後ろが数字を含む(荷物受付 10月28日17:08) → 「：」の後ろに字(担当店コード：080100)。
+//     「：」で終わる1セルの行は、次の1セルの行を右のセルへ寄せる(担当店名： ＋ 小豆島営業所…)。
+function meosPasteRowsFromText(lines) {
+  const ls = lines.map(l => l.replace(/\s+$/, '')).filter(l => l.trim() !== '');
+  if (ls.length < 3) return null;
+  if (ls.some(l => meosStrWidth(l.trim()) > 60 || /^\s*(#|[-*+>]\s|`{3}|~{3}|<!--|\|)/.test(l))) return null;
+  const split = (l) => {
+    if (l.indexOf('\t') >= 0) return l.trim().split('\t').map(x => x.trim());
+    const t = l.trim();
+    const a = t.split(/(?: |　){2,}|　/);
+    if (a.length >= 2) return a;
+    const m = t.match(/^(.*\S)[ ]+(\S*\d\S*)$/); if (m) return [m[1], m[2]];
+    const c = t.match(/^(.{1,20}?[：:])[ 　]*(\S.*)$/); if (c && !/^https?:/i.test(t)) return [c[1], c[2]];
+    return [t];
+  };
+  const rows0 = ls.map(split);
+  const pairs = rows0.filter(r => r.length >= 2).length;
+  if (pairs < 3 || pairs * 2 < rows0.length) return null;
+  const rows = [];
+  for (let i = 0; i < rows0.length; i++) {
+    const r = rows0[i], nx = rows0[i + 1];
+    if (r.length === 1 && /[：:]$/.test(r[0]) && nx && nx.length === 1) { rows.push([r[0], nx[0]]); i++; continue; }
+    rows.push(r);
+  }
+  const n = Math.max(...rows.map(r => r.length));
+  return rows.map(r => { const c = r.map(x => x.replace(/\|/g, '\\|')); while (c.length < n) c.push(''); return c; });
+}
+async function meosPasteToTableMaybe(e) {
+  if (e.reason) return;   // Undo/Redo では動かない
+  const doc = e.document; if (!doc || doc.languageId !== 'markdown') return;
+  const chs = e.contentChanges || []; if (chs.length !== 1) return;
+  const t = String(chs[0].text || '').replace(/\r\n/g, '\n');
+  if (t.indexOf('\n') < 0 || t.length > 20000) return;
+  const v = doc.version, start = chs[0].range.start;
+  let clip = ''; try { clip = (await vscode.env.clipboard.readText()).replace(/\r\n/g, '\n'); } catch (_) { return; }
+  if (clip !== t || doc.version !== v) return;   // 貼り付けた物だけ(打鍵・MeOSの編集・補完は通さない)
+  const end = doc.positionAt(doc.offsetAt(start) + chs[0].text.length);
+  const s0 = start.line, e0 = (end.character === 0 && end.line > s0) ? end.line - 1 : end.line;
+  if (doc.lineAt(s0).text.slice(0, start.character).trim() !== '') return;   // 行の途中に貼った時は触らない
+  if (end.character > 0 && doc.lineAt(e0).text.slice(end.character).trim() !== '') return;
+  const raw = []; for (let i = s0; i <= e0; i++) raw.push(doc.lineAt(i).text);
+  const rows = meosPasteRowsFromText(raw);
+  try { meosDbg('[pasteTable] 行=' + s0 + '〜' + e0 + ' → ' + (rows ? rows.length + '×' + rows[0].length : '表にしない')); } catch (_) { }
+  if (!rows) return;
+  const out = meosTableMdFromRows(rows, '');
+  const we = new vscode.WorkspaceEdit();
+  we.replace(doc.uri, new vscode.Range(s0, 0, e0, doc.lineAt(e0).text.length), out.join('\n'));
+  if (doc.version !== v) return;
+  await vscode.workspace.applyEdit(we);
+  vscode.window.setStatusBarMessage('MeOS: pasted lines → table ▦ (' + rows.length + ' rows × ' + rows[0].length + ' columns) — Cmd+Z = as pasted', 5000);
+}
 async function meosTableFromSelection(editor) {
   const sel = editor.selection; if (!sel || sel.isEmpty) { try { meosDbg('[tblSel] 選択なし'); } catch (_) { } return false; }
   const doc = editor.document;
@@ -38911,9 +38971,7 @@ async function meosTableFromSelection(editor) {
   try { meosDbg('[tblSel] 行=' + s0 + '〜' + e0 + ' タブ行=' + raw.filter(l => l.indexOf('\t') >= 0).length + '/' + raw.length + ' → ' + (rows ? rows.length + '×' + rows[0].length : '表にしない')); } catch (_) { }   // v4.2.545
   if (!rows) return false;
   const indent = (raw.find(l => l.trim() !== '').match(/^[ ]*/) || [''])[0];
-  const md = rows.map(r => '| ' + r.join(' | ') + ' |');
-  md.splice(1, 0, '|' + rows[0].map(() => '-').join('|') + '|');
-  const out = (meosFormatTableLines(md) || md).map(l => indent + l);
+  const out = meosTableMdFromRows(rows, indent);
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, new vscode.Range(s0, 0, e0, doc.lineAt(e0).text.length), out.join('\n'));
   await vscode.workspace.applyEdit(we);
@@ -46207,6 +46265,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
         const _dockEd = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
         if (_dockEd && _dockEd.document === e.document) postDockFileUD(_dockEd);
       } catch (_) { }
+      try { meosPasteToTableMaybe(e).catch(() => { }); } catch (_) { }   // ★v5.1.306: 表らしい行を貼ったら表に
       try { meosPasteProbeMaybe(e); } catch (_) { }   // ★v4.2.97: 貼り付けの直後を測る(debugLogPath がある人だけ)
       // v4.0.272: **一番先に**行の配列を直す(この後の誰かthat meosDocLines を呼んでも刻み直さない)。
       try { meosPatchDocLines(e); } catch (_) { }
