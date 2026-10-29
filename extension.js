@@ -34436,7 +34436,7 @@ window.__renderMew=function(n){const b=document.getElementById('mew-btn');if(!b)
 /* v4.0.106: 点灯は「印を出している間」だけ。数字は消灯中でも出す(何個あるかは常に分かる)。 */
 b.classList.toggle('on',c>0);/* v4.0.111(俊克): 点灯=直すものが在る合図。5秒(reveal)はガターの話so混ぜない */const s=document.getElementById('mew-n');
 if(s)s.textContent=c>0?String(c):'';};
-/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す。v5.1.291: tip は IC/CB の短い名だけ(俊克「分かる人は分かる・ハイライト代わりに使う人は意味を知らなくても構わない」)。v5.1.286: ↻は4つ(0 インライン/1 ブロック/2 赤1個/3 赤3個= その記号そのものを板にして置く)・Shift で逆回り */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96),Q3=Q+Q+Q;var mode=Number(b.getAttribute('data-mode'))||0;window.__codeFace=paint;var TIPS=['IC | Use it as a highlight, too.','CB | Use it as a highlight, too.','Backtick as code | Puts '+Q+Q+' '+Q+' '+Q+Q+' at the caret = one '+Q+' shown as inline code (the outer run is one longer than the inside, with a space on each side) · ↻ next: red '+Q3,'Three backticks as code | Puts '+Q3+Q+' '+Q3+' '+Q3+Q+' at the caret = '+Q3+' shown as inline code · ↻ next: '+Q+' inline code'];function paint(){if(window.__fmtActionable&&window.__fmtActionable.code){b.textContent='';b.classList.add('fmt-remove');b.classList.remove('code-lit');b.setAttribute('data-tip','Remove code | The caret is inside inline code or a code block → click to take the backticks off');return;}b.classList.remove('fmt-remove');b.classList.toggle('code-lit',mode>=2);b.textContent=(mode%2)?Q3:Q;b.setAttribute('data-tip',TIPS[mode]);}paint();b.addEventListener('click',function(){var rm=!!(window.__fmtActionable&&window.__fmtActionable.code);vscode.postMessage({type:'fmtCode',fence:mode===1,lit:(!rm&&mode>=2)?(mode===2?1:3):0,remove:rm});});   /* v5.1.297: Opt は廃止(CB はいつも説明付き) */if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();mode=(mode+(ev&&ev.shiftKey?3:1))%4;paint();vscode.postMessage({type:'fmtCodeMode',mode:mode});});})();
+/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す。v5.1.291: tip は IC/CB の短い名だけ(俊克「分かる人は分かる・ハイライト代わりに使う人は意味を知らなくても構わない」)。v5.1.286: ↻は4つ(0 インライン/1 ブロック/2 赤1個/3 赤3個= その記号そのものを板にして置く)・Shift で逆回り */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96),Q3=Q+Q+Q;var mode=Number(b.getAttribute('data-mode'))||0;window.__codeFace=paint;var TIPS=['IC | Use it as a highlight, too.','CB · FUSEN | Use it as a FUSEN, too: the comment under it carries FUSEN_ + the time, so you can search for every FUSEN.','Backtick as code | Puts '+Q+Q+' '+Q+' '+Q+Q+' at the caret = one '+Q+' shown as inline code (the outer run is one longer than the inside, with a space on each side) · ↻ next: red '+Q3,'Three backticks as code | Puts '+Q3+Q+' '+Q3+' '+Q3+Q+' at the caret = '+Q3+' shown as inline code · ↻ next: '+Q+' inline code'];function paint(){if(window.__fmtActionable&&window.__fmtActionable.code){b.textContent='';b.classList.add('fmt-remove');b.classList.remove('code-lit');b.setAttribute('data-tip','Remove code | The caret is inside inline code or a code block → click to take the backticks off');return;}b.classList.remove('fmt-remove');b.classList.toggle('code-lit',mode>=2);b.textContent=(mode%2)?Q3:Q;b.setAttribute('data-tip',TIPS[mode]);}paint();b.addEventListener('click',function(){var rm=!!(window.__fmtActionable&&window.__fmtActionable.code);vscode.postMessage({type:'fmtCode',fence:mode===1,lit:(!rm&&mode>=2)?(mode===2?1:3):0,remove:rm});});   /* v5.1.297: Opt は廃止(CB はいつも説明付き) */if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();mode=(mode+(ev&&ev.shiftKey?3:1))%4;paint();vscode.postMessage({type:'fmtCodeMode',mode:mode});});})();
 const fmtTableBtn=document.getElementById('fmt-table');if(fmtTableBtn)fmtTableBtn.addEventListener('click',()=>vscode.postMessage({type:'formatTable'}));(function(){const ft=document.getElementById('format-tools');if(!ft)return;const tc=ft.querySelector('.fmt-table-cell'),ww=ft.querySelector('.ww-cell:not(.os-cell)');if(!tc||!ww)return;let tm=null;const off=()=>{clearTimeout(tm);tm=setTimeout(()=>{if(!tc.matches(':hover')&&!ww.matches(':hover'))ft.classList.remove('tbl-big');},500);};tc.addEventListener('mouseenter',()=>{clearTimeout(tm);ft.classList.add('tbl-big');});tc.addEventListener('mouseleave',off);ww.addEventListener('mouseenter',()=>{if(ft.classList.contains('tbl-big'))clearTimeout(tm);});ww.addEventListener('mouseleave',()=>{if(ft.classList.contains('tbl-big'))off();});})();   /* v5.1.191: 表が2倍の間だけ折り返しボタンを右へ(印 .tbl-big)= ずれた折り返しボタンに乗っている間は保ち、どちらにも居ない状態が0.5秒続いたら戻す */
 /* v0.9.999150: 表整形ボタン */
 const fmtTableCaret=document.getElementById('fmt-table-caret'),tablePop=document.getElementById('table-pop');function closeTablePop(){if(typeof closeClkPop==='function')closeClkPop();if(tablePop)tablePop.classList.remove('on');
@@ -43956,8 +43956,8 @@ async function meosFenceCaptionAfterWrap(editor, openLn) {   // v5.1.297: 囲ん
 async function meosFenceCaptionAt(editor, blk) {
   const doc = editor.document, lines = meosDocLines(doc), cap = meosFenceCaption(lines, blk);
   if (cap) { editor.selection = new vscode.Selection(new vscode.Position(cap.line, cap.at), new vscode.Position(cap.line, cap.end)); return; }
-  const ln = blk.close, end = doc.lineAt(ln).text.length, head = '<!-- Mew!UFC ';
-  const ex = 'Comment';   // v5.1.295(俊克 バグ1「コメントの例文が書かれてない」): 例文を選んだ状態で置く= 打てば置き換わる・空だと説明と読まれず紙の外に生の行が出た(バグ2)
+  const ln = blk.close, end = doc.lineAt(ln).text.length; let head = '<!-- Mew!UFC ';
+  const ex = 'Comment'; head = head + 'FUSEN_' + meosMembraneStamp(new Date()) + ' ';   // v5.1.304: 付箋の印(FUSEN_ で全部探せる)   // v5.1.295(俊克 バグ1「コメントの例文が書かれてない」): 例文を選んだ状態で置く= 打てば置き換わる・空だと説明と読まれず紙の外に生の行が出た(バグ2)
   await editor.edit(eb => eb.insert(new vscode.Position(ln, end), '\n' + head + ex + ' -->'));
   editor.selection = new vscode.Selection(new vscode.Position(ln + 1, head.length), new vscode.Position(ln + 1, head.length + ex.length));
 }
@@ -43971,7 +43971,7 @@ async function meosFormatCode(editor, fence, remove) {
   if (at && (remove || (at.kind === 'fence') === !!fence)) {
     if (at.kind === 'fence') {   // 外す= 説明・閉じ・開きの順に下から消す(行番号がずれない)
       const blk = at.blk, nx = blk.close + 1 < doc.lineCount ? doc.lineAt(blk.close + 1).text : null;
-      const capLn = (nx != null && (meosFenceCaption(meosDocLines(doc), blk) || /^\s*<!--\s*Mew!UFC\s*-->\s*$/.test(nx))) ? blk.close + 1 : -1;
+      const capLn = (nx != null && (meosFenceCaption(meosDocLines(doc), blk) || meosFenceCapEmpty(nx) >= 0)) ? blk.close + 1 : -1;
       await editor.edit(eb => {
         if (capLn >= 0) eb.delete(capLn === doc.lineCount - 1 ? new vscode.Range(blk.close, doc.lineAt(blk.close).text.length, capLn, nx.length) : doc.lineAt(capLn).rangeIncludingLineBreak);
         eb.delete(doc.lineAt(blk.close).rangeIncludingLineBreak);
@@ -44340,13 +44340,21 @@ const MEOS_FENCE_CAP_INK = '#2f6fb3';   // v5.1.114: 説明の字= 中身の茶�
 //   → am11:44「閉じの直後に置いたFC行も、codeブロックの中に取り込んで、2行分にコメントを見せかければ良い」):
 //   閉じの ``` の後ろには字を書けない(CommonMark= 書くと閉じない)ので、説明は閉じの直後の行に書く。
 //   FC は閉じの行を頭に畳まれて2行目が消えるので、畳まない指定行(UFC)= `<!-- Mew!UFC 説明 -->`。⏰の行と罫線(---)は説明ではない。
+// v5.1.304: 空の説明の欄= <!-- Mew!UFC --> か <!-- Mew!UFC FUSEN_<日時> -->。返すのは打ち始める桁(-1= 空の欄ではない)
+function meosFenceCapEmpty(t) {
+  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN_\S*)?(\s*)-->\s*$/.exec(String(t || ''));
+  return m ? m[1].length + (m[2] ? m[2].length : 0) + Math.min(1, m[3].length) : -1;
+}
 function meosFenceCaption(lines, b) {
   try {
     const i = b.close + 1, t = lines[i];
     if (t == null || b.close <= b.open) return null;
     const m = /^(\s*<!--\s*Mew!UFC\s+)(.*?)(\s*-->\s*)$/.exec(t);
     if (!m || !m[2] || m[2].indexOf('\u23f0') >= 0 || /^-{3,}$/.test(m[2])) return null;
-    return { line: i, text: m[2], at: m[1].length, end: m[1].length + m[2].length };
+    // ★v5.1.304(俊克 pm03:46「堂々と FUSEN と名乗る・付箋で検索できるようにコメントに FUSEN_TS を付けよう」): 先頭の FUSEN_<日時> は印= 紙には出さない
+    const f = /^FUSEN_\S*(?:\s+|$)/.exec(m[2]); const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
+    if (!text) return null;   // 印だけ= 空の欄(meosFenceCapEmpty)
+    return { line: i, text, at, end: at + text.length };
   } catch (_) { return null; }
 }
 function meosApplyCodeFenceDecorations(editor) {
@@ -44409,7 +44417,7 @@ function meosApplyCodeFenceDecorations(editor) {
         const _cap = meosFenceCaption(lines, b);                       // v5.1.114: 説明の行
         // ★v5.1.299(俊克 pm02:00「母親がコメント空欄のまま『おやつは冷蔵庫に』と書く。子が『美味しかったよ』とコメントを書く」→ pm02:05「空欄の時は薄い色の枠・見せかけの字で薄く」):
         //   空の説明の行(<!-- Mew!UFC  -->)= まだ書いていない返事の欄。今までは説明と読まず紙の外に生の行が出た→ 紙の足に入れ、閉じの行に薄い点線の枠と見せかけの字。
-        const _capE = (!_cap && b.close > b.open && /^\s*<!--\s*Mew!UFC\s*-->\s*$/.test(lines[b.close + 1] || '')) ? { line: b.close + 1 } : null;
+        const _capE = (!_cap && b.close > b.open && meosFenceCapEmpty(lines[b.close + 1]) >= 0) ? { line: b.close + 1 } : null;
         let _capW = 0;
         const _w = (() => {
           let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, meosRenderCols(lines[i] || ''));
@@ -45686,7 +45694,7 @@ function activate(context) {
       const nx = doc.lineAt(ln + 1).text, cap = meosFenceCaption(meosDocLines(doc), blk);
       let col = -1;
       if (cap) col = cap.end;
-      else { const m = /^(\s*<!--\s*Mew!UFC)(\s*)-->\s*$/.exec(nx); if (m) col = m[1].length + Math.min(1, m[2].length); }
+      else col = meosFenceCapEmpty(nx);
       if (col < 0) return;
       const p = new vscode.Position(ln + 1, col); ed.selection = new vscode.Selection(p, p);
     } catch (_) { }
