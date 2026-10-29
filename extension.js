@@ -13991,8 +13991,9 @@ const MEOS_FUSEN_TS_RE = /(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})/;
 let _meosFusen = { cb: [], ic: [], key: '', at: 0 };
 function meosFusenTitle(m, label) { label = String(label || '(empty)'); return m[2] + '/' + m[3] + ' ' + m[4] + ':' + m[5] + '  ' + (label.length > 30 ? label.slice(0, 29) + '…' : label); }
 function meosFusenIcIn(d, lines, out) {
+  let fence = null; try { fence = meosFenceLines(d); } catch (_) { }   // v5.1.313(俊克 v5.1.312 バグ1 スクショ2): 囲いの中の FC-ic は字(説明の例)= 付箋に数えない
   for (let L = 0; L < lines.length; L++) {
-    const t = lines[L]; if (!t || t.indexOf('FUSEN-ic_') < 0 || t.indexOf('FC-ic') < 0) continue;
+    const t = lines[L]; if (!t || t.indexOf('FUSEN-ic_') < 0 || t.indexOf('FC-ic') < 0 || (fence && fence.has(L))) continue;
     if (L > 0 && /<!--\s*Mew!FC-ic\b/.test(lines[L - 1] || '')) continue;   // 群の2行目以降は1行目で読む
     const boxes = []; let e = L;
     for (; e < lines.length && /<!--\s*Mew!FC-ic\b/.test(lines[e] || ''); e++) { const re = /<!--\s*Mew!FC-ic\s+(.*?)\s*-->/g; let b; while ((b = re.exec(lines[e])) !== null) boxes.push(b[1]); }
@@ -14036,10 +14037,13 @@ async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっ�
     const g = (kts.charAt(0) === 'i' ? _meosFusen.ic : _meosFusen.cb), f = g.find(x => x.ts === ts && (ln < 0 || x.line === ln)) || g.find(x => x.ts === ts); if (!f) return;
     const doc = await vscode.workspace.openTextDocument(f.uri);
     const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
-    const p = new vscode.Position(f.line, f.ch || 0);
-    setRefNoRaw(doc, f.line);   // v5.1.312(俊克 改良1「メニューバーからワープすると Raw になる。他でもやったように Raw にならないように」): 着地の一時抑止
+    // ★v5.1.313(俊克 v5.1.312 バグ1「まだ Raw になってしまう」スクショ3= 紙の頭の行にカーソルが乗ると、その行だけ紙が今の行の色に覆われて生に見える):
+    //   CB は紙の1つ上の行の末尾へ着地する(紙は丸ごと紙のまま見える)。IC は字の上へ(着地の一時抑止で板のまま)。
+    const _ln = (f.k === 'c' && f.line > 0) ? f.line - 1 : f.line;
+    const p = (_ln !== f.line) ? new vscode.Position(_ln, doc.lineAt(_ln).text.length) : new vscode.Position(f.line, f.ch || 0);
+    setRefNoRaw(doc, _ln);   // v5.1.312(俊克 改良1「メニューバーからワープすると Raw になる。他でもやったように Raw にならないように」): 着地の一時抑止
     ed.selection = new vscode.Selection(p, p);
-    ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter);
+    ed.revealRange(new vscode.Range(new vscode.Position(f.line, 0), new vscode.Position(f.line, 0)), vscode.TextEditorRevealType.InCenter);
   } catch (_) { }
 }
 function meosMenuBarTail() {
@@ -44234,7 +44238,7 @@ function meosApplyCodeSpanDecorations(editor) {
     const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [], creamTx = [], heads300 = [], headsMid = [], headsEnd = [];
     const put = () => { editor.setDecorations(codeHeadPillDeco, heads300); editor.setDecorations(codeHeadPillMidDeco, headsMid); editor.setDecorations(codeHeadPillEndDeco, headsEnd); editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeCreamTextDeco, creamTx); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); const nf = new Set(); for (const r of hide) if (r.end.character > r.start.character) nf.add(r.start.line); editor.setDecorations(codeNoFastDeco, [...nf].map(ln => { const n = doc.lineAt(ln).text.length; return new vscode.Range(ln, n, ln, n); })); };
     if (!meosIsProseDoc(doc)) { put(); return; }
-    const raw = meosRawLines(editor), fence = meosFenceLines(doc), lines = meosDocLines(doc);
+    const raw = meosRawLines(editor, meosRawSuppressedAt(editor)), fence = meosFenceLines(doc), lines = meosDocLines(doc);   // v5.1.313: 付箋へ飛んできた直後(着地の一時抑止)は板のまま
     const vrs = meosScanSpans(editor, doc);
     const tbl = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) tbl.add(ln);
     const R = (ln, a, b) => new vscode.Range(ln, a, ln, b);
