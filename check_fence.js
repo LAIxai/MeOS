@@ -11,7 +11,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mf_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={displayColumns,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure,meosDefBlocks,getFoldDeco:()=>fenceFoldDeco,getCapDeco:()=>[fenceCapHideDeco,fenceCapInkDeco],meosFenceCaption};\n');
+ +'\nmodule.exports.__t={displayColumns,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure,meosDefBlocks,getFoldDeco:()=>fenceFoldDeco,getCapDeco:()=>[fenceCapHideDeco,fenceCapInkDeco],getCapLineTypes:()=>_fenceCapLineTypes,meosFenceCaption};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 const displayCols=(t)=>X.displayColumns(t);
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
@@ -184,7 +184,9 @@ console.log('⑫ 閉じの直後の UFC 行= 説明(紙の中の2行に見せか
   selections:[{active:{line:caret,character:0},anchor:{line:caret,character:0},isEmpty:true}],setDecorations:(t,items)=>sv.set(t,items)});
  X.meosApplyCodeFenceDecorations(ed(0));
  const [HD,IK]=X.getCapDeco(), hid=(sv.get(HD)||[]), ink=(sv.get(IK)||[]);
- const first=ink.find(x=>x.range&&x.range.start.line===3), rest=ink.find(x=>!x.range&&x.start.line===4);
+ // v5.1.295: 1行目は閉じの行末の点に「種類ごとの飾り」で出す(renderOptions を使わない)
+ const _lt=[...X.getCapLineTypes().values()].find(t=>(sv.get(t)||[]).some(r=>r.start.line===3&&r.start.character===r.end.character));
+ const first=_lt?{renderOptions:_lt.__opts}:null, rest=ink.find(x=>!x.range&&x.start.line===4);
  const shown=(first?first.renderOptions.after.contentText:'')+(rest?L8[4].slice(rest.start.character,rest.end.character):'');
  ok(first && rest && shown===C, '★★★説明が閉じの行(1行目)と説明の行(2行目)に分かれ、つなぐと元の字', [first&&first.renderOptions.after.contentText, shown]);
  ok(hid.some(r=>r.start.line===3&&r.start.character===0&&r.end.character===3), '  閉じの ``` は幅ごと畳む', hid);

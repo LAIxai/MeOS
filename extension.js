@@ -43939,9 +43939,9 @@ async function meosFenceCaptionAt(editor, blk) {
   const doc = editor.document, lines = meosDocLines(doc), cap = meosFenceCaption(lines, blk);
   if (cap) { editor.selection = new vscode.Selection(new vscode.Position(cap.line, cap.at), new vscode.Position(cap.line, cap.end)); return; }
   const ln = blk.close, end = doc.lineAt(ln).text.length, head = '<!-- Mew!UFC ';
-  await editor.edit(eb => eb.insert(new vscode.Position(ln, end), '\n' + head + ' -->'));
-  const p = new vscode.Position(ln + 1, head.length);
-  editor.selection = new vscode.Selection(p, p);
+  const ex = 'Comment';   // v5.1.295(俊克 バグ1「コメントの例文が書かれてない」): 例文を選んだ状態で置く= 打てば置き換わる・空だと説明と読まれず紙の外に生の行が出た(バグ2)
+  await editor.edit(eb => eb.insert(new vscode.Position(ln, end), '\n' + head + ex + ' -->'));
+  editor.selection = new vscode.Selection(new vscode.Position(ln + 1, head.length), new vscode.Position(ln + 1, head.length + ex.length));
 }
 async function meosFormatCode(editor, fence, remove, alt) {
   if (!editor || !editor.document) return;
@@ -44319,7 +44319,8 @@ function meosApplyQuoteDecorations(editor) {
 }
 // {* ▲mCN=4283_QUOTE // *}
 let fenceFoldDeco = null;   // v5.1.49: 畳まれた板の頭に「⇐ click ⋯ to unfold」
-let fenceCapHideDeco = null, fenceCapInkDeco = null; let _meosCapDbgSig = '';   // v5.1.294 測る口   // v5.1.114: 説明の行(閉じの直後の UFC)
+let fenceCapHideDeco = null, fenceCapInkDeco = null; const _fenceCapLineTypes = new Map();   // v5.1.295: 閉じの行に出す説明の1行目= 字ごとの種類
+ let _meosCapDbgSig = '';   // v5.1.294 測る口   // v5.1.114: 説明の行(閉じの直後の UFC)
 const MEOS_FENCE_CAP_INK = '#2f6fb3';   // v5.1.114: 説明の字= 中身の茶と分ける青
 // ★v5.1.114(俊克 10.21 am11:34「codeブロックの閉じ記号の空行に説明を書くのに利用すると良い・上と区別する色で」
 //   → am11:44「閉じの直後に置いたFC行も、codeブロックの中に取り込んで、2行分にコメントを見せかければ良い」):
@@ -44359,7 +44360,7 @@ function meosApplyCodeFenceDecorations(editor) {
     const _seen = (ln) => _vrs.some(r => r.start.line <= ln && ln <= r.end.line);
     const _foldHead = (ln) => _seen(ln) && !_seen(ln + 1) && _vrs.some(r => r.start.line > ln + 1);   // 次の行が隠れ、その先にまた見える= 畳まれている(画面の下端で切れているのとは違う)
     const paper = new Map();                                        // 型 → 置く行(予備の板と、字の側の紙)
-    const inks = [], ticks = [], langs = [], indents = [], folds = [], capHides = [], capInks = [];
+    const inks = [], ticks = [], langs = [], indents = [], folds = [], capHides = [], capInks = [], capLines = new Map();
     if (!fenceCapHideDeco) {
       fenceCapHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       fenceCapInkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -44371,10 +44372,12 @@ function meosApplyCodeFenceDecorations(editor) {
       editor.setDecorations(fenceIndentDeco, indents);
       editor.setDecorations(fenceFoldDeco, folds);   // v5.1.49
       editor.setDecorations(fenceCapHideDeco, capHides); editor.setDecorations(fenceCapInkDeco, capInks);   // v5.1.114
+      for (const t of _fenceCapLineTypes.values()) editor.setDecorations(t, capLines.get(t) || []);   // v5.1.295
       // ★v5.1.294 測る口(俊克 バグ1「時間とともに、コメントの最初の2文字が増殖して行く」= 本文は増えていない・画面だけ):
       //   渡した飾りの数と中身が変わった時だけ1行書く。渡しが1つのまま画面で増えるなら Monaco 側、渡しが増えるなら MeOS 側。
       try { const sig = capInks.map(c => { const r = c.range || c; return r.start.line + ':' + r.start.character + '-' + r.end.character + (c.renderOptions && c.renderOptions.after ? '=' + c.renderOptions.after.contentText : ''); }).join(' ') + ' | hide ' + capHides.map(r => r.start.line + ':' + r.start.character + '-' + r.end.character).join(' ');
-        if (capInks.length && sig !== _meosCapDbgSig) { _meosCapDbgSig = sig; meosDbg('[capDbg] n=' + capInks.length + ' ' + sig); } } catch (_) { }
+        const sig2 = sig + ' | line ' + [...capLines.entries()].map(([t, rs]) => rs.map(r => r.start.line + ':' + r.start.character).join(',')).join(' ');
+        if ((capInks.length || capLines.size) && sig2 !== _meosCapDbgSig) { _meosCapDbgSig = sig2; meosDbg('[capDbg] n=' + capInks.length + ' ' + sig2); } } catch (_) { }
     };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
@@ -44426,10 +44429,16 @@ function meosApplyCodeFenceDecorations(editor) {
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(紙だけ残す)
           if (ln === b.close && _capLive) {                            // v5.1.114: 閉じの ``` は幅ごと畳み、説明の1行目を見せる
             if (t.length) { capHides.push(new vscode.Range(ln, 0, ln, t.length));
-              capInks.push({ range: new vscode.Range(ln, 0, ln, t.length), renderOptions: {
+              // ★v5.1.295(俊克 バグ2「青色の増殖コメントが消えない」): 測る口 [capDbg] で MeOS の渡しはいつも1つ= 増えるのも消えないのも Monaco の中。
+              //   隠した ``` の範囲に「1つずつの飾り(renderOptions)」で after を付けていた→ 行末の幅0の点に「種類ごとの飾り」で付ける(CB の札・v5.1.289 の差し込みと同じ置き方)。
+              const _ck = _capW + '|' + _cap1;
+              let _ct = _fenceCapLineTypes.get(_ck);
+              if (!_ct) { _ct = vscode.window.createTextEditorDecorationType({
                 // ★v5.1.115(俊克 改良2「青色のコメントの部分と上側の通常の表示の間に罫線を入れて、区別をはっきりしよう」): 紙の中身の幅で上辺に線
                 before: { contentText: '', textDecoration: 'none; position: absolute; left: ' + MEOS_FENCE_INDENT_COLS + 'ch; width: ' + _capW + 'ch; height: 0; border-top: 1px solid ' + MEOS_FENCE_CAP_INK + '; pointer-events: none;' },
-                after: { contentText: _cap1, color: MEOS_FENCE_CAP_INK, fontStyle: 'italic' } } }); }
+                after: { contentText: _cap1, color: MEOS_FENCE_CAP_INK, fontStyle: 'italic' } }); _fenceCapLineTypes.set(_ck, _ct); }
+              if (!capLines.has(_ct)) capLines.set(_ct, []);
+              capLines.get(_ct).push(new vscode.Range(ln, t.length, ln, t.length)); }
             continue;
           }
           if (ln === b.open || ln === b.close) {
