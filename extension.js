@@ -40296,7 +40296,7 @@ const MEOS_SPEC_LINE_AUTOFOLD = true; // FC付きの指定行を開いた時に1
 //     ⏰だけの例外にするのではなく、**畳まない指定行という種類**を作る。読む人も、次に足す物も、
 //     名前を見れば分かる([[project_direct_manipulation_mark]]「印は形が語る」の記法版)。
 //   ★UFCも Mew! の一族なので、`Mew!` の検索で一緒に出る。畳みの判定(meosDefBlocks)だけが見分ける。
-const MEOS_SPEC_LINE_ONE_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(UFC|ufc|FC|fc|\^)?[ \t]*((?:(?!-->)[^\n])*?)[ \t]*-->/g;
+const MEOS_SPEC_LINE_ONE_RE = /<!--[ \t]*[Mm][Ee][Ww]!(?![ \t]*[Ff][Cc]-[Ii][Cc]\b)[ \t]*(UFC|ufc|FC|fc|\^)?[ \t]*((?:(?!-->)[^\n])*?)[ \t]*-->/g;
 const MEOS_SPEC_UFC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc)[ \t]/;
 // この行は「畳まない指定行(UFC)」か。1つでもUFCが在れば、その行は畳まない。
 function meosIsUnfoldingSpecLine(text) { const t = String(text || ''); return t.indexOf('<!--') >= 0 && MEOS_SPEC_UFC_RE.test(t); }
@@ -40323,6 +40323,11 @@ function meosSpecLinePayloads(text) {
 }
 function meosSpecLinePayload(text) { const a = meosSpecLinePayloads(text); return a ? a.join(' ') : null; }
 function meosIsSpecLine(text) { return meosSpecLinePayloads(text) !== null; }
+// ★v5.1.309(俊克 10.29 pm07:51「ハイライトなどは、FCコメントの順番に対応している。これは変えない。インライン用には専用のFC-icを付ける」):
+//   FC-ic の行= <!-- Mew!FC-ic … --> だけの行。FC の群には数えない(MEOS_SPEC_LINE_ONE_RE が読まない= ハイライトの順番は1つも動かない)。
+//   置き場= 段落の後ろの FC 群のさらに後ろ。FC を書く口は FC でない行で止まるので、FC-ic の行を巻き込んで書き直さない。畳む時だけ FC の仲間に入れる。
+const MEOS_FCIC_LINE_RE = /^[ \t]*(?:<!--[ \t]*[Mm][Ee][Ww]![ \t]*[Ff][Cc]-[Ii][Cc]\b(?:(?!-->)[^\n])*-->[ \t]*)+$/;
+function meosIsFcIcLine(text) { return !!text && MEOS_FCIC_LINE_RE.test(String(text)); }
 // 参照形式リンクの定義行(`[表示]: https://…`)。畳む相手はこれも同じ=「行の外へ出したもの」。
 const MEOS_DEF_LINK_RE = /^[ \t]*\[[^\]\n]+\][ \t]*:[ \t]*\S/;
 // v4.0.146(俊克 8/12 pm01:02「書式として、Aの1乗、つまり `A↑1` を使うということだよ」＋例 `<!-- Mew!FC A↑1(白/green)//[]tip= -->`):
@@ -40751,7 +40756,7 @@ function meosDefBlocks(document) {
     // v4.1.16/4.1.17: UFC(畳まない指定行)は塊に数えない(数えると膜の範囲からはみ出して交差する)。
     //   ★v4.1.18(俊克 改良2「Time UPしたものは、自動的にUFC→FCに変更する」): 済んだ予定は畳んでよい
     //     ＝ 見えている必要が無くなった物なので、名前(FC)が変わり、畳みの仲間に戻る。判定はUFCの一言だけ。
-    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t) && !meosIsUnfoldingSpecLine(t);
+    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && ((meosIsSpecLine(t) && !meosIsUnfoldingSpecLine(t)) || meosIsFcIcLine(t));   // v5.1.309: FC-ic の行も畳む
     const isDef = (t) => isSpec(t) || (!!t && t.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(t));
     // ★v5.1.44(俊克 質問1「以下のcode表示が何も表示しないのはなぜ? code…部分をクリックすると、Rawデータとしては見えるけど」):
     //   ``` の中に書いた `<!-- Mew!FC … -->` を、本物のFCとして畳んでいた= 板には `code ⋯` だけが残った。
@@ -44090,6 +44095,40 @@ async function meosFenceCaptionAt(editor, blk) {
 // ★v5.1.297(俊克 pm01:28 改良1「Optクリックを廃止して、コメント例付きをデフォルトに。そうしないと便利な道具を知る機会が無い」):
 //   CB で囲むと、いつも説明の行(例文 Comment を選んだ状態)も置く。説明が要らなければ、その UFC の行を1行消す。
 //   外す(🚫)時は説明の行も一緒に消す(残すと紙の外に生の UFC が残る)。
+// ★v5.1.309: IC式付箋= IC ボタンで作ったインラインコードに FC-ic の箱(FUSEN-ic_<日時>)を組にする。箱は段落の中のインラインコードと前から順(付箋でない物は not)。
+//   add= (L,ch) に始まるインラインコードの箱を挿す / del= 段落の中で k 番目だったコードの箱を抜く(外した後に呼ぶ)
+function meosFcIcPara(lines, L) {
+  const stop = (t) => !String(t || '').trim() || meosIsSpecLine(t) || meosIsFcIcLine(t);
+  let top = L, bot = L;
+  while (top - 1 >= 0 && !stop(lines[top - 1])) top--;
+  while (bot + 1 < lines.length && !stop(lines[bot + 1])) bot++;
+  const codes = [];
+  for (let k = top; k <= bot; k++) { const re = /(?<!`)(`+)(?!`)([^`]|[^`][^\n]*?[^`])(?<!`)\1(?!`)/g; let c; while ((c = re.exec(lines[k] || '')) !== null) codes.push({ line: k, ch: c.index }); }
+  let s = bot + 1; while (s < lines.length && meosIsSpecLine(lines[s] || '')) s++;
+  let e = s; const boxes = [];
+  for (; e < lines.length && meosIsFcIcLine(lines[e]); e++) { const re = /<!--\s*Mew!FC-ic\s+(.*?)\s*-->/gi; let b; while ((b = re.exec(lines[e])) !== null) boxes.push(b[1]); }
+  return { top, bot, codes, s, e, boxes };
+}
+async function meosFcIcWrite(editor, P, boxes) {
+  const doc = editor.document;
+  while (boxes.length && /^not$/i.test(boxes[boxes.length - 1])) boxes.pop();
+  const line = boxes.map(b => '<!-- ' + MEOS_MEW_SIG + 'FC-ic ' + b + ' -->').join('');
+  const sel = editor.selection;
+  await editor.edit(eb => {
+    if (P.e > P.s) { const r = new vscode.Range(P.s, 0, P.e - 1, doc.lineAt(P.e - 1).text.length); if (line) eb.replace(r, line); else eb.delete(new vscode.Range(P.s - 1, doc.lineAt(P.s - 1).text.length, P.e - 1, doc.lineAt(P.e - 1).text.length)); }
+    else if (line) eb.insert(new vscode.Position(P.s - 1, doc.lineAt(P.s - 1).text.length), '\n' + line);
+  }, { undoStopBefore: false, undoStopAfter: true });
+  editor.selection = sel;
+}
+async function meosFcIcAdd(editor, L, ch) {
+  try {
+    const P = meosFcIcPara(meosDocLines(editor.document), L);
+    const k = P.codes.findIndex(c => c.line === L && c.ch === ch); if (k < 0) return;
+    const boxes = P.boxes.slice(); while (boxes.length < k) boxes.push('not');
+    boxes.splice(k, 0, 'FUSEN-ic_' + meosMembraneStamp(new Date()));
+    await meosFcIcWrite(editor, P, boxes);
+  } catch (e) { try { meosDbg('[fcic] add 失敗 ' + (e && e.message)); } catch (_) { } }
+}
 async function meosFormatCode(editor, fence, remove) {
   if (!editor || !editor.document) return;
   const doc = editor.document, sel = editor.selection;
@@ -44107,7 +44146,9 @@ async function meosFormatCode(editor, fence, remove) {
     }
     let inner = at.inner;
     if (at.n > 1 && /^ .* $/.test(inner)) inner = inner.slice(1, -1);   // `` ` `` の飾りの空白も外す
-    await editor.edit(eb => eb.replace(new vscode.Range(at.L, at.o, at.L, at.c), inner));
+    let _k = -1; try { _k = meosFcIcPara(meosDocLines(doc), at.L).codes.findIndex(c => c.line === at.L && c.ch === at.o); } catch (_) { }   // v5.1.309: 外す前に何番目か
+    await editor.edit(eb => eb.replace(new vscode.Range(at.L, at.o, at.L, at.c), inner), { undoStopBefore: true, undoStopAfter: false });
+    try { const P = meosFcIcPara(meosDocLines(doc), at.L); if (_k >= 0 && _k < P.boxes.length) { const bx = P.boxes.slice(); bx.splice(_k, 1); await meosFcIcWrite(editor, P, bx); } } catch (_) { }
     editor.selection = new vscode.Selection(new vscode.Position(at.L, at.o), new vscode.Position(at.L, at.o + inner.length));
     return;
   }
@@ -44131,19 +44172,21 @@ async function meosFormatCode(editor, fence, remove) {
   }
   if (sel.isEmpty) {
     const p = sel.active;
-    await editor.edit(eb => eb.insert(p, '``'));
+    await editor.edit(eb => eb.insert(p, '``'), { undoStopBefore: true, undoStopAfter: false });
     const q = new vscode.Position(p.line, p.character + 1);
     editor.selection = new vscode.Selection(q, q);
+    await meosFcIcAdd(editor, p.line, p.character);   // v5.1.309: IC式付箋
     return;
   }
   const txt = doc.getText(sel);
   let n = 1; for (const r of (txt.match(/`+/g) || [])) n = Math.max(n, r.length + 1);   // 中に ` があれば1つ多い数で包む
   const tick = '`'.repeat(n), pad = (n > 1 || /^`|`$/.test(txt)) ? ' ' : '';
   const st = sel.start;
-  await editor.edit(eb => eb.replace(sel, tick + pad + txt + pad + tick));
+  await editor.edit(eb => eb.replace(sel, tick + pad + txt + pad + tick), { undoStopBefore: true, undoStopAfter: false });
   const off = n + pad.length;
   const endPos = doc.positionAt(doc.offsetAt(st) + off + txt.length);
   editor.selection = new vscode.Selection(new vscode.Position(st.line, st.character + off), endPos);
+  if (st.line === sel.end.line) await meosFcIcAdd(editor, st.line, st.character);   // v5.1.309: IC式付箋(1行の時)
 }
 function meosApplyCodeSpanDecorations(editor) {
   try {
