@@ -44396,6 +44396,7 @@ function meosApplyCodeFenceDecorations(editor) {
         const _w = (() => {
           let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, meosRenderCols(lines[i] || ''));
           if (_cap) { const cc = meosRenderCols(_cap.text); if (cc > c) c = Math.max(c, Math.ceil(cc / 2)); }   // v5.1.114: 説明が2行に収まる幅まで広げる
+          c = Math.max(c, 7);   // ★v5.1.296(俊克 改良1「コード本文がない時、コメントが折り返される。幅の最小値をあと3文字分」): 中身の幅の下限= 7桁(今までの下限4桁+3)= 例文 Comment が1行に収まる
           if (_wrapCol) c = Math.min(c, _wrapCol);                    // 折り返った行は其処までしか出ていない
           _capW = c;
           return MEOS_FENCE_INDENT_COLS + c + MEOS_FENCE_PAD_COLS;    // v4.2.281: 左の字下げ + 中身 + 右の余白
