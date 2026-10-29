@@ -44049,10 +44049,10 @@ function meosFusenColorOf(t) {   // 印の後ろの (字/地) から付箋の色
   //   (/YPB)= 先頭の字が色(Y=黄 P=桃 B=青)。並べ替えるだけで色が変わる。全角の（／ＰＹＢ）も読む(NFKC)。語(pink/桃/赤/blue/青)も今まで通り読む
   const m = /[(（]\s*[^()（）\/／]*[\/／]\s*([^()（）\s]+)\s*[)）]/.exec(String(t || '')); if (!m) return 'yellow';
   const c = m[1].normalize('NFKC').toLowerCase();
-  if (/^(pink|桃|赤|ピンク|red)/.test(c)) return 'pink';
+  if (/^(赤|red)/.test(c)) return 'pink';   // v5.1.320(俊克 am02:38「p桃は廃止でいいよ」): P・桃・pink は読まない(黄になる)
   if (/^(blue|青|水)/.test(c)) return 'blue';
   if (/^(yellow|黄)/.test(c)) return 'yellow';
-  const f = c[0]; return (f === 'p' || f === 'r' || f === '桃' || f === '赤') ? 'pink' : (f === 'b' || f === '青') ? 'blue' : 'yellow';   // v5.1.319: 先頭が漢字でも(/青桃黄…)・R=薄い赤
+  const f = c[0]; return (f === 'r' || f === '赤') ? 'pink' : (f === 'b' || f === '青') ? 'blue' : 'yellow';   // v5.1.319: 先頭が漢字でも(/青桃黄…)・R=薄い赤
 }
 function meosFusenColorNow() { try { const c = extensionContext.globalState.get('meosFusenColor', 'yellow'); return MEOS_FUSEN_COLORS[c] ? c : 'yellow'; } catch (_) { return 'yellow'; } }   // 最後に選んだ色(最後に指定したのが出る)
 // ★v5.1.319(俊克 am02:11 改良2「日本人向けも含めて (/YPB黄桃青) を初期値に。P が purple か pink か分からない。薄い赤の意味で R赤 の方がいいかな」):
