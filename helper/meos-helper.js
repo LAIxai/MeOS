@@ -296,13 +296,29 @@ function run(argv) {
   //   → 同じ作りをこちらにも。群= 見出し＋常駐1＋5枠＋▲▼(メニューの中のボタン= 押しても閉じない)。
   const pagers = [];
   const fusenFold = {};   // v5.1.312(俊克 改良2「CB FUSEN、IC FUSEN という部分をクリックすることで折り畳めるように」): 群の名前→畳んだか(作り直しても覚えている)
+  // ★v5.1.314(俊克 改良1「CB/IC FUSEN の文字を濃く。未登録なら薄くても良い」・改良2「付箋らしい絵を作ってみる?」):
+  //   見出しの字= 付箋が在れば濃い(labelColor)・無ければ薄い。絵= 日本の付箋(細長い紙の端だけ色)を描く。CB は橙の端・IC は青の端。
+  const rgb = (r, g, b) => $.NSColor.colorWithSRGBRedGreenBlueAlpha(r / 255, g / 255, b / 255, 1);
+  const fusenIcon = (tab) => { try {
+    const W = 20, H = 12, img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H)); img.lockFocus;
+    const r = $.NSMakeRect(0.5, 2.5, W - 1, H - 5);
+    rgb(0xf3, 0xe6, 0xc4).setFill; $.NSBezierPath.fillRect(r);
+    tab.setFill; $.NSBezierPath.fillRect($.NSMakeRect(0.5, 2.5, 7, H - 5));
+    rgb(0x9a, 0x84, 0x55).setStroke; const bp = $.NSBezierPath.bezierPathWithRect(r); bp.lineWidth = 1; bp.stroke;
+    img.unlockFocus; return img; } catch (e) { return null; } };
+  const fusenIcons = {};
+  const pgTitle = (p, f) => { try {
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), r);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r);
+    p.hb.attributedTitle = a; } catch (e) {} };
   const pgPaint = (p) => {
     const f = !!fusenFold[p.name], rest = p.its.slice(1);
-    try { p.hb.title = $((f ? '▸ ' : '▾ ') + p.name); } catch (e) {}
+    pgTitle(p, f);
     p.pin.hidden = f || !p.its[0];
     for (let k = 0; k < p.slots.length; k++) { const it = rest[p.off + k], mi = p.slots[k];
       if (it) { mi.title = $(it.title); mi.representedObject = $(it.id); } mi.hidden = f || !it; }
-    p.pi.hidden = f;
+    p.pi.hidden = f || !p.its.length;   // v5.1.314: 1枚も無い群は見出しだけ
     const pages = Math.max(1, Math.ceil(rest.length / 5)), cur = Math.floor(p.off / 5) + 1;
     try { p.up.enabled = p.off > 0; p.dn.enabled = p.off + 5 < rest.length; p.lab.stringValue = $(cur + ' / ' + pages); } catch (e) {}
   };
@@ -316,6 +332,7 @@ function run(argv) {
     const its = e.items || [], p = { name: e.fusen, its: its, slots: [], off: 0 };
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
+    try { const k = /^IC/.test(e.fusen) ? 'ic' : 'cb'; if (!(k in fusenIcons)) fusenIcons[k] = fusenIcon(k === 'ic' ? rgb(0x2f, 0x6f, 0xb3) : rgb(0xe0, 0x80, 0x3a)); if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}
     p.hb.frame = $.NSMakeRect(14, 1, 220, 20); p.hb.tag = pagers.length; hv.addSubview(p.hb);
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd);
     const add = (it) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); mi.indentationLevel = 1; return mi; };
