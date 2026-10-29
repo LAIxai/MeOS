@@ -29890,7 +29890,7 @@ function updateMeDockMode() {
       // v4.0.0(俊克): 太字/斜体・上付/下付にも🚫解除。カーソルが既存装飾の中なら'deco'(ボタンが🚫に化ける)。
       if (boldSpanAtCursor(editor)) fmtCtx.bold = 'deco'; else if (!_empty) fmtCtx.bold = 'sel';
       if (metexSpanAtCursor(editor)) fmtCtx.metex = 'deco'; else if (!_empty) fmtCtx.metex = 'sel';
-      { const _ca = meosCodeAtCursor(editor); fmtCtx.code = _ca ? 'deco' : 'none'; fmtCtx.codeFence = !!(_ca && _ca.kind === 'fence'); }   // v5.1.283: ` / ``` の中なら🚫・v5.1.293: 囲いの中か(Opt で説明)
+      { const _ca = meosCodeAtCursor(editor); fmtCtx.code = _ca ? 'deco' : 'none'; }   // v5.1.283: ` / ``` の中なら🚫
     }
   } catch (_) {}
   meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn(), headNav: headNavStateForEditor(editor), markNav: markNavStateForEditor(editor), inMembrane: !!findCurrentPair(editor), refEdit, fmtCtx, fmtCur: fmtCtx ? fmtCtx.__cur : null, warn: (editor ? meosWarningEnds(editor.document) : []), tableWrap: meosTableWrapStateAtCursor(editor), tableAutoCalc: meosTableAutoCalc() });
@@ -34428,7 +34428,7 @@ window.__renderMew=function(n){const b=document.getElementById('mew-btn');if(!b)
 /* v4.0.106: 点灯は「印を出している間」だけ。数字は消灯中でも出す(何個あるかは常に分かる)。 */
 b.classList.toggle('on',c>0);/* v4.0.111(俊克): 点灯=直すものが在る合図。5秒(reveal)はガターの話so混ぜない */const s=document.getElementById('mew-n');
 if(s)s.textContent=c>0?String(c):'';};
-/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す。v5.1.291: tip は IC/CB の短い名だけ(俊克「分かる人は分かる・ハイライト代わりに使う人は意味を知らなくても構わない」)。v5.1.286: ↻は4つ(0 インライン/1 ブロック/2 赤1個/3 赤3個= その記号そのものを板にして置く)・Shift で逆回り */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96),Q3=Q+Q+Q;var mode=Number(b.getAttribute('data-mode'))||0;window.__codeFace=paint;var TIPS=['IC | Use it as a highlight, too.','CB | Use it as a highlight, too.'+String.fromCharCode(10)+'Opt+click = add a comment under the block','Backtick as code | Puts '+Q+Q+' '+Q+' '+Q+Q+' at the caret = one '+Q+' shown as inline code (the outer run is one longer than the inside, with a space on each side) · ↻ next: red '+Q3,'Three backticks as code | Puts '+Q3+Q+' '+Q3+' '+Q3+Q+' at the caret = '+Q3+' shown as inline code · ↻ next: '+Q+' inline code'];function paint(){if(window.__fmtActionable&&window.__fmtActionable.code){b.textContent='';b.classList.add('fmt-remove');b.classList.remove('code-lit');b.setAttribute('data-tip','Remove code | The caret is inside inline code or a code block → click to take the backticks off');return;}b.classList.remove('fmt-remove');b.classList.toggle('code-lit',mode>=2);b.textContent=(mode%2)?Q3:Q;b.setAttribute('data-tip',TIPS[mode]);}paint();window.__codeOptOk=function(){return mode===1||!!window.__codeInFence;};b.addEventListener('click',function(ev){var rm=!!(window.__fmtActionable&&window.__fmtActionable.code);var alt=!!(ev&&ev.altKey&&window.__codeOptOk());vscode.postMessage({type:'fmtCode',fence:mode===1,lit:(!rm&&!alt&&mode>=2)?(mode===2?1:3):0,remove:rm&&!alt,alt:alt});});if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();mode=(mode+(ev&&ev.shiftKey?3:1))%4;paint();vscode.postMessage({type:'fmtCodeMode',mode:mode});});})();
+/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す。v5.1.291: tip は IC/CB の短い名だけ(俊克「分かる人は分かる・ハイライト代わりに使う人は意味を知らなくても構わない」)。v5.1.286: ↻は4つ(0 インライン/1 ブロック/2 赤1個/3 赤3個= その記号そのものを板にして置く)・Shift で逆回り */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96),Q3=Q+Q+Q;var mode=Number(b.getAttribute('data-mode'))||0;window.__codeFace=paint;var TIPS=['IC | Use it as a highlight, too.','CB | Use it as a highlight, too.','Backtick as code | Puts '+Q+Q+' '+Q+' '+Q+Q+' at the caret = one '+Q+' shown as inline code (the outer run is one longer than the inside, with a space on each side) · ↻ next: red '+Q3,'Three backticks as code | Puts '+Q3+Q+' '+Q3+' '+Q3+Q+' at the caret = '+Q3+' shown as inline code · ↻ next: '+Q+' inline code'];function paint(){if(window.__fmtActionable&&window.__fmtActionable.code){b.textContent='';b.classList.add('fmt-remove');b.classList.remove('code-lit');b.setAttribute('data-tip','Remove code | The caret is inside inline code or a code block → click to take the backticks off');return;}b.classList.remove('fmt-remove');b.classList.toggle('code-lit',mode>=2);b.textContent=(mode%2)?Q3:Q;b.setAttribute('data-tip',TIPS[mode]);}paint();b.addEventListener('click',function(){var rm=!!(window.__fmtActionable&&window.__fmtActionable.code);vscode.postMessage({type:'fmtCode',fence:mode===1,lit:(!rm&&mode>=2)?(mode===2?1:3):0,remove:rm});});   /* v5.1.297: Opt は廃止(CB はいつも説明付き) */if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();mode=(mode+(ev&&ev.shiftKey?3:1))%4;paint();vscode.postMessage({type:'fmtCodeMode',mode:mode});});})();
 const fmtTableBtn=document.getElementById('fmt-table');if(fmtTableBtn)fmtTableBtn.addEventListener('click',()=>vscode.postMessage({type:'formatTable'}));(function(){const ft=document.getElementById('format-tools');if(!ft)return;const tc=ft.querySelector('.fmt-table-cell'),ww=ft.querySelector('.ww-cell:not(.os-cell)');if(!tc||!ww)return;let tm=null;const off=()=>{clearTimeout(tm);tm=setTimeout(()=>{if(!tc.matches(':hover')&&!ww.matches(':hover'))ft.classList.remove('tbl-big');},500);};tc.addEventListener('mouseenter',()=>{clearTimeout(tm);ft.classList.add('tbl-big');});tc.addEventListener('mouseleave',off);ww.addEventListener('mouseenter',()=>{if(ft.classList.contains('tbl-big'))clearTimeout(tm);});ww.addEventListener('mouseleave',()=>{if(ft.classList.contains('tbl-big'))off();});})();   /* v5.1.191: 表が2倍の間だけ折り返しボタンを右へ(印 .tbl-big)= ずれた折り返しボタンに乗っている間は保ち、どちらにも居ない状態が0.5秒続いたら戻す */
 /* v0.9.999150: 表整形ボタン */
 const fmtTableCaret=document.getElementById('fmt-table-caret'),tablePop=document.getElementById('table-pop');function closeTablePop(){if(typeof closeClkPop==='function')closeClkPop();if(tablePop)tablePop.classList.remove('on');
@@ -35582,7 +35582,7 @@ if(typeof window.__renderWarn==='function')window.__renderWarn(m.warn);   /* v4.
 const _nowDeco=(_c==='deco');if(_nowDeco){if(!window.__fmtActionable[_k]){window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=meosFmtBaseFromCur(_k,m.fmtCur&&m.fmtCur[_k]);
 }window.__fmtActionable[_k]=true;}else{window.__fmtActionable[_k]=false;window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=2;
 }if(typeof window.__renderFmtRing==='function')window.__renderFmtRing(_k);}}/* v4.0.0(俊克): 太字/斜体・上付/下付もfmtCtxで🚫化(3兄弟と同じ流儀) */if((Number(document.body.dataset.phase||1))>=4&&m.fmtCtx){window.__fmtActionable.bold=(m.fmtCtx.bold==='deco');
-{var _wasM=window.__fmtActionable.metex;window.__fmtActionable.metex=(m.fmtCtx.metex==='deco');if(_wasM!==window.__fmtActionable.metex)window.__mtxTouched=false;}window.__fmtActionable.code=(m.fmtCtx.code==='deco');window.__codeInFence=!!m.fmtCtx.codeFence;if(typeof window.__codeFace==='function')window.__codeFace();/* v5.1.283: コードボタンも中にいれば🚫 *//* v4.2.701: 入った/出た時は 🚫 から */if(typeof mbFace==='function')mbFace();if(typeof mtxFace==='function')mtxFace();
+{var _wasM=window.__fmtActionable.metex;window.__fmtActionable.metex=(m.fmtCtx.metex==='deco');if(_wasM!==window.__fmtActionable.metex)window.__mtxTouched=false;}window.__fmtActionable.code=(m.fmtCtx.code==='deco');if(typeof window.__codeFace==='function')window.__codeFace();/* v5.1.283: コードボタンも中にいれば🚫 *//* v4.2.701: 入った/出た時は 🚫 から */if(typeof mbFace==='function')mbFace();if(typeof mtxFace==='function')mtxFace();
 }window.__navOnly=null;if(window.__editTsRefresh){window.__editTsRefresh=false;if(input){input.focus();const v=input.value;
 const i=v.lastIndexOf('_');if(i>=0)input.setSelectionRange(i+1,v.length);else input.select();}}}if(m&&m.type==='setLineValue'&&lineInput){lineInput.value=String(m.value||'');
 currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(m&&m.type==='tocChildren'){if(typeof window.renderTocChildPop==='function')window.renderTocChildPop(m.children||[],m.centerIndex);
@@ -35900,10 +35900,10 @@ document.addEventListener('pointermove',ev=>{if(press||!relXY)return;if(Math.abs
    緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
 /* ★v4.2.601(俊克「最小幅にドラッグした時に、自動で+δの幅を追加しよう」): 自分の幅(四角の物差し)を拡張へ知らせる= 動きが止まって0.7秒後に1回 */
 let __mdWT=null;window.addEventListener('resize',()=>{clearTimeout(__mdWT);__mdWT=setTimeout(()=>{try{vscode.postMessage({type:'dockWidthPx',w:Math.round(document.documentElement.getBoundingClientRect().width)});}catch(_){}},700);});
-const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#fmt-code,#raw-toggle,#raw-timer,.ci-lock,#clk-pring,#hand-pick';/* v4.2.753: ポインターボタンは G⌥Y⌘P⌃ の見本= Opt でも緑(v4.2.567 の「緑は消す」をここだけ破る) */
+const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring,#hand-pick';/* v4.2.753: ポインターボタンは G⌥Y⌘P⌃ の見本= Opt でも緑(v4.2.567 の「緑は消す」をここだけ破る) */
 /* ★v4.2.735(俊克「どこでもOptを押すと緑×を出して、効かないボタンの上に移動すると無印に」): 地の上= 緑(キー配列の確かめにも)・Opt が効く部品= 緑・効かない部品(ボタン/tip の在る物/文字タイル)= 何も出さない(赤も隠す) */
 function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false,btn=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;btn=!!v&&!!lastPt&&!!lastPt.t&&!!lastPt.t.closest&&!!lastPt.t.closest(BTN_SEL);
-/* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;if(el&&el.id==='fmt-code'&&!(window.__codeOptOk&&window.__codeOptOk()))hit=false;/* v5.1.293: コードボタンの Opt は CB の時と囲いの中だけ */}catch(_){}
+/* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
 const show=!!v&&!!lastPt&&(hit||!btn);document.body.classList.toggle('meos-optx',!!v);try{optx.w.classList.toggle('on',show);if(show)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
 /* v4.2.736(俊克 改良1「ポインターを動かさなくても、cmdを押せば直ぐに黄色に」): キーは先取り(capture)で聞く= 途中で止められても届く・押したキーの名前でなく、その時の修飾キーの状態全体から決める */
 const MODK=['Shift','Control','Meta','Alt'];function modsKey(e,down){if(MODK.indexOf(e.key)<0)return;if(e.key==='Shift'){if(e.code==='ShiftRight'){if(down)SSIDE='R';__sr=down;}else{if(down)SSIDE='L';__sl=down;}if(!down){if(__sr&&!__sl)SSIDE='R';else if(__sl&&!__sr)SSIDE='L';}}const st={Shift:e.shiftKey,Control:e.ctrlKey,Meta:e.metaKey,Alt:e.altKey};st[e.key]=down;modsSet(st);}
@@ -36619,7 +36619,7 @@ function toggleMeDock(editorOverride) {
     }
     // v0.9.999150: Me Dock の表整形ボタン(▦)。カーソル行のGFMテーブルを桁揃え。
     // v5.1.280: Format Me の ` / ``` ボタン(↻ で切り替えた方を覚えておく)
-    if (message && message.type === 'fmtCode') { const _ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (message.lit) await meosPutCodeLiteral(_ed, Number(message.lit)); else await meosFormatCode(_ed, !!message.fence, !!message.remove, !!message.alt); return; }
+    if (message && message.type === 'fmtCode') { const _ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (message.lit) await meosPutCodeLiteral(_ed, Number(message.lit)); else await meosFormatCode(_ed, !!message.fence, !!message.remove); return; }
     if (message && message.type === 'fmtCodeMode') { try { extensionContext.globalState.update('fmtCodeMode', Math.max(0, Math.min(3, Number(message.mode) || 0))); } catch (_) {} return; }   // v5.1.286: fmtCodeFence(真偽)の後継= 0〜3
     if (message && message.type === 'formatTable') {
       await meosFormatTableAtCursor(getMeDockTargetEditor() || vscode.window.activeTextEditor);
@@ -43935,6 +43935,10 @@ async function meosPutCodeLiteral(editor, n) {
 }
 // v5.1.293(俊克 10.29 pm00:26 改良1「コードブロックに付けられるコメントを Opt クリックで入力できるように」):
 //   説明= 閉じの ``` の直後の UFC 行(v5.1.114 meosFenceCaption)。無ければ置いてカーソルを中へ・有ればその字を選ぶ。
+async function meosFenceCaptionAfterWrap(editor, openLn) {   // v5.1.297: 囲んだ直後= 説明の行を置いて例文を選ぶ
+  const blk = meosFenceBlocks(editor.document).find(b => b.open === openLn);
+  if (blk) await meosFenceCaptionAt(editor, blk);
+}
 async function meosFenceCaptionAt(editor, blk) {
   const doc = editor.document, lines = meosDocLines(doc), cap = meosFenceCaption(lines, blk);
   if (cap) { editor.selection = new vscode.Selection(new vscode.Position(cap.line, cap.at), new vscode.Position(cap.line, cap.end)); return; }
@@ -43943,21 +43947,19 @@ async function meosFenceCaptionAt(editor, blk) {
   await editor.edit(eb => eb.insert(new vscode.Position(ln, end), '\n' + head + ex + ' -->'));
   editor.selection = new vscode.Selection(new vscode.Position(ln + 1, head.length), new vscode.Position(ln + 1, head.length + ex.length));
 }
-async function meosFormatCode(editor, fence, remove, alt) {
+// ★v5.1.297(俊克 pm01:28 改良1「Optクリックを廃止して、コメント例付きをデフォルトに。そうしないと便利な道具を知る機会が無い」):
+//   CB で囲むと、いつも説明の行(例文 Comment を選んだ状態)も置く。説明が要らなければ、その UFC の行を1行消す。
+//   外す(🚫)時は説明の行も一緒に消す(残すと紙の外に生の UFC が残る)。
+async function meosFormatCode(editor, fence, remove) {
   if (!editor || !editor.document) return;
   const doc = editor.document, sel = editor.selection;
   const at = meosCodeAtCursor(editor);
-  if (alt && at && at.kind === 'fence') { await meosFenceCaptionAt(editor, at.blk); return; }   // v5.1.293: 囲いの中で Opt= 外さずに説明へ
-  if (alt && fence && !at) {   // v5.1.293: CB を Opt で押す= 囲んでから説明へ
-    await meosFormatCode(editor, true, false, false);
-    const ln = editor.selection.active.line, blk = meosFenceBlocks(editor.document).find(b => b.open <= ln && ln <= b.close);
-    if (blk) await meosFenceCaptionAt(editor, blk);
-    return;
-  }
   if (at && (remove || (at.kind === 'fence') === !!fence)) {
-    if (at.kind === 'fence') {   // 外す= 閉じを先に消してから開きを消す(行番号がずれない)
-      const blk = at.blk;
+    if (at.kind === 'fence') {   // 外す= 説明・閉じ・開きの順に下から消す(行番号がずれない)
+      const blk = at.blk, nx = blk.close + 1 < doc.lineCount ? doc.lineAt(blk.close + 1).text : null;
+      const capLn = (nx != null && (meosFenceCaption(meosDocLines(doc), blk) || /^\s*<!--\s*Mew!UFC\s*-->\s*$/.test(nx))) ? blk.close + 1 : -1;
       await editor.edit(eb => {
+        if (capLn >= 0) eb.delete(capLn === doc.lineCount - 1 ? new vscode.Range(blk.close, doc.lineAt(blk.close).text.length, capLn, nx.length) : doc.lineAt(capLn).rangeIncludingLineBreak);
         eb.delete(doc.lineAt(blk.close).rangeIncludingLineBreak);
         eb.delete(doc.lineAt(blk.open).rangeIncludingLineBreak);
       });
@@ -43977,16 +43979,14 @@ async function meosFormatCode(editor, fence, remove, alt) {
     const indent = (/^[ \t]*/.exec(doc.lineAt(a).text) || [''])[0];
     if (blank) {   // 空の行= 開きと閉じを置いて、間の行にカーソル
       await editor.edit(eb => eb.replace(doc.lineAt(a).range, indent + '```\n' + indent + '\n' + indent + '```'));
-      const p = new vscode.Position(a + 1, indent.length);
-      editor.selection = new vscode.Selection(p, p);
+      await meosFenceCaptionAfterWrap(editor, a);   // v5.1.297
       return;
     }
     await editor.edit(eb => {
       eb.insert(new vscode.Position(z, doc.lineAt(z).text.length), '\n' + indent + '```');
       eb.insert(new vscode.Position(a, 0), indent + '```\n');
     });
-    const p = new vscode.Position(a, indent.length + 3);   // 開きの ``` の後ろ= 言語名を書く所
-    editor.selection = new vscode.Selection(p, p);
+    await meosFenceCaptionAfterWrap(editor, a);   // v5.1.297
     return;
   }
   if (sel.isEmpty) {
