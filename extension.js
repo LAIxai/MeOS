@@ -14021,7 +14021,7 @@ function meosFusenList() {
         const t = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+FUSEN_(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})\S*\s*(.*?)\s*-->/.exec(t);
         if (!m) continue;
         let body = ''; for (let i = b.open + 1; i < b.close; i++) { if ((lines[i] || '').trim()) { body = lines[i].trim(); break; } }
-        cb.push({ k: 'c', ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, ch: 0, color: meosFusenColorOf(m[7]), title: meosFusenTitle(m, b.info || String(m[7] || '').replace(/^\([^()]*\)\s*/, '') || body) });   // v5.1.315: 色
+        cb.push({ k: 'c', ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, ch: 0, color: meosFusenColorOf(m[7]), title: meosFusenTitle(m, b.info || String(m[7] || '').replace(/^[(（][^()（）]*[)）]\s*/, '') || body) });   // v5.1.315: 色
       }
       if (txt.indexOf('FUSEN-ic_') >= 0) meosFusenIcIn(d, lines, ic);
     }
@@ -44044,11 +44044,17 @@ let fenceIndentDeco = null;          // v4.2.281: 行の頭に置く1桁ぶん�
 const MEOS_FUSEN_COLORS = { yellow: { paper: '#f3e6c4', edge: '#cbb98c', tab: '#e0b13a' }, pink: { paper: '#f6d3dc', edge: '#d7a3b2', tab: '#e0789a' }, blue: { paper: '#d3e4f5', edge: '#a3bfdb', tab: '#4f8fd0' } };
 const MEOS_FUSEN_COLOR_ORDER = ['yellow', 'pink', 'blue'];
 function meosFusenColorOf(t) {   // 印の後ろの (字/地) から付箋の色。書いていなければ黄
-  const m = /\(\s*[^()\/]*\/\s*([^()\s]+)\s*\)/.exec(String(t || '')); if (!m) return 'yellow';
-  const c = m[1].toLowerCase(); return (c === 'pink' || c === '桃') ? 'pink' : (c === 'blue' || c === '青') ? 'blue' : 'yellow';
+  // ★v5.1.318(俊克 am01:47 バグ1「赤が認識されない」・「3色限定なら /YPB と並べて、先頭を認識するようにしよう」):
+  //   (/YPB)= 先頭の字が色(Y=黄 P=桃 B=青)。並べ替えるだけで色が変わる。全角の（／ＰＹＢ）も読む(NFKC)。語(pink/桃/赤/blue/青)も今まで通り読む
+  const m = /[(（]\s*[^()（）\/／]*[\/／]\s*([^()（）\s]+)\s*[)）]/.exec(String(t || '')); if (!m) return 'yellow';
+  const c = m[1].normalize('NFKC').toLowerCase();
+  if (/^(pink|桃|赤|ピンク)/.test(c)) return 'pink';
+  if (/^(blue|青|水)/.test(c)) return 'blue';
+  if (/^(yellow|黄)/.test(c)) return 'yellow';
+  return c[0] === 'p' ? 'pink' : c[0] === 'b' ? 'blue' : 'yellow';
 }
 function meosFusenColorNow() { try { const c = extensionContext.globalState.get('meosFusenColor', 'yellow'); return MEOS_FUSEN_COLORS[c] ? c : 'yellow'; } catch (_) { return 'yellow'; } }   // 最後に選んだ色(最後に指定したのが出る)
-function meosFusenColorSpec(c) { return ' (/' + (MEOS_FUSEN_COLORS[c] ? c : 'yellow') + ')'; }   // ★v5.1.317(俊克 am01:39 バグ1「CB付箋を作ると、UFCに色指定が入らない」): 黄も書く= 書き換える所が見える。読む側は書いていない古い付箋を黄とみなす
+function meosFusenColorSpec(c) { const h = { yellow: 'Y', pink: 'P', blue: 'B' }, f = h[c] || 'Y'; return ' (/' + f + 'YPB'.replace(f, '') + ')'; }   // v5.1.318: 選んだ色を先頭に(/YPB・/PYB・/BYP)   // ★v5.1.317(俊克 am01:39 バグ1「CB付箋を作ると、UFCに色指定が入らない」): 黄も書く= 書き換える所が見える。読む側は書いていない古い付箋を黄とみなす
 const _fencePaperCapTypes = new Map();   // '桁|役|段|色' → 字の側の紙
 function meosFencePaperCapType(w, kind, rows, color) {
   const _pc = (MEOS_FUSEN_COLORS[color] || MEOS_FUSEN_COLORS.yellow).paper;
@@ -44578,7 +44584,7 @@ const MEOS_FENCE_CAP_INK = '#2f6fb3';   // v5.1.114: 説明の字= 中身の茶�
 //   FC は閉じの行を頭に畳まれて2行目が消えるので、畳まない指定行(UFC)= `<!-- Mew!UFC 説明 -->`。⏰の行と罫線(---)は説明ではない。
 // v5.1.304: 空の説明の欄= <!-- Mew!UFC --> か <!-- Mew!UFC FUSEN_<日時> -->。返すのは打ち始める桁(-1= 空の欄ではない)
 function meosFenceCapEmpty(t) {
-  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN_\S*(?:\s+\([^()]*\))?)?(\s*)-->\s*$/.exec(String(t || ''));   // v5.1.315: 印の後ろの色(/pink)も印のうち
+  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?)?(\s*)-->\s*$/.exec(String(t || ''));   // v5.1.315: 印の後ろの色(/pink)も印のうち
   return m ? m[1].length + (m[2] ? m[2].length : 0) + Math.min(1, m[3].length) : -1;
 }
 function meosFenceCaption(lines, b) {
@@ -44588,7 +44594,7 @@ function meosFenceCaption(lines, b) {
     const m = /^(\s*<!--\s*Mew!UFC\s+)(.*?)(\s*-->\s*)$/.exec(t);
     if (!m || !m[2] || m[2].indexOf('\u23f0') >= 0 || /^-{3,}$/.test(m[2])) return null;
     // ★v5.1.304(俊克 pm03:46「堂々と FUSEN と名乗る・付箋で検索できるようにコメントに FUSEN_TS を付けよう」): 先頭の FUSEN_<日時> は印= 紙には出さない
-    const f = /^FUSEN_\S*(?:\s+\([^()]*\))?(?:\s+|$)/.exec(m[2]); const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
+    const f = /^FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+|$)/.exec(m[2]); const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
     // v5.1.315: 印の後ろの色 (/pink) も紙には出さない
     if (!text) return null;   // 印だけ= 空の欄(meosFenceCapEmpty)
     return { line: i, text, at, end: at + text.length };
