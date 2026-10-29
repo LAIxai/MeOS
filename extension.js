@@ -30405,15 +30405,15 @@ body:not(.meos-beginner) .bg-lv{left:36px;top:10px;transform-origin:-44px -16px}
 body.meos-beginner #hand-pick,body.meos-beginner .mz-split,body.meos-beginner #standards-toggle,
 body.meos-beginner #paste-lag,body.meos-beginner .row2-vsix>.prize-watch-btn,
 body.meos-beginner #hidx-box,body.meos-beginner #hidx-toggle,
-body.meos-beginner #format-tools .fmt-cell:not(:has(#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-table,#ww-btn,#os-btn,#fmt-metex)),
+body.meos-beginner #format-tools .fmt-cell:not(:has(#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-table,#ww-btn,#os-btn,#fmt-metex,#fmt-code)),
 body.meos-beginner #enc-copy,body.meos-beginner #gh-wizard,
 body.meos-beginner #nav-center .bird-ev-label,body.meos-beginner #nav-scroll,body.meos-beginner #nav-create-toc,
 body.meos-beginner #nav-center .toc-nav-row>.toc-axis,body.meos-beginner #nav-center .me-axis-wrap,body.meos-beginner #nav-center .me-flip-row,
 body.meos-beginner .dock-lead .tms-title,body.meos-beginner .dock-lead .clk-wrap,
 body.meos-beginner #edit-mode-select,body.meos-beginner #zoom-scope-indicator,body.meos-beginner #zoom-me-panel{display:none!important}
 /* ★v5.1.261(俊克 pm08:49「②と③の間にもう一つ。①②③/⑨にして⑨をフルスペック」「③= ②に Re-install・上付/下付・文字数・TOP/E・Add to H-TOC と H-TOC」「②に💬」):
-   ①②だけで隠す(③で出す)物= 下。⚜️と🐙(1日1回)と Timed Me-System の時計は③でも隠す */
-body.meos-beginner:not(.meos-lv3) .row2-vsix>:not(.th-split):not(.sd-split),body.meos-beginner:not(.meos-lv3) #format-tools .fmt-cell:has(#fmt-metex),
+   ①②だけで隠す(③で出す)物= 下。v5.1.290(俊克 10.29 am11:36「🔰③にもインラインコードボタンを」)= コードボタン(↻も一緒)も③で出す。⚜️と🐙(1日1回)と Timed Me-System の時計は③でも隠す */
+body.meos-beginner:not(.meos-lv3) .row2-vsix>:not(.th-split):not(.sd-split),body.meos-beginner:not(.meos-lv3) #format-tools .fmt-cell:has(#fmt-metex),body.meos-beginner:not(.meos-lv3) #format-tools .fmt-cell:has(#fmt-code),
 body.meos-beginner:not(.meos-lv3) .toc-pin-chars,body.meos-beginner:not(.meos-lv3) #nav-center .top-eof-unit,
 body.meos-beginner:not(.meos-lv3) #fixed-toc,body.meos-beginner:not(.meos-lv3) #tms-wrap,body.meos-beginner:not(.meos-lv3) #op-add-toc{display:none!important}
 body.meos-beginner.meos-bg1 .th-split,body.meos-beginner.meos-bg1 #format-tools .fmt-cell:has(#fmt-strike),body.meos-beginner.meos-bg1 #cur-box,body.meos-beginner.meos-bg1 #encrypt-me-row,body.meos-beginner.meos-bg1 #nav-box,body.meos-beginner.meos-bg1 #nav-center{display:none!important}
