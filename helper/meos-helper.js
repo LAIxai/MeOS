@@ -310,10 +310,10 @@ function run(argv) {
     const hd = m.addItemWithTitleActionKeyEquivalent($(e.fusen), null, $('')); hd.enabled = false;
     const its = e.items || [];
     const add = (it, ind) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); else mi.hidden = true; mi.indentationLevel = ind; return mi; };
-    add(its[0], 1);
+    add(its[0], 1);   // v5.1.311(俊克「インデントされているのはなぜ?」): 常駐も5枠も同じ1段(Tag&Go の一覧と同じ)
     const p = { its: its, slots: [], off: 0 };
-    for (let k = 0; k < 5; k++) p.slots.push(add(its[1 + k], 2));
-    if (its.length > 6) {
+    for (let k = 0; k < 5; k++) p.slots.push(add(its[1 + k], 1));
+    if (its.length > 0) {   // v5.1.311(俊克「スライドボタンは出ない」): 枚数が少なくても出す(送れない時は押せない姿)
       const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 220, 26));
       p.up = $.NSButton.buttonWithTitleTargetAction($('▲'), pgt, 'pgUp:'); p.up.frame = $.NSMakeRect(36, 2, 40, 22); p.up.tag = pagers.length; v.addSubview(p.up);
       p.dn = $.NSButton.buttonWithTitleTargetAction($('▼'), pgt, 'pgDn:'); p.dn.frame = $.NSMakeRect(80, 2, 40, 22); p.dn.tag = pagers.length; v.addSubview(p.dn);
