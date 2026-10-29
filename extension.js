@@ -38902,10 +38902,15 @@ function meosTableRowsFromText(lines) {
   if (n < 2) return null;
   return rows.map(r => { const c = r.map(x => x.trim().replace(/\|/g, '\\|')); while (c.length < n) c.push(''); return c; });
 }
-function meosTableMdFromRows(rows, indent) {
+// ★v5.1.307(俊克 pm06:55 v5.1.306 テスト「貼っただけで表になった…ただし表ボタンを押すと、スクショ3、4枚目のようになった」):
+//   貼って作った表は空白で揃えた広い形、▦ を押すと詰めた形(折り返し幅に収まらない表はセルの中で折る)= 同じ表が2つの姿になっていた。
+//   → 作る時も ▦ と同じ口(meosTcwCompactLines)を通す= 収まらない表は最初から詰めた形。doc が無い時(呼び手が渡さない時)は今まで通り。
+function meosTableMdFromRows(rows, indent, doc) {
   const md = rows.map(r => '| ' + r.join(' | ') + ' |');
   md.splice(1, 0, '|' + rows[0].map(() => '-').join('|') + '|');
-  return (meosFormatTableLines(md) || md).map(l => (indent || '') + l);
+  let out = meosFormatTableLines(md) || md;
+  if (doc) { try { const cl = meosTcwCompactLines(out.map(l => l.trim()), meosFenceWrapColumn(doc)); if (cl) out = cl; } catch (_) { } }
+  return out.map(l => (indent || '') + l);
 }
 // ★v5.1.306(俊克 10.29 pm06:43「GFMの罫線指定の無いものでも、自動で罫線を追加しようよ」・例=宅配便の荷物状況をWebから貼った12行):
 //   **貼り付けた時だけ**、表らしい行の塊なら、すぐ表にする(Joplin流)。Cmd+Z 1回で貼った生の字に戻る(表にしたのは別の1手)。
@@ -38955,7 +38960,7 @@ async function meosPasteToTableMaybe(e) {
   const rows = meosPasteRowsFromText(raw);
   try { meosDbg('[pasteTable] 行=' + s0 + '〜' + e0 + ' → ' + (rows ? rows.length + '×' + rows[0].length : '表にしない')); } catch (_) { }
   if (!rows) return;
-  const out = meosTableMdFromRows(rows, '');
+  const out = meosTableMdFromRows(rows, '', doc);
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, new vscode.Range(s0, 0, e0, doc.lineAt(e0).text.length), out.join('\n'));
   if (doc.version !== v) return;
@@ -38971,7 +38976,7 @@ async function meosTableFromSelection(editor) {
   try { meosDbg('[tblSel] 行=' + s0 + '〜' + e0 + ' タブ行=' + raw.filter(l => l.indexOf('\t') >= 0).length + '/' + raw.length + ' → ' + (rows ? rows.length + '×' + rows[0].length : '表にしない')); } catch (_) { }   // v4.2.545
   if (!rows) return false;
   const indent = (raw.find(l => l.trim() !== '').match(/^[ ]*/) || [''])[0];
-  const out = meosTableMdFromRows(rows, indent);
+  const out = meosTableMdFromRows(rows, indent, doc);
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, new vscode.Range(s0, 0, e0, doc.lineAt(e0).text.length), out.join('\n'));
   await vscode.workspace.applyEdit(we);
