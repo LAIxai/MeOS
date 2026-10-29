@@ -44048,7 +44048,7 @@ function meosFusenColorOf(t) {   // 印の後ろの (字/地) から付箋の色
   const c = m[1].toLowerCase(); return (c === 'pink' || c === '桃') ? 'pink' : (c === 'blue' || c === '青') ? 'blue' : 'yellow';
 }
 function meosFusenColorNow() { try { const c = extensionContext.globalState.get('meosFusenColor', 'yellow'); return MEOS_FUSEN_COLORS[c] ? c : 'yellow'; } catch (_) { return 'yellow'; } }   // 最後に選んだ色(最後に指定したのが出る)
-function meosFusenColorSpec(c) { return (c && c !== 'yellow') ? ' (/' + c + ')' : ''; }   // 黄は書かない(今までの付箋と同じ姿)
+function meosFusenColorSpec(c) { return ' (/' + (MEOS_FUSEN_COLORS[c] ? c : 'yellow') + ')'; }   // ★v5.1.317(俊克 am01:39 バグ1「CB付箋を作ると、UFCに色指定が入らない」): 黄も書く= 書き換える所が見える。読む側は書いていない古い付箋を黄とみなす
 const _fencePaperCapTypes = new Map();   // '桁|役|段|色' → 字の側の紙
 function meosFencePaperCapType(w, kind, rows, color) {
   const _pc = (MEOS_FUSEN_COLORS[color] || MEOS_FUSEN_COLORS.yellow).paper;
