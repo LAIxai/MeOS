@@ -13952,6 +13952,7 @@ function meosMenuBarPick(id) {
     if (id === 'helper') { const c = vscode.workspace.getConfiguration('laiMembrane'); c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); return; }   // v4.2.311 改良2
     if (id === 'tags') { meosOpenTagGo(); return; }
     if (id === 'timers') { meosOpenTimerDb(); return; }   // v5.1.92
+    if (id.startsWith('fusen:')) { meosFusenGo(id.slice(6)); return; }   // v5.1.305
     if (id === 'launchd') { meosLaunchDOpen(); return; }   // v5.0.0-59: メニューバーの 🌅 Wake
     if (id === 'quitvhelper' || id === 'quithelper') { meosVHelperSet(false); return; }   // v4.2.364
     if (id === 'quitapp') { vscode.commands.executeCommand('workbench.action.quit'); return; }   // v4.2.363: Dock の「終了」と同じ(ヘルパーは残る)
@@ -13978,6 +13979,43 @@ function meosMenuBarPick(id) {
 // 命の無い常の段(命入りの段の下に付く)= 一覧と、命文の子メニュー
 // ★v4.2.208(俊克「Raw on/off メニューは、on/offのどっちかを赤文字で示せないか?」):
 //   今の状態(カーソルの膜の meosViewMode)の方を赤。★v4.2.209(俊克「赤色は少しぼやけて見える。ハイライト赤/白色文字に」)= 赤の地にする。毎回作るので、切り替えると次の拍で色も移る。
+// ★★v5.1.305(俊克 10.29 pm03:56「付箋を時間順に直近の10件だけ、メニューバーに出そう。これで本当の付箋の実力を発揮できる」):
+//   FUSEN= 説明の行に FUSEN_<日時> の印を持つコードブロック(v5.1.304)。開いている markdown の文書から印の新しい順に10件。
+//   題= 日時(月/日 時:分)＋見出し(``` の後ろ)か説明か中身の1行目。押すとその FUSEN へ飛ぶ。
+//   23MB の日記を毎拍読むと重い→ 文書の版が変わってから10秒に1回だけ数え直す(拍ごとには写しを返すだけ)。
+let _meosFusen = { list: [], key: '', at: 0 };
+function meosFusenList() {
+  try {
+    const docs = (vscode.workspace.textDocuments || []).filter(d => d && d.languageId === 'markdown' && !d.isClosed);
+    const key = docs.map(d => d.uri.toString() + '@' + d.version).join('|');
+    if (key === _meosFusen.key || (Date.now() - _meosFusen.at < 10000 && _meosFusen.key)) return _meosFusen.list;
+    const out = [];
+    for (const d of docs) {
+      const txt = d.getText(); if (txt.indexOf('FUSEN_') < 0) continue;
+      const lines = meosDocLines(d), blocks = meosFenceBlocks(d);
+      for (const b of blocks) {
+        const t = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+FUSEN_(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})\S*\s*(.*?)\s*-->/.exec(t);
+        if (!m) continue;
+        let body = ''; for (let i = b.open + 1; i < b.close; i++) { if ((lines[i] || '').trim()) { body = lines[i].trim(); break; } }
+        const label = b.info || m[7] || body || '(empty)';
+        out.push({ ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, title: m[2] + '/' + m[3] + ' ' + m[4] + ':' + m[5] + '  ' + (label.length > 30 ? label.slice(0, 29) + '\u2026' : label) });
+      }
+    }
+    out.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));
+    _meosFusen = { list: out.slice(0, 10), key, at: Date.now() };
+  } catch (_) { }
+  return _meosFusen.list;
+}
+async function meosFusenGo(ts) {   // 押した時に一覧が並べ替わっていても取り違えない= 順番でなく印の日時で引く
+  try {
+    const f = _meosFusen.list.find(x => x.ts === ts); if (!f) return;
+    const doc = await vscode.workspace.openTextDocument(f.uri);
+    const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
+    const p = new vscode.Position(f.line, 0);
+    ed.selection = new vscode.Selection(p, p);
+    ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter);
+  } catch (_) { }
+}
 function meosMenuBarTail() {
   let raw = false; try { raw = meosViewMode() === 'raw'; } catch (_) { }
   const rt = 'Raw on/off   (kakaka)';
@@ -13987,7 +14025,8 @@ function meosMenuBarTail() {
   const _rp = raw ? { pre: 'Raw ', pill: 'on', post: '\u2009/off   (kakaka)' } : { pre: 'Raw on/\u2009', pill: 'off', post: '   (kakaka)' };
   return [
     { sep: true }, { id: 'tags', title: 'Tag&Go' },   // v4.2.311: 1行だけ。押すと部屋を今の姿で開く
-    { id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL },   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
+    { id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL },
+    ...(function () { const fl = meosFusenList(); return fl.length ? [{ title: 'FUSEN', sub: fl.map(f => ({ id: 'fusen:' + f.ts, title: f.title })) }] : []; })(),   // v5.1.305: 直近10枚の FUSEN   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
     { sep: true }, { title: 'Spells', sub: [
       Object.assign({ id: 'raw', title: rt }, _rp), { id: 'dock', title: 'Me Dock open/close   (mememe)' },
