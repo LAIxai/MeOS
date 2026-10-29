@@ -43749,7 +43749,7 @@ const _meosColoredMarks = new Map();
 const MEOS_CODE_FILE_EXT_RE = /\.(?:js|mjs|cjs|ts|tsx|jsx|json|jsonl|md|mdx|txt|log|vsix|png|jpg|jpeg|gif|svg|webp|html|css|py|sh|zsh|yml|yaml|toml|diag|ips|plist|zip|pdf)$/i;
 const MEOS_CODE_SETTING_RE = /^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$/;
 const MEOS_CODE_VER_RE = /v?\d+\.\d+\.\d+/g;
-let codeHeadPillDeco = null, codeHeadPillMidDeco = null, codeHeadPillEndDeco = null, codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeCreamTextDeco = null, codeVerDeco = null;
+let codeHeadPillDeco = null, codeHeadPillMidDeco = null, codeHeadPillEndDeco = null, codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeCreamTextDeco = null, codeVerDeco = null, codeNoFastDeco = null;
 let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
@@ -43990,6 +43990,10 @@ function meosApplyCodeSpanDecorations(editor) {
     const doc = editor.document;
     if (!codeHideDeco) {
       codeHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      // ★v5.1.289(俊克 バグ1「橙ボタンで入れると、クリーム色の枠が右にズレる。なぜ?」): ASCII だけの行で、行の中に差し込み(before/after)が無いと、
+      //   Monaco は等幅の近道(JOe= 字数×1字の幅)で枠(className= 重ね描き)の位置を出す→ font-size:0 で消した ` の分だけ枠が右へずれる。
+      //   日本語の混じる行は近道を通らないso、ずれない(だから今まで出なかった)。→ 隠す字のある行の末尾に幅0の差し込みを1つ置き、近道を外す。
+      codeNoFastDeco = vscode.window.createTextEditorDecorationType({ after: { contentText: '\u200b', width: '0' } });
       const pill = (bg, bd) => ({ backgroundColor: bg, border: '1px solid ' + bd, borderRadius: '4px', color: new vscode.ThemeColor('editor.foreground'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       codePillDeco = vscode.window.createTextEditorDecorationType(pill('rgba(128,128,128,0.20)', 'rgba(128,128,128,0.50)'));
       codeSetDeco = vscode.window.createTextEditorDecorationType(pill('rgba(70,130,230,0.20)', 'rgba(70,130,230,0.60)'));
@@ -44022,7 +44026,7 @@ function meosApplyCodeSpanDecorations(editor) {
       codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important; -webkit-text-fill-color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
     }
     const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [], creamTx = [], heads300 = [], headsMid = [], headsEnd = [];
-    const put = () => { editor.setDecorations(codeHeadPillDeco, heads300); editor.setDecorations(codeHeadPillMidDeco, headsMid); editor.setDecorations(codeHeadPillEndDeco, headsEnd); editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeCreamTextDeco, creamTx); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
+    const put = () => { editor.setDecorations(codeHeadPillDeco, heads300); editor.setDecorations(codeHeadPillMidDeco, headsMid); editor.setDecorations(codeHeadPillEndDeco, headsEnd); editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeCreamTextDeco, creamTx); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); const nf = new Set(); for (const r of hide) if (r.end.character > r.start.character) nf.add(r.start.line); editor.setDecorations(codeNoFastDeco, [...nf].map(ln => { const n = doc.lineAt(ln).text.length; return new vscode.Range(ln, n, ln, n); })); };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const raw = meosRawLines(editor), fence = meosFenceLines(doc), lines = meosDocLines(doc);
     const vrs = meosScanSpans(editor, doc);
