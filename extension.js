@@ -44471,7 +44471,7 @@ function meosApplyCodeFenceDecorations(editor) {
           }
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
-            if (ln === b.open) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.lang || 'CB' } } });   // v5.1.291(俊克「コードブロックの見出しも CB とだけ」): 言語名が無い時の札 code→CB(Format Me のボタンの tip と同じ名)
+            if (ln === b.open && b.lang) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.lang } } });   // v5.1.291 code→CB → ★v5.1.302(俊克 pm03:06「CBと言うラベルも外して、付箋(sticky note)として使い易く。一般の人はこれを付箋として使えばいい」): 言語名が無い時は札を出さない(js 等を書いた時だけ出す)
             if (ln === b.open && b.close > b.open + 1 && _foldHead(ln)) folds.push(new vscode.Range(ln, t.length, ln, t.length));   // v5.1.49: 畳まれた板の頭
           } else if (t.length) inks.push(new vscode.Range(ln, 0, ln, t.length));
         }
