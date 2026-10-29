@@ -295,32 +295,38 @@ function run(argv) {
   //   V-helper(こちら)の build に教えていなかった= 題の無い群の項目で $(undefined) が投げてメニューごと作れず、拡張が居ない時の並びに落ちていた。
   //   → 同じ作りをこちらにも。群= 見出し＋常駐1＋5枠＋▲▼(メニューの中のボタン= 押しても閉じない)。
   const pagers = [];
+  const fusenFold = {};   // v5.1.312(俊克 改良2「CB FUSEN、IC FUSEN という部分をクリックすることで折り畳めるように」): 群の名前→畳んだか(作り直しても覚えている)
   const pgPaint = (p) => {
-    const rest = p.its.slice(1);
+    const f = !!fusenFold[p.name], rest = p.its.slice(1);
+    try { p.hb.title = $((f ? '▸ ' : '▾ ') + p.name); } catch (e) {}
+    p.pin.hidden = f || !p.its[0];
     for (let k = 0; k < p.slots.length; k++) { const it = rest[p.off + k], mi = p.slots[k];
-      if (it) { mi.title = $(it.title); mi.representedObject = $(it.id); mi.hidden = false; } else mi.hidden = true; }
+      if (it) { mi.title = $(it.title); mi.representedObject = $(it.id); } mi.hidden = f || !it; }
+    p.pi.hidden = f;
     const pages = Math.max(1, Math.ceil(rest.length / 5)), cur = Math.floor(p.off / 5) + 1;
     try { p.up.enabled = p.off > 0; p.dn.enabled = p.off + 5 < rest.length; p.lab.stringValue = $(cur + ' / ' + pages); } catch (e) {}
   };
   ObjC.registerSubclass({ name: 'MeOSPagerH', methods: {
     'pgUp:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off > 0) { p.off -= 5; pgPaint(p); } } catch (e) {} } },
-    'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); } } catch (e) {} } } } });
+    'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); } } catch (e) {} } },
+    'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
+  // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
   function buildFusen(m, e) {
-    const hd = m.addItemWithTitleActionKeyEquivalent($(e.fusen), null, $('')); hd.enabled = false;
-    const its = e.items || [];
-    const add = (it, ind) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); else mi.hidden = true; mi.indentationLevel = ind; return mi; };
-    add(its[0], 1);   // v5.1.311(俊克「インデントされているのはなぜ?」): 常駐も5枠も同じ1段(Tag&Go の一覧と同じ)
-    const p = { its: its, slots: [], off: 0 };
-    for (let k = 0; k < 5; k++) p.slots.push(add(its[1 + k], 1));
-    if (its.length > 0) {   // v5.1.311(俊克「スライドボタンは出ない」): 枚数が少なくても出す(送れない時は押せない姿)
-      const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 220, 26));
-      p.up = $.NSButton.buttonWithTitleTargetAction($('▲'), pgt, 'pgUp:'); p.up.frame = $.NSMakeRect(36, 2, 40, 22); p.up.tag = pagers.length; v.addSubview(p.up);
-      p.dn = $.NSButton.buttonWithTitleTargetAction($('▼'), pgt, 'pgDn:'); p.dn.frame = $.NSMakeRect(80, 2, 40, 22); p.dn.tag = pagers.length; v.addSubview(p.dn);
-      p.lab = $.NSTextField.labelWithString($('')); p.lab.frame = $.NSMakeRect(128, 5, 80, 16); v.addSubview(p.lab);
-      const pi = $.NSMenuItem.alloc.init; pi.view = v; m.addItem(pi);
-      pagers.push(p); pgPaint(p);
-    }
+    const its = e.items || [], p = { name: e.fusen, its: its, slots: [], off: 0 };
+    const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
+    p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
+    p.hb.frame = $.NSMakeRect(14, 1, 220, 20); p.hb.tag = pagers.length; hv.addSubview(p.hb);
+    const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd);
+    const add = (it) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); mi.indentationLevel = 1; return mi; };
+    p.pin = add(its[0]);
+    for (let k = 0; k < 5; k++) p.slots.push(add(its[1 + k]));
+    const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 220, 26));
+    p.up = $.NSButton.buttonWithTitleTargetAction($('▲'), pgt, 'pgUp:'); p.up.frame = $.NSMakeRect(36, 2, 40, 22); p.up.tag = pagers.length; v.addSubview(p.up);
+    p.dn = $.NSButton.buttonWithTitleTargetAction($('▼'), pgt, 'pgDn:'); p.dn.frame = $.NSMakeRect(80, 2, 40, 22); p.dn.tag = pagers.length; v.addSubview(p.dn);
+    p.lab = $.NSTextField.labelWithString($('')); p.lab.frame = $.NSMakeRect(128, 5, 80, 16); v.addSubview(p.lab);
+    p.pi = $.NSMenuItem.alloc.init; p.pi.view = v; m.addItem(p.pi);
+    pagers.push(p); pgPaint(p);
     return hd;
   }
   // ★v4.2.499(俊克「メニューバーからプルダウンした中に表示されるタイマーたちもリアルタイムに残時間を表示するように」):
