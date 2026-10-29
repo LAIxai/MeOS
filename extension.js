@@ -31349,7 +31349,7 @@ body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 .format-tools .fmt-btns{display:flex;gap:6px}
 .fmt-cell{display:inline-flex;align-items:stretch}
 .fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}
-.fmt-cell #fmt-code{border-radius:6px;border:1px solid #cbb98c;background:#f3e6c4;color:#3b3020;font-size:14px;width:28px;min-width:28px;padding:0;box-sizing:border-box;display:inline-flex;justify-content:center;align-items:flex-start;line-height:1.1}.fmt-cell #fmt-code:hover{background:#ead9ab}.fmt-code-cell .fmt-lvl{top:auto;bottom:0;right:-6px}.fmt-cell #fmt-code.fmt-remove{align-items:center;font-size:14px}   /* v5.1.282(俊克 am09:16 改良1「↻ボタンを右腰に移動しよう」): 下辺の真ん中→右腰(V-helperの右腰の輪 .vh-ring と同じ bottom:-6px)→ v5.1.283(am09:19 改良2「左右は今のまま、下端がクリーム色の下端と一致する位置まで」)= bottom:0。🚫の時は字を上寄せでなく真ん中に *//* v5.1.281(俊克 10.29 am09:07 改良1「表示と同じクリーム色のボタンに・幅をできるだけ狭く・上付きの文字なのでボタンの下が空いている→↻をそこに食い込ませる」): 地と字はインラインコードの板と同じ #f3e6c4/#cbb98c/#3b3020・幅はブロックの3つ並び(字25.3px＋枠2px)が収まる28pxで固定(↻で面が替わってもずれない)・字は上に寄せ、空いた下の真ん中に↻ */
+.fmt-cell #fmt-code{border-radius:6px;border:1px solid #cbb98c;background:#f3e6c4;color:#3b3020;font-size:14px;width:28px;min-width:28px;padding:0;box-sizing:border-box;display:inline-flex;justify-content:center;align-items:flex-start;line-height:1.1}.fmt-cell #fmt-code:hover{background:#ead9ab}.fmt-code-cell .fmt-lvl{top:auto;bottom:0;right:-6px}.fmt-cell #fmt-code{letter-spacing:-2.5px;padding:3px 3px 0 0}.fmt-cell #fmt-code.fmt-remove{align-items:center;font-size:14px;letter-spacing:0;padding:0}.fmt-cell #fmt-code.fmt-remove::before{top:-1px}   /* v5.1.284(俊克 am09:30 改良1「3つ並んだ字を詰める・上に詰まり過ぎなので少し下へ・1つの方も下へ」改良2「🚫を上の印の高さに近づけるように少し上へ= コードの印を禁止している感じ」): 字間-2.5px(バッククォートの字は左上に寄った形so、右に3pxの余白で真ん中に見せる)・上に3px・🚫は家の🚫(1px下)より2px上 */   /* v5.1.282(俊克 am09:16 改良1「↻ボタンを右腰に移動しよう」): 下辺の真ん中→右腰(V-helperの右腰の輪 .vh-ring と同じ bottom:-6px)→ v5.1.283(am09:19 改良2「左右は今のまま、下端がクリーム色の下端と一致する位置まで」)= bottom:0。🚫の時は字を上寄せでなく真ん中に *//* v5.1.281(俊克 10.29 am09:07 改良1「表示と同じクリーム色のボタンに・幅をできるだけ狭く・上付きの文字なのでボタンの下が空いている→↻をそこに食い込ませる」): 地と字はインラインコードの板と同じ #f3e6c4/#cbb98c/#3b3020・幅はブロックの3つ並び(字25.3px＋枠2px)が収まる28pxで固定(↻で面が替わってもずれない)・字は上に寄せ、空いた下の真ん中に↻ */
 .fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:var(--meos-hand);border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}
 .fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-caret{background:#fff;color:#333}.fmt-caret:hover{background:#ffe9c7;color:#333}   /* ★v4.2.662(俊克 改良2「Format Me系の▼ボタンだけ白地になっていないのも地味。ファイル名ボタンのところも」): ▾は白地に黒 */
@@ -43903,7 +43903,7 @@ function meosCodeAtCursor(editor) {
   if (sel.start.line === sel.end.line) {
     const L = sel.active.line, line = doc.lineAt(L).text;
     if (line.indexOf('`') >= 0) {
-      const re = /(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g; let m;
+      const re = /(?<!`)(`+)(?!`)([^`]|[^`][\s\S]*?[^`])(?<!`)\1(?!`)/g; let m;   // v5.1.284: 板を描く所と同じく、` の並びは丸ごと1つ
       const s = sel.start.character, e = sel.end.character;
       while ((m = re.exec(line))) {
         const o = m.index, c = m.index + m[0].length;
@@ -44021,7 +44021,7 @@ function meosApplyCodeSpanDecorations(editor) {
     for (const vr of vrs) for (let ln = vr[0]; ln <= vr[1]; ln++) {
       const text = lines[ln]; if (!text || text.indexOf('`') < 0 || raw.has(ln) || fence.has(ln)) continue;
       _curTxt = text;
-      const re = /(`+)([^\n]*?[^`\n][^\n]*?)\1(?!`)/g; let m;
+      const re = /(?<!`)(`+)(?!`)([^\n]*?[^`\n][^\n]*?)(?<!`)\1(?!`)/g; let m;   // ★v5.1.284(俊克 バグ1「` ``` ` が正しく表示されない」): ` の並びは丸ごと1つ(CommonMark)= ``` の3連を途中で割って1個で開いたり閉じたりしない(割ると ``` ` が `` の板になった)
       while ((m = re.exec(text)) !== null) {
         const s = m.index, n = m[1].length, e = s + m[0].length, cs = s + n, ce = e - n;
         if (s > 0 && text[s - 1] === '`') continue;
