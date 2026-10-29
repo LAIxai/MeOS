@@ -45658,6 +45658,24 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973
+  // ★v5.1.300(俊克 pm02:12 改良1「そこをクリックした時に、文字カーソルはそこ(閉じの ``` の行)に出たら駄目。FCの中に出るように」):
+  //   説明の1行目/見せかけの字は閉じの行の飾り= 押すとカーソルは閉じの行に落ちる→ マウスで押した時だけ説明の行の中へ運ぶ(空なら間・有れば字の後ろ)。
+  //   キーボードで通る時は運ばない(上下の矢印で閉じ込めない)。
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
+    try {
+      if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
+      const ed = e.textEditor, sel = ed && ed.selection; if (!sel || !sel.isEmpty) return;
+      const doc = ed.document; if (!meosIsProseDoc(doc)) return;
+      const ln = sel.active.line, t = doc.lineAt(ln).text; if (!/^[ \t]{0,3}`{3,}[ \t]*$/.test(t)) return;
+      const blk = meosFenceBlocks(doc).find(b => b.close === ln); if (!blk || ln + 1 >= doc.lineCount) return;
+      const nx = doc.lineAt(ln + 1).text, cap = meosFenceCaption(meosDocLines(doc), blk);
+      let col = -1;
+      if (cap) col = cap.end;
+      else { const m = /^(\s*<!--\s*Mew!UFC)(\s*)-->\s*$/.exec(nx); if (m) col = m[1].length + Math.min(1, m[2].length); }
+      if (col < 0) return;
+      const p = new vscode.Position(ln + 1, col); ed.selection = new vscode.Selection(p, p);
+    } catch (_) { }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.encryptMembrane', () => encryptCurrentMembrane())); // v0.9.999
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.unlockMembrane', () => unlockCurrentMembrane())); // v0.9.999
   meosVaultActivate(context); // v5.1.0: 🔐暗号の仮想化(meos-vault: の入口)
