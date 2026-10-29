@@ -312,9 +312,19 @@ function run(argv) {
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r);
     p.hb.attributedTitle = a; } catch (e) {} };
+  // ★v5.1.321(俊克 am02:47 改良1「FUSEN という全体ラベルを ⏰0y… の下に入れ、間に罫線。FUSEN をクリックすると付箋すべてを折り畳める」):
+  //   全体の見出し= 群と同じ「メニューの中のボタン」(押しても閉じない)。畳むと群の見出しも中身も、CB と IC の間の区切りも隠す。群ごとの畳みは覚えたまま
+  const fusenAll = { hb: null, seps: [] };
+  const allTitle = () => { try { if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + 'FUSEN')); const r = $.NSMakeRange(0, a.length);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r);
+    fusenAll.hb.attributedTitle = a; } catch (e) {} };
   const pgPaint = (p) => {
-    const f = !!fusenFold[p.name], rest = p.its.slice(1);
-    pgTitle(p, f);
+    const A = !!fusenFold['\u0000all'];
+    try { p.hd.hidden = A; } catch (e) {}
+    const f = A || !!fusenFold[p.name], rest = p.its.slice(1);
+    pgTitle(p, !!fusenFold[p.name]);
     p.pin.hidden = f || !p.its[0];
     for (let k = 0; k < p.slots.length; k++) { const it = rest[p.off + k], mi = p.slots[k];
       if (it) { mi.title = $(it.title); mi.representedObject = $(it.id); } mi.hidden = f || !it; }
@@ -325,7 +335,8 @@ function run(argv) {
   ObjC.registerSubclass({ name: 'MeOSPagerH', methods: {
     'pgUp:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off > 0) { p.off -= 5; pgPaint(p); } } catch (e) {} } },
     'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); } } catch (e) {} } },
-    'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } } } });
+    'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } },
+    'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
   function buildFusen(m, e) {
@@ -334,7 +345,7 @@ function run(argv) {
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
     try { const k = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'); if (!(k in fusenIcons)) { const h = parseInt(k.slice(1), 16); fusenIcons[k] = fusenIcon(rgb((h >> 16) & 255, (h >> 8) & 255, h & 255)); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
     p.hb.frame = $.NSMakeRect(14, 1, 220, 20); p.hb.tag = pagers.length; hv.addSubview(p.hb);
-    const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd);
+    const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); p.hd = hd;
     const add = (it) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); mi.indentationLevel = 1; return mi; };
     p.pin = add(its[0]);
     for (let k = 0; k < 5; k++) p.slots.push(add(its[1 + k]));
@@ -343,7 +354,14 @@ function run(argv) {
     p.dn = $.NSButton.buttonWithTitleTargetAction($('▼'), pgt, 'pgDn:'); p.dn.frame = $.NSMakeRect(80, 2, 40, 22); p.dn.tag = pagers.length; v.addSubview(p.dn);
     p.lab = $.NSTextField.labelWithString($('')); p.lab.frame = $.NSMakeRect(128, 5, 80, 16); v.addSubview(p.lab);
     p.pi = $.NSMenuItem.alloc.init; p.pi.view = v; m.addItem(p.pi);
-    pagers.push(p); pgPaint(p);
+    pagers.push(p); pgPaint(p); allTitle();
+    return hd;
+  }
+  function buildFusenAll(m) {   // v5.1.321: 全体の見出し
+    const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
+    fusenAll.hb = $.NSButton.buttonWithTitleTargetAction($('FUSEN'), pgt, 'pgAll:'); fusenAll.hb.bordered = false; fusenAll.hb.alignment = 0;
+    fusenAll.hb.frame = $.NSMakeRect(14, 1, 220, 20); hv.addSubview(fusenAll.hb);
+    const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); allTitle();
     return hd;
   }
   // ★v4.2.499(俊克「メニューバーからプルダウンした中に表示されるタイマーたちもリアルタイムに残時間を表示するように」):
@@ -354,7 +372,8 @@ function run(argv) {
     const m = $.NSMenu.alloc.init; m.autoenablesItems = false;
     const its = [];
     for (const e of entries) {
-      if (e.sep) { m.addItem($.NSMenuItem.separatorItem); its.push(null); continue; }
+      if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
+      if (e.fusenAll) { try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
       if (e.fusen) { try { its.push(buildFusen(m, e)); } catch (x) { its.push(null); } continue; }   // v5.1.310
       if (e.title == null) { its.push(null); continue; }   // v5.1.310: 知らない形の項目でメニューごと落とさない
       const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));
@@ -477,7 +496,7 @@ function run(argv) {
     if (idle) text = '\u23f0';
     item.visible = true;
     const mj = JSON.stringify(menu || []);
-    if (mj !== lastMenu && !tracking()) { lastMenu = mj; pagers.length = 0; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; }
+    if (mj !== lastMenu && !tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; }
     else if (mj !== lastMenu) {   // v4.2.499: 開いている間= 並びが同じなら字だけ差し替える
       const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' : ((e.id || '') + (e.sub ? '>' : ''))).join('|');
       if (nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {
