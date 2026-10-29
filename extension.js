@@ -36619,7 +36619,7 @@ function toggleMeDock(editorOverride) {
     }
     // v0.9.999150: Me Dock の表整形ボタン(▦)。カーソル行のGFMテーブルを桁揃え。
     // v5.1.280: Format Me の ` / ``` ボタン(↻ で切り替えた方を覚えておく)
-    if (message && message.type === 'fmtCode') { const _ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (message.lit) await meosPutCodeLiteral(_ed, Number(message.lit)); else await meosFormatCode(_ed, !!message.fence, !!message.remove); return; }
+    if (message && message.type === 'fmtCode') { const _ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (message.lit) await meosPutCodeLiteral(_ed, Number(message.lit)); else await meosFormatCode(_ed, !!message.fence, !!message.remove); if (_ed) await meosFocusBack(_ed, _ed.selection); return; }   // v5.1.298(俊克 改良1「選択状態のコメントをそのまま打てるように、エディターにフォーカス」): 他の Format ボタンと同じ= 飛ばさずに焦点だけ戻す
     if (message && message.type === 'fmtCodeMode') { try { extensionContext.globalState.update('fmtCodeMode', Math.max(0, Math.min(3, Number(message.mode) || 0))); } catch (_) {} return; }   // v5.1.286: fmtCodeFence(真偽)の後継= 0〜3
     if (message && message.type === 'formatTable') {
       await meosFormatTableAtCursor(getMeDockTargetEditor() || vscode.window.activeTextEditor);
