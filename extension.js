@@ -29890,6 +29890,7 @@ function updateMeDockMode() {
       // v4.0.0(俊克): 太字/斜体・上付/下付にも🚫解除。カーソルが既存装飾の中なら'deco'(ボタンが🚫に化ける)。
       if (boldSpanAtCursor(editor)) fmtCtx.bold = 'deco'; else if (!_empty) fmtCtx.bold = 'sel';
       if (metexSpanAtCursor(editor)) fmtCtx.metex = 'deco'; else if (!_empty) fmtCtx.metex = 'sel';
+      fmtCtx.code = meosCodeAtCursor(editor) ? 'deco' : 'none';   // v5.1.283: ` / ``` の中なら🚫
     }
   } catch (_) {}
   meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn(), headNav: headNavStateForEditor(editor), markNav: markNavStateForEditor(editor), inMembrane: !!findCurrentPair(editor), refEdit, fmtCtx, fmtCur: fmtCtx ? fmtCtx.__cur : null, warn: (editor ? meosWarningEnds(editor.document) : []), tableWrap: meosTableWrapStateAtCursor(editor), tableAutoCalc: meosTableAutoCalc() });
@@ -31348,7 +31349,7 @@ body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 .format-tools .fmt-btns{display:flex;gap:6px}
 .fmt-cell{display:inline-flex;align-items:stretch}
 .fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}
-.fmt-cell #fmt-code{border-radius:6px;border:1px solid #cbb98c;background:#f3e6c4;color:#3b3020;font-size:14px;width:28px;min-width:28px;padding:0;box-sizing:border-box;display:inline-flex;justify-content:center;align-items:flex-start;line-height:1.1}.fmt-cell #fmt-code:hover{background:#ead9ab}.fmt-code-cell .fmt-lvl{top:auto;bottom:-6px;right:-6px}   /* v5.1.282(俊克 am09:16 改良1「↻ボタンを右腰に移動しよう」): 下辺の真ん中→右腰(V-helperの右腰の輪 .vh-ring と同じ bottom:-6px) *//* v5.1.281(俊克 10.29 am09:07 改良1「表示と同じクリーム色のボタンに・幅をできるだけ狭く・上付きの文字なのでボタンの下が空いている→↻をそこに食い込ませる」): 地と字はインラインコードの板と同じ #f3e6c4/#cbb98c/#3b3020・幅はブロックの3つ並び(字25.3px＋枠2px)が収まる28pxで固定(↻で面が替わってもずれない)・字は上に寄せ、空いた下の真ん中に↻ */
+.fmt-cell #fmt-code{border-radius:6px;border:1px solid #cbb98c;background:#f3e6c4;color:#3b3020;font-size:14px;width:28px;min-width:28px;padding:0;box-sizing:border-box;display:inline-flex;justify-content:center;align-items:flex-start;line-height:1.1}.fmt-cell #fmt-code:hover{background:#ead9ab}.fmt-code-cell .fmt-lvl{top:auto;bottom:0;right:-6px}.fmt-cell #fmt-code.fmt-remove{align-items:center;font-size:14px}   /* v5.1.282(俊克 am09:16 改良1「↻ボタンを右腰に移動しよう」): 下辺の真ん中→右腰(V-helperの右腰の輪 .vh-ring と同じ bottom:-6px)→ v5.1.283(am09:19 改良2「左右は今のまま、下端がクリーム色の下端と一致する位置まで」)= bottom:0。🚫の時は字を上寄せでなく真ん中に *//* v5.1.281(俊克 10.29 am09:07 改良1「表示と同じクリーム色のボタンに・幅をできるだけ狭く・上付きの文字なのでボタンの下が空いている→↻をそこに食い込ませる」): 地と字はインラインコードの板と同じ #f3e6c4/#cbb98c/#3b3020・幅はブロックの3つ並び(字25.3px＋枠2px)が収まる28pxで固定(↻で面が替わってもずれない)・字は上に寄せ、空いた下の真ん中に↻ */
 .fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:var(--meos-hand);border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}
 .fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-caret{background:#fff;color:#333}.fmt-caret:hover{background:#ffe9c7;color:#333}   /* ★v4.2.662(俊克 改良2「Format Me系の▼ボタンだけ白地になっていないのも地味。ファイル名ボタンのところも」): ▾は白地に黒 */
@@ -34422,7 +34423,7 @@ window.__renderMew=function(n){const b=document.getElementById('mew-btn');if(!b)
 /* v4.0.106: 点灯は「印を出している間」だけ。数字は消灯中でも出す(何個あるかは常に分かる)。 */
 b.classList.toggle('on',c>0);/* v4.0.111(俊克): 点灯=直すものが在る合図。5秒(reveal)はガターの話so混ぜない */const s=document.getElementById('mew-n');
 if(s)s.textContent=c>0?String(c):'';};
-/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96);var fence=(b.textContent===Q+Q+Q);function paint(){b.textContent=fence?Q+Q+Q:Q;b.setAttribute('data-tip',fence?'Code block | Wraps the selected lines (or the caret line) in '+Q+Q+Q+' lines · on an empty line it puts an empty block · caret inside a block → removes the two '+Q+Q+Q+' lines · ↻ switches to '+Q+' inline code':'Inline code | Wraps the selection: '+Q+'text'+Q+' · nothing selected → '+Q+Q+' with the caret between · caret inside '+Q+'…'+Q+' → removes it · ↻ switches to '+Q+Q+Q+' code block');}b.addEventListener('click',function(){vscode.postMessage({type:'fmtCode',fence:fence});});if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();fence=!fence;paint();vscode.postMessage({type:'fmtCodeFence',on:fence});});})();
+/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96);var fence=(b.textContent===Q+Q+Q);window.__codeFace=paint;function paint(){if(window.__fmtActionable&&window.__fmtActionable.code){b.textContent='';b.classList.add('fmt-remove');b.setAttribute('data-tip','Remove code | The caret is inside inline code or a code block → click to take the backticks off');return;}b.classList.remove('fmt-remove');b.textContent=fence?Q+Q+Q:Q;b.setAttribute('data-tip',fence?'Code block | Wraps the selected lines (or the caret line) in '+Q+Q+Q+' lines · on an empty line it puts an empty block · caret inside a block → removes the two '+Q+Q+Q+' lines · ↻ switches to '+Q+' inline code':'Inline code | Wraps the selection: '+Q+'text'+Q+' · nothing selected → '+Q+Q+' with the caret between · caret inside '+Q+'…'+Q+' → removes it · ↻ switches to '+Q+Q+Q+' code block');}b.addEventListener('click',function(){vscode.postMessage({type:'fmtCode',fence:fence,remove:!!(window.__fmtActionable&&window.__fmtActionable.code)});});if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();fence=!fence;paint();vscode.postMessage({type:'fmtCodeFence',on:fence});});})();
 const fmtTableBtn=document.getElementById('fmt-table');if(fmtTableBtn)fmtTableBtn.addEventListener('click',()=>vscode.postMessage({type:'formatTable'}));(function(){const ft=document.getElementById('format-tools');if(!ft)return;const tc=ft.querySelector('.fmt-table-cell'),ww=ft.querySelector('.ww-cell:not(.os-cell)');if(!tc||!ww)return;let tm=null;const off=()=>{clearTimeout(tm);tm=setTimeout(()=>{if(!tc.matches(':hover')&&!ww.matches(':hover'))ft.classList.remove('tbl-big');},500);};tc.addEventListener('mouseenter',()=>{clearTimeout(tm);ft.classList.add('tbl-big');});tc.addEventListener('mouseleave',off);ww.addEventListener('mouseenter',()=>{if(ft.classList.contains('tbl-big'))clearTimeout(tm);});ww.addEventListener('mouseleave',()=>{if(ft.classList.contains('tbl-big'))off();});})();   /* v5.1.191: 表が2倍の間だけ折り返しボタンを右へ(印 .tbl-big)= ずれた折り返しボタンに乗っている間は保ち、どちらにも居ない状態が0.5秒続いたら戻す */
 /* v0.9.999150: 表整形ボタン */
 const fmtTableCaret=document.getElementById('fmt-table-caret'),tablePop=document.getElementById('table-pop');function closeTablePop(){if(typeof closeClkPop==='function')closeClkPop();if(tablePop)tablePop.classList.remove('on');
@@ -35576,7 +35577,7 @@ if(typeof window.__renderWarn==='function')window.__renderWarn(m.warn);   /* v4.
 const _nowDeco=(_c==='deco');if(_nowDeco){if(!window.__fmtActionable[_k]){window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=meosFmtBaseFromCur(_k,m.fmtCur&&m.fmtCur[_k]);
 }window.__fmtActionable[_k]=true;}else{window.__fmtActionable[_k]=false;window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=2;
 }if(typeof window.__renderFmtRing==='function')window.__renderFmtRing(_k);}}/* v4.0.0(俊克): 太字/斜体・上付/下付もfmtCtxで🚫化(3兄弟と同じ流儀) */if((Number(document.body.dataset.phase||1))>=4&&m.fmtCtx){window.__fmtActionable.bold=(m.fmtCtx.bold==='deco');
-{var _wasM=window.__fmtActionable.metex;window.__fmtActionable.metex=(m.fmtCtx.metex==='deco');if(_wasM!==window.__fmtActionable.metex)window.__mtxTouched=false;}/* v4.2.701: 入った/出た時は 🚫 から */if(typeof mbFace==='function')mbFace();if(typeof mtxFace==='function')mtxFace();
+{var _wasM=window.__fmtActionable.metex;window.__fmtActionable.metex=(m.fmtCtx.metex==='deco');if(_wasM!==window.__fmtActionable.metex)window.__mtxTouched=false;}window.__fmtActionable.code=(m.fmtCtx.code==='deco');if(typeof window.__codeFace==='function')window.__codeFace();/* v5.1.283: コードボタンも中にいれば🚫 *//* v4.2.701: 入った/出た時は 🚫 から */if(typeof mbFace==='function')mbFace();if(typeof mtxFace==='function')mtxFace();
 }window.__navOnly=null;if(window.__editTsRefresh){window.__editTsRefresh=false;if(input){input.focus();const v=input.value;
 const i=v.lastIndexOf('_');if(i>=0)input.setSelectionRange(i+1,v.length);else input.select();}}}if(m&&m.type==='setLineValue'&&lineInput){lineInput.value=String(m.value||'');
 currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(m&&m.type==='tocChildren'){if(typeof window.renderTocChildPop==='function')window.renderTocChildPop(m.children||[],m.centerIndex);
@@ -36613,7 +36614,7 @@ function toggleMeDock(editorOverride) {
     }
     // v0.9.999150: Me Dock の表整形ボタン(▦)。カーソル行のGFMテーブルを桁揃え。
     // v5.1.280: Format Me の ` / ``` ボタン(↻ で切り替えた方を覚えておく)
-    if (message && message.type === 'fmtCode') { await meosFormatCode(getMeDockTargetEditor() || vscode.window.activeTextEditor, !!message.fence); return; }
+    if (message && message.type === 'fmtCode') { await meosFormatCode(getMeDockTargetEditor() || vscode.window.activeTextEditor, !!message.fence, !!message.remove); return; }
     if (message && message.type === 'fmtCodeFence') { try { extensionContext.globalState.update('fmtCodeFence', !!message.on); } catch (_) {} return; }
     if (message && message.type === 'formatTable') {
       await meosFormatTableAtCursor(getMeDockTargetEditor() || vscode.window.activeTextEditor);
@@ -43895,19 +43896,47 @@ function meosFenceLines(doc) {
 //   ` = 選んだ字を `…` で包む(何も選んでいなければ `` を置いて間にカーソル)・カーソルが `…` の中なら外す。
 //   ``` = 選んだ行(無ければカーソルの行)を ``` の行で挟む・カーソルが囲いの中なら開きと閉じの2行を消す。
 //   囲いの判定は meosFenceBlocks 1つ(板を描く所と同じ答え)→ [[feedback_one_source_for_mark_count_action]]
-async function meosFormatCode(editor, fence) {
+// v5.1.283: カーソルがどのコードの中か(🚫を出す判定と外す所の1つの答え)= 先に `…`、無ければ囲い。
+function meosCodeAtCursor(editor) {
+  if (!editor || !editor.document) return null;
+  const doc = editor.document, sel = editor.selection;
+  if (sel.start.line === sel.end.line) {
+    const L = sel.active.line, line = doc.lineAt(L).text;
+    if (line.indexOf('`') >= 0) {
+      const re = /(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g; let m;
+      const s = sel.start.character, e = sel.end.character;
+      while ((m = re.exec(line))) {
+        const o = m.index, c = m.index + m[0].length;
+        const inside = sel.isEmpty ? (o < s && s < c) : (o <= s && e <= c);   // 何も選んでいない時は板の端の外(` の手前/後ろ)を中に数えない
+        if (inside) return { kind: 'inline', L, o, c, n: m[1].length, inner: m[2] };
+      }
+    }
+  }
+  const ln = sel.active.line;
+  const blk = meosFenceBlocks(doc).find(b => b.open <= ln && ln <= b.close && b.ch === '`');
+  return blk ? { kind: 'fence', blk } : null;
+}
+async function meosFormatCode(editor, fence, remove) {
   if (!editor || !editor.document) return;
   const doc = editor.document, sel = editor.selection;
-  if (fence) {
-    const ln = sel.active.line;
-    const blk = meosFenceBlocks(doc).find(b => b.open <= ln && ln <= b.close);
-    if (blk) {   // 外す= 閉じを先に消してから開きを消す(行番号がずれない)
+  const at = meosCodeAtCursor(editor);
+  if (at && (remove || (at.kind === 'fence') === !!fence)) {
+    if (at.kind === 'fence') {   // 外す= 閉じを先に消してから開きを消す(行番号がずれない)
+      const blk = at.blk;
       await editor.edit(eb => {
         eb.delete(doc.lineAt(blk.close).rangeIncludingLineBreak);
         eb.delete(doc.lineAt(blk.open).rangeIncludingLineBreak);
       });
       return;
     }
+    let inner = at.inner;
+    if (at.n > 1 && /^ .* $/.test(inner)) inner = inner.slice(1, -1);   // `` ` `` の飾りの空白も外す
+    await editor.edit(eb => eb.replace(new vscode.Range(at.L, at.o, at.L, at.c), inner));
+    editor.selection = new vscode.Selection(new vscode.Position(at.L, at.o), new vscode.Position(at.L, at.o + inner.length));
+    return;
+  }
+  if (remove) return;
+  if (fence) {
     let a = sel.start.line, z = sel.end.line;
     if (z > a && sel.end.character === 0) z--;   // 行頭まで選んだ時は、その行は含めない
     const blank = (a === z && doc.lineAt(a).text.trim() === '');
@@ -43925,25 +43954,6 @@ async function meosFormatCode(editor, fence) {
     const p = new vscode.Position(a, indent.length + 3);   // 開きの ``` の後ろ= 言語名を書く所
     editor.selection = new vscode.Selection(p, p);
     return;
-  }
-  const line = doc.lineAt(sel.active.line).text;
-  if (sel.isEmpty || sel.start.line === sel.end.line) {
-    // 外す= カーソル(選択)を含む `…` を探す(同じ数の ` で閉じる・CommonMark のコードスパン)
-    const re = /(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g; let m;
-    const s = sel.start.character, e = sel.end.character;
-    while ((m = re.exec(line))) {
-      const o = m.index, c = m.index + m[0].length;
-      const inside = sel.isEmpty ? (o < s && s < c) : (o <= s && e <= c);   // 何も選んでいない時は板の端の外(` の手前/後ろ)を中に数えない
-      if (inside) {
-        const n = m[1].length;
-        let inner = m[2];
-        if (n > 1 && /^ .* $/.test(inner)) inner = inner.slice(1, -1);   // `` ` `` の飾りの空白も外す
-        const L = sel.active.line;
-        await editor.edit(eb => eb.replace(new vscode.Range(L, o, L, c), inner));
-        editor.selection = new vscode.Selection(new vscode.Position(L, o), new vscode.Position(L, o + inner.length));
-        return;
-      }
-    }
   }
   if (sel.isEmpty) {
     const p = sel.active;
