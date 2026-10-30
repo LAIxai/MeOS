@@ -308,8 +308,8 @@ function run(argv) {
     img.unlockFocus; return img; } catch (e) { return null; } };
   const fusenIcons = {};
   // ★v5.1.326(俊克 10.30 am10:26 改良2「畳んでいる時の▶を緑・開いている時の▼を水色に。赤は⏰があるから」): 見出しの三角だけ色を付ける(TAG・FUSEN・群の見出しの全部)
-  // v5.1.327(俊克 改良3「パステル調でなく原色の濃い色(青と緑)に」): system の緑/水色 → sRGB の濃い緑(0,153,0)と青(0,64,255)
-  const triCol = (a, f) => { try { a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.6, 0, 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1), $.NSMakeRange(0, 1)); } catch (e) {} };
+  // v5.1.327(俊克 改良3「パステル調でなく原色の濃い色(青と緑)に」): system の緑/水色 → sRGB の濃い緑(0,115,0 ← v5.1.329 俊克「もう少し暗め・濃い緑に」 0,153,0)と青(0,64,255)
+  const triCol = (a, f) => { try { a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.45, 0, 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1), $.NSMakeRange(0, 1)); } catch (e) {} };
   const pgTitle = (p, f) => { try {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), r);
