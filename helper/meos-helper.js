@@ -354,6 +354,8 @@ function run(argv) {
     tagAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.327(俊克 10.30 am10:40 改良4「TAG の … 14 more も、FUSEN の ▲ ▼ 1/2 のようにスライドできるように」): 札の見出しと膜の行を1本の並びにして TAG_PAGE 行ずつ・▲▼で送る(FUSEN の群と同じ、押しても閉じない)
   const TAG_PAGE = 10;
+  // ★v5.1.343(俊克 pm02:25「スライドボタンを連続で押せるように、ポインター位置を移動しよう」): 送るとページの行数が変わり▲▼が上下にずれる→ 描き直した後(0.05秒・メニューの中でも鳴る)、押したボタンの真ん中へポインターを運ぶ(TAG と FUSEN の群)
+  const ptrTo = (b) => { try { const t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'ptr:', b, false); $.NSRunLoop.currentRunLoop.addTimerForMode(t, $.NSRunLoopCommonModes); } catch (e) {} };
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
   //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
   const tagFold = {};
@@ -395,12 +397,13 @@ function run(argv) {
     try { p.up.enabled = p.off > 0; p.dn.enabled = p.off + 5 < rest.length; p.lab.stringValue = $(cur + ' / ' + pages); } catch (e) {}
   };
   ObjC.registerSubclass({ name: 'MeOSPagerH', methods: {
-    'pgUp:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off > 0) { p.off -= 5; pgPaint(p); } } catch (e) {} } },
-    'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); } } catch (e) {} } },
+    'pgUp:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off > 0) { p.off -= 5; pgPaint(p); ptrTo(s); } } catch (e) {} } },
+    'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); ptrTo(s); } } catch (e) {} } },
     'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } },
     'pgTag:': { types: ['void', ['id']], implementation: function (s) { try { tagAll.fold = !tagAll.fold; tagTitle(); tagPaint(); } catch (e) {} } },   // v5.1.325
-    'pgTagUp:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off > 0) { tagAll.off -= 1; tagPaint(); } } catch (e) {} } },   // v5.1.327
-    'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + 1 < (tagAll.pages || []).length) { tagAll.off += 1; tagPaint(); } } catch (e) {} } },   // v5.1.327
+    'ptr:': { types: ['void', ['id']], implementation: function (t) { try { const b = t.userInfo, w = b.window; if (!w || w.isNil()) return; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), H = $.NSScreen.screens.objectAtIndex(0).frame.size.height; $.CGWarpMouseCursorPosition({ x: r.origin.x + r.size.width / 2, y: H - (r.origin.y + r.size.height / 2) }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {} } },   // v5.1.343
+    'pgTagUp:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off > 0) { tagAll.off -= 1; tagPaint(); ptrTo(s); } } catch (e) {} } },   // v5.1.327
+    'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + 1 < (tagAll.pages || []).length) { tagAll.off += 1; tagPaint(); ptrTo(s); } } catch (e) {} } },   // v5.1.327
     'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = ((tagAll.pages || [])[tagAll.off] || [])[Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
