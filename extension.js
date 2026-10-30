@@ -14066,9 +14066,12 @@ async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっ�
     await meosFusenLand(f);
   } catch (_) { }
 }
-async function meosFusenLand(f) {   // v5.1.348: 付箋の場所(uri・種類・行・桁)へ着地する= メニューの行からも、閉じている時の V-helper の URL からも
+async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種類・行・桁)へ着地する= メニューの行からも、閉じている時の V-helper の URL からも
   try {
     const doc = await vscode.workspace.openTextDocument(f.uri);
+    // ★v5.1.349(俊克 10.31 am00:11 バグ1「VSCmが再起動後に、Line表示は選んだ付箋の行…しかし、エディター画面は違う場所」= 起動の時と同じ調整を):
+    //   起こした直後は、起動の「最後の行へ戻す」と同じく ⊖の畳み直しが終わるのを待ってから着地する(最長12秒)。
+    if (cold) for (let w = 0; w < 40 && !mstatsRestoreFinished.has(String(doc.uri)); w++) await new Promise(r => setTimeout(r, 300));
     if (f.line >= doc.lineCount) f = Object.assign({}, f, { line: Math.max(0, doc.lineCount - 1), ch: 0 });   // v5.1.348: 閉じている間に行が減っていても落ちない
     const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
     // ★v5.1.313(俊克 v5.1.312 バグ1「まだ Raw になってしまう」スクショ3= 紙の頭の行にカーソルが乗ると、その行だけ紙が今の行の色に覆われて生に見える):
@@ -14078,6 +14081,12 @@ async function meosFusenLand(f) {   // v5.1.348: 付箋の場所(uri・種類・
     setRefNoRaw(doc, _ln);   // v5.1.312(俊克 改良1「メニューバーからワープすると Raw になる。他でもやったように Raw にならないように」): 着地の一時抑止
     ed.selection = new vscode.Selection(p, p);
     ed.revealRange(new vscode.Range(new vscode.Position(f.line, 0), new vscode.Position(f.line, 0)), vscode.TextEditorRevealType.InCenter);
+    //   着地の後も、表の整形などで行の高さが変わると画面だけが別の所へ流れる(ログ= 着地 1.2秒後に表を整形→ 画面=158117〜160342・カーソル=165616)。
+    //   起こした時だけ 1/2/3.5/5秒 に見直し、カーソルが着地のままで画面の外なら上から5行目に見せ直す(カーソルを動かした=人が動かした時は触らない)。
+    if (cold) for (const ms of [1000, 2000, 3500, 5000]) setTimeout(async () => { try {
+      if (ed.document.isClosed || vscode.window.activeTextEditor !== ed || !ed.selection.isEmpty || ed.selection.active.line !== p.line || ed.selection.active.character !== p.character) return;
+      const c = p.line; if ((ed.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line)) return;
+      await meosRevealNearTop(ed, c); meosDbg('[fusenLand] ' + ms + 'ms 画面が流れた→ 上から5行目に見せ直した(行=' + (c + 1) + ')'); } catch (_) { } }, ms);
   } catch (_) { }
 }
 // ★v5.1.326(俊克 10.30 am10:26 改良1「VSCm を閉じている時だけ Tag のリストが出るのは意味不明。起動している間も TAG を出そう。最初は畳んだ状態で」):
@@ -45918,7 +45927,7 @@ function activate(context) {
           const q = new URLSearchParams(u.query || ''), f = { uri: vscode.Uri.parse(q.get('uri') || ''), k: q.get('k') || 'c', line: Number(q.get('line')) || 0, ch: Number(q.get('ch')) || 0 };
           meosDbg('[helper] fusen ' + q.get('uri') + ' L' + f.line);
           if (!_meosLastLineDone) meosLastLineFinish('付箋が先 → 戻さない');
-          await meosFusenLand(f); return;
+          await meosFusenLand(f, true); return;
         }
         if (!u || u.path !== '/warp') return;
         const q = new URLSearchParams(u.query || '');
