@@ -30544,6 +30544,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tile{position:relative}
 .md-tile.md-dot::after{content:'';position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}
 .md-tile.md-dot.md-last::after{background:#e53935}
+.md-tile.md-dot::before{content:'';position:absolute;left:0;right:0;top:100%;height:7px}   /* ★v5.1.324(俊克 10.30 am10:05 バグ1「今回からは Format Me を含めて、それより下が振動」): 白点(::after)は字の4px下に離れて付く。乗って字が2倍になる途中で点が下へ逃げ、ポインターが字と点の隙間に落ちる→外れて縮む→点が戻って乗る…の繰り返し(実機CDPで 0.1秒ごと)。そのたびに枠の40pxが伸び縮みし、322 までは錨でヘッダーが・323 からは下が揺れていた。→ 字と点の隙間を見えない当たりで埋める(字と一緒に拡大するので、どの大きさでも途切れない) */
 .md-tiles.md-armed .md-tile.md-last{transform:scale(2);z-index:6;position:relative}
 /* v5.1.267(俊克 am01:40 改良1「シフトを押すとパズルのtipが下の Format Me に被さる。⏰0y…の拡大のように、ヘッダーの四角枠を下へ引き伸ばす」): 構えている間はヘッダーの枠の下を広げる(⏰と同じ :has の作法) */
 header.title{transition:padding-bottom .15s ease}
