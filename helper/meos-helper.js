@@ -308,7 +308,8 @@ function run(argv) {
     img.unlockFocus; return img; } catch (e) { return null; } };
   const fusenIcons = {};
   // ★v5.1.326(俊克 10.30 am10:26 改良2「畳んでいる時の▶を緑・開いている時の▼を水色に。赤は⏰があるから」): 見出しの三角だけ色を付ける(TAG・FUSEN・群の見出しの全部)
-  const triCol = (a, f) => { try { a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.systemGreenColor : $.NSColor.systemCyanColor, $.NSMakeRange(0, 1)); } catch (e) {} };
+  // v5.1.327(俊克 改良3「パステル調でなく原色の濃い色(青と緑)に」): system の緑/水色 → sRGB の濃い緑(0,153,0)と青(0,64,255)
+  const triCol = (a, f) => { try { a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.6, 0, 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1), $.NSMakeRange(0, 1)); } catch (e) {} };
   const pgTitle = (p, f) => { try {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), r);
@@ -323,12 +324,20 @@ function run(argv) {
     a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
     fusenAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
-  const tagAll = { hb: null, rows: [], fold: true };
+  const tagAll = { hb: null, rows: [], fold: true, slots: [], list: [], off: 0, up: null, dn: null, lab: null, pi: null };
   const tagTitle = () => { try { if (!tagAll.hb) return;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.fold ? '\u25b8 ' : '\u25be ') + 'TAG')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, tagAll.rows.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, (tagAll.list.length || tagAll.rows.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold);
     tagAll.hb.attributedTitle = a; } catch (e) {} };
+  // ★v5.1.327(俊克 10.30 am10:40 改良4「TAG の … 14 more も、FUSEN の ▲ ▼ 1/2 のようにスライドできるように」): 札の見出しと膜の行を1本の並びにして TAG_PAGE 行ずつ・▲▼で送る(FUSEN の群と同じ、押しても閉じない)
+  const TAG_PAGE = 10;
+  const tagPaint = () => { try { const L = tagAll.list, F = tagAll.fold; if (tagAll.off >= L.length) tagAll.off = 0;
+    for (const mi of tagAll.rows) mi.hidden = F;
+    for (let k = 0; k < tagAll.slots.length; k++) { const it = L[tagAll.off + k], mi = tagAll.slots[k];
+      if (it) { mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = !it.off; mi.indentationLevel = it.indent || 0; } mi.hidden = F || !it; }
+    if (tagAll.pi) { tagAll.pi.hidden = F || L.length <= TAG_PAGE;
+      tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + TAG_PAGE < L.length; tagAll.lab.stringValue = $((Math.floor(tagAll.off / TAG_PAGE) + 1) + ' / ' + Math.max(1, Math.ceil(L.length / TAG_PAGE))); } } catch (e) {} };
   const pgPaint = (p) => {
     const A = !!fusenFold['\u0000all'];
     try { p.hd.hidden = A; } catch (e) {}
@@ -345,7 +354,9 @@ function run(argv) {
     'pgUp:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off > 0) { p.off -= 5; pgPaint(p); } } catch (e) {} } },
     'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); } } catch (e) {} } },
     'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } },
-    'pgTag:': { types: ['void', ['id']], implementation: function (s) { try { tagAll.fold = !tagAll.fold; tagTitle(); for (const mi of tagAll.rows) mi.hidden = tagAll.fold; } catch (e) {} } },   // v5.1.325
+    'pgTag:': { types: ['void', ['id']], implementation: function (s) { try { tagAll.fold = !tagAll.fold; tagTitle(); tagPaint(); } catch (e) {} } },   // v5.1.325
+    'pgTagUp:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off > 0) { tagAll.off -= TAG_PAGE; tagPaint(); } } catch (e) {} } },   // v5.1.327
+    'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + TAG_PAGE < tagAll.list.length) { tagAll.off += TAG_PAGE; tagPaint(); } } catch (e) {} } },   // v5.1.327
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -366,6 +377,16 @@ function run(argv) {
     p.pi = $.NSMenuItem.alloc.init; p.pi.view = v; m.addItem(p.pi);
     pagers.push(p); pgPaint(p); allTitle();
     return hd;
+  }
+  function buildTagPager(m, e) {   // v5.1.327: TAG の一覧= TAG_PAGE 枠＋▲▼
+    tagAll.list = e.rows || [];
+    for (let k = 0; k < TAG_PAGE; k++) { const mi = m.addItemWithTitleActionKeyEquivalent($(' '), 'pick:', $('')); mi.target = tgt; tagAll.slots.push(mi); }
+    const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 220, 26));
+    tagAll.up = $.NSButton.buttonWithTitleTargetAction($('\u25b2'), pgt, 'pgTagUp:'); tagAll.up.frame = $.NSMakeRect(36, 2, 40, 22); v.addSubview(tagAll.up);
+    tagAll.dn = $.NSButton.buttonWithTitleTargetAction($('\u25bc'), pgt, 'pgTagDn:'); tagAll.dn.frame = $.NSMakeRect(80, 2, 40, 22); v.addSubview(tagAll.dn);
+    tagAll.lab = $.NSTextField.labelWithString($('')); tagAll.lab.frame = $.NSMakeRect(128, 5, 80, 16); v.addSubview(tagAll.lab);
+    tagAll.pi = $.NSMenuItem.alloc.init; tagAll.pi.view = v; m.addItem(tagAll.pi);
+    tagPaint(); tagTitle();
   }
   function buildTagAll(m) {   // v5.1.325: Tag&Go の見出し TAG
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
@@ -392,6 +413,7 @@ function run(argv) {
       if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
       if (e.fusenAll) { try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
       if (e.tagAll) { try { its.push(buildTagAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.325
+      if (e.tagPager) { try { buildTagPager(m, e); } catch (x) {} its.push(null); continue; }   // v5.1.327
       if (e.fusen) { try { its.push(buildFusen(m, e)); } catch (x) { its.push(null); } continue; }   // v5.1.310
       if (e.title == null) { its.push(null); continue; }   // v5.1.310: 知らない形の項目でメニューごと落とさない
       const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));
@@ -515,7 +537,7 @@ function run(argv) {
     if (idle) text = '\u23f0';
     item.visible = true;
     const mj = JSON.stringify(menu || []);
-    if (mj !== lastMenu && !tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
+    if (mj !== lastMenu && !tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     else if (mj !== lastMenu) {   // v4.2.499: 開いている間= 並びが同じなら字だけ差し替える
       const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' : ((e.id || '') + (e.sub ? '>' : ''))).join('|');
       if (nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {
@@ -662,15 +684,13 @@ function run(argv) {
         if (v.sel) tags = [v.sel];
         else { for (const it of items) for (const x of (it.tags || [])) if (tags.indexOf(x) < 0) tags.push(x);
           const ord = Array.isArray(v.order) ? v.order : []; tags.sort((p, q) => { let a1 = ord.indexOf(p), b1 = ord.indexOf(q); if (a1 < 0) a1 = 9999; if (b1 < 0) b1 = 9999; return a1 - b1; }); }
-        const tmenu = [];
-        let rows = 0, rest = 0;
+        const tl = [];   // v5.1.327: 15行で切らず、全部を ▲▼ で送る並びに
         for (const x of tags) {
           const mem = items.filter(it => (it.tags || []).indexOf(x) >= 0 && pass(it)); if (!mem.length) continue;
-          if (rows + 2 > 15) { rest += mem.length; continue; }
-          tmenu.push({ title: '#' + x, off: true, tg: 1 }); rows++;
-          for (const it of mem) { if (rows >= 15) { rest++; continue; } tmenu.push({ id: 'h:t' + tagRows.length, title: it.name || it.key, indent: 1, tg: 1 }); tagRows.push(it); rows++; }
+          tl.push({ title: '#' + x, off: true });
+          for (const it of mem) { tl.push({ id: 'h:t' + tagRows.length, title: it.name || it.key, indent: 1 }); tagRows.push(it); }
         }
-        if (tmenu.length || items.length) { menu.push({ tagAll: true }); menu.push(...tmenu); if (rest) menu.push({ title: '\u2026 ' + rest + ' more', off: true, indent: 1, tg: 1 });   /* v5.1.325: 見出しを Tag&Go(押せない字)から TAG(押すと畳む)へ */ menu.push({ sep: true }); }
+        if (tl.length) { menu.push({ tagAll: true }, { tagPager: true, rows: tl }); menu.push({ sep: true }); }
       } catch (e) {}
       if (lastPass && lastPass.at > now) menu.push({ id: 'h:unpass', title: '\u21a9\ufe0e ' + lastPass.name + '   ' + _lab(lastPass.at) + '   \u2014 last passed' }, { sep: true });   // v4.2.459
       menu.push({ id: 'h:open', title: 'Start ' + appName });   // v4.2.363: Dock の代わり
