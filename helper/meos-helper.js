@@ -334,7 +334,7 @@ function run(argv) {
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize($.NSFont.systemFontSize * 2), r0); a.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(f ? -3 : -2), r0); } catch (e) {} };
   const pgTitle = (p, f) => { try {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
-    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), r);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r);   // v5.1.338(俊克 pm01:41「CB FUSEN・Yellow などの見出しも太字＋イタリックに。項目名と区別しやすいように」): 3= 太字|斜体
     a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
     p.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.321(俊克 am02:47 改良1「FUSEN という全体ラベルを ⏰0y… の下に入れ、間に罫線。FUSEN をクリックすると付箋すべてを折り畳める」):
