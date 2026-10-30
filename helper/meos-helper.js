@@ -307,10 +307,12 @@ function run(argv) {
     rgb(0x9a, 0x84, 0x55).setStroke; const bp = $.NSBezierPath.bezierPathWithRect(r); bp.lineWidth = 1; bp.stroke;
     img.unlockFocus; return img; } catch (e) { return null; } };
   const fusenIcons = {};
+  // ★v5.1.326(俊克 10.30 am10:26 改良2「畳んでいる時の▶を緑・開いている時の▼を水色に。赤は⏰があるから」): 見出しの三角だけ色を付ける(TAG・FUSEN・群の見出しの全部)
+  const triCol = (a, f) => { try { a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.systemGreenColor : $.NSColor.systemCyanColor, $.NSMakeRange(0, 1)); } catch (e) {} };
   const pgTitle = (p, f) => { try {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
     p.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.321(俊克 am02:47 改良1「FUSEN という全体ラベルを ⏰0y… の下に入れ、間に罫線。FUSEN をクリックすると付箋すべてを折り畳める」):
   //   全体の見出し= 群と同じ「メニューの中のボタン」(押しても閉じない)。畳むと群の見出しも中身も、CB と IC の間の区切りも隠す。群ごとの畳みは覚えたまま
@@ -318,15 +320,14 @@ function run(argv) {
   const allTitle = () => { try { if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + 'FUSEN')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
     fusenAll.hb.attributedTitle = a; } catch (e) {} };
-  // ★v5.1.325(俊克 10.30 am10:18 改良1「Tagメニューがズラッと出ることがある。TAG という見出しを作って、折り畳めるように」): VSCodium を閉じている時の Tag&Go の一覧(札ごと・最大15行)。
-  //   見出し= FUSEN の全体見出し(v5.1.321)と同じ「メニューの中のボタン」(押しても閉じない)・太字・▾/▸。畳んだかは作り直しても覚えている
-  const tagAll = { hb: null, rows: [], fold: false };
+  // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
+  const tagAll = { hb: null, rows: [], fold: true };
   const tagTitle = () => { try { if (!tagAll.hb) return;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.fold ? '\u25b8 ' : '\u25be ') + 'TAG')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, tagAll.rows.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, tagAll.rows.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold);
     tagAll.hb.attributedTitle = a; } catch (e) {} };
   const pgPaint = (p) => {
     const A = !!fusenFold['\u0000all'];
