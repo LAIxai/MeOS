@@ -45276,11 +45276,19 @@ function activate(context) {
     // ★v5.1.221(俊克 am03:50「駄目だこりゃ。いっそのこと、矢印→、←を1回ずつ出してみなよ」): 220 の「覚えた上端」は覚えが空で1度も動かなかった。
     //   カーソルは正しい行に居るので、→ ← を1回ずつ= VS Code がカーソルの行を見せに行く(覚えは要らない)。字が選ばれている時・別のエディタが前の時は触らない
     const _putBack = async (ed, tag) => { try { if (!ed || !ed.document || ed.document.isClosed || vscode.window.activeTextEditor !== ed) return; if (!ed.selection || !ed.selection.isEmpty) return;
+      if (_cdUserAt > _cdPrevAt) { meosDbg('[keepView] ' + tag + ' 戻った後に人がスクロールした→ 引き戻さない'); return; }
       const c = ed.selection.active.line; const vis = (ed.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line); if (vis) return;
       await meosRevealNearTop(ed, c);   // v5.1.223: → ← は下の端に見せるだけだった= 上から5行目へ
       meosDbg('[keepView] ' + tag + ' カーソル行が画面外→ 上から5行目に見せた(カーソル=' + (c + 1) + ' 上端=' + ((ed.visibleRanges && ed.visibleRanges[0]) ? ed.visibleRanges[0].start.line + 1 : '?') + ')'); } catch (_) { } };
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor === vscode.window.activeTextEditor && e.textEditor === _cdPrev && Date.now() - (_cdPrevAt || 0) > 3500) _remember(e.textEditor); } catch (_) { } }));
     let _cdPrevAt = 0;
+    // ★v5.1.323(俊克 10.30 am09:57 バグ「エディターをスクロールすると、元の位置に戻ってしまうことがあった。常にではない」): 真因= 上の _putBack。
+    //   戻って 0.8/1.5/3秒 の間に人がホイールで読み進めても「カーソル行が画面外」と見て、カーソルの行へ引き戻していた(meos-debug.log の [keepView] が 10.29〜30 に13回)。
+    //   → 戻った後の画面の動きを見分ける= 先頭(0行目)以外へ動いた= 人のスクロール→ その回は引き戻さない。先頭へ送られた= 守る相手(v5.1.220 の症状)→ 守りを戻す
+    //   (カーソルが動いた時の画面の動きは数えない= 打鍵やクリックでカーソルを見せた分)
+    let _cdUserAt = 0, _cdSelAt = 0;
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (e.textEditor === _cdPrev) _cdSelAt = Date.now(); }));
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor !== vscode.window.activeTextEditor || e.textEditor !== _cdPrev) return; const now = Date.now(); if (now - _cdPrevAt < 200 || now - _cdSelAt < 300) return; const vr = e.visibleRanges && e.visibleRanges[0]; if (!vr) return; if (vr.start.line === 0) _cdUserAt = 0; else _cdUserAt = now; } catch (_) { } }));
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (_cdPrev && _cdPrev !== ed) _cdNote(_cdPrev, '離れる'); _cdPrev = ed || _cdPrev; _cdPrevAt = Date.now();
       if (ed) { for (const ms of [0, 500, 1500, 3000]) setTimeout(() => _cdNote(ed, '戻って' + ms + 'ms'), ms);
         for (const ms of [800, 1500, 3000]) setTimeout(() => _putBack(ed, ms + 'ms'), ms); } })); }
