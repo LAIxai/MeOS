@@ -409,10 +409,16 @@ function run(argv) {
   //   メニューを開いている間は作り替えない(v4.2.333)ので、中の行は開いた瞬間の値で止まっていた。
   //   → 並び(区切り・id・子メニュー)が同じなら、開いたままで**行の字だけ差し替える**。字の飾り(☐/⚓/赤い札)は styleItem 1つで付ける。
   let lastItems = [], lastEntries = [];
+  // ★v5.1.331(俊克 10.30 am11:47「他のメニューは開く・本家 VS Code の古い MeOS(10.25 の V-helper)のメニューバーも開く」): 古い版との違いは、メニューの中のボタン(FUSEN/TAG の見出しと▲▼= MeOSPagerH)だけ。
+  //   切り分けのスイッチ= 置き場所に noviews が在れば、それらを作らない(在るかは毎回見て、変わったら作り直す)
+  const noViews = () => { try { return $.NSFileManager.defaultManager.fileExistsAtPath(dir + '/noviews'); } catch (e) { return false; } };
+  let lastNoViews = false;
   function build(entries, top) {
     const m = $.NSMenu.alloc.init; m.autoenablesItems = false;
     const its = [];
+    const nv = lastNoViews = noViews();
     for (const e of entries) {
+      if (nv && (e.fusenAll || e.fusen || e.tagAll || e.tagPager)) { its.push(null); continue; }   // v5.1.331: 切り分け
       if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
       if (e.fusenAll) { try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
       if (e.tagAll) { try { its.push(buildTagAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.325
@@ -544,6 +550,7 @@ function run(argv) {
     //   ⏰の秒が変わるたびに JSON が変わり、閉じている間は毎回作り直していた。macOS 27 の札は別の係(MenuBarAgent)が開くので、開きかけた所で差し替えると開きかけのメニューが捨てられて閉じる。
     //   v5.1.327 の TAG の▲▼で作り直しが重くなり、重なる率が上がった。→ 並び(区切り・id・群の中身・TAG の並び)が同じなら、開いていても閉じていても字だけ差し替える。並びが変わった時だけ、閉じている間に作り直す
     const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') : e.fusenAll ? 'FA' : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || ''))).join('|');
+    if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }   // v5.1.331: スイッチが変わったら作り直す
     if (mj !== lastMenu) {
       if (lastEntries.length && nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {   // v4.2.499: 並びが同じ= 字だけ差し替える
         for (let i = 0; i < nw.length; i++) { const e = nw[i], o = lastEntries[i], mi = lastItems[i];
