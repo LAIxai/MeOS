@@ -14092,13 +14092,19 @@ async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種
     //   着地の後も、表の整形などで行の高さが変わると画面だけが別の所へ流れる(ログ= 着地 1.2秒後に表を整形→ 画面=158117〜160342・カーソル=165616)。
     //   ★v5.1.350(俊克 am00:41「試してみましょう」): 時刻で見に行く(349= 1/2/3.5/5秒)のをやめ、画面が動いた知らせ(onDidChangeTextEditorVisibleRanges)で
     //   すぐ見直す= 流れていた間が一瞬になる。起こした時だけ・5秒の間・見せ直しは4回まで。カーソルを動かした(=人が動かした)ら聞くのをやめる。
-    if (cold) { const t0 = Date.now(); let n = 0, busy = false, sub = null; const stop = () => { try { if (sub) sub.dispose(); } catch (_) { } sub = null; };
-      sub = vscode.window.onDidChangeTextEditorVisibleRanges(async (e) => { try {
-        if (busy || !e.textEditor || e.textEditor.document !== ed.document) return; const ed2 = e.textEditor;
-        if (ed2.document.isClosed || !ed2.selection.isEmpty || ed2.selection.active.line !== p.line || ed2.selection.active.character !== p.character) { stop(); return; }
-        const c = p.line; if ((e.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line)) return;
-        busy = true; await meosRevealNearTop(ed2, c); busy = false; n++;
-        meosDbg('[fusenLand] ' + (Date.now() - t0) + 'ms 画面が流れた→ すぐ上から5行目に見せ直した(行=' + (c + 1) + ' ' + n + '回目)'); if (n >= 4) stop(); } catch (_) { busy = false; } });
+    //   ★v5.1.354(俊克 am07:49「回り道が減ったような気もするけど、よく分からない」・ログ): 上端へ置く(AtTop)でも最初の1回は 158457 付近へ外れた(2回とも)。
+    //   畳み直し(213畳む・921開く)の直後は、VS Code の行の高さの表がまだ古く、最初の見せは外れる= 2回目からは合う。外れを見つける物差しも違っていた
+    //   (「カーソルが見えている塊のどれかに居るか」は、畳んだ所をまたぐ塊が5つある時に外れても「見えている」と答えた)。
+    //   → 物差し= 画面の上端が着地の4行上の近く(着地より上・10行以内)か。外れていれば、待たずに(nearTop の1.5秒待ちを使わず)もう一度4行上を上端に。
+    //   知らせ(画面が動いた)と、0.3/0.8/1.5/2.5秒の見回りの両方で見る。5秒・4回まで・カーソルを動かしたらやめる。
+    if (cold) { const T0 = Date.now(), top0 = Math.max(0, f.line - 4); let n = 0, sub = null; const stop = () => { try { if (sub) sub.dispose(); } catch (_) { } sub = null; n = 99; };
+      const check = (why) => { try { if (n >= 4) return; const e2 = vscode.window.activeTextEditor; if (!e2 || e2.document !== ed.document) return;
+        if (!e2.selection.isEmpty || e2.selection.active.line !== p.line || e2.selection.active.character !== p.character) { stop(); return; }
+        const vr = (e2.visibleRanges || [])[0]; if (!vr) return; const top = vr.start.line; if (top <= f.line && top >= top0 - 10) return;
+        e2.revealRange(new vscode.Range(top0, 0, top0, 0), vscode.TextEditorRevealType.AtTop); n++;
+        meosDbg('[fusenLand] ' + (Date.now() - T0) + 'ms ' + why + ' 上端=' + (top + 1) + ' が外れ→ 4行上(' + (top0 + 1) + ')を上端に置き直した ' + n + '回目'); } catch (_) { } };
+      sub = vscode.window.onDidChangeTextEditorVisibleRanges(e => { if (e.textEditor && e.textEditor.document === ed.document) check('画面が動いた'); });
+      for (const ms of [300, 800, 1500, 2500]) setTimeout(() => check('見回り'), ms);
       setTimeout(stop, 5000); }
   } catch (_) { }
 }
