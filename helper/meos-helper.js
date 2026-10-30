@@ -96,6 +96,7 @@ function run(argv) {
     if (p.charAt(0) !== '/') p = '/' + p; return folders.find(d => d && (p + '').indexOf(d.replace(/\/+$/, '') + '/') === 0) || ''; } catch (e) { return ''; } };
   const openFolder = (d) => { try { if (appPath && d) return !!$.NSWorkspace.sharedWorkspace.openFileWithApplication($(d), $(appPath)); } catch (e) {} return false; };
   const openWarp = (u) => { if (ownerAlive(owner)) { openUrl(u); return; } pendingWarp = { url: u, at: Date.now(), seen: 0 };
+    try { $(JSON.stringify({ url: u, t: Date.now() })).writeToFileAtomicallyEncodingError(dir + '/warp-pending.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}   // v5.1.352: 拡張に「起動の位置戻しをするな・行き先が来る」と知らせる(拡張が受け取って消す)
     const d = folderFor(u); try { hlog('warp: ' + (d ? 'フォルダごと起こす ' + d : 'アプリを先に起こす')); } catch (e) {}
     if (!(d && openFolder(d))) openApp(); };
   const pendingWarpStep = (now) => { if (!pendingWarp) return;

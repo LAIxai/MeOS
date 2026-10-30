@@ -10472,11 +10472,16 @@ async function meosRevealNearTop(ed, line) {
   //   → 先に中央へ見せ(上側の行が画面に入る)、画面に見えている行だけを数えて4つ上の行を決め、その行を上端へ(畳んで隠れた行は数えない)
   try {
     const _vis = (ln) => (ed.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line);
+    const _s0 = ed.selection.active, _moved = () => { try { const a = ed.selection.active; return a.line !== _s0.line || a.character !== _s0.character; } catch (_) { return false; } };
     ed.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter);
     // ★v5.1.273(俊克 pm06:39 バグ1「インストール直後や再起動の時、今日の日記の最後の位置に飛ぶが画面の中に入らない。Ⓣを押せば正しい」):
     //   真因= 起動直後は VS Code が忙しく(34万行・Me Dock の組み直し)、中央へ見せた後の画面が0.3秒では動かない→ 待ちを諦めて**古い画面(365〜391)で**4行を数え、
     //   上端を387に置いた= 着地の418は画面の下へ外れた(ログ [nearTop] 行=418 上端に置いた行=387)。→ 最長1.5秒待つ。それでも見えなければ数えず、4行上を上端に
-    for (let i = 0; i < 50 && !_vis(line); i++) await new Promise(r => setTimeout(r, 30));
+    for (let i = 0; i < 50 && !_vis(line) && !_moved(); i++) await new Promise(r => setTimeout(r, 30));
+    // ★v5.1.352(俊克 10.31 am07:17「2回目はワープはしたが画面は異なる場所」・測る版351のログで名指し): 起動のⓉ(行401)の見せ直しが1.5秒待つ間に、
+    //   付箋の着地(行166127)が来てカーソルを動かした→ 待ち明けに古い行401の4行上を上端に置き、着地を画面の外へ追い出していた。
+    //   → 待つ間にカーソルが別の所へ動いたら(=後から別の着地が来た)、古い見せ直しはやめる。
+    if (_moved()) { meosDbg('[nearTop] 行=' + (line + 1) + ' 待つ間にカーソルが別の所へ動いた→ 見せ直しをやめる'); return; }
     if (!_vis(line)) { const t0 = Math.max(0, line - 4); ed.revealRange(new vscode.Range(t0, 0, t0, 0), vscode.TextEditorRevealType.AtTop); meosDbg('[nearTop] 行=' + (line + 1) + ' 1.5秒待っても画面が動かない→ 4行上(' + (t0 + 1) + ')を上端に'); return; }
     let top = line, n = 0;
     for (let ln = line - 1; ln >= 0 && n < 4; ln--) { if (!_vis(ln)) { if (ln < ((ed.visibleRanges || [])[0] || { start: { line: 0 } }).start.line) break; continue; } top = ln; n++; }
@@ -14086,10 +14091,10 @@ async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種
     //   すぐ見直す= 流れていた間が一瞬になる。起こした時だけ・5秒の間・見せ直しは4回まで。カーソルを動かした(=人が動かした)ら聞くのをやめる。
     if (cold) { const t0 = Date.now(); let n = 0, busy = false, sub = null; const stop = () => { try { if (sub) sub.dispose(); } catch (_) { } sub = null; };
       sub = vscode.window.onDidChangeTextEditorVisibleRanges(async (e) => { try {
-        if (e.textEditor !== ed || busy) return;
-        if (ed.document.isClosed || !ed.selection.isEmpty || ed.selection.active.line !== p.line || ed.selection.active.character !== p.character) { stop(); return; }
+        if (busy || !e.textEditor || e.textEditor.document !== ed.document) return; const ed2 = e.textEditor;
+        if (ed2.document.isClosed || !ed2.selection.isEmpty || ed2.selection.active.line !== p.line || ed2.selection.active.character !== p.character) { stop(); return; }
         const c = p.line; if ((e.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line)) return;
-        busy = true; await meosRevealNearTop(ed, c); busy = false; n++;
+        busy = true; await meosRevealNearTop(ed2, c); busy = false; n++;
         meosDbg('[fusenLand] ' + (Date.now() - t0) + 'ms 画面が流れた→ すぐ上から5行目に見せ直した(行=' + (c + 1) + ' ' + n + '回目)'); if (n >= 4) stop(); } catch (_) { busy = false; } });
       setTimeout(stop, 5000); }
   } catch (_) { }
@@ -45200,6 +45205,8 @@ function meosRestoreLastLineOnStart(attempt, wait) {
     if (!ed || !ed.document) { if ((attempt || 0) < 10) setTimeout(() => meosRestoreLastLineOnStart((attempt || 0) + 1), 1500); else meosLastLineFinish('エディタが見つからない'); return; }
     const doc = ed.document;
     if (!meosDocFsPath(doc) || !meosIsProseDoc(doc)) { meosLastLineFinish('散文のファイルでない'); return; }   // v5.1.7: 入口の文書も
+    // ★v5.1.352: V-helper が「起こしてから行き先(付箋/膜)へ飛ばす」途中なら(warp-pending.json が新しい)、起動の位置戻し(Ⓣ)はしない= 行き先が来るまで動かさない
+    try { const fs = require('fs'), f = require('path').join(meosHelperDir(), 'warp-pending.json'); const st = fs.statSync(f); if (Date.now() - st.mtimeMs < 90000) { meosLastLineFinish('V-helper の行き先が来る → 戻さない'); return; } } catch (_) { }
     // ★v5.1.222(俊克 10.27 am08:11「VSCmを再起動すると、3行目が表示されてしまうので、Ⓣボタンの飛び先に飛ぶようにしよう。
     //   膜の先頭ではなく、いつものように、最後にいた場所。日記の無いファイルなら、最後にいた場所」):
     //   ★真因= 戻すのが**⊖の畳み直し(restoreMstatsForEditor)より先**だった。畳み直しは、カーソルを畳む範囲の外
@@ -45293,20 +45300,6 @@ function meosStartLagWatch() {
   }, 1000);
 }
 function activate(context) {
-  // ★v5.1.351 測る版(俊克 10.31 am00:42「再起動したとき…6回くらい移動して、最後に最初の位置に戻ってくる」→「真因を調べる」):
-  //   起動から20秒だけ、画面が動くたびに上端の行と、その直前に MeOS が呼んだ「画面を動かす口」(revealRange・editorScroll・fold/unfold・selection)を [probeView] へ。
-  //   ログ= 付箋の着地の1秒後に画面が 158117 へ流れる。表の整形(tcw)は流れた後に記録されただけで、動かし手は未確定。真因が分かったらこの測りは外す。
-  try { const _pv0 = Date.now(), _pvOn = () => Date.now() - _pv0 < 20000; let _pvLast = '';
-    const _pvNote = (what) => { if (!_pvOn()) return; _pvLast = '+' + (Date.now() - _pv0) + 'ms ' + what; meosDbg('[probeView] 口 ' + _pvLast); };
-    const _pvWrapEd = (ed) => { try { const P = Object.getPrototypeOf(ed); if (!P || P === Object.prototype || !Object.prototype.hasOwnProperty.call(P, 'revealRange') || Object.isFrozen(P) || P.__meosPv) { if (!_pvWrapEd.said) { _pvWrapEd.said = 1; meosDbg('[probeView] エディタの口は包めない(凍っている)= 画面の動きと executeCommand だけ測る'); } return; } P.__meosPv = 1;
-      const rr = P.revealRange; P.revealRange = function (r, t) { try { _pvNote('revealRange ' + (r && r.start ? r.start.line + 1 : '?') + ' type=' + t + ' ' + String(new Error().stack || '').split('\n').slice(2, 4).map(x => x.trim().replace(/\(.*[\/]/, '(')).join(' < ')); } catch (_) { } return rr.apply(this, arguments); };
-      const d = Object.getOwnPropertyDescriptor(P, 'selection'); if (d && d.set) Object.defineProperty(P, 'selection', { configurable: true, get: d.get, set: function (v) { try { _pvNote('selection= ' + (v && v.active ? v.active.line + 1 : '?') + ' ' + String(new Error().stack || '').split('\n').slice(2, 4).map(x => x.trim().replace(/\(.*[\/]/, '(')).join(' < ')); } catch (_) { } d.set.call(this, v); } });
-    } catch (e) { meosDbg('[probeView] 包めない ' + e); } };
-    try { const ex = vscode.commands.executeCommand; vscode.commands.executeCommand = function (id, a) { try { if (/^(editorScroll|revealLine|editor\.(fold|unfold|foldRecursively|unfoldRecursively|foldAll|unfoldAll|toggleFold))/.test(String(id))) _pvNote(id + ' ' + JSON.stringify(a || {}).slice(0, 80) + ' ' + String(new Error().stack || '').split('\n').slice(2, 3).map(x => x.trim().replace(/\(.*[\/]/, '(')).join('')); } catch (_) { } return ex.apply(this, arguments); }; } catch (e) { meosDbg('[probeView] executeCommand を包めない ' + e); }
-    for (const ed of vscode.window.visibleTextEditors || []) _pvWrapEd(ed);
-    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (ed) _pvWrapEd(ed); }));
-    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (!_pvOn()) return; _pvWrapEd(e.textEditor); const v = e.visibleRanges || []; meosDbg('[probeView] 画面 +' + (Date.now() - _pv0) + 'ms 上端=' + (v[0] ? v[0].start.line + 1 : '?') + ' 塊=' + v.length + ' カーソル=' + (e.textEditor.selection.active.line + 1) + ' 直前の口= ' + _pvLast); } catch (_) { } }));
-  } catch (_) { }
   // ★v4.2.58: 元栓の覚えは globalState= 「止めて」は一度言えば足りる(開き直しても閉じたまま)。
   try { _meosGlobalState = context.globalState; _meosClocksOff = !!context.globalState.get(MEOS_CLOCKS_OFF_KEY, false); } catch (_) { }
   extensionContext = context;
@@ -45942,6 +45935,7 @@ function activate(context) {
   try {
     context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: async (u) => {
       try {
+        try { require('fs').unlinkSync(require('path').join(meosHelperDir(), 'warp-pending.json')); } catch (_) { }   // v5.1.352: 行き先が届いた
         if (u && u.path === '/fusen') {   // v5.1.348: 閉じている時に V-helper の付箋を押した= 起きてその付箋へ
           const q = new URLSearchParams(u.query || ''), f = { uri: vscode.Uri.parse(q.get('uri') || ''), k: q.get('k') || 'c', line: Number(q.get('line')) || 0, ch: Number(q.get('ch')) || 0 };
           meosDbg('[helper] fusen ' + q.get('uri') + ' L' + f.line);
