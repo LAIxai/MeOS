@@ -13991,7 +13991,8 @@ function meosMenuBarPick(id) {
 const MEOS_FUSEN_TS_RE = /(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})/;
 // ★v5.1.344(俊克 10.30 pm05:56「当面は5頁で様子見…多過ぎると感じたら、すこしずつ減らして行けばいい」): 群ごとに 常駐1＋5枚×5頁 まで。
 //   それより古い付箋は タグ / H-TOC / FUSEN_ の検索 / 先の⏰ で探す(メニューバーは最近の付箋だけ)。
-const MEOS_FUSEN_MAX = 1 + 5 * 5;
+//   v5.1.345(俊克 pm06:09 改良1「3/3まで制限して、超えるところをテストしようか」): 試験のため3頁(16枚)に。
+const MEOS_FUSEN_MAX = 1 + 5 * 3;
 let _meosFusen = { cb: [], ic: [], key: '', at: 0 };
 // ★v5.1.319(俊克 am02:11 改良1「タイムスタンプは秒まで表示しよう」): 付箋を写すと同じ日時になる→ 秒を手で直して見分ける。秒は . (分と秒の区切り)
 function meosFusenTitle(m, label) { label = String(label || '(empty)'); return m[2] + '/' + m[3] + ' ' + m[4] + ':' + m[5] + '.' + m[6] + '  ' + (label.length > 30 ? label.slice(0, 29) + '…' : label); }
