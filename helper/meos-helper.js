@@ -354,15 +354,25 @@ function run(argv) {
     tagAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.327(俊克 10.30 am10:40 改良4「TAG の … 14 more も、FUSEN の ▲ ▼ 1/2 のようにスライドできるように」): 札の見出しと膜の行を1本の並びにして TAG_PAGE 行ずつ・▲▼で送る(FUSEN の群と同じ、押しても閉じない)
   const TAG_PAGE = 10;
-  const tagPaint = () => { try { const L = tagAll.list, F = tagAll.fold; if (tagAll.off >= L.length) tagAll.off = 0;
+  // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
+  //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
+  const tagFold = {};
+  const tagHead = (t, f) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + t)); const r = $.NSMakeRange(0, a.length);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.menuFontOfSize(0).pointSize), r); a.addAttributeValueRange($.NSObliquenessAttributeName, $(0.2), r);   // v5.1.340: 太字＋傾き(日本語にも効く)
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, 1)); } catch (e) {} return a; };
+  const tagPaint = () => { try { const F = tagAll.fold, V = []; let cur = '';
+    for (const it of tagAll.list) { if (it.off) { cur = it.title; V.push(it); } else if (!tagFold[cur]) V.push(it); }
+    tagAll.vis = V; if (tagAll.off >= V.length) tagAll.off = 0;
     for (const mi of tagAll.rows) mi.hidden = F;
-    for (let k = 0; k < tagAll.slots.length; k++) { const it = L[tagAll.off + k], mi = tagAll.slots[k];
-      if (it) { mi.attributedTitle = $(); mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = !it.off; mi.indentationLevel = it.indent || 0;
-        if (it.off) { try { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(it.title)); const r = $.NSMakeRange(0, a.length);   // v5.1.339(俊克 pm01:51「#テスト2 などの見出しも同様に太字＋イタリックに」): 札の見出し= 付箋の群の見出しと同じ字
-          a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.menuFontOfSize(0).pointSize), r); a.addAttributeValueRange($.NSObliquenessAttributeName, $(0.2), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); mi.attributedTitle = a;   /* v5.1.340(俊克 pm02:03「#テスト2 が太字＋イタリックにならない」): BoldItalic の字体は英字だけ= 日本語は別の字体に替わって細く立ったままだった。太字の字体＋傾き(NSObliqueness)なら日本語も効く(本物のメニューを撮って確かめた)。灰色は押せない行だから(macOS) */ } catch (e) {} } }
+    if (!tagAll.hv) tagAll.hv = [];
+    for (let k = 0; k < tagAll.slots.length; k++) { const it = V[tagAll.off + k], mi = tagAll.slots[k];
+      if (it && it.off) {
+        if (!tagAll.hv[k]) { const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22)); const b = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgTagFold:'); b.bordered = false; b.alignment = 0; b.frame = $.NSMakeRect(14, 1, 220, 20); b.tag = k; hv.addSubview(b); tagAll.hv[k] = { v: hv, b: b }; }
+        tagAll.hv[k].b.attributedTitle = tagHead(it.title, !!tagFold[it.title]); mi.view = tagAll.hv[k].v;
+      } else if (it) { mi.view = $(); mi.attributedTitle = $(); mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = true; mi.indentationLevel = it.indent || 0; }
       mi.hidden = F || !it; }
-    if (tagAll.pi) { tagAll.pi.hidden = F || L.length <= TAG_PAGE;
-      tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + TAG_PAGE < L.length; tagAll.lab.stringValue = $((Math.floor(tagAll.off / TAG_PAGE) + 1) + ' / ' + Math.max(1, Math.ceil(L.length / TAG_PAGE))); } } catch (e) {} };
+    if (tagAll.pi) { tagAll.pi.hidden = F || V.length <= TAG_PAGE;
+      tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + TAG_PAGE < V.length; tagAll.lab.stringValue = $((Math.floor(tagAll.off / TAG_PAGE) + 1) + ' / ' + Math.max(1, Math.ceil(V.length / TAG_PAGE))); } } catch (e) {} };
   const pgPaint = (p) => {
     const A = !!fusenFold['\u0000all'];
     try { p.hd.hidden = A; } catch (e) {}
@@ -381,7 +391,8 @@ function run(argv) {
     'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } },
     'pgTag:': { types: ['void', ['id']], implementation: function (s) { try { tagAll.fold = !tagAll.fold; tagTitle(); tagPaint(); } catch (e) {} } },   // v5.1.325
     'pgTagUp:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off > 0) { tagAll.off -= TAG_PAGE; tagPaint(); } } catch (e) {} } },   // v5.1.327
-    'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + TAG_PAGE < tagAll.list.length) { tagAll.off += TAG_PAGE; tagPaint(); } } catch (e) {} } },   // v5.1.327
+    'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + TAG_PAGE < (tagAll.vis || tagAll.list).length) { tagAll.off += TAG_PAGE; tagPaint(); } } catch (e) {} } },   // v5.1.327
+    'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = (tagAll.vis || [])[tagAll.off + Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -591,7 +602,7 @@ function run(argv) {
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
           try { mi.title = $(e.title); styleItem(mi, e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
-      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
+      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
     if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle) {
