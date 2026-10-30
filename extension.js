@@ -13989,6 +13989,9 @@ function meosMenuBarPick(id) {
 //   群= { fusen: 見出し, items: 新しい順(常駐1＋5つずつ) }。▲▼は V-helper の中だけで送る(拍ごとに node へ訊かない)= 51枚まで渡す。
 //   IC式付箋= 段落の後ろの FC-ic の箱(<!-- Mew!FC-ic FUSEN-ic_<日時> -->)。箱は段落の中のインラインコードと前から順に組(not で飛ばす)。
 const MEOS_FUSEN_TS_RE = /(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})/;
+// ★v5.1.344(俊克 10.30 pm05:56「当面は5頁で様子見…多過ぎると感じたら、すこしずつ減らして行けばいい」): 群ごとに 常駐1＋5枚×5頁 まで。
+//   それより古い付箋は タグ / H-TOC / FUSEN_ の検索 / 先の⏰ で探す(メニューバーは最近の付箋だけ)。
+const MEOS_FUSEN_MAX = 1 + 5 * 5;
 let _meosFusen = { cb: [], ic: [], key: '', at: 0 };
 // ★v5.1.319(俊克 am02:11 改良1「タイムスタンプは秒まで表示しよう」): 付箋を写すと同じ日時になる→ 秒を手で直して見分ける。秒は . (分と秒の区切り)
 function meosFusenTitle(m, label) { label = String(label || '(empty)'); return m[2] + '/' + m[3] + ' ' + m[4] + ':' + m[5] + '.' + m[6] + '  ' + (label.length > 30 ? label.slice(0, 29) + '…' : label); }
@@ -14029,7 +14032,7 @@ function meosFusenList() {
     }
     const byTs = (a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0);
     cb.sort(byTs); ic.sort(byTs);
-    _meosFusen = { cb: cb.slice(0, 51), ic: ic.slice(0, 51), key, at: Date.now() };
+    _meosFusen = { cb: cb.slice(0, MEOS_FUSEN_MAX * 3), ic: ic.slice(0, MEOS_FUSEN_MAX * 3), key, at: Date.now() };   // v5.1.344: 3色それぞれに MEOS_FUSEN_MAX 枚まで残せる数
   } catch (_) { }
   return _meosFusen;
 }
@@ -14080,7 +14083,7 @@ function meosMenuBarTail() {
   const _rp = raw ? { pre: 'Raw ', pill: 'on', post: '\u2009/off   (kakaka)' } : { pre: 'Raw on/\u2009', pill: 'off', post: '   (kakaka)' };
   return [
     { sep: true }, { id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL },   // v5.1.327(俊克 改良1/2): Tag&Go は TAG の中の一番上へ・FUSEN を TAG より上へ
-    ...(function () { const g = meosFusenList(), o = [], it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: f.title }); o.push({ sep: true }, { fusenAll: true });   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const [k, list] of [['CB', g.cb], ['IC', g.ic]]) { if (k === 'IC') o.push({ sep: true, fz: 1 }); for (const c of MEOS_FUSEN_COLOR_ORDER) o.push({ fusen: k + ' FUSEN \u00b7 ' + ({ yellow: 'Yellow', pink: 'Red', blue: 'Blue' })[c], color: MEOS_FUSEN_COLORS[c].tab, items: list.filter(f => (f.color || 'yellow') === c).map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
+    ...(function () { const g = meosFusenList(), o = [], it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: f.title }); o.push({ sep: true }, { fusenAll: true });   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const [k, list] of [['CB', g.cb], ['IC', g.ic]]) { if (k === 'IC') o.push({ sep: true, fz: 1 }); for (const c of MEOS_FUSEN_COLOR_ORDER) o.push({ fusen: k + ' FUSEN \u00b7 ' + ({ yellow: 'Yellow', pink: 'Red', blue: 'Blue' })[c], color: MEOS_FUSEN_COLORS[c].tab, items: list.filter(f => (f.color || 'yellow') === c).slice(0, MEOS_FUSEN_MAX).map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
     ...meosMenuBarTagRows(),   // v5.1.326〜327: TAG の見出し＋Tag&Go＋札ごとの一覧(▲▼で送る・初めは畳む)
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
     { sep: true }, { title: 'Spells', sub: [
