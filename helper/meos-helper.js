@@ -286,9 +286,12 @@ function run(argv) {
   };
   // ★v4.2.337(俊克「Optクリックでメニューバーをクリックすると、VSCmを起動する。あるいは、今表示している膜にワープする」):
   //   メニューが開く直前に Opt を見て、押されていればメニューを畳み、札に出ている膜へワープする。
+  // ★v5.1.330(俊克 10.30 am11:23 バグ1「スクショを macOS のプレビューの『削除』で捨てた後、メニューバーが開かなくなった・前の版も同じ所で」): 測る口= 開く/閉じる/Optで取り消した/作り直した を events.log へ([menu])
   ObjC.registerSubclass({ name: 'MeOSMenuDelH', protocols: ['NSMenuDelegate'], methods: { 'menuWillOpen:': { types: ['void', ['id']], implementation: function (m) {
-    try { if (($.NSEvent.modifierFlags & 0x80000) === 0) return; m.cancelTracking; optWarp(); } catch (e) {}
-  } } } });
+    let fl = 0; try { fl = Number($.NSEvent.modifierFlags); } catch (e) {}
+    try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
+    try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); m.cancelTracking; optWarp(); } catch (e) {}
+  } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { try { hlog('[menu] close'); } catch (e) {} } } } });
   const mdel = $.MeOSMenuDelH.alloc.init;   // 強く持つ
   const tgt = $.MeOSHelperTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)
   // ★v5.1.310(俊克 10.29 pm08:19 v5.1.309 バグ1「付箋がまったく表示されない・Tagのリストがズラッと出る」): v5.1.308 で拡張の JXA にだけ FUSEN の群を教え、
@@ -547,7 +550,7 @@ function run(argv) {
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
           try { mi.title = $(e.title); styleItem(mi, e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
-      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
+      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle) {
       lastIdle = idle;
