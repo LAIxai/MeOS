@@ -13994,6 +13994,7 @@ const MEOS_FUSEN_TS_RE = /(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})/;
 //   v5.1.345(俊克 pm06:09 改良1「3/3まで制限して、超えるところをテストしようか」): 試験のため3頁(16枚)に。
 const MEOS_FUSEN_MAX = 1 + 5 * 3;
 let _meosFusen = { cb: [], ic: [], key: '', at: 0 };
+const _meosFusenDisk = {};   // v5.1.346: 読み込まれていないタブの中身(付箋が無ければ空で覚える= 大きい日記を持ち続けない)
 // ★v5.1.319(俊克 am02:11 改良1「タイムスタンプは秒まで表示しよう」): 付箋を写すと同じ日時になる→ 秒を手で直して見分ける。秒は . (分と秒の区切り)
 function meosFusenTitle(m, label) { label = String(label || '(empty)'); return m[2] + '/' + m[3] + ' ' + m[4] + ':' + m[5] + '.' + m[6] + '  ' + (label.length > 30 ? label.slice(0, 29) + '…' : label); }
 function meosFusenIcIn(d, lines, out) {
@@ -14017,6 +14018,20 @@ function meosFusenIcIn(d, lines, out) {
 function meosFusenList() {
   try {
     const docs = (vscode.workspace.textDocuments || []).filter(d => d && d.languageId === 'markdown' && !d.isClosed);
+    // ★v5.1.346(俊克 pm06:09 質問1「再起動すると、今読み込んでいる付箋しか表示されない…タブにあっても一回クリックすると入る」→「はい、直す」):
+    //   VS Code は再起動で戻したタブを、開くまで読み込まない(textDocuments に居ない)。タブの一覧には居る→ その .md はディスクから読む。
+    //   版の代わりに 更新日時＋大きさ(変わらなければ読み直さない)。押した時は openTextDocument(uri) で開くのでそのまま飛べる。
+    try {
+      const have = new Set(docs.map(d => d.uri.toString())), fs = require('fs');
+      for (const g of vscode.window.tabGroups.all) for (const t of g.tabs) {
+        const u = t.input && t.input.uri; if (!u || u.scheme !== 'file' || !/\.md$/i.test(u.fsPath) || have.has(u.toString())) continue;
+        have.add(u.toString());
+        let st; try { st = fs.statSync(u.fsPath); } catch (_) { continue; }
+        const ver = 'disk' + st.mtimeMs + ':' + st.size, old = _meosFusenDisk[u.toString()];
+        const text = (old && old.version === ver) ? old.text : null;
+        docs.push({ uri: u, version: ver, eol: vscode.EndOfLine.LF, _path: u.fsPath, _text: text, getText() { if (this._text == null) { let t = ''; try { t = fs.readFileSync(this._path, 'utf8'); } catch (_) { } this._text = t; _meosFusenDisk[this.uri.toString()] = { version: this.version, text: t.indexOf('FUSEN') < 0 ? '' : t }; } return this._text; } });
+      }
+    } catch (_) { }
     const key = docs.map(d => d.uri.toString() + '@' + d.version).join('|');
     if (key === _meosFusen.key || (Date.now() - _meosFusen.at < 10000 && _meosFusen.key)) return _meosFusen;
     const cb = [], ic = [];
