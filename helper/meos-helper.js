@@ -315,6 +315,7 @@ function run(argv) {
   //   V-helper(こちら)の build に教えていなかった= 題の無い群の項目で $(undefined) が投げてメニューごと作れず、拡張が居ない時の並びに落ちていた。
   //   → 同じ作りをこちらにも。群= 見出し＋常駐1＋5枠＋▲▼(メニューの中のボタン= 押しても閉じない)。
   const pagers = [];
+  const fusenOff = {};   // v5.1.347(俊克 改良1「スライダーで3/3を表示したとき、その移動を記憶…閉じて再度開くと1/3になる」): 群の名前→送った位置(閉じて作り直しても覚えている)
   const fusenFold = {};   // v5.1.312(俊克 改良2「CB FUSEN、IC FUSEN という部分をクリックすることで折り畳めるように」): 群の名前→畳んだか(作り直しても覚えている)
   // ★v5.1.314(俊克 改良1「CB/IC FUSEN の文字を濃く。未登録なら薄くても良い」・改良2「付箋らしい絵を作ってみる?」):
   //   見出しの字= 付箋が在れば濃い(labelColor)・無ければ薄い。絵= 日本の付箋(細長い紙の端だけ色)を描く。CB は橙の端・IC は青の端。
@@ -388,6 +389,8 @@ function run(argv) {
     const A = !!fusenFold['\u0000all'];
     try { p.hd.hidden = A; } catch (e) {}
     const f = A || !!fusenFold[p.name], rest = p.its.slice(1);
+    if (p.off > 0 && p.off >= rest.length) p.off = Math.max(0, Math.floor((rest.length - 1) / 5) * 5);   // v5.1.347: 付箋が減って覚えた頁が無くなったら最後の頁へ
+    fusenOff[p.name] = p.off;
     pgTitle(p, !!fusenFold[p.name]);
     p.pin.hidden = f || !p.its[0];
     for (let k = 0; k < p.slots.length; k++) { const it = rest[p.off + k], mi = p.slots[k];
@@ -409,7 +412,7 @@ function run(argv) {
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
   function buildFusen(m, e) {
-    const its = e.items || [], p = { name: e.fusen, its: its, slots: [], off: 0 };
+    const its = e.items || [], p = { name: e.fusen, its: its, slots: [], off: fusenOff[e.fusen] || 0 };
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
     try { const k = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'); if (!(k in fusenIcons)) { const h = parseInt(k.slice(1), 16); fusenIcons[k] = fusenIcon(rgb((h >> 16) & 255, (h >> 8) & 255, h & 255)); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
