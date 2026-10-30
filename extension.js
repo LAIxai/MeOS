@@ -14087,7 +14087,12 @@ async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種
     ed.selection = new vscode.Selection(p, p);
     // ★v5.1.353(俊克 am07:37「付箋膜に着地したのに、他の2ヶ所くらいを回り道して再着地」・ログ): 34万行で畳みが多いと、中央へ見せる(InCenter)が毎回
     //   158457 付近へ外れ、1.5秒後の「4行上を上端に」(AtTop)でやっと着いていた(2回とも同じ)。→ 起こした時は初めから4行上を上端に置く(1回で着く)。
-    if (cold) { const t0 = Math.max(0, f.line - 4); ed.revealRange(new vscode.Range(t0, 0, t0, 0), vscode.TextEditorRevealType.AtTop); }
+    // ★v5.1.355(俊克 am07:56「少し早くなったような気もするけど」・ログ): 置き直しても3回とも上端=158468 のまま= 打ち直しでは直らない。
+    //   真因= 着地の行(166230)は、畳み直しで⊖に畳まれた膜(DL数の戦略・開始≒160682)の**中**に居る= 隠れた行へは見せられず、VS Code は畳みの頭を見せていた
+    //   (画面 158468〜160682 の下端がちょうどその膜の頭)。カーソルが入ったので後で VS Code が開き、その後の見せ直しでやっと着いていた。
+    //   → 起こした時は、見せる前に着地の行を包む畳みを外側まで開く(⏰の Opt+▶️ v5.1.90 と同じ口・levels を深く)。
+    if (cold) { try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [f.line], levels: 20, direction: 'up' }); meosDbg('[fusenLand] 着地の行(' + (f.line + 1) + ')を包む畳みを開いた'); } catch (_) { }
+      const t0 = Math.max(0, f.line - 4); ed.revealRange(new vscode.Range(t0, 0, t0, 0), vscode.TextEditorRevealType.AtTop); }
     else ed.revealRange(new vscode.Range(new vscode.Position(f.line, 0), new vscode.Position(f.line, 0)), vscode.TextEditorRevealType.InCenter);
     //   着地の後も、表の整形などで行の高さが変わると画面だけが別の所へ流れる(ログ= 着地 1.2秒後に表を整形→ 画面=158117〜160342・カーソル=165616)。
     //   ★v5.1.350(俊克 am00:41「試してみましょう」): 時刻で見に行く(349= 1/2/3.5/5秒)のをやめ、画面が動いた知らせ(onDidChangeTextEditorVisibleRanges)で
