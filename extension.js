@@ -14085,7 +14085,10 @@ async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種
     const p = (_ln !== f.line) ? new vscode.Position(_ln, doc.lineAt(_ln).text.length) : new vscode.Position(f.line, f.ch || 0);
     setRefNoRaw(doc, _ln);   // v5.1.312(俊克 改良1「メニューバーからワープすると Raw になる。他でもやったように Raw にならないように」): 着地の一時抑止
     ed.selection = new vscode.Selection(p, p);
-    ed.revealRange(new vscode.Range(new vscode.Position(f.line, 0), new vscode.Position(f.line, 0)), vscode.TextEditorRevealType.InCenter);
+    // ★v5.1.353(俊克 am07:37「付箋膜に着地したのに、他の2ヶ所くらいを回り道して再着地」・ログ): 34万行で畳みが多いと、中央へ見せる(InCenter)が毎回
+    //   158457 付近へ外れ、1.5秒後の「4行上を上端に」(AtTop)でやっと着いていた(2回とも同じ)。→ 起こした時は初めから4行上を上端に置く(1回で着く)。
+    if (cold) { const t0 = Math.max(0, f.line - 4); ed.revealRange(new vscode.Range(t0, 0, t0, 0), vscode.TextEditorRevealType.AtTop); }
+    else ed.revealRange(new vscode.Range(new vscode.Position(f.line, 0), new vscode.Position(f.line, 0)), vscode.TextEditorRevealType.InCenter);
     //   着地の後も、表の整形などで行の高さが変わると画面だけが別の所へ流れる(ログ= 着地 1.2秒後に表を整形→ 画面=158117〜160342・カーソル=165616)。
     //   ★v5.1.350(俊克 am00:41「試してみましょう」): 時刻で見に行く(349= 1/2/3.5/5秒)のをやめ、画面が動いた知らせ(onDidChangeTextEditorVisibleRanges)で
     //   すぐ見直す= 流れていた間が一瞬になる。起こした時だけ・5秒の間・見せ直しは4回まで。カーソルを動かした(=人が動かした)ら聞くのをやめる。
