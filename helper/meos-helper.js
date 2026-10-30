@@ -357,7 +357,10 @@ function run(argv) {
   const tagPaint = () => { try { const L = tagAll.list, F = tagAll.fold; if (tagAll.off >= L.length) tagAll.off = 0;
     for (const mi of tagAll.rows) mi.hidden = F;
     for (let k = 0; k < tagAll.slots.length; k++) { const it = L[tagAll.off + k], mi = tagAll.slots[k];
-      if (it) { mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = !it.off; mi.indentationLevel = it.indent || 0; } mi.hidden = F || !it; }
+      if (it) { mi.attributedTitle = $(); mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = !it.off; mi.indentationLevel = it.indent || 0;
+        if (it.off) { try { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(it.title)); const r = $.NSMakeRange(0, a.length);   // v5.1.339(俊克 pm01:51「#テスト2 などの見出しも同様に太字＋イタリックに」): 札の見出し= 付箋の群の見出しと同じ字
+          a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); mi.attributedTitle = a; } catch (e) {} } }
+      mi.hidden = F || !it; }
     if (tagAll.pi) { tagAll.pi.hidden = F || L.length <= TAG_PAGE;
       tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + TAG_PAGE < L.length; tagAll.lab.stringValue = $((Math.floor(tagAll.off / TAG_PAGE) + 1) + ' / ' + Math.max(1, Math.ceil(L.length / TAG_PAGE))); } } catch (e) {} };
   const pgPaint = (p) => {
