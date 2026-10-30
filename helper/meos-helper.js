@@ -320,6 +320,14 @@ function run(argv) {
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r);
     fusenAll.hb.attributedTitle = a; } catch (e) {} };
+  // ★v5.1.325(俊克 10.30 am10:18 改良1「Tagメニューがズラッと出ることがある。TAG という見出しを作って、折り畳めるように」): VSCodium を閉じている時の Tag&Go の一覧(札ごと・最大15行)。
+  //   見出し= FUSEN の全体見出し(v5.1.321)と同じ「メニューの中のボタン」(押しても閉じない)・太字・▾/▸。畳んだかは作り直しても覚えている
+  const tagAll = { hb: null, rows: [], fold: false };
+  const tagTitle = () => { try { if (!tagAll.hb) return;
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.fold ? '\u25b8 ' : '\u25be ') + 'TAG')); const r = $.NSMakeRange(0, a.length);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, tagAll.rows.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r);
+    tagAll.hb.attributedTitle = a; } catch (e) {} };
   const pgPaint = (p) => {
     const A = !!fusenFold['\u0000all'];
     try { p.hd.hidden = A; } catch (e) {}
@@ -336,6 +344,7 @@ function run(argv) {
     'pgUp:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off > 0) { p.off -= 5; pgPaint(p); } } catch (e) {} } },
     'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); } } catch (e) {} } },
     'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } },
+    'pgTag:': { types: ['void', ['id']], implementation: function (s) { try { tagAll.fold = !tagAll.fold; tagTitle(); for (const mi of tagAll.rows) mi.hidden = tagAll.fold; } catch (e) {} } },   // v5.1.325
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -357,6 +366,13 @@ function run(argv) {
     pagers.push(p); pgPaint(p); allTitle();
     return hd;
   }
+  function buildTagAll(m) {   // v5.1.325: Tag&Go の見出し TAG
+    const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
+    tagAll.hb = $.NSButton.buttonWithTitleTargetAction($('TAG'), pgt, 'pgTag:'); tagAll.hb.bordered = false; tagAll.hb.alignment = 0;
+    tagAll.hb.frame = $.NSMakeRect(14, 1, 220, 20); hv.addSubview(tagAll.hb);
+    const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); tagTitle();
+    return hd;
+  }
   function buildFusenAll(m) {   // v5.1.321: 全体の見出し
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     fusenAll.hb = $.NSButton.buttonWithTitleTargetAction($('FUSEN'), pgt, 'pgAll:'); fusenAll.hb.bordered = false; fusenAll.hb.alignment = 0;
@@ -374,6 +390,7 @@ function run(argv) {
     for (const e of entries) {
       if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
       if (e.fusenAll) { try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
+      if (e.tagAll) { try { its.push(buildTagAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.325
       if (e.fusen) { try { its.push(buildFusen(m, e)); } catch (x) { its.push(null); } continue; }   // v5.1.310
       if (e.title == null) { its.push(null); continue; }   // v5.1.310: 知らない形の項目でメニューごと落とさない
       const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));
@@ -381,6 +398,7 @@ function run(argv) {
       if (e.indent) mi.indentationLevel = e.indent;
       if (e.off) mi.enabled = false;
       if (e.check) mi.state = 1;   // v4.2.311: ✓
+      if (e.tg) { tagAll.rows.push(mi); mi.hidden = tagAll.fold; }   // v5.1.325: TAG の見出しで畳む行
       if (e.dayRow) { try { mi.view = makeDayRow(e.dayRow); } catch (x) {} its.push(mi); continue; }   // v5.0.0-52
       styleItem(mi, e);
       its.push(mi);
@@ -496,7 +514,7 @@ function run(argv) {
     if (idle) text = '\u23f0';
     item.visible = true;
     const mj = JSON.stringify(menu || []);
-    if (mj !== lastMenu && !tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; }
+    if (mj !== lastMenu && !tracking()) { lastMenu = mj; pagers.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     else if (mj !== lastMenu) {   // v4.2.499: 開いている間= 並びが同じなら字だけ差し替える
       const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' : ((e.id || '') + (e.sub ? '>' : ''))).join('|');
       if (nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {
@@ -648,10 +666,10 @@ function run(argv) {
         for (const x of tags) {
           const mem = items.filter(it => (it.tags || []).indexOf(x) >= 0 && pass(it)); if (!mem.length) continue;
           if (rows + 2 > 15) { rest += mem.length; continue; }
-          tmenu.push({ title: '#' + x, off: true }); rows++;
-          for (const it of mem) { if (rows >= 15) { rest++; continue; } tmenu.push({ id: 'h:t' + tagRows.length, title: it.name || it.key, indent: 1 }); tagRows.push(it); rows++; }
+          tmenu.push({ title: '#' + x, off: true, tg: 1 }); rows++;
+          for (const it of mem) { if (rows >= 15) { rest++; continue; } tmenu.push({ id: 'h:t' + tagRows.length, title: it.name || it.key, indent: 1, tg: 1 }); tagRows.push(it); rows++; }
         }
-        if (tmenu.length || items.length) { menu.push({ title: 'Tag&Go', off: true }); menu.push(...tmenu); if (rest) menu.push({ title: '\u2026 ' + rest + ' more', off: true, indent: 1 }); menu.push({ sep: true }); }
+        if (tmenu.length || items.length) { menu.push({ tagAll: true }); menu.push(...tmenu); if (rest) menu.push({ title: '\u2026 ' + rest + ' more', off: true, indent: 1, tg: 1 });   /* v5.1.325: 見出しを Tag&Go(押せない字)から TAG(押すと畳む)へ */ menu.push({ sep: true }); }
       } catch (e) {}
       if (lastPass && lastPass.at > now) menu.push({ id: 'h:unpass', title: '\u21a9\ufe0e ' + lastPass.name + '   ' + _lab(lastPass.at) + '   \u2014 last passed' }, { sep: true });   // v4.2.459
       menu.push({ id: 'h:open', title: 'Start ' + appName });   // v4.2.363: Dock の代わり
