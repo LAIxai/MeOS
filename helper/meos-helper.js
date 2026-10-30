@@ -291,7 +291,11 @@ function run(argv) {
     let fl = 0; try { fl = Number($.NSEvent.modifierFlags); } catch (e) {}
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); m.cancelTracking; optWarp(); } catch (e) {}
-  } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { try { hlog('[menu] close'); } catch (e) {} } } } });
+  } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { try { hlog('[menu] close'); } catch (e) {} freshMenu = true; } } } });
+  // ★v5.1.332(俊克 10.30 am11:50「VSCm の V-helper を何度か押した後に本家を押すと、本家は1回だけ出て直ぐ閉じる・その後は開く」): 実測の筋=
+  //   スクショの小窓のメニューで削除した後、押されたメニューは開いて0.05秒で閉じる(MeOS は閉じていない)。古い版はその後で開く= 毎秒メニューを作り直して差し替えていた(閉じている間)。
+  //   v5.1.328 で「並びが同じなら差し替えない」にしたので、壊れたメニューを持ち続けて二度と開かなくなった。→ 閉じるたびに1回だけ作り直して差し替える(毎秒ではない)
+  let freshMenu = false;
   const mdel = $.MeOSMenuDelH.alloc.init;   // 強く持つ
   const tgt = $.MeOSHelperTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)
   // ★v5.1.310(俊克 10.29 pm08:19 v5.1.309 バグ1「付箋がまったく表示されない・Tagのリストがズラッと出る」): v5.1.308 で拡張の JXA にだけ FUSEN の群を教え、
@@ -550,7 +554,8 @@ function run(argv) {
     //   ⏰の秒が変わるたびに JSON が変わり、閉じている間は毎回作り直していた。macOS 27 の札は別の係(MenuBarAgent)が開くので、開きかけた所で差し替えると開きかけのメニューが捨てられて閉じる。
     //   v5.1.327 の TAG の▲▼で作り直しが重くなり、重なる率が上がった。→ 並び(区切り・id・群の中身・TAG の並び)が同じなら、開いていても閉じていても字だけ差し替える。並びが変わった時だけ、閉じている間に作り直す
     const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') : e.fusenAll ? 'FA' : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || ''))).join('|');
-    if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }   // v5.1.331: スイッチが変わったら作り直す
+    if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }
+    if (freshMenu && !tracking()) { freshMenu = false; lastMenu = null; lastEntries = []; }   // v5.1.332: 閉じた後は新しいメニューに差し替える   // v5.1.331: スイッチが変わったら作り直す
     if (mj !== lastMenu) {
       if (lastEntries.length && nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {   // v4.2.499: 並びが同じ= 字だけ差し替える
         for (let i = 0; i < nw.length; i++) { const e = nw[i], o = lastEntries[i], mi = lastItems[i];
