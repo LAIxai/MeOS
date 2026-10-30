@@ -359,7 +359,7 @@ function run(argv) {
     for (let k = 0; k < tagAll.slots.length; k++) { const it = L[tagAll.off + k], mi = tagAll.slots[k];
       if (it) { mi.attributedTitle = $(); mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = !it.off; mi.indentationLevel = it.indent || 0;
         if (it.off) { try { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(it.title)); const r = $.NSMakeRange(0, a.length);   // v5.1.339(俊克 pm01:51「#テスト2 などの見出しも同様に太字＋イタリックに」): 札の見出し= 付箋の群の見出しと同じ字
-          a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); mi.attributedTitle = a; } catch (e) {} } }
+          a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.menuFontOfSize(0).pointSize), r); a.addAttributeValueRange($.NSObliquenessAttributeName, $(0.2), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); mi.attributedTitle = a;   /* v5.1.340(俊克 pm02:03「#テスト2 が太字＋イタリックにならない」): BoldItalic の字体は英字だけ= 日本語は別の字体に替わって細く立ったままだった。太字の字体＋傾き(NSObliqueness)なら日本語も効く(本物のメニューを撮って確かめた)。灰色は押せない行だから(macOS) */ } catch (e) {} } }
       mi.hidden = F || !it; }
     if (tagAll.pi) { tagAll.pi.hidden = F || L.length <= TAG_PAGE;
       tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + TAG_PAGE < L.length; tagAll.lab.stringValue = $((Math.floor(tagAll.off / TAG_PAGE) + 1) + ' / ' + Math.max(1, Math.ceil(L.length / TAG_PAGE))); } } catch (e) {} };
