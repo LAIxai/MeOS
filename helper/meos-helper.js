@@ -362,17 +362,26 @@ function run(argv) {
     a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, 1)); } catch (e) {} return a; };
   const tagPaint = () => { try { const F = tagAll.fold, V = []; let cur = '';
     for (const it of tagAll.list) { if (it.off) { cur = it.title; V.push(it); } else if (!tagFold[cur]) V.push(it); }
-    tagAll.vis = V; if (tagAll.off >= V.length) tagAll.off = 0;
+    // ★v5.1.342(俊克 pm02:12 改良1「1/4 頁の一番下に ▾#テストHIIT の見出しだけが出て、送ると見出し無しで始まる」): ページを先に組む=
+    //   開いた見出しはページの最後の行に置かない(次のページへ送る)・膜の行で始まるページは、その札の見出しを頭にもう一度置く
+    const P = []; let pg = [], head = null;
+    for (const it of V) {
+      if (it.off) { head = it; if (pg.length >= TAG_PAGE - 1 && !tagFold[it.title]) { P.push(pg); pg = []; } else if (pg.length >= TAG_PAGE) { P.push(pg); pg = []; } pg.push(it); continue; }
+      if (pg.length >= TAG_PAGE) { P.push(pg); pg = head ? [head] : []; }
+      pg.push(it); }
+    if (pg.length) P.push(pg);
+    tagAll.pages = P; if (tagAll.off >= P.length) tagAll.off = Math.max(0, P.length - 1);   // off= ページの番号(v5.1.342〜)
+    const W = P[tagAll.off] || [];
     for (const mi of tagAll.rows) mi.hidden = F;
     if (!tagAll.hv) tagAll.hv = [];
-    for (let k = 0; k < tagAll.slots.length; k++) { const it = V[tagAll.off + k], mi = tagAll.slots[k];
+    for (let k = 0; k < tagAll.slots.length; k++) { const it = W[k], mi = tagAll.slots[k];
       if (it && it.off) {
         if (!tagAll.hv[k]) { const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22)); const b = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgTagFold:'); b.bordered = false; b.alignment = 0; b.frame = $.NSMakeRect(14, 1, 220, 20); b.tag = k; hv.addSubview(b); tagAll.hv[k] = { v: hv, b: b }; }
         tagAll.hv[k].b.attributedTitle = tagHead(it.title, !!tagFold[it.title]); mi.view = tagAll.hv[k].v;
       } else if (it) { mi.view = $(); mi.attributedTitle = $(); mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = true; mi.indentationLevel = it.indent || 0; }
       mi.hidden = F || !it; }
-    if (tagAll.pi) { tagAll.pi.hidden = F || V.length <= TAG_PAGE;
-      tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + TAG_PAGE < V.length; tagAll.lab.stringValue = $((Math.floor(tagAll.off / TAG_PAGE) + 1) + ' / ' + Math.max(1, Math.ceil(V.length / TAG_PAGE))); } } catch (e) {} };
+    if (tagAll.pi) { tagAll.pi.hidden = F || P.length <= 1;
+      tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + 1 < P.length; tagAll.lab.stringValue = $((tagAll.off + 1) + ' / ' + Math.max(1, P.length)); } } catch (e) {} };
   const pgPaint = (p) => {
     const A = !!fusenFold['\u0000all'];
     try { p.hd.hidden = A; } catch (e) {}
@@ -390,9 +399,9 @@ function run(argv) {
     'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); } } catch (e) {} } },
     'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } },
     'pgTag:': { types: ['void', ['id']], implementation: function (s) { try { tagAll.fold = !tagAll.fold; tagTitle(); tagPaint(); } catch (e) {} } },   // v5.1.325
-    'pgTagUp:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off > 0) { tagAll.off -= TAG_PAGE; tagPaint(); } } catch (e) {} } },   // v5.1.327
-    'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + TAG_PAGE < (tagAll.vis || tagAll.list).length) { tagAll.off += TAG_PAGE; tagPaint(); } } catch (e) {} } },   // v5.1.327
-    'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = (tagAll.vis || [])[tagAll.off + Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
+    'pgTagUp:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off > 0) { tagAll.off -= 1; tagPaint(); } } catch (e) {} } },   // v5.1.327
+    'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + 1 < (tagAll.pages || []).length) { tagAll.off += 1; tagPaint(); } } catch (e) {} } },   // v5.1.327
+    'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = ((tagAll.pages || [])[tagAll.off] || [])[Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
