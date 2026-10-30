@@ -9,7 +9,8 @@
 //     (閉じていれば VSCodium が起き、拡張が膜へ飛んで鐘を引き継ぐ)。拡張が起きたらこちらの鐘は止める。
 //   ★メニューバーの持ち主はこれ1つ= VSCodium が開いていても⏰は2つ並ばない。
 ObjC.import('Cocoa');
-ObjC.import('CoreGraphics');   // v5.1.237: ポインターを運ぶ(CGWarpMouseCursorPosition)
+ObjC.import('CoreGraphics');
+ObjC.import('stdlib');   // v5.1.335: $.exit(起こし直す)   // v5.1.237: ポインターを運ぶ(CGWarpMouseCursorPosition)
 ObjC.bindFunction('kill', ['int', ['int', 'int']]);
 ObjC.bindFunction('CGEventSourceFlagsState', ['unsigned long long', ['int']]);   // v4.2.742: 左右の区別まで入った修飾キーの状態(機械の状態= 1)
 function run(argv) {
@@ -245,7 +246,7 @@ function run(argv) {
   // ★v5.0.0-58(俊克 pm07:23〜08:00「これもテキストデータにしよう… 膜名 🌅LaunchD_TS」): 起動の予定を決めるのは本文の 🌅LaunchD の膜(▶️で入る)。
   //   メニューは今の姿を見せるだけ(ここでも決められると、本文と macOS の2つの道が食い違う)。-50〜57 の □/時刻の仕掛けは使わない。
   const wakeEntries = () => [{ id: 'launchd', title: '\ud83c\udf05 Wake   ' + wakeLabel() }, { sep: true }];   // v5.0.0-59: 押すと 🌅LaunchD の膜へ(他の時計の行と同じ)
-  let menuOpenAt = 0, menuPickedAt = 0, menuOptAt = 0, reopenAt = 0, reopenTries = 0, renewItem = false, renewAt = 0;   // v5.1.333〜334
+  let menuOpenAt = 0, menuPickedAt = 0, menuOptAt = 0, reopenAt = 0, reopenTries = 0, renewItem = false, noRestartUntil = 0;   // v5.1.333〜335
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) { menuPickedAt = Date.now();
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
@@ -299,7 +300,7 @@ function run(argv) {
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
   } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
     try { hlog('[menu] close' + (quick ? ' (' + (now - menuOpenAt) + 'ms= 指を放した所で閉じた)' : '')); } catch (e) {} freshMenu = true;
-    if (quick && now - renewAt > 10000) { renewItem = true; reopenAt = now + 60; } } } } });   // v5.1.334: すぐ閉じた= 札ごと作り直してから開き直す(10秒に1回まで)
+    if (quick && now > noRestartUntil) { renewItem = true; reopenAt = now + 60; } } } } });   // v5.1.334〜335: すぐ閉じた= V-helper ごと起こし直す(起こし直した直後30秒はしない= 回り続けない)
   // ★v5.1.333(俊克 pm00:05 v5.1.332「改善なし」): 実測= 作り直しても、V-helper を起こし直しても、開いて約0.04秒(= クリックの指を放すまで)で閉じる。MeOS は閉じていない(Opt も押されていない)。
   //   macOS の中の事なので、手当て= 指を放した所で閉じたら(150ms 未満・何も選んでいない)、指が離れた後に V-helper が自分でもう一度開く(2回まで)
   // ★v5.1.332(俊克 10.30 am11:50「VSCm の V-helper を何度か押した後に本家を押すと、本家は1回だけ出て直ぐ閉じる・その後は開く」): 実測の筋=
@@ -568,9 +569,16 @@ function run(argv) {
     const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') : e.fusenAll ? 'FA' : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || ''))).join('|');
     if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }
     if (freshMenu && !tracking()) { freshMenu = false; lastMenu = null; lastEntries = []; }   // v5.1.332: 閉じた後は新しいメニューに差し替える
-    if (renewItem && !tracking()) { renewItem = false; renewAt = Date.now(); reopenTries++;   // v5.1.334: 札ごと作り直す(🛟のオフ→オンと同じ)
-      try { bar.removeStatusItem(item); } catch (e) {} item = newItem();   // 先に外してから作る(同じ名前= 同じ置き場所へ戻る)
-      lastMenu = null; lastEntries = []; lastText = undefined; try { hlog('[menu] 札を作り直した'); } catch (e) {} }
+    if (renewItem && !tracking()) { renewItem = false;   // ★v5.1.335(俊克 pm00:30「札が一瞬消えて出るのは見えたが改善しない・手で🛟をオフオンすると復旧・0.5〜1秒完全に消えてから」):
+      //   実測= 札を作り直して自分で開いても(指は使っていない)約0.045秒で閉じた= 壊れているのは札でなく V-helper のプロセス。→ 札を外して0.8秒置き、エラーで終わる
+      //   = launchd(KeepAlive: SuccessfulExit=false)がすぐ起こし直す。新しい V-helper はメニューを開き直す(reopen-menu)。鳴らした覚えは引き継ぐ(fired-carry)
+      try { hlog('[menu] V-helper を起こし直す(0.8秒消えてから)'); } catch (e) {}
+      try { $(JSON.stringify({ t: Date.now() })).writeToFileAtomicallyEncodingError(dir + '/reopen-menu', true, $.NSUTF8StringEncoding, null); } catch (e) {}
+      try { $(JSON.stringify({ t: Date.now(), fired: fired, preDone: preDone })).writeToFileAtomicallyEncodingError(dir + '/fired-carry.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}
+      try { bar.removeStatusItem(item); } catch (e) {}
+      try { $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.8)); } catch (e) {}
+      $.exit(3);
+    }
     let reopenNow = false; if (reopenAt && Date.now() >= reopenAt && !tracking()) { reopenAt = 0; reopenNow = true; }   // v5.1.333: 作り直した後で開く   // v5.1.331: スイッチが変わったら作り直す
     if (mj !== lastMenu) {
       if (lastEntries.length && nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {   // v4.2.499: 並びが同じ= 字だけ差し替える
@@ -624,6 +632,9 @@ function run(argv) {
   };
   const BELL_MARKS = [[60000, 3000], [30000, 5000], [10000, 0]];   // v4.2.333: 拡張の MEOS_BELL_MARKS と同じ
   let preDone = {};
+  // v5.1.335: 自分で起こし直した時(30秒以内)だけ、鳴らした覚えを引き継ぐ(直前に鳴った⏰をもう一度鳴らさない)
+  try { const cp = dir + '/fired-carry.json', fm = $.NSFileManager.defaultManager; if (fm.fileExistsAtPath(cp)) { const c = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(cp, $.NSUTF8StringEncoding, null)));
+    fm.removeItemAtPathError(cp, null); if (Date.now() - Number(c.t) < 30000) { Object.assign(fired, c.fired || {}); Object.assign(preDone, c.preDone || {}); hlog('[menu] 鳴らした覚えを引き継いだ'); } } } catch (e) {}
   const MISSED_MS = 10 * 60000;   // 眠っていた間に過ぎた物は、10分以内なら鳴らす(それより古い朝の目覚ましは鳴らさない)
   let quitNow = false;
   const tracking = () => { try { return ObjC.unwrap($.NSRunLoop.currentRunLoop.currentMode) === 'NSEventTrackingRunLoopMode'; } catch (e) { return false; } };
@@ -790,6 +801,9 @@ function run(argv) {
   $.NSRunLoop.currentRunLoop.addTimerForMode(timer, $.NSRunLoopCommonModes);
   hlog('born pid=' + $.NSProcessInfo.processInfo.processIdentifier);
   try { step(); } catch (e) {}
+  // v5.1.335: 自分で起こし直した直後(10秒以内)= 押されたメニューを開き直す
+  try { const rp = dir + '/reopen-menu', fm = $.NSFileManager.defaultManager; if (fm.fileExistsAtPath(rp)) { const o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(rp, $.NSUTF8StringEncoding, null)));
+    fm.removeItemAtPathError(rp, null); if (Date.now() - Number(o.t) < 10000) { reopenTries = 1; noRestartUntil = Date.now() + 30000; $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.3, reopener, 'go:', $(), false); } } } catch (e) {}
   while (!quitNow) $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));
   timer.invalidate; modsTimer.invalidate;
   bar.removeStatusItem(item);
