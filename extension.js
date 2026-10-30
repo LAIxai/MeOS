@@ -45293,6 +45293,20 @@ function meosStartLagWatch() {
   }, 1000);
 }
 function activate(context) {
+  // ★v5.1.351 測る版(俊克 10.31 am00:42「再起動したとき…6回くらい移動して、最後に最初の位置に戻ってくる」→「真因を調べる」):
+  //   起動から20秒だけ、画面が動くたびに上端の行と、その直前に MeOS が呼んだ「画面を動かす口」(revealRange・editorScroll・fold/unfold・selection)を [probeView] へ。
+  //   ログ= 付箋の着地の1秒後に画面が 158117 へ流れる。表の整形(tcw)は流れた後に記録されただけで、動かし手は未確定。真因が分かったらこの測りは外す。
+  try { const _pv0 = Date.now(), _pvOn = () => Date.now() - _pv0 < 20000; let _pvLast = '';
+    const _pvNote = (what) => { if (!_pvOn()) return; _pvLast = '+' + (Date.now() - _pv0) + 'ms ' + what; meosDbg('[probeView] 口 ' + _pvLast); };
+    const _pvWrapEd = (ed) => { try { const P = Object.getPrototypeOf(ed); if (!P || P === Object.prototype || !Object.prototype.hasOwnProperty.call(P, 'revealRange') || Object.isFrozen(P) || P.__meosPv) { if (!_pvWrapEd.said) { _pvWrapEd.said = 1; meosDbg('[probeView] エディタの口は包めない(凍っている)= 画面の動きと executeCommand だけ測る'); } return; } P.__meosPv = 1;
+      const rr = P.revealRange; P.revealRange = function (r, t) { try { _pvNote('revealRange ' + (r && r.start ? r.start.line + 1 : '?') + ' type=' + t + ' ' + String(new Error().stack || '').split('\n').slice(2, 4).map(x => x.trim().replace(/\(.*[\/]/, '(')).join(' < ')); } catch (_) { } return rr.apply(this, arguments); };
+      const d = Object.getOwnPropertyDescriptor(P, 'selection'); if (d && d.set) Object.defineProperty(P, 'selection', { configurable: true, get: d.get, set: function (v) { try { _pvNote('selection= ' + (v && v.active ? v.active.line + 1 : '?') + ' ' + String(new Error().stack || '').split('\n').slice(2, 4).map(x => x.trim().replace(/\(.*[\/]/, '(')).join(' < ')); } catch (_) { } d.set.call(this, v); } });
+    } catch (e) { meosDbg('[probeView] 包めない ' + e); } };
+    try { const ex = vscode.commands.executeCommand; vscode.commands.executeCommand = function (id, a) { try { if (/^(editorScroll|revealLine|editor\.(fold|unfold|foldRecursively|unfoldRecursively|foldAll|unfoldAll|toggleFold))/.test(String(id))) _pvNote(id + ' ' + JSON.stringify(a || {}).slice(0, 80) + ' ' + String(new Error().stack || '').split('\n').slice(2, 3).map(x => x.trim().replace(/\(.*[\/]/, '(')).join('')); } catch (_) { } return ex.apply(this, arguments); }; } catch (e) { meosDbg('[probeView] executeCommand を包めない ' + e); }
+    for (const ed of vscode.window.visibleTextEditors || []) _pvWrapEd(ed);
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (ed) _pvWrapEd(ed); }));
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (!_pvOn()) return; _pvWrapEd(e.textEditor); const v = e.visibleRanges || []; meosDbg('[probeView] 画面 +' + (Date.now() - _pv0) + 'ms 上端=' + (v[0] ? v[0].start.line + 1 : '?') + ' 塊=' + v.length + ' カーソル=' + (e.textEditor.selection.active.line + 1) + ' 直前の口= ' + _pvLast); } catch (_) { } }));
+  } catch (_) { }
   // ★v4.2.58: 元栓の覚えは globalState= 「止めて」は一度言えば足りる(開き直しても閉じたまま)。
   try { _meosGlobalState = context.globalState; _meosClocksOff = !!context.globalState.get(MEOS_CLOCKS_OFF_KEY, false); } catch (_) { }
   extensionContext = context;
