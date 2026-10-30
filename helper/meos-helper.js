@@ -22,16 +22,20 @@ function run(argv) {
   const bornAt = Date.now();
   // ★v4.2.510(俊克 バグ1「メニューバー表示がオフになってしまう。V-helper ボタンは橙のまま」): 降りた理由を自分の置き場所に残す(events.log・最後の40行)
   const hlog = (msg) => { try { const f = dir + '/events.log'; let t = ''; try { const x = $.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null); if (x && !x.isNil()) t = ObjC.unwrap(x); } catch (e) {}
-    const lines = (t ? t.split('\n').filter(Boolean) : []).concat([new Date().toISOString() + ' ' + msg]).slice(-40);
+    const lines = (t ? t.split('\n').filter(Boolean) : []).concat([new Date().toISOString() + ' ' + msg]).slice(-200);   // v5.1.334: 40→200行(メニューの測る口で頭が切れた)
     $(lines.join('\n') + '\n').writeToFileAtomicallyEncodingError(f, true, $.NSUTF8StringEncoding, null); } catch (e) {} };
   const app = $.NSApplication.sharedApplication;
   app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
   const bar = $.NSStatusBar.systemStatusBar;
-  const item = bar.statusItemWithLength($.NSVariableStatusItemLength);
+  // ★v5.1.334(俊克 10.30 pm00:26「本家の V-helper を止めても駄目・VSCm の🛟オフ→オンで復旧」): 壊れるのはメニューでなく札(ステータス項目)そのもの
+  //   (作り直したメニューも開き直しも、すぐ閉じた・起こし直すと直る)。→ 札を作る口を1つにして、壊れたら札ごと作り直す
+  const newItem = () => { const it = bar.statusItemWithLength($.NSVariableStatusItemLength);
+    try { if (!$.NSFileManager.defaultManager.fileExistsAtPath($(dir + '/nopark'))) it.autosaveName = $('meos.clock.' + (myScheme || 'vscodium')); } catch (e) {}
+    return it; };
+  let item = newItem();
   // ★v5.1.163(俊克 pm11:09「🛟をオフ→オンすると、メニューバーが混んでいると << が出るだけで気づき難い」): 名前の無い項目は作るたびに左端(先に隠れる所)へ置かれる。
   //   名前を付けて macOS に置き場所を覚えさせる= Cmd+ドラッグで右へ動かせば、入れ直しても起き直してもそこへ戻る。拡張側の係(MEOS_MENUBAR_JXA)も同じ名前
   //   ★v5.1.164(俊克 pm11:21「名前を与える、与えないを切り替えるボタンを…こういう仕組みがあることをユーザに教育する」): Me Dock の🅿️が切なら nopark の印= 名前を付けない(毎回左端)
-  try { if (!$.NSFileManager.defaultManager.fileExistsAtPath($(dir + '/nopark'))) item.autosaveName = $('meos.clock.' + (myScheme || 'vscodium')); } catch (e) {}
   // ★v4.2.317(俊克 改良1「灰色の絵文字は目立たないので、文字の⚓にして…文字サイズを大きく」): ⚓だけ字の形(FE0E)
   // ★v4.2.319(俊克 改良2「縁0.4・下げ5で確定」「⚓を右5°くらい傾けようか?」): 赤の塗り＋黒の縁(字の大きさの1.6%)・20pt・下げ5・右へ5°
   const ANCHOR_TILT = 10;   // v4.2.321(俊克「傾き10°にしてみよう」)
@@ -241,7 +245,7 @@ function run(argv) {
   // ★v5.0.0-58(俊克 pm07:23〜08:00「これもテキストデータにしよう… 膜名 🌅LaunchD_TS」): 起動の予定を決めるのは本文の 🌅LaunchD の膜(▶️で入る)。
   //   メニューは今の姿を見せるだけ(ここでも決められると、本文と macOS の2つの道が食い違う)。-50〜57 の □/時刻の仕掛けは使わない。
   const wakeEntries = () => [{ id: 'launchd', title: '\ud83c\udf05 Wake   ' + wakeLabel() }, { sep: true }];   // v5.0.0-59: 押すと 🌅LaunchD の膜へ(他の時計の行と同じ)
-  let menuOpenAt = 0, menuPickedAt = 0, menuOptAt = 0, reopenAt = 0, reopenTries = 0;   // v5.1.333
+  let menuOpenAt = 0, menuPickedAt = 0, menuOptAt = 0, reopenAt = 0, reopenTries = 0, renewItem = false, renewAt = 0;   // v5.1.333〜334
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) { menuPickedAt = Date.now();
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
@@ -295,7 +299,7 @@ function run(argv) {
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
   } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
     try { hlog('[menu] close' + (quick ? ' (' + (now - menuOpenAt) + 'ms= 指を放した所で閉じた)' : '')); } catch (e) {} freshMenu = true;
-    if (quick && reopenTries < 2) { reopenTries++; reopenAt = now + 60; } else if (!quick) reopenTries = 0; } } } });
+    if (quick && now - renewAt > 10000) { renewItem = true; reopenAt = now + 60; } } } } });   // v5.1.334: すぐ閉じた= 札ごと作り直してから開き直す(10秒に1回まで)
   // ★v5.1.333(俊克 pm00:05 v5.1.332「改善なし」): 実測= 作り直しても、V-helper を起こし直しても、開いて約0.04秒(= クリックの指を放すまで)で閉じる。MeOS は閉じていない(Opt も押されていない)。
   //   macOS の中の事なので、手当て= 指を放した所で閉じたら(150ms 未満・何も選んでいない)、指が離れた後に V-helper が自分でもう一度開く(2回まで)
   // ★v5.1.332(俊克 10.30 am11:50「VSCm の V-helper を何度か押した後に本家を押すと、本家は1回だけ出て直ぐ閉じる・その後は開く」): 実測の筋=
@@ -564,6 +568,9 @@ function run(argv) {
     const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') : e.fusenAll ? 'FA' : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || ''))).join('|');
     if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }
     if (freshMenu && !tracking()) { freshMenu = false; lastMenu = null; lastEntries = []; }   // v5.1.332: 閉じた後は新しいメニューに差し替える
+    if (renewItem && !tracking()) { renewItem = false; renewAt = Date.now(); reopenTries++;   // v5.1.334: 札ごと作り直す(🛟のオフ→オンと同じ)
+      try { bar.removeStatusItem(item); } catch (e) {} item = newItem();   // 先に外してから作る(同じ名前= 同じ置き場所へ戻る)
+      lastMenu = null; lastEntries = []; lastText = undefined; try { hlog('[menu] 札を作り直した'); } catch (e) {} }
     let reopenNow = false; if (reopenAt && Date.now() >= reopenAt && !tracking()) { reopenAt = 0; reopenNow = true; }   // v5.1.333: 作り直した後で開く   // v5.1.331: スイッチが変わったら作り直す
     if (mj !== lastMenu) {
       if (lastEntries.length && nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {   // v4.2.499: 並びが同じ= 字だけ差し替える
