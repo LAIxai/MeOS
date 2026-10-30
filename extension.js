@@ -14082,11 +14082,16 @@ async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種
     ed.selection = new vscode.Selection(p, p);
     ed.revealRange(new vscode.Range(new vscode.Position(f.line, 0), new vscode.Position(f.line, 0)), vscode.TextEditorRevealType.InCenter);
     //   着地の後も、表の整形などで行の高さが変わると画面だけが別の所へ流れる(ログ= 着地 1.2秒後に表を整形→ 画面=158117〜160342・カーソル=165616)。
-    //   起こした時だけ 1/2/3.5/5秒 に見直し、カーソルが着地のままで画面の外なら上から5行目に見せ直す(カーソルを動かした=人が動かした時は触らない)。
-    if (cold) for (const ms of [1000, 2000, 3500, 5000]) setTimeout(async () => { try {
-      if (ed.document.isClosed || vscode.window.activeTextEditor !== ed || !ed.selection.isEmpty || ed.selection.active.line !== p.line || ed.selection.active.character !== p.character) return;
-      const c = p.line; if ((ed.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line)) return;
-      await meosRevealNearTop(ed, c); meosDbg('[fusenLand] ' + ms + 'ms 画面が流れた→ 上から5行目に見せ直した(行=' + (c + 1) + ')'); } catch (_) { } }, ms);
+    //   ★v5.1.350(俊克 am00:41「試してみましょう」): 時刻で見に行く(349= 1/2/3.5/5秒)のをやめ、画面が動いた知らせ(onDidChangeTextEditorVisibleRanges)で
+    //   すぐ見直す= 流れていた間が一瞬になる。起こした時だけ・5秒の間・見せ直しは4回まで。カーソルを動かした(=人が動かした)ら聞くのをやめる。
+    if (cold) { const t0 = Date.now(); let n = 0, busy = false, sub = null; const stop = () => { try { if (sub) sub.dispose(); } catch (_) { } sub = null; };
+      sub = vscode.window.onDidChangeTextEditorVisibleRanges(async (e) => { try {
+        if (e.textEditor !== ed || busy) return;
+        if (ed.document.isClosed || !ed.selection.isEmpty || ed.selection.active.line !== p.line || ed.selection.active.character !== p.character) { stop(); return; }
+        const c = p.line; if ((e.visibleRanges || []).some(r => c >= r.start.line && c <= r.end.line)) return;
+        busy = true; await meosRevealNearTop(ed, c); busy = false; n++;
+        meosDbg('[fusenLand] ' + (Date.now() - t0) + 'ms 画面が流れた→ すぐ上から5行目に見せ直した(行=' + (c + 1) + ' ' + n + '回目)'); if (n >= 4) stop(); } catch (_) { busy = false; } });
+      setTimeout(stop, 5000); }
   } catch (_) { }
 }
 // ★v5.1.326(俊克 10.30 am10:26 改良1「VSCm を閉じている時だけ Tag のリストが出るのは意味不明。起動している間も TAG を出そう。最初は畳んだ状態で」):
