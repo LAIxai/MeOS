@@ -277,6 +277,7 @@ function run(argv) {
         if (lastPass.prev) adv[lastPass.id] = lastPass.prev; else delete adv[lastPass.id];
         try { $.NSFileManager.defaultManager.removeItemAtPathError($(dir + '/passed.json'), null); } catch (e) {}
         lastPass = null; return; }
+      if (id.indexOf('h:f') === 0) { const it = fusenRows[parseInt(id.slice(3), 10)]; if (it) openWarp(scheme + '://' + ext + '/fusen?uri=' + encodeURIComponent(it.uri || '') + '&k=' + encodeURIComponent(it.k || 'c') + '&line=' + (it.line || 0) + '&ch=' + (it.ch || 0)); return; }   // v5.1.348: 付箋の行= 起こしてその付箋へ
       if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openWarp(warpUrl(it, false)); return; }   // v4.2.342: Tag&Go の行   // v5.1.62: 閉じていればアプリを先に
       const a = alarms[parseInt(id.slice(2), 10)]; if (a) { stopBell(); openWarp(warpUrl(a, false)); }
       return;
@@ -285,7 +286,7 @@ function run(argv) {
     if (id !== 'quitapp' && id !== 'quithelper' && id !== 'pass' && id !== 'unpass') openApp();   // v4.2.363: 終了を押したのに起こし直さない / v4.2.459: pass は前へ出さない
   } } } });
   let lastPass = null;   // v4.2.459: 閉じている間に最後に pass した1本 {id, at, prev, name}
-  let optTarget = null, tagRows = [];   // v4.2.337: 札に出ている時計(拡張が居ない時)
+  let optTarget = null, tagRows = [], fusenRows = [];   // v5.1.348: fusenRows= 閉じている時の付箋の行   // v4.2.337: 札に出ている時計(拡張が居ない時)
   const optWarp = () => {
     if (ownerAlive(owner)) { try { $(JSON.stringify({ id: 'optwarp', t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} openApp(); return; }
     if (optTarget) { stopBell(); openWarp(warpUrl(optTarget, false)); } else openApp();
@@ -752,6 +753,15 @@ function run(argv) {
       if (next.length) menu.push({ sep: true });
       // ★v4.2.342(俊克「VSCmが閉じている時は、その時のリストをメニューバーのメニューのTag&Goの下に表示する」):
       //   最後に見ていた部屋の姿(選んだ札・打った字・札の並び)で、札ごとに並べる(v4.2.309の形)。押せば VSCodium を起こして膜へ
+      // ★v5.1.348(俊克 10.31 am00:06「VSCmを閉じたあとも、付箋をV-helperに残す」): 拡張が最後に書いた付箋の群(state.json の fusen)を、開いている時と同じ姿で出す
+      fusenRows = [];
+      try {
+        const gs = Array.isArray(st && st.fusen) ? st.fusen : [];
+        if (gs.length) { menu.push({ fusenAll: true });
+          for (const g of gs) { if (g.ic1) menu.push({ sep: true, fz: 1 });
+            menu.push({ fusen: g.name, color: g.color, items: (g.items || []).map(it => { fusenRows.push(it); return { id: 'h:f' + (fusenRows.length - 1), title: it.title }; }) }); }
+          menu.push({ sep: true }); }
+      } catch (e) {}
       tagRows = [];
       try {
         const tg = (st && st.tagGo) || {}, v = tg.view || {}, items = Array.isArray(tg.items) ? tg.items : [];

@@ -14053,11 +14053,23 @@ function meosFusenList() {
   } catch (_) { }
   return _meosFusen;
 }
+// v5.1.348: 色の群(CB 3色・IC 3色)の並び= メニューと、閉じている時の控え(state.json の fusen)で同じ1つから引く
+function meosFusenGroups() {
+  const g = meosFusenList(), out = [];
+  for (const [k, list] of [['CB', g.cb], ['IC', g.ic]]) MEOS_FUSEN_COLOR_ORDER.forEach((c, n) => out.push({ ic1: k === 'IC' && n === 0, name: k + ' FUSEN \u00b7 ' + ({ yellow: 'Yellow', pink: 'Red', blue: 'Blue' })[c], color: MEOS_FUSEN_COLORS[c].tab, list: list.filter(f => (f.color || 'yellow') === c).slice(0, MEOS_FUSEN_MAX) }));
+  return out;
+}
 async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっていても取り違えない= 順番でなく種類＋印の日時で引く
   try {
     const at = kts.indexOf('@'), ts = kts.slice(1, at < 0 ? undefined : at), ln = at < 0 ? -1 : Number(kts.slice(at + 1));   // v5.1.310: 同じ日時の印が2か所でも取り違えない(行も見る)
     const g = (kts.charAt(0) === 'i' ? _meosFusen.ic : _meosFusen.cb), f = g.find(x => x.ts === ts && (ln < 0 || x.line === ln)) || g.find(x => x.ts === ts); if (!f) return;
+    await meosFusenLand(f);
+  } catch (_) { }
+}
+async function meosFusenLand(f) {   // v5.1.348: 付箋の場所(uri・種類・行・桁)へ着地する= メニューの行からも、閉じている時の V-helper の URL からも
+  try {
     const doc = await vscode.workspace.openTextDocument(f.uri);
+    if (f.line >= doc.lineCount) f = Object.assign({}, f, { line: Math.max(0, doc.lineCount - 1), ch: 0 });   // v5.1.348: 閉じている間に行が減っていても落ちない
     const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
     // ★v5.1.313(俊克 v5.1.312 バグ1「まだ Raw になってしまう」スクショ3= 紙の頭の行にカーソルが乗ると、その行だけ紙が今の行の色に覆われて生に見える):
     //   CB は紙の1つ上の行の末尾へ着地する(紙は丸ごと紙のまま見える)。IC は字の上へ(着地の一時抑止で板のまま)。
@@ -14100,7 +14112,7 @@ function meosMenuBarTail() {
   const _rp = raw ? { pre: 'Raw ', pill: 'on', post: '\u2009/off   (kakaka)' } : { pre: 'Raw on/\u2009', pill: 'off', post: '   (kakaka)' };
   return [
     { sep: true }, { id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL },   // v5.1.327(俊克 改良1/2): Tag&Go は TAG の中の一番上へ・FUSEN を TAG より上へ
-    ...(function () { const g = meosFusenList(), o = [], it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: f.title }); o.push({ sep: true }, { fusenAll: true });   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const [k, list] of [['CB', g.cb], ['IC', g.ic]]) { if (k === 'IC') o.push({ sep: true, fz: 1 }); for (const c of MEOS_FUSEN_COLOR_ORDER) o.push({ fusen: k + ' FUSEN \u00b7 ' + ({ yellow: 'Yellow', pink: 'Red', blue: 'Blue' })[c], color: MEOS_FUSEN_COLORS[c].tab, items: list.filter(f => (f.color || 'yellow') === c).slice(0, MEOS_FUSEN_MAX).map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
+    ...(function () { const o = [], it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: f.title }); o.push({ sep: true }, { fusenAll: true });   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const gr of meosFusenGroups()) { if (gr.ic1) o.push({ sep: true, fz: 1 }); o.push({ fusen: gr.name, color: gr.color, items: gr.list.map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
     ...meosMenuBarTagRows(),   // v5.1.326〜327: TAG の見出し＋Tag&Go＋札ごとの一覧(▲▼で送る・初めは畳む)
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
     { sep: true }, { title: 'Spells', sub: [
@@ -14272,6 +14284,7 @@ function meosHelperWrite(text, menu, owner, anchor) {
     const st = { owner: (owner === undefined ? process.pid : owner), app: ai > 0 ? ep.slice(0, ai + 4) : '', appName: meosAppName(), scheme: vscode.env.uriScheme || 'vscodium',
       text: text || null, anchor: !!anchor, menu: menu || [], alarms: meosHelperAlarms(), sound: meosHelperSound(),
       tagGo: { view: _meosTagView, items: (_meosTagItemsLast.items || []).slice(0, 300) },   // v4.2.342: 閉じている間のTag&Go
+      fusen: (function () { try { return meosFusenGroups().map(gr => ({ name: gr.name, color: gr.color, ic1: gr.ic1, items: gr.list.map(f => ({ title: f.title, uri: f.uri.toString(), k: f.k, line: f.line, ch: f.ch || 0 })) })); } catch (_) { return []; } })(),   // ★v5.1.348(俊克 10.31 am00:06「VSCmを閉じたあとも、付箋をV-helperに残す」→「はい、作る」): 閉じている間の FUSEN
       folders: (extensionContext && extensionContext.globalState.get('meosLastFolders', [])) || [] };   // v5.1.63: 閉じている時の warp はフォルダごと開く
     const key = JSON.stringify(st);
     if (key === _meosHelper.last) return;
@@ -45901,6 +45914,12 @@ function activate(context) {
   try {
     context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: async (u) => {
       try {
+        if (u && u.path === '/fusen') {   // v5.1.348: 閉じている時に V-helper の付箋を押した= 起きてその付箋へ
+          const q = new URLSearchParams(u.query || ''), f = { uri: vscode.Uri.parse(q.get('uri') || ''), k: q.get('k') || 'c', line: Number(q.get('line')) || 0, ch: Number(q.get('ch')) || 0 };
+          meosDbg('[helper] fusen ' + q.get('uri') + ' L' + f.line);
+          if (!_meosLastLineDone) meosLastLineFinish('付箋が先 → 戻さない');
+          await meosFusenLand(f); return;
+        }
         if (!u || u.path !== '/warp') return;
         const q = new URLSearchParams(u.query || '');
         const sc = { uri: q.get('uri') || '', key: q.get('key') || '', name: q.get('name') || '' };
