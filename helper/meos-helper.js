@@ -358,6 +358,19 @@ function run(argv) {
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f);
     clockAll.hb.attributedTitle = a; } catch (e) {} };
+  // ★v5.1.357(俊克 am10:19 改良1「⊟の代わりに、↻を45°ずつ回転…↻を赤色に…Me Dockのボタンのように円で囲む。角度ごとに色を変えても」):
+  //   押すたびに45°ずつ回る↻を円で囲んだ絵。色は姿ごと= はじめ/全部畳む=赤・⏰だけ=橙・付箋だけ=緑・タグだけ=青
+  let cycN = 0;
+  const CYC_COL = [[0.85, 0.1, 0.1], [0.85, 0.1, 0.1], [0.95, 0.5, 0.0], [0.1, 0.6, 0.2], [0.1, 0.35, 0.95]];   // [はじめ, 全部畳む, ⏰, 付箋, タグ]
+  const cycImg = () => { try { const S = 22, c = CYC_COL[foldMode + 1] || CYC_COL[0], col = $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0], c[1], c[2], 1);
+    const img = $.NSImage.alloc.initWithSize($.NSMakeSize(S, S)); img.lockFocus;
+    col.setStroke; const ring = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(1.5, 1.5, S - 3, S - 3)); ring.lineWidth = 1.8; ring.stroke;
+    const t = $.NSAffineTransform.transform; t.translateXByYBy(S / 2, S / 2); t.rotateByDegrees(-(cycN * 45) % 360); t.translateXByYBy(-S / 2, -S / 2); t.concat;
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u21bb')); const r = $.NSMakeRange(0, a.length);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize(14), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, col, r);
+    const sz = a.size; a.drawAtPoint($.NSMakePoint((S - sz.width) / 2, (S - sz.height) / 2));
+    img.unlockFocus; return img; } catch (e) { return null; } };
+  const cycPaint = () => { try { if (!clockAll.cyc) return; const im = cycImg(); if (im) { clockAll.cyc.image = im; clockAll.cyc.title = $(''); clockAll.cyc.imagePosition = 1; } } catch (e) {} };
   const clockPaint = () => { try { for (const mi of clockAll.rows) mi.hidden = clockFold; for (const sp of clockAll.seps) sp.hidden = clockFold; clockTitle(); } catch (e) {} };
   // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
   const tagAll = { hb: null, rows: [], fold: true, slots: [], list: [], off: 0, up: null, dn: null, lab: null, pi: null };
@@ -422,10 +435,10 @@ function run(argv) {
     'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + 1 < (tagAll.pages || []).length) { tagAll.off += 1; tagPaint(); ptrTo(s); } } catch (e) {} } },   // v5.1.327
     'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = ((tagAll.pages || [])[tagAll.off] || [])[Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
     'pgClk:': { types: ['void', ['id']], implementation: function (s) { try { clockFold = !clockFold; clockPaint(); } catch (e) {} } },   // v5.1.356: ⏰の見出しで畳む
-    'pgCyc:': { types: ['void', ['id']], implementation: function (s) { try { foldMode = (foldMode + 1) % 4;   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
+    'pgCyc:': { types: ['void', ['id']], implementation: function (s) { try { foldMode = (foldMode + 1) % 4; cycN++; cycPaint();   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
       clockFold = foldMode !== 1; fusenFold['\u0000all'] = foldMode !== 2; tagAll.fold = foldMode !== 3;
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint();
-      hlog('[menu] \u229f 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u229f 例外 ' + e); } } },
+      hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -468,8 +481,8 @@ function run(argv) {
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22)); hv.autoresizingMask = 2;
     clockAll.hb = $.NSButton.buttonWithTitleTargetAction($('\u23f0'), pgt, 'pgClk:'); clockAll.hb.bordered = false; clockAll.hb.alignment = 0;
     clockAll.hb.frame = $.NSMakeRect(14, 1, 150, 20); hv.addSubview(clockAll.hb);
-    clockAll.cyc = $.NSButton.buttonWithTitleTargetAction($('\u229f'), pgt, 'pgCyc:'); clockAll.cyc.bordered = false; clockAll.cyc.font = $.NSFont.systemFontOfSize(17);
-    clockAll.cyc.frame = $.NSMakeRect(206, 0, 26, 22); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only'); hv.addSubview(clockAll.cyc);
+    clockAll.cyc = $.NSButton.buttonWithTitleTargetAction($('\u21bb'), pgt, 'pgCyc:'); clockAll.cyc.bordered = false;
+    clockAll.cyc.frame = $.NSMakeRect(208, 0, 24, 22); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only'); hv.addSubview(clockAll.cyc); cycPaint();
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); clockTitle();
     return hd;
   }
