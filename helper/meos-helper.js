@@ -366,12 +366,12 @@ function run(argv) {
   //   押すたびに45°ずつ回る↻を円で囲んだ絵。色は姿ごと= はじめ/全部畳む=赤・⏰だけ=橙・付箋だけ=緑・タグだけ=青
   let cycN = 0, cycRev = false;   // v5.1.361(俊克 am11:13「逆回転のときは、↺にしよう」): 最後に Shift で回したら ↺ を描く
   const CYC_COL = [[0, 0.53, 0], [0, 0.53, 0], TRI_RED, [0, 0.25, 1], TRI_PURPLE];   // [はじめ, 全部畳む, ⏰, 付箋, タグ]  v5.1.359: 緑⇄赤⇄青⇄紫(▾/▸の色と同じ)
-  const cycImg = () => { try { const S = 22, c = CYC_COL[foldMode + 1] || CYC_COL[0], col = $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0], c[1], c[2], 1);
+  const cycImg = () => { try { const S = 28, c = CYC_COL[foldMode + 1] || CYC_COL[0], col = $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0], c[1], c[2], 1);
     const img = $.NSImage.alloc.initWithSize($.NSMakeSize(S, S)); img.lockFocus;
     col.setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(1, 1, S - 2, S - 2)).fill;   // v5.1.358(俊克 am10:37 改良1「Me Dockのボタンのように、円の地の色を変えて、その上に白い↻」)
     const t = $.NSAffineTransform.transform; t.translateXByYBy(S / 2, S / 2); t.rotateByDegrees(-Math.max(0, foldMode) * 90); t.translateXByYBy(-S / 2, -S / 2); t.concat;   // v5.1.358(改良2「一周で元の位置に」): 4つの姿で1周= 90°ずつ(全部畳む=0°)
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(cycRev ? '\u21ba' : '\u21bb')); const r = $.NSMakeRange(0, a.length);
-    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize(14), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, r);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize(18), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint((S - sz.width) / 2, (S - sz.height) / 2));
     img.unlockFocus; return img; } catch (e) { return null; } };
   // ★v5.1.364(俊克 pm01:51「メニューバーの↺ボタンもMe Dockの↺ボタンと同期しようよ」): 向きはファイル cyc-rev(在る=↺)を Me Dock と共有。置き場は state の cyc(無ければ state の隣)
@@ -401,6 +401,7 @@ function run(argv) {
   // ★v5.1.327(俊克 10.30 am10:40 改良4「TAG の … 14 more も、FUSEN の ▲ ▼ 1/2 のようにスライドできるように」): 札の見出しと膜の行を1本の並びにして TAG_PAGE 行ずつ・▲▼で送る(FUSEN の群と同じ、押しても閉じない)
   const TAG_PAGE = 10;
   // ★v5.1.343(俊克 pm02:25「スライドボタンを連続で押せるように、ポインター位置を移動しよう」): 送るとページの行数が変わり▲▼が上下にずれる→ 描き直した後(0.05秒・メニューの中でも鳴る)、押したボタンの真ん中へポインターを運ぶ(TAG と FUSEN の群)
+  let ptrDiag = 0;   // ★v5.1.372(俊克 pm10:14 改良1「中心にいると↻の回転が見えない…ボタンを拡大し、右下45°方向の位置にポイント」): 0以外= 真ん中から右下45°へ d pt ずらす(1回きり)
   const ptrTo = (b) => { try { const t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'ptr:', b, false); $.NSRunLoop.currentRunLoop.addTimerForMode(t, $.NSRunLoopCommonModes); } catch (e) {} };
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
   //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
@@ -449,7 +450,7 @@ function run(argv) {
     'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); ptrTo(s); } } catch (e) {} } },
     'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } },
     'pgTag:': { types: ['void', ['id']], implementation: function (s) { try { tagAll.fold = !tagAll.fold; tagTitle(); tagPaint(); } catch (e) {} } },   // v5.1.325
-    'ptr:': { types: ['void', ['id']], implementation: function (t) { try { const b = t.userInfo, w = b.window; if (!w || w.isNil()) return; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), H = $.NSScreen.screens.objectAtIndex(0).frame.size.height; $.CGWarpMouseCursorPosition({ x: r.origin.x + r.size.width / 2, y: H - (r.origin.y + r.size.height / 2) }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {} } },   // v5.1.343
+    'ptr:': { types: ['void', ['id']], implementation: function (t) { try { const b = t.userInfo, w = b.window; if (!w || w.isNil()) return; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), H = $.NSScreen.screens.objectAtIndex(0).frame.size.height, d = ptrDiag; ptrDiag = 0; $.CGWarpMouseCursorPosition({ x: r.origin.x + r.size.width / 2 + d, y: H - (r.origin.y + r.size.height / 2) + d }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {} } },   // v5.1.343
     'pgTagUp:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off > 0) { tagAll.off -= 1; tagPaint(); ptrTo(s); } } catch (e) {} } },   // v5.1.327
     'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + 1 < (tagAll.pages || []).length) { tagAll.off += 1; tagPaint(); ptrTo(s); } } catch (e) {} } },   // v5.1.327
     'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = ((tagAll.pages || [])[tagAll.off] || [])[Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
@@ -458,7 +459,7 @@ function run(argv) {
       if (sh) { cycRev = !cycRev; try { const fp = $(cycRevPath()); if (cycRev) $('1').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); } catch (e) {} }   // v5.1.364: Me Dock へも渡す   // ★v5.1.362(俊克 am11:18「一旦↺になったら、シフトを押さなくてもクリックだけで反時計回りに…shiftクリックは方向を反転するためのもの」): Shift= 向きを裏返して1つ進む・ふつう= 今の向きに1つ進む
       foldMode = cycRev ? (foldMode + 3) % 4 : (foldMode + 1) % 4; if (foldMode < 0) foldMode = 3; cycN++; cycPaint();   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
       clockFold = foldMode !== 1; fusenFold['\u0000all'] = foldMode !== 2; tagAll.fold = foldMode !== 3;
-      clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrTo(s);   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
+      clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 10; ptrTo(s);   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
@@ -499,11 +500,11 @@ function run(argv) {
     return hd;
   }
   function buildClockAll(m) {   // v5.1.356: ⏰の見出し＋右端の⊟
-    const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22)); hv.autoresizingMask = 2;
+    const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 30)); hv.autoresizingMask = 2;   // v5.1.372: ↻を 22→28 に拡大したので見出しの高さも 22→30
     clockAll.hb = $.NSButton.buttonWithTitleTargetAction($('\u23f0'), pgt, 'pgClk:'); clockAll.hb.bordered = false; clockAll.hb.alignment = 0;
-    clockAll.hb.frame = $.NSMakeRect(14, 1, 150, 20); hv.addSubview(clockAll.hb);
+    clockAll.hb.frame = $.NSMakeRect(14, 5, 150, 20); hv.addSubview(clockAll.hb);
     clockAll.cyc = $.NSButton.buttonWithTitleTargetAction($('\u21bb'), pgt, 'pgCyc:'); clockAll.cyc.bordered = false;
-    clockAll.cyc.frame = $.NSMakeRect(208, 0, 24, 22); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only   (Shift: turn the other way)'); hv.addSubview(clockAll.cyc); cycPaint();
+    clockAll.cyc.frame = $.NSMakeRect(202, 0, 30, 30); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only   (Shift: turn the other way)'); hv.addSubview(clockAll.cyc); cycPaint();
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); clockTitle();
     return hd;
   }
