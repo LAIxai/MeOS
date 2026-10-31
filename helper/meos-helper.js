@@ -384,6 +384,11 @@ function run(argv) {
     if (!(idle >= 10)) { cycIdleDone = false; return; } if (cycIdleDone) return; cycIdleDone = true;
     try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); hlog('[menu] 10秒の無操作で ↺→↻'); } } catch (e) {}
     if (cycRev) { cycRev = false; cycPaint(); } };
+  // ★v5.1.367(俊克 pm06:35「MW-GATEロゴが完成した」→ pm06:40「とりあえず入れてみよう」): 札の左、メニューバーの地の上にロゴ。M はライト=黒・ダーク=白(赤い玉と白い W はそのまま)
+  //   絵は拡張が置き場(cyc-rev と同じ所)へ写した mgate-l.png / mgate-d.png。見た目が変わったら描き直す
+  let gateImg = null, lastDark = null;
+  const gateLoad = () => { if (gateImg) return gateImg; try { const d = String(cycRevPath()).replace(/[^\/]*$/, ''); const l = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-l.png')), k = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-d.png')); if (l && !l.isNil() && k && !k.isNil()) gateImg = { l: l, d: k }; } catch (e) {} return gateImg; };
+  const gateDark = () => { try { return /Dark/.test(ObjC.unwrap(item.button.effectiveAppearance.name)); } catch (e) { return false; } };
   const cycPaint = () => { try { if (!clockAll.cyc) return; const im = cycImg(); if (im) { clockAll.cyc.image = im; clockAll.cyc.title = $(''); clockAll.cyc.imagePosition = 1; } } catch (e) {} };
   const clockPaint = () => { try { for (const mi of clockAll.rows) mi.hidden = clockFold; for (const sp of clockAll.seps) sp.hidden = clockFold; clockTitle(); } catch (e) {} };
   // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
@@ -678,7 +683,7 @@ function run(argv) {
       } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
-    if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle) {
+    if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle || gateDark() !== lastDark) {
       lastIdle = idle;
       lastText = text; lastAnchor = !!anchor;
       const t = String(text).length > 40 ? String(text).slice(0, 39) + '…' : String(text);   // ノッチの裏に隠れないよう短く
@@ -688,8 +693,10 @@ function run(argv) {
       attrs.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);
       const sz = styled(t, font, true).size;
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
-      const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));
+      const gi = gateLoad(), GW = gi ? H + 3 : 0; lastDark = gateDark();   // v5.1.367: ロゴの分だけ広げる
+      const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW, H));
       img.lockFocus;
+      if (gi) { try { (lastDark ? gi.d : gi.l).drawInRectFromRectOperationFraction($.NSMakeRect(0, 0, H, H), $.NSZeroRect, 2, 1); const tf = $.NSAffineTransform.transform; tf.translateXByYBy(GW, 0); tf.concat; } catch (e) {} }
       (idle ? gray : (anchor ? blue : (myScheme === 'vscode' ? purple : orange))).setFill;
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
       if (!idle) fillSeat(t, font, PX, W, H);   // v5.1.57
