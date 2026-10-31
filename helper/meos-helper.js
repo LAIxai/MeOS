@@ -403,6 +403,12 @@ function run(argv) {
   const TAG_PAGE = 10;
   // ★v5.1.343(俊克 pm02:25「スライドボタンを連続で押せるように、ポインター位置を移動しよう」): 送るとページの行数が変わり▲▼が上下にずれる→ 描き直した後(0.05秒・メニューの中でも鳴る)、押したボタンの真ん中へポインターを運ぶ(TAG と FUSEN の群)
   let ptrDiag = 0;   // ★v5.1.372(俊克 pm10:14 改良1「中心にいると↻の回転が見えない…ボタンを拡大し、右下45°方向の位置にポイント」): 0以外= 真ん中から右下45°へ d pt ずらす(1回きり)
+  // ★v5.1.374(俊克 pm10:27 バグ1「拡大しない。なぜ?」): 373 の NSTrackingArea はメニューの中では mouseEntered が届かなかった(events.log に兆し無し)。
+  //   → メニューを開いている間も回る 0.05秒の見張りで、ポインター(NSEvent.mouseLocation)が↻の枠の中か を見て描き替える。閉じている間は窓が見えないので素通り
+  let cycHovTimer = null;
+  const cycHoverStep = () => { try { const b = clockAll.cyc; if (!b) return; const w = b.window; let on = false;
+    if (w && !w.isNil() && w.isVisible) { const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation; on = p.x >= r.origin.x && p.x <= r.origin.x + r.size.width && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; }
+    if (on !== cycHover) { cycHover = on; cycPaint(); } } catch (e) {} };
   const ptrTo = (b) => { try { const t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'ptr:', b, false); $.NSRunLoop.currentRunLoop.addTimerForMode(t, $.NSRunLoopCommonModes); } catch (e) {} };
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
   //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
@@ -460,10 +466,9 @@ function run(argv) {
       if (sh) { cycRev = !cycRev; try { const fp = $(cycRevPath()); if (cycRev) $('1').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); } catch (e) {} }   // v5.1.364: Me Dock へも渡す   // ★v5.1.362(俊克 am11:18「一旦↺になったら、シフトを押さなくてもクリックだけで反時計回りに…shiftクリックは方向を反転するためのもの」): Shift= 向きを裏返して1つ進む・ふつう= 今の向きに1つ進む
       foldMode = cycRev ? (foldMode + 3) % 4 : (foldMode + 1) % 4; if (foldMode < 0) foldMode = 3; cycN++; cycPaint();   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
       clockFold = foldMode !== 1; fusenFold['\u0000all'] = foldMode !== 2; tagAll.fold = foldMode !== 3;
-      clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 10; ptrTo(s);   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
+      clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 8; ptrTo(s);   /* v5.1.374(改良1「ポインターの先が円のギリギリ外…少しだけ円の中に」): 10→8(半径14の内側 11.3) */   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
-    'mouseEntered:': { types: ['void', ['id']], implementation: function (e) { try { if (!cycHover) { cycHover = true; cycPaint(); } } catch (x) {} } },   // ★v5.1.373(俊克 pm10:22 改良1「ボタンをポイントした時に拡大するように。Me Dockのように」): ↻の当たり枠(30×30)に入ったら 22→30 で描く
-    'mouseExited:': { types: ['void', ['id']], implementation: function (e) { try { if (cycHover) { cycHover = false; cycPaint(); } } catch (x) {} } },
+    'cycHov:': { types: ['void', ['id']], implementation: function (t) { cycHoverStep(); } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -508,7 +513,7 @@ function run(argv) {
     clockAll.hb.frame = $.NSMakeRect(14, 5, 150, 20); hv.addSubview(clockAll.hb);
     clockAll.cyc = $.NSButton.buttonWithTitleTargetAction($('\u21bb'), pgt, 'pgCyc:'); clockAll.cyc.bordered = false;
     clockAll.cyc.frame = $.NSMakeRect(202, 0, 30, 30); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only   (Shift: turn the other way)'); hv.addSubview(clockAll.cyc); cycHover = false; cycPaint();
-    try { clockAll.cyc.addTrackingArea($.NSTrackingArea.alloc.initWithRectOptionsOwnerUserInfo($.NSZeroRect, 0x01 | 0x80 | 0x200, pgt, $())); } catch (e) {}   // v5.1.373: 入る/出る・いつでも・見えている枠ごと
+    try { if (!cycHovTimer) { cycHovTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'cycHov:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(cycHovTimer, $.NSRunLoopCommonModes); } } catch (e) {}
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); clockTitle();
     return hd;
   }
