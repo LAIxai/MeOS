@@ -3,8 +3,9 @@
 <p align="center">
   <!-- 新ロゴ(MeW)とM↓⊕を1枚に(GitHubは<table>に必ず枠線を付けるので合成にした)。2つで1つを表わす分身。
        2026.10.22 俊克「M↓Ⓦにしよう」= Ⓦ は double(W)と Warp。⊕ は ⊗(駄目マークに見える)を経て Ⓦ へ。pm11:33 俊克が M↓Ⓦ の絵を描いた(media/logo/mdw-logo.png)→ mew-header-4.png= mew-header-3 の MeW はそのまま・右の箱を同じ所(538,82・幅477)に縮めて差し替え
-       2026.10.24 am08:52 俊克が M↓Ⓦ↗ (Markdown Warpup) ver5 を描いた(media/logo/mdwu-logo.png)。Wの最後の画が輪を出て太い赤い↗になる= Warpを加速・up to the stars → mew-header-5.png= header-4 の右の箱を同じ所に差し替え -->
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-5.png" alt="MeW - Membrane Warpspace / Markdown Warpup" width="776">
+       2026.10.24 am08:52 俊克が M↓Ⓦ↗ (Markdown Warpup) ver5 を描いた(media/logo/mdwu-logo.png)。Wの最後の画が輪を出て太い赤い↗になる= Warpを加速・up to the stars → mew-header-5.png= header-4 の右の箱を同じ所に差し替え
+       2026.10.31 pm07:23 俊克「MeWロゴ、M↓W↗の右に追加…3つの顔として」→ mew-header-6.png= header-5 の右の空き(1110,82・310角)に MW-GATE(media/logo/mgate-original.png= mGATEver2)を置いただけ・左の2つの画素は不変 -->
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-6.png" alt="Three faces of MeOS: MeW - Membrane Warpspace / M↓Ⓦ↗ - Markdown Warpup / MW-GATE - the Warpgate on the macOS menu bar" width="776">
 </p>
 
 <p align="center">
