@@ -437,7 +437,8 @@ function run(argv) {
     'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + 1 < (tagAll.pages || []).length) { tagAll.off += 1; tagPaint(); ptrTo(s); } } catch (e) {} } },   // v5.1.327
     'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = ((tagAll.pages || [])[tagAll.off] || [])[Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
     'pgClk:': { types: ['void', ['id']], implementation: function (s) { try { clockFold = !clockFold; clockPaint(); } catch (e) {} } },   // v5.1.356: ⏰の見出しで畳む
-    'pgCyc:': { types: ['void', ['id']], implementation: function (s) { try { foldMode = (foldMode + 1) % 4; cycN++; cycPaint();   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
+    'pgCyc:': { types: ['void', ['id']], implementation: function (s) { try { let sh = false; try { sh = !!($.NSEvent.modifierFlags & (1 << 17)); } catch (x) {}   // ★v5.1.360(俊克 am11:10 改良1「↻ボタンは、シフトクリックで、逆回転に」)
+      foldMode = sh ? (foldMode + 3) % 4 : (foldMode + 1) % 4; if (foldMode < 0) foldMode = 3; cycN++; cycPaint();   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
       clockFold = foldMode !== 1; fusenFold['\u0000all'] = foldMode !== 2; tagAll.fold = foldMode !== 3;
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint();
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
@@ -484,7 +485,7 @@ function run(argv) {
     clockAll.hb = $.NSButton.buttonWithTitleTargetAction($('\u23f0'), pgt, 'pgClk:'); clockAll.hb.bordered = false; clockAll.hb.alignment = 0;
     clockAll.hb.frame = $.NSMakeRect(14, 1, 150, 20); hv.addSubview(clockAll.hb);
     clockAll.cyc = $.NSButton.buttonWithTitleTargetAction($('\u21bb'), pgt, 'pgCyc:'); clockAll.cyc.bordered = false;
-    clockAll.cyc.frame = $.NSMakeRect(208, 0, 24, 22); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only'); hv.addSubview(clockAll.cyc); cycPaint();
+    clockAll.cyc.frame = $.NSMakeRect(208, 0, 24, 22); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only   (Shift: reverse)'); hv.addSubview(clockAll.cyc); cycPaint();
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); clockTitle();
     return hd;
   }
