@@ -384,7 +384,7 @@ function run(argv) {
     if (!(idle >= 10)) { cycIdleDone = false; return; } if (cycIdleDone) return; cycIdleDone = true;
     try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); hlog('[menu] 10秒の無操作で ↺→↻'); } } catch (e) {}
     if (cycRev) { cycRev = false; cycPaint(); } };
-  // ★v5.1.367(俊克 pm06:35「MW-GATEロゴが完成した」→ pm06:40「とりあえず入れてみよう」): 札の左、メニューバーの地の上にロゴ。M はライト=黒・ダーク=白(赤い玉と白い W はそのまま)
+  // ★v5.1.367(俊克 pm06:35「MW-GATEロゴが完成した」→ pm06:40「とりあえず入れてみよう」): 札の左、メニューバーの地の上にロゴ。v5.1.368(俊克 pm06:47「mGATEver1.pngの方がいい」): 門の中が白く塗られた絵= ライトもダークも同じ絵のまま(l/d は同じ物)
   //   絵は拡張が置き場(cyc-rev と同じ所)へ写した mgate-l.png / mgate-d.png。見た目が変わったら描き直す
   let gateImg = null, lastDark = null;
   const gateLoad = () => { if (gateImg) return gateImg; try { const d = String(cycRevPath()).replace(/[^\/]*$/, ''); const l = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-l.png')), k = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-d.png')); if (l && !l.isNil() && k && !k.isNil()) gateImg = { l: l, d: k }; } catch (e) {} return gateImg; };
