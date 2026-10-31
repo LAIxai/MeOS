@@ -364,10 +364,10 @@ function run(argv) {
   const CYC_COL = [[0.85, 0.1, 0.1], [0.85, 0.1, 0.1], [0.95, 0.5, 0.0], [0.1, 0.6, 0.2], [0.1, 0.35, 0.95]];   // [はじめ, 全部畳む, ⏰, 付箋, タグ]
   const cycImg = () => { try { const S = 22, c = CYC_COL[foldMode + 1] || CYC_COL[0], col = $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0], c[1], c[2], 1);
     const img = $.NSImage.alloc.initWithSize($.NSMakeSize(S, S)); img.lockFocus;
-    col.setStroke; const ring = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(1.5, 1.5, S - 3, S - 3)); ring.lineWidth = 1.8; ring.stroke;
-    const t = $.NSAffineTransform.transform; t.translateXByYBy(S / 2, S / 2); t.rotateByDegrees(-(cycN * 45) % 360); t.translateXByYBy(-S / 2, -S / 2); t.concat;
+    col.setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(1, 1, S - 2, S - 2)).fill;   // v5.1.358(俊克 am10:37 改良1「Me Dockのボタンのように、円の地の色を変えて、その上に白い↻」)
+    const t = $.NSAffineTransform.transform; t.translateXByYBy(S / 2, S / 2); t.rotateByDegrees(-Math.max(0, foldMode) * 90); t.translateXByYBy(-S / 2, -S / 2); t.concat;   // v5.1.358(改良2「一周で元の位置に」): 4つの姿で1周= 90°ずつ(全部畳む=0°)
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u21bb')); const r = $.NSMakeRange(0, a.length);
-    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize(14), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, col, r);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize(14), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint((S - sz.width) / 2, (S - sz.height) / 2));
     img.unlockFocus; return img; } catch (e) { return null; } };
   const cycPaint = () => { try { if (!clockAll.cyc) return; const im = cycImg(); if (im) { clockAll.cyc.image = im; clockAll.cyc.title = $(''); clockAll.cyc.imagePosition = 1; } } catch (e) {} };
