@@ -333,7 +333,9 @@ function run(argv) {
   // ★v5.1.326(俊克 10.30 am10:26 改良2「畳んでいる時の▶を緑・開いている時の▼を水色に。赤は⏰があるから」): 見出しの三角だけ色を付ける(TAG・FUSEN・群の見出しの全部)
   // v5.1.327(俊克 改良3「パステル調でなく原色の濃い色(青と緑)に」): system の緑/水色 → sRGB の濃い緑(0,135,0 ← v5.1.336 俊克「濃過ぎて緑らしさがない」 0,115,0 ← v5.1.329 俊克「もう少し暗め・濃い緑に」 0,153,0)と青(0,64,255)
   // v5.1.337(俊克 pm01:26「▼/▶の大きさを2倍に」): 三角だけ字の2倍・下げて字の真ん中にそろえる(▸ -3pt / ▾ -2pt= 絵に描いて合わせた)
-  const triCol = (a, f) => { try { const r0 = $.NSMakeRange(0, 1); a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.53, 0, 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1), r0);
+  // ★v5.1.359(俊克 am10:46 改良1「緑(全て折り畳まれている)⇄赤(⏰の色)⇄青(付箋)⇄紫(タグ)…▼の色もそれに合わせる」): 開いた▾の色を群ごとに(o)。畳んだ▸は緑のまま
+  const TRI_RED = [0.85, 0.1, 0.1], TRI_PURPLE = [0.55, 0.2, 0.85];
+  const triCol = (a, f, o) => { try { const r0 = $.NSMakeRange(0, 1); a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.53, 0, 1) : (o ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(o[0], o[1], o[2], 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1)), r0);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize($.NSFont.systemFontSize * 2), r0); a.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(f ? -3 : -2), r0); } catch (e) {} };
   const pgTitle = (p, f) => { try {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
@@ -356,12 +358,12 @@ function run(argv) {
   const clockTitle = () => { try { if (!clockAll.hb) return; const f = clockFold;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_RED);
     clockAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.357(俊克 am10:19 改良1「⊟の代わりに、↻を45°ずつ回転…↻を赤色に…Me Dockのボタンのように円で囲む。角度ごとに色を変えても」):
   //   押すたびに45°ずつ回る↻を円で囲んだ絵。色は姿ごと= はじめ/全部畳む=赤・⏰だけ=橙・付箋だけ=緑・タグだけ=青
   let cycN = 0;
-  const CYC_COL = [[0.85, 0.1, 0.1], [0.85, 0.1, 0.1], [0.95, 0.5, 0.0], [0.1, 0.6, 0.2], [0.1, 0.35, 0.95]];   // [はじめ, 全部畳む, ⏰, 付箋, タグ]
+  const CYC_COL = [[0, 0.53, 0], [0, 0.53, 0], TRI_RED, [0, 0.25, 1], TRI_PURPLE];   // [はじめ, 全部畳む, ⏰, 付箋, タグ]  v5.1.359: 緑⇄赤⇄青⇄紫(▾/▸の色と同じ)
   const cycImg = () => { try { const S = 22, c = CYC_COL[foldMode + 1] || CYC_COL[0], col = $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0], c[1], c[2], 1);
     const img = $.NSImage.alloc.initWithSize($.NSMakeSize(S, S)); img.lockFocus;
     col.setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(1, 1, S - 2, S - 2)).fill;   // v5.1.358(俊克 am10:37 改良1「Me Dockのボタンのように、円の地の色を変えて、その上に白い↻」)
@@ -377,7 +379,7 @@ function run(argv) {
   const tagTitle = () => { try { if (!tagAll.hb) return;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.fold ? '\u25b8 ' : '\u25be ') + 'TAG')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, (tagAll.list.length || tagAll.rows.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, (tagAll.list.length || tagAll.rows.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold, TRI_PURPLE);
     tagAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.327(俊克 10.30 am10:40 改良4「TAG の … 14 more も、FUSEN の ▲ ▼ 1/2 のようにスライドできるように」): 札の見出しと膜の行を1本の並びにして TAG_PAGE 行ずつ・▲▼で送る(FUSEN の群と同じ、押しても閉じない)
   const TAG_PAGE = 10;
@@ -388,7 +390,7 @@ function run(argv) {
   const tagFold = {};
   const tagHead = (t, f) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + t)); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.menuFontOfSize(0).pointSize), r); a.addAttributeValueRange($.NSObliquenessAttributeName, $(0.2), r);   // v5.1.340: 太字＋傾き(日本語にも効く)
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, 1)); } catch (e) {} return a; };
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_PURPLE); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, 1)); } catch (e) {} return a; };
   const tagPaint = () => { try { const F = tagAll.fold, V = []; let cur = '';
     for (const it of tagAll.list) { if (it.off) { cur = it.title; V.push(it); } else if (!tagFold[cur]) V.push(it); }
     // ★v5.1.342(俊克 pm02:12 改良1「1/4 頁の一番下に ▾#テストHIIT の見出しだけが出て、送ると見出し無しで始まる」): ページを先に組む=
