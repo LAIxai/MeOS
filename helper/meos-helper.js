@@ -362,13 +362,13 @@ function run(argv) {
     clockAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.357(俊克 am10:19 改良1「⊟の代わりに、↻を45°ずつ回転…↻を赤色に…Me Dockのボタンのように円で囲む。角度ごとに色を変えても」):
   //   押すたびに45°ずつ回る↻を円で囲んだ絵。色は姿ごと= はじめ/全部畳む=赤・⏰だけ=橙・付箋だけ=緑・タグだけ=青
-  let cycN = 0;
+  let cycN = 0, cycRev = false;   // v5.1.361(俊克 am11:13「逆回転のときは、↺にしよう」): 最後に Shift で回したら ↺ を描く
   const CYC_COL = [[0, 0.53, 0], [0, 0.53, 0], TRI_RED, [0, 0.25, 1], TRI_PURPLE];   // [はじめ, 全部畳む, ⏰, 付箋, タグ]  v5.1.359: 緑⇄赤⇄青⇄紫(▾/▸の色と同じ)
   const cycImg = () => { try { const S = 22, c = CYC_COL[foldMode + 1] || CYC_COL[0], col = $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0], c[1], c[2], 1);
     const img = $.NSImage.alloc.initWithSize($.NSMakeSize(S, S)); img.lockFocus;
     col.setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(1, 1, S - 2, S - 2)).fill;   // v5.1.358(俊克 am10:37 改良1「Me Dockのボタンのように、円の地の色を変えて、その上に白い↻」)
     const t = $.NSAffineTransform.transform; t.translateXByYBy(S / 2, S / 2); t.rotateByDegrees(-Math.max(0, foldMode) * 90); t.translateXByYBy(-S / 2, -S / 2); t.concat;   // v5.1.358(改良2「一周で元の位置に」): 4つの姿で1周= 90°ずつ(全部畳む=0°)
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u21bb')); const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(cycRev ? '\u21ba' : '\u21bb')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize(14), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint((S - sz.width) / 2, (S - sz.height) / 2));
     img.unlockFocus; return img; } catch (e) { return null; } };
@@ -438,7 +438,7 @@ function run(argv) {
     'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = ((tagAll.pages || [])[tagAll.off] || [])[Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
     'pgClk:': { types: ['void', ['id']], implementation: function (s) { try { clockFold = !clockFold; clockPaint(); } catch (e) {} } },   // v5.1.356: ⏰の見出しで畳む
     'pgCyc:': { types: ['void', ['id']], implementation: function (s) { try { let sh = false; try { sh = !!($.NSEvent.modifierFlags & (1 << 17)); } catch (x) {}   // ★v5.1.360(俊克 am11:10 改良1「↻ボタンは、シフトクリックで、逆回転に」)
-      foldMode = sh ? (foldMode + 3) % 4 : (foldMode + 1) % 4; if (foldMode < 0) foldMode = 3; cycN++; cycPaint();   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
+      foldMode = sh ? (foldMode + 3) % 4 : (foldMode + 1) % 4; if (foldMode < 0) foldMode = 3; cycRev = sh; cycN++; cycPaint();   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
       clockFold = foldMode !== 1; fusenFold['\u0000all'] = foldMode !== 2; tagAll.fold = foldMode !== 3;
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint();
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
