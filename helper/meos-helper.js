@@ -364,14 +364,15 @@ function run(argv) {
     clockAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.357(俊克 am10:19 改良1「⊟の代わりに、↻を45°ずつ回転…↻を赤色に…Me Dockのボタンのように円で囲む。角度ごとに色を変えても」):
   //   押すたびに45°ずつ回る↻を円で囲んだ絵。色は姿ごと= はじめ/全部畳む=赤・⏰だけ=橙・付箋だけ=緑・タグだけ=青
-  let cycN = 0, cycRev = false;   // v5.1.361(俊克 am11:13「逆回転のときは、↺にしよう」): 最後に Shift で回したら ↺ を描く
+  let cycN = 0, cycRev = false, cycHover = false;   // v5.1.373: cycHover= ↻をポイント中(拡大して描く)
+    // v5.1.361(俊克 am11:13「逆回転のときは、↺にしよう」): 最後に Shift で回したら ↺ を描く
   const CYC_COL = [[0, 0.53, 0], [0, 0.53, 0], TRI_RED, [0, 0.25, 1], TRI_PURPLE];   // [はじめ, 全部畳む, ⏰, 付箋, タグ]  v5.1.359: 緑⇄赤⇄青⇄紫(▾/▸の色と同じ)
-  const cycImg = () => { try { const S = 28, c = CYC_COL[foldMode + 1] || CYC_COL[0], col = $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0], c[1], c[2], 1);
+  const cycImg = () => { try { const S = cycHover ? 30 : 22, c = CYC_COL[foldMode + 1] || CYC_COL[0], col = $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0], c[1], c[2], 1);
     const img = $.NSImage.alloc.initWithSize($.NSMakeSize(S, S)); img.lockFocus;
     col.setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(1, 1, S - 2, S - 2)).fill;   // v5.1.358(俊克 am10:37 改良1「Me Dockのボタンのように、円の地の色を変えて、その上に白い↻」)
     const t = $.NSAffineTransform.transform; t.translateXByYBy(S / 2, S / 2); t.rotateByDegrees(-Math.max(0, foldMode) * 90); t.translateXByYBy(-S / 2, -S / 2); t.concat;   // v5.1.358(改良2「一周で元の位置に」): 4つの姿で1周= 90°ずつ(全部畳む=0°)
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(cycRev ? '\u21ba' : '\u21bb')); const r = $.NSMakeRange(0, a.length);
-    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize(18), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, r);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize(cycHover ? 19 : 14), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint((S - sz.width) / 2, (S - sz.height) / 2));
     img.unlockFocus; return img; } catch (e) { return null; } };
   // ★v5.1.364(俊克 pm01:51「メニューバーの↺ボタンもMe Dockの↺ボタンと同期しようよ」): 向きはファイル cyc-rev(在る=↺)を Me Dock と共有。置き場は state の cyc(無ければ state の隣)
@@ -461,6 +462,8 @@ function run(argv) {
       clockFold = foldMode !== 1; fusenFold['\u0000all'] = foldMode !== 2; tagAll.fold = foldMode !== 3;
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 10; ptrTo(s);   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
+    'mouseEntered:': { types: ['void', ['id']], implementation: function (e) { try { if (!cycHover) { cycHover = true; cycPaint(); } } catch (x) {} } },   // ★v5.1.373(俊克 pm10:22 改良1「ボタンをポイントした時に拡大するように。Me Dockのように」): ↻の当たり枠(30×30)に入ったら 22→30 で描く
+    'mouseExited:': { types: ['void', ['id']], implementation: function (e) { try { if (cycHover) { cycHover = false; cycPaint(); } } catch (x) {} } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -504,7 +507,8 @@ function run(argv) {
     clockAll.hb = $.NSButton.buttonWithTitleTargetAction($('\u23f0'), pgt, 'pgClk:'); clockAll.hb.bordered = false; clockAll.hb.alignment = 0;
     clockAll.hb.frame = $.NSMakeRect(14, 5, 150, 20); hv.addSubview(clockAll.hb);
     clockAll.cyc = $.NSButton.buttonWithTitleTargetAction($('\u21bb'), pgt, 'pgCyc:'); clockAll.cyc.bordered = false;
-    clockAll.cyc.frame = $.NSMakeRect(202, 0, 30, 30); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only   (Shift: turn the other way)'); hv.addSubview(clockAll.cyc); cycPaint();
+    clockAll.cyc.frame = $.NSMakeRect(202, 0, 30, 30); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only   (Shift: turn the other way)'); hv.addSubview(clockAll.cyc); cycHover = false; cycPaint();
+    try { clockAll.cyc.addTrackingArea($.NSTrackingArea.alloc.initWithRectOptionsOwnerUserInfo($.NSZeroRect, 0x01 | 0x80 | 0x200, pgt, $())); } catch (e) {}   // v5.1.373: 入る/出る・いつでも・見えている枠ごと
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); clockTitle();
     return hd;
   }
