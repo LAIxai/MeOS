@@ -12,6 +12,7 @@ ObjC.import('Cocoa');
 ObjC.import('CoreGraphics');
 ObjC.import('stdlib');   // v5.1.335: $.exit(起こし直す)   // v5.1.237: ポインターを運ぶ(CGWarpMouseCursorPosition)
 ObjC.bindFunction('kill', ['int', ['int', 'int']]);
+ObjC.bindFunction('CGEventSourceSecondsSinceLastEventType', ['double', ['int', 'unsigned int']]);   // v5.1.366: Mac 全体の無操作の秒数
 ObjC.bindFunction('CGEventSourceFlagsState', ['unsigned long long', ['int']]);   // v4.2.742: 左右の区別まで入った修飾キーの状態(機械の状態= 1)
 function run(argv) {
   const dir = argv[0];
@@ -376,6 +377,13 @@ function run(argv) {
   // ★v5.1.364(俊克 pm01:51「メニューバーの↺ボタンもMe Dockの↺ボタンと同期しようよ」): 向きはファイル cyc-rev(在る=↺)を Me Dock と共有。置き場は state の cyc(無ければ state の隣)
   const cycRevPath = () => { try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); const j = JSON.parse(ObjC.unwrap(s)); if (j && j.cyc) return String(j.cyc); } catch (e) {} return String(statePath).replace(/[^\/]*$/, '') + 'cyc-rev'; };
   const cycRevLoad = () => { try { const rv = !!$.NSFileManager.defaultManager.fileExistsAtPath($(cycRevPath())); if (rv !== cycRev) { cycRev = rv; cycPaint(); } } catch (e) {} };
+  // ★v5.1.366(俊克 pm05:20 改良1「↺ボタンに変わったあと、無操作が10秒続いたら、↻に戻す…ボタンを見なくても、通常は時計回り↻になっていると分かる。これこそが真のaccessibility」):
+  //   Mac 全体で10秒なにも触らなければ cyc-rev を消す= メニューバーも Me Dock も ↻ へ戻る(Me Dock はファイルを見張っている)
+  let cycIdleDone = false;
+  const cycIdle = () => { let idle = 0; try { idle = Number($.CGEventSourceSecondsSinceLastEventType(1, 0xFFFFFFFF)); } catch (e) { return; }
+    if (!(idle >= 10)) { cycIdleDone = false; return; } if (cycIdleDone) return; cycIdleDone = true;
+    try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); hlog('[menu] 10秒の無操作で ↺→↻'); } } catch (e) {}
+    if (cycRev) { cycRev = false; cycPaint(); } };
   const cycPaint = () => { try { if (!clockAll.cyc) return; const im = cycImg(); if (im) { clockAll.cyc.image = im; clockAll.cyc.title = $(''); clockAll.cyc.imagePosition = 1; } } catch (e) {} };
   const clockPaint = () => { try { for (const mi of clockAll.rows) mi.hidden = clockFold; for (const sp of clockAll.seps) sp.hidden = clockFold; clockTitle(); } catch (e) {} };
   // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
@@ -842,7 +850,7 @@ function run(argv) {
   }
   // ★v4.2.333(俊克 改良2「メニューを出しているとき、メニューバーの残時間が止まってしまう」): メニューを開いている間は macOS が
   //   runUntilDate を返さない(メニューの追跡の間は別の走り方)。→ 描く仕事を『どの走り方でも鳴る』タイマー(CommonModes)に載せる。
-  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { step(); } catch (e) {} } },
+  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { step(); } catch (e) {} try { cycIdle(); } catch (e) {} } },
     'mods:': { types: ['void', ['id']], implementation: function (t) { try { modsTick(); } catch (e) {} } },
     'bell:': { types: ['void', ['id']], implementation: function (t) { try { if (ringing && Date.now() < ringing.until) { playBell(); if (isGk()) armGk(); else if (isGrowl() || isPurrF()) armGrowl(); } } catch (e) {} } } } });
   const ticker = $.MeOSTickH.alloc.init;
