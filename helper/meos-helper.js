@@ -382,9 +382,11 @@ function run(argv) {
   //   Mac 全体で10秒なにも触らなければ cyc-rev を消す= メニューバーも Me Dock も ↻ へ戻る(Me Dock はファイルを見張っている)
   let cycIdleDone = false;
   const cycIdle = () => { let idle = 0; try { idle = Number($.CGEventSourceSecondsSinceLastEventType(1, 0xFFFFFFFF)); } catch (e) { return; }
-    if (!(idle >= 3) || (Number($.NSEvent.modifierFlags) & 0x20000)) { cycIdleDone = false; return; }   // Shift を押し続けている間は数えない(押しっぱなしは無操作に見える)   // v5.1.375(俊克 11.01 改良1「10秒は少し長い。3秒くらい」): 10→3秒
+    // ★v5.1.376(俊克 11.01 pm02:58 改良1「シフトを押している長さで、戻る時間をカスタマイズ」): cyc-rev の中身= 戻るまでの秒(押した長さ×5・3〜60秒)。中身が古い '1' なら3秒
+    let wait = 3; try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { const n = Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(fp, $.NSUTF8StringEncoding, null))); if (n >= 3) wait = Math.min(60, n); } } catch (e) {}
+    if (!(idle >= wait) || (Number($.NSEvent.modifierFlags) & 0x20000)) { cycIdleDone = false; return; }   // Shift を押し続けている間は数えない(押しっぱなしは無操作に見える)   // v5.1.375(俊克 11.01 改良1「10秒は少し長い。3秒くらい」): 10→3秒
     if (cycIdleDone) return; cycIdleDone = true;
-    try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); hlog('[menu] 3秒の無操作で ↺→↻'); } } catch (e) {}
+    try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); hlog('[menu] ' + wait + '秒の無操作で ↺→↻'); } } catch (e) {}
     if (cycRev) { cycRev = false; cycPaint(); } };
   // ★v5.1.367(俊克 pm06:35「MW-GATEロゴが完成した」→ pm06:40「とりあえず入れてみよう」): 札の左、メニューバーの地の上にロゴ。v5.1.368(俊克 pm06:47「mGATEver1.pngの方がいい」): 門の中が白く塗られた絵= ライトもダークも同じ絵のまま(l/d は同じ物)
   //   絵は拡張が置き場(cyc-rev と同じ所)へ写した mgate-l.png / mgate-d.png。見た目が変わったら描き直す
@@ -417,7 +419,7 @@ function run(argv) {
   let cycShAt = 0, cycShRev = false, cycShDone = false;
   const cycShiftStep = () => { try { const fm = $.NSFileManager.defaultManager, fp = $(cycRevPath()); cycRevLoad();
     const f = Number($.NSEvent.modifierFlags) || 0, sOnly = (f & 0x20000) && !(f & 0x1C0000);
-    if (!sOnly) { cycShAt = 0; return; }
+    if (!sOnly) { if (cycShAt && cycShDone && fm.fileExistsAtPath(fp)) { const sec = Math.max(3, Math.min(60, Math.round((Date.now() - cycShAt) / 1000 * 5))); $(String(sec)).writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); } cycShAt = 0; return; }   // v5.1.376: 離した時に押した長さ×5秒を中身へ
     if (!cycShAt) { cycShAt = Date.now(); cycShRev = !!fm.fileExistsAtPath(fp); cycShDone = false; return; }
     if (cycShDone || Date.now() - cycShAt < 700) return; cycShDone = true;
     if (!!fm.fileExistsAtPath(fp) !== cycShRev) return;   // 拡張がもう裏返した
