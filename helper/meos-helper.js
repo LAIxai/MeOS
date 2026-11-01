@@ -382,8 +382,9 @@ function run(argv) {
   //   Mac 全体で10秒なにも触らなければ cyc-rev を消す= メニューバーも Me Dock も ↻ へ戻る(Me Dock はファイルを見張っている)
   let cycIdleDone = false;
   const cycIdle = () => { let idle = 0; try { idle = Number($.CGEventSourceSecondsSinceLastEventType(1, 0xFFFFFFFF)); } catch (e) { return; }
-    if (!(idle >= 10)) { cycIdleDone = false; return; } if (cycIdleDone) return; cycIdleDone = true;
-    try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); hlog('[menu] 10秒の無操作で ↺→↻'); } } catch (e) {}
+    if (!(idle >= 3) || (Number($.NSEvent.modifierFlags) & 0x20000)) { cycIdleDone = false; return; }   // Shift を押し続けている間は数えない(押しっぱなしは無操作に見える)   // v5.1.375(俊克 11.01 改良1「10秒は少し長い。3秒くらい」): 10→3秒
+    if (cycIdleDone) return; cycIdleDone = true;
+    try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); hlog('[menu] 3秒の無操作で ↺→↻'); } } catch (e) {}
     if (cycRev) { cycRev = false; cycPaint(); } };
   // ★v5.1.367(俊克 pm06:35「MW-GATEロゴが完成した」→ pm06:40「とりあえず入れてみよう」): 札の左、メニューバーの地の上にロゴ。v5.1.368(俊克 pm06:47「mGATEver1.pngの方がいい」): 門の中が白く塗られた絵= ライトもダークも同じ絵のまま(l/d は同じ物)
   //   絵は拡張が置き場(cyc-rev と同じ所)へ写した mgate-l.png / mgate-d.png。見た目が変わったら描き直す
@@ -408,7 +409,20 @@ function run(argv) {
   let cycHovTimer = null;
   const cycHoverStep = () => { try { const b = clockAll.cyc; if (!b) return; const w = b.window; let on = false;
     if (w && !w.isNil() && w.isVisible) { const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation; on = p.x >= r.origin.x && p.x <= r.origin.x + r.size.width && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; }
-    if (on !== cycHover) { cycHover = on; cycPaint(); } } catch (e) {} };
+    if (on !== cycHover) { cycHover = on; cycPaint(); }
+    if (w && !w.isNil() && w.isVisible) cycShiftStep(); } catch (e) {} };
+  // ★v5.1.375(俊克 11.01 バグ1「メニューバーを表示している時、Shift長押しで↻ボタンが裏返らない」): 開いている間は向きを menuWillOpen でしか読んでいなかった＋
+  //   メニューに焦点が移ると VSCodium の Shift 長押しが届かない事がある。→ 開いている間(0.05秒の見張り)に、①cyc-rev を読み直して描き替える
+  //   ②Shift だけを0.7秒押し続けて、それでも向きが変わっていなければ(拡張が0.4秒で裏返していない)ここで裏返す= 二重に裏返さない
+  let cycShAt = 0, cycShRev = false, cycShDone = false;
+  const cycShiftStep = () => { try { const fm = $.NSFileManager.defaultManager, fp = $(cycRevPath()); cycRevLoad();
+    const f = Number($.NSEvent.modifierFlags) || 0, sOnly = (f & 0x20000) && !(f & 0x1C0000);
+    if (!sOnly) { cycShAt = 0; return; }
+    if (!cycShAt) { cycShAt = Date.now(); cycShRev = !!fm.fileExistsAtPath(fp); cycShDone = false; return; }
+    if (cycShDone || Date.now() - cycShAt < 700) return; cycShDone = true;
+    if (!!fm.fileExistsAtPath(fp) !== cycShRev) return;   // 拡張がもう裏返した
+    cycRev = !cycShRev; if (cycRev) $('1').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else fm.removeItemAtPathError(fp, null);
+    cycPaint(); hlog('[menu] 開いている間の Shift 長押しで ' + (cycRev ? '↻→↺' : '↺→↻')); } catch (e) {} };
   const ptrTo = (b) => { try { const t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'ptr:', b, false); $.NSRunLoop.currentRunLoop.addTimerForMode(t, $.NSRunLoopCommonModes); } catch (e) {} };
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
   //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
