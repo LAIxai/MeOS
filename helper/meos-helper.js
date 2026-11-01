@@ -382,8 +382,8 @@ function run(argv) {
   //   Mac 全体で10秒なにも触らなければ cyc-rev を消す= メニューバーも Me Dock も ↻ へ戻る(Me Dock はファイルを見張っている)
   let cycIdleDone = false;
   const cycIdle = () => { let idle = 0; try { idle = Number($.CGEventSourceSecondsSinceLastEventType(1, 0xFFFFFFFF)); } catch (e) { return; }
-    // ★v5.1.376(俊克 11.01 pm02:58 改良1「シフトを押している長さで、戻る時間をカスタマイズ」): cyc-rev の中身= 戻るまでの秒(押した長さ×5・3〜60秒)。中身が古い '1' なら3秒
-    let wait = 3; try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { const n = Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(fp, $.NSUTF8StringEncoding, null))); if (n >= 3) wait = Math.min(60, n); } } catch (e) {}
+    // ★v5.1.376(俊克 11.01 pm02:58 改良1「シフトを押している長さで、戻る時間をカスタマイズ」): cyc-rev の中身= 戻るまでの秒(v5.1.378 俊克 pm03:36「最長10秒」= 押した長さそのまま・3〜10秒)。中身が古い '1' なら3秒
+    let wait = 3; try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { const n = Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(fp, $.NSUTF8StringEncoding, null))); if (n > 0) wait = Math.max(3, Math.min(10, n)); } } catch (e) {}
     if (!(idle >= wait) || (Number($.NSEvent.modifierFlags) & 0x20000)) { cycIdleDone = false; return; }   // Shift を押し続けている間は数えない(押しっぱなしは無操作に見える)   // v5.1.375(俊克 11.01 改良1「10秒は少し長い。3秒くらい」): 10→3秒
     if (cycIdleDone) return; cycIdleDone = true;
     try { const fp = $(cycRevPath()); if ($.NSFileManager.defaultManager.fileExistsAtPath(fp)) { $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); hlog('[menu] ' + wait + '秒の無操作で ↺→↻'); } } catch (e) {}
@@ -419,14 +419,11 @@ function run(argv) {
   let cycShAt = 0, cycShRev = false, cycShDone = false;
   const cycShiftStep = () => { try { const fm = $.NSFileManager.defaultManager, fp = $(cycRevPath()); cycRevLoad();
     const f = Number($.NSEvent.modifierFlags) || 0, sOnly = (f & 0x20000) && !(f & 0x1C0000);
-    if (!sOnly) { cycShAt = 0; return; }
+    if (!sOnly) { if (cycShAt && cycShDone && fm.fileExistsAtPath(fp)) { const sec = Math.max(3, Math.min(10, Math.round((Date.now() - cycShAt) / 100) / 10)); $(String(sec)).writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); } cycShAt = 0; return; }   // v5.1.376: 離した時に押した長さ×5秒を中身へ
     if (!cycShAt) { cycShAt = Date.now(); cycShRev = !!fm.fileExistsAtPath(fp); cycShDone = false; return; }
-    const held = Date.now() - cycShAt;
-    // ★v5.1.377(俊克 11.01 pm03:29「🔴の大きさを3段階に…🔴を見れば何秒待ちか分かる」): 押し続けた長さで3段階= 1.5秒未満3秒・3秒未満10秒・それ以上30秒(上げるだけ・下げない)。中身が変わると Me Dock の🔴も大きくなる
-    if (cycShDone) { if (fm.fileExistsAtPath(fp)) { const sec = held >= 3000 ? 30 : held >= 1500 ? 10 : 3; let cur = 0; try { cur = Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(fp, $.NSUTF8StringEncoding, null))) || 0; } catch (e) {} if (cur < sec) $(String(sec)).writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); } return; }
-    if (held < 700) return; cycShDone = true;
+    if (cycShDone || Date.now() - cycShAt < 700) return; cycShDone = true;
     if (!!fm.fileExistsAtPath(fp) !== cycShRev) return;   // 拡張がもう裏返した
-    cycRev = !cycShRev; if (cycRev) $('3').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else fm.removeItemAtPathError(fp, null);
+    cycRev = !cycShRev; if (cycRev) $('1').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else fm.removeItemAtPathError(fp, null);
     cycPaint(); hlog('[menu] 開いている間の Shift 長押しで ' + (cycRev ? '↻→↺' : '↺→↻')); } catch (e) {} };
   const ptrTo = (b) => { try { const t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'ptr:', b, false); $.NSRunLoop.currentRunLoop.addTimerForMode(t, $.NSRunLoopCommonModes); } catch (e) {} };
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
