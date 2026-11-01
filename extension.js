@@ -40527,8 +40527,8 @@ function meosSyncHeadHashes(e) {
   const done = new Set();
   for (const ch of e.contentChanges) {
     if (/\n/.test(ch.text) || ch.range.start.line !== ch.range.end.line) continue;
-    const L = ch.range.start.line; if (done.has(L) || L < 1 || L >= doc.lineCount) continue; done.add(L);
-    const p = meosParseSpecLine(doc.lineAt(L).text); if (!p || !p.line) continue;
+    const L = ch.range.start.line; if (done.has(L) || L >= doc.lineCount) continue; done.add(L);
+    const p = meosParseSpecLine(doc.lineAt(L).text); if (!p) { meosSyncHeadFc(doc, L); continue; } if (!p.line || L < 1) continue;
     const d = meosLineDirective(p.line); if (!d || !d.level || d.not) continue;
     let h = L - 1; while (h >= 0 && meosIsSpecLine(doc.lineAt(h).text)) h--; if (h < 0) continue;
     const t = doc.lineAt(h).text, m = /^([ \t]*(?:[-*+][ \t]+|\d+\.[ \t]+)?)(#{1,6})(?=[ \t])/.exec(t);
@@ -40539,6 +40539,26 @@ function meosSyncHeadHashes(e) {
       const we = new vscode.WorkspaceEdit(); we.replace(doc.uri, r, '#'.repeat(lv)); vscode.workspace.applyEdit(we);
       meosDbg('[headSync] ' + (h + 1) + '行目 ' + m[2] + ' → ' + '#'.repeat(lv));
     } catch (_) { } }, 0);
+  }
+}
+// ★v5.1.381(俊克 11.01 pm05:50「同様に、頭の##を直接#に変更したら、H2をH1に変更しようよ。既存のマークダウンエディターを使っていた人は、その方が慣れている」):
+//   逆向き= 見出しの行の # の数を打ち替えたら、真下に続く FC 行のうち段を持つ最初の1行の H の数字を揃える(H2not は触らない・## と書いた命令も触らない)
+const MEOS_FC_HEAD_H_RE = /(Mew![ \t]*FC[ \t]+(?:-?1(?:\.\d+|[a-z])*\.?|-)?[ \t]*)H([1-6])(?![0-9])/;
+function meosSyncHeadFc(doc, h) {
+  const t = doc.lineAt(h).text, m = /^[ \t]*(?:[-*+][ \t]+|\d+\.[ \t]+)?(#{1,6})(?=[ \t])/.exec(t); if (!m) return;
+  const lv = m[1].length;
+  for (let i = h + 1; i < doc.lineCount; i++) {
+    const ft = doc.lineAt(i).text, p = meosParseSpecLine(ft); if (!p) return;
+    const d = p.line ? meosLineDirective(p.line) : null; if (!d || !d.level) continue;
+    if (d.not || d.level === lv) return;
+    const fm = MEOS_FC_HEAD_H_RE.exec(ft); if (!fm) return;
+    const at = fm.index + fm[1].length + 1, r = new vscode.Range(i, at, i, at + 1);
+    setTimeout(() => { try {
+      if (doc.isClosed || doc.lineAt(i).text !== ft || doc.lineAt(h).text !== t) return;
+      const we = new vscode.WorkspaceEdit(); we.replace(doc.uri, r, String(lv)); vscode.workspace.applyEdit(we);
+      meosDbg('[headSync] ' + (h + 1) + '行目の ' + m[1] + ' → FC ' + (i + 1) + '行目 H' + d.level + '→H' + lv);
+    } catch (_) { } }, 0);
+    return;
   }
 }
 // ★v5.1.309(俊克 10.29 pm07:51「ハイライトなどは、FCコメントの順番に対応している。これは変えない。インライン用には専用のFC-icを付ける」):
