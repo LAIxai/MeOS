@@ -30676,7 +30676,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tile{position:relative}
 .md-tile.md-dot::after{content:'';position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}
 .md-tile.md-dot.md-last::after{background:#e53935}
-.md-tiles[data-dot="2"] .md-tile.md-dot.md-last::after{width:6px;height:6px;margin-left:-3px;bottom:-8px}.md-tiles[data-dot="3"] .md-tile.md-dot.md-last::after{width:8px;height:8px;margin-left:-4px;bottom:-10px}.md-tiles[data-dot="2"] .md-tile.md-dot::before{height:9px}.md-tiles[data-dot="3"] .md-tile.md-dot::before{height:11px}   /* ★v5.1.378(俊克 pm03:36「🔴だけを時間に応じて大きく…3秒以内、6秒以内、10秒の3段階」): 字は大きくしない。上端は1段と同じ所(下へ育つ) */
+.md-tiles[data-dot="2"] .md-tile.md-dot.md-last::after{width:6px;height:6px;left:0;margin-left:0}.md-tiles[data-dot="3"] .md-tile.md-dot.md-last::after{width:8px;height:8px;left:auto;right:0;margin-left:0}   /* ★v5.1.378(俊克 pm03:36「🔴だけを時間に応じて大きく…3秒以内、6秒以内、10秒の3段階」): 字は大きくしない。v5.1.379(俊克 pm04:00 改良1「3〜6秒は左端・6秒以上は右端へ」改良2「下端を一定に・パズルに被っても良い」): 下端は1段と同じ -6px(上へ育つ)・2段=字の左端・3段=字の右端 */
 .md-tile.md-dot::before{content:'';position:absolute;left:0;right:0;top:100%;height:7px}   /* ★v5.1.324(俊克 10.30 am10:05 バグ1「今回からは Format Me を含めて、それより下が振動」): 白点(::after)は字の4px下に離れて付く。乗って字が2倍になる途中で点が下へ逃げ、ポインターが字と点の隙間に落ちる→外れて縮む→点が戻って乗る…の繰り返し(実機CDPで 0.1秒ごと)。そのたびに枠の40pxが伸び縮みし、322 までは錨でヘッダーが・323 からは下が揺れていた。→ 字と点の隙間を見えない当たりで埋める(字と一緒に拡大するので、どの大きさでも途切れない) */
 .md-tiles.md-armed .md-tile.md-last{transform:scale(2);z-index:6;position:relative}
 body.meos-rev .meos-cycbtn{scale:-1 1}   /* v5.1.363: 向きを裏返している間= ↻だけのボタンを鏡に映して↺に見せる */
