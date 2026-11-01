@@ -419,11 +419,14 @@ function run(argv) {
   let cycShAt = 0, cycShRev = false, cycShDone = false;
   const cycShiftStep = () => { try { const fm = $.NSFileManager.defaultManager, fp = $(cycRevPath()); cycRevLoad();
     const f = Number($.NSEvent.modifierFlags) || 0, sOnly = (f & 0x20000) && !(f & 0x1C0000);
-    if (!sOnly) { if (cycShAt && cycShDone && fm.fileExistsAtPath(fp)) { const sec = Math.max(3, Math.min(60, Math.round((Date.now() - cycShAt) / 1000 * 5))); $(String(sec)).writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); } cycShAt = 0; return; }   // v5.1.376: 離した時に押した長さ×5秒を中身へ
+    if (!sOnly) { cycShAt = 0; return; }
     if (!cycShAt) { cycShAt = Date.now(); cycShRev = !!fm.fileExistsAtPath(fp); cycShDone = false; return; }
-    if (cycShDone || Date.now() - cycShAt < 700) return; cycShDone = true;
+    const held = Date.now() - cycShAt;
+    // ★v5.1.377(俊克 11.01 pm03:29「🔴の大きさを3段階に…🔴を見れば何秒待ちか分かる」): 押し続けた長さで3段階= 1.5秒未満3秒・3秒未満10秒・それ以上30秒(上げるだけ・下げない)。中身が変わると Me Dock の🔴も大きくなる
+    if (cycShDone) { if (fm.fileExistsAtPath(fp)) { const sec = held >= 3000 ? 30 : held >= 1500 ? 10 : 3; let cur = 0; try { cur = Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(fp, $.NSUTF8StringEncoding, null))) || 0; } catch (e) {} if (cur < sec) $(String(sec)).writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); } return; }
+    if (held < 700) return; cycShDone = true;
     if (!!fm.fileExistsAtPath(fp) !== cycShRev) return;   // 拡張がもう裏返した
-    cycRev = !cycShRev; if (cycRev) $('1').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else fm.removeItemAtPathError(fp, null);
+    cycRev = !cycShRev; if (cycRev) $('3').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else fm.removeItemAtPathError(fp, null);
     cycPaint(); hlog('[menu] 開いている間の Shift 長押しで ' + (cycRev ? '↻→↺' : '↺→↻')); } catch (e) {} };
   const ptrTo = (b) => { try { const t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'ptr:', b, false); $.NSRunLoop.currentRunLoop.addTimerForMode(t, $.NSRunLoopCommonModes); } catch (e) {} };
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
