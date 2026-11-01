@@ -8746,7 +8746,7 @@ function applyPrettyLabels(editor) {
           while (bodyStart < bodyEndP && /[ \t]/.test(dtext.charAt(bodyStart))) bodyStart++;
         }
         if ((hashes || (dir && dir.level)) && !(dir && dir.not)) { // 見出し: #と直後の空白を隠し、サイズと色を本文へ / v4.0.238: `H2not` は見出しにしない
-          const level = Math.min(3, (dir && dir.level) ? dir.level : hashes.length); // v4.0.63: 明示された宣言が優先
+          const level = Math.min(3, hashes ? hashes.length : dir.level); // v4.0.63: 明示された宣言が優先 → ★v5.1.382(俊克 11.01 pm05:56「データで不一致を見つけた時は、ソースを信じてH1の部分を修正するということが原則」): # が書いてあれば # を信じる(FC の H は # が無い時だけ)
           if (hashes && !bareHashLen) headingMarkerRanges.push({ range: new vscode.Range(line, indent + bulletLen, line, bodyStart) });
           if (bodyEndP > bodyStart) {
             const rP = new vscode.Range(line, bodyStart, line, bodyEndP);
@@ -40533,6 +40533,9 @@ function meosSyncHeadHashes(e) {
     let h = L - 1; while (h >= 0 && meosIsSpecLine(doc.lineAt(h).text)) h--; if (h < 0) continue;
     const t = doc.lineAt(h).text, m = /^([ \t]*(?:[-*+][ \t]+|\d+\.[ \t]+)?)(#{1,6})(?=[ \t])/.exec(t);
     if (!m || m[2].length === d.level) continue;
+    // v5.1.382: FC の H の数字そのものを打ち替えた時だけ # を合わせる。FC の他の所(色など)を直しただけで食い違っていたら= 元からの不一致→ # を信じて FC の H を直す
+    const fm = MEOS_FC_HEAD_H_RE.exec(doc.lineAt(L).text), at = fm ? fm.index + fm[1].length + 1 : -1, c0 = ch.range.start.character;
+    if (!(at >= 0 && c0 <= at && at < c0 + Math.max(1, ch.text.length))) { meosSyncHeadFc(doc, h); continue; }
     const r = new vscode.Range(h, m[1].length, h, m[1].length + m[2].length), lv = d.level;
     setTimeout(() => { try {
       if (doc.isClosed || doc.lineAt(h).text !== t) return;
@@ -40542,6 +40545,7 @@ function meosSyncHeadHashes(e) {
   }
 }
 // ★v5.1.381(俊克 11.01 pm05:50「同様に、頭の##を直接#に変更したら、H2をH1に変更しようよ。既存のマークダウンエディターを使っていた人は、その方が慣れている」):
+//   v5.1.382: 見出しの行のどこを直しても、FC の H と食い違っていれば # を信じて FC を直す(元からの不一致も、触った時に直る= 一括では直さない)
 //   逆向き= 見出しの行の # の数を打ち替えたら、真下に続く FC 行のうち段を持つ最初の1行の H の数字を揃える(H2not は触らない・## と書いた命令も触らない)
 const MEOS_FC_HEAD_H_RE = /(Mew![ \t]*FC[ \t]+(?:-?1(?:\.\d+|[a-z])*\.?|-)?[ \t]*)H([1-6])(?![0-9])/;
 function meosSyncHeadFc(doc, h) {
