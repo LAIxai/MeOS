@@ -40518,6 +40518,29 @@ function meosSpecLinePayloads(text) {
 }
 function meosSpecLinePayload(text) { const a = meosSpecLinePayloads(text); return a ? a.join(' ') : null; }
 function meosIsSpecLine(text) { return meosSpecLinePayloads(text) !== null; }
+// ★v5.1.380(俊克 11.01 pm05:47 改良1「見出しのH2をH1に変えた時、頭の##を#に変更しようよ。これはソースを1mmも変えないという原則には矛盾しないよ」):
+//   見出しの段を決めるのは FC の H1〜H6。FC の行を手で書き換えて段が変わったら、その上の見出しの頭の # の数を揃える(MeOS の外でも同じ段に見える)。
+//   見るのは人が打った1行の変更だけ(元に戻す/やり直しの間は触らない= 取り合いをしない)。見出しの行は FC 行(続く限り)の上の1行・散文だけ
+function meosSyncHeadHashes(e) {
+  const doc = e && e.document; if (!doc || !e.contentChanges.length || !meosIsProseDoc(doc)) return;
+  const RS = vscode.TextDocumentChangeReason; if (RS && (e.reason === RS.Undo || e.reason === RS.Redo)) return;
+  const done = new Set();
+  for (const ch of e.contentChanges) {
+    if (/\n/.test(ch.text) || ch.range.start.line !== ch.range.end.line) continue;
+    const L = ch.range.start.line; if (done.has(L) || L < 1 || L >= doc.lineCount) continue; done.add(L);
+    const p = meosParseSpecLine(doc.lineAt(L).text); if (!p || !p.line) continue;
+    const d = meosLineDirective(p.line); if (!d || !d.level || d.not) continue;
+    let h = L - 1; while (h >= 0 && meosIsSpecLine(doc.lineAt(h).text)) h--; if (h < 0) continue;
+    const t = doc.lineAt(h).text, m = /^([ \t]*(?:[-*+][ \t]+|\d+\.[ \t]+)?)(#{1,6})(?=[ \t])/.exec(t);
+    if (!m || m[2].length === d.level) continue;
+    const r = new vscode.Range(h, m[1].length, h, m[1].length + m[2].length), lv = d.level;
+    setTimeout(() => { try {
+      if (doc.isClosed || doc.lineAt(h).text !== t) return;
+      const we = new vscode.WorkspaceEdit(); we.replace(doc.uri, r, '#'.repeat(lv)); vscode.workspace.applyEdit(we);
+      meosDbg('[headSync] ' + (h + 1) + '行目 ' + m[2] + ' → ' + '#'.repeat(lv));
+    } catch (_) { } }, 0);
+  }
+}
 // ★v5.1.309(俊克 10.29 pm07:51「ハイライトなどは、FCコメントの順番に対応している。これは変えない。インライン用には専用のFC-icを付ける」):
 //   FC-ic の行= <!-- Mew!FC-ic … --> だけの行。FC の群には数えない(MEOS_SPEC_LINE_ONE_RE が読まない= ハイライトの順番は1つも動かない)。
 //   置き場= 段落の後ろの FC 群のさらに後ろ。FC を書く口は FC でない行で止まるので、FC-ic の行を巻き込んで書き直さない。畳む時だけ FC の仲間に入れる。
@@ -46565,6 +46588,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
         }, MOUSE_SELECTION_REFRESH_DEBOUNCE_MS);
       }
     }),
+    vscode.workspace.onDidChangeTextDocument(e => { try { meosSyncHeadHashes(e); } catch (_) { } }),   // v5.1.380
     vscode.workspace.onDidChangeTextDocument(e => {
       // ★★★v4.0.446(俊克 8/27 pm00:45 改良1「今回のRaw設定などでメタ膜が変更したのに、Me Dockの
       //   ファイル名ボタンの右のマークが×のままだね。やはり、**●表示にして、Cmd+Sをするように
