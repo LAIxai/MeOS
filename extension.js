@@ -40518,35 +40518,67 @@ function meosSpecLinePayloads(text) {
 }
 function meosSpecLinePayload(text) { const a = meosSpecLinePayloads(text); return a ? a.join(' ') : null; }
 function meosIsSpecLine(text) { return meosSpecLinePayloads(text) !== null; }
-// ★v5.1.380(俊克 11.01 pm05:47 改良1「見出しのH2をH1に変えた時、頭の##を#に変更しようよ。これはソースを1mmも変えないという原則には矛盾しないよ」):
-//   見出しの段を決めるのは FC の H1〜H6。FC の行を手で書き換えて段が変わったら、その上の見出しの頭の # の数を揃える(MeOS の外でも同じ段に見える)。
-//   見るのは人が打った1行の変更だけ(元に戻す/やり直しの間は触らない= 取り合いをしない)。見出しの行は FC 行(続く限り)の上の1行・散文だけ
+// ★v5.1.380(俊克 11.01 pm05:47 改良1「見出しのH2をH1に変えた時、頭の##を#に変更しようよ。これはソースを1mmも変えないという原則には矛盾しないよ」)
+// ★v5.1.381(pm05:50「同様に、頭の##を直接#に変更したら、H2をH1に変更しようよ。既存のマークダウンエディターを使っていた人は、その方が慣れている」)
+// ★v5.1.382(pm05:56「データで不一致を見つけた時は、ソースを信じてH1の部分を修正するということが原則」)
+// ★v5.1.383(pm06:02「インラインでRawデータを修正して、文字カーソルをその外に移動した時は、修正した方を優先する。ただし、両方を修正して不一致であれば、#の数の方を信じる」):
+//   打つたびには揃えない(### を打つ途中の # や ## で FC を揺らさない)。見出しの行＋真下に続く FC 行を1組とし、そこで打った事だけを覚え、
+//   文字カーソルが組の外へ出た時に揃える= FC の H の数字だけを直した→ # を FC に / それ以外(# を直した・両方・他の所だけで元から不一致)→ FC の H を # に
+//   元に戻す/やり直しは覚えない(取り合いをしない)。散文だけ。一括では直さない(触った組だけ)
+const _meosHeadPend = new Map();   // uri → { h: 見出しの行, hash: # を直した, fc: FC の H を直した }
+const MEOS_HEAD_LINE_RE = /^([ \t]*(?:[-*+][ \t]+|\d+\.[ \t]+)?)(#{1,6})(?=[ \t])/;
+function meosHeadPairEnd(doc, h) { let i = h + 1; while (i < doc.lineCount && meosIsSpecLine(doc.lineAt(i).text)) i++; return i - 1; }
 function meosSyncHeadHashes(e) {
   const doc = e && e.document; if (!doc || !e.contentChanges.length || !meosIsProseDoc(doc)) return;
   const RS = vscode.TextDocumentChangeReason; if (RS && (e.reason === RS.Undo || e.reason === RS.Redo)) return;
-  const done = new Set();
+  const key = doc.uri.toString();
   for (const ch of e.contentChanges) {
-    if (/\n/.test(ch.text) || ch.range.start.line !== ch.range.end.line) continue;
-    const L = ch.range.start.line; if (done.has(L) || L >= doc.lineCount) continue; done.add(L);
-    const p = meosParseSpecLine(doc.lineAt(L).text); if (!p) { meosSyncHeadFc(doc, L); continue; } if (!p.line || L < 1) continue;
-    const d = meosLineDirective(p.line); if (!d || !d.level || d.not) continue;
-    let h = L - 1; while (h >= 0 && meosIsSpecLine(doc.lineAt(h).text)) h--; if (h < 0) continue;
-    const t = doc.lineAt(h).text, m = /^([ \t]*(?:[-*+][ \t]+|\d+\.[ \t]+)?)(#{1,6})(?=[ \t])/.exec(t);
-    if (!m || m[2].length === d.level) continue;
-    // v5.1.382: FC の H の数字そのものを打ち替えた時だけ # を合わせる。FC の他の所(色など)を直しただけで食い違っていたら= 元からの不一致→ # を信じて FC の H を直す
-    const fm = MEOS_FC_HEAD_H_RE.exec(doc.lineAt(L).text), at = fm ? fm.index + fm[1].length + 1 : -1, c0 = ch.range.start.character;
-    if (!(at >= 0 && c0 <= at && at < c0 + Math.max(1, ch.text.length))) { meosSyncHeadFc(doc, h); continue; }
+    if (/\n/.test(ch.text) || ch.range.start.line !== ch.range.end.line) { _meosHeadPend.delete(key); continue; }   // 行が増減したら覚えを捨てる(行番号がずれる)
+    const L = ch.range.start.line; if (L >= doc.lineCount) continue;
+    const lt = doc.lineAt(L).text, c0 = ch.range.start.character, p = meosParseSpecLine(lt);
+    let h = -1, hash = false, fc = false;
+    if (p) {
+      if (L < 1) continue; h = L - 1; while (h >= 0 && meosIsSpecLine(doc.lineAt(h).text)) h--; if (h < 0) continue;
+      const fm = MEOS_FC_HEAD_H_RE.exec(lt), at = fm ? fm.index + fm[1].length + 1 : -1;
+      fc = at >= 0 && c0 <= at && at < c0 + Math.max(1, ch.text.length);
+    } else {
+      const m = MEOS_HEAD_LINE_RE.exec(lt); if (!m) continue; h = L;
+      hash = c0 <= m[1].length + m[2].length;
+    }
+    if (!MEOS_HEAD_LINE_RE.test(doc.lineAt(h).text)) continue;
+    const o = _meosHeadPend.get(key);
+    if (o && o.h !== h) meosHeadResolve(doc, o);   // 別の組へ移って打った= 前の組を先に揃える
+    const n = (o && o.h === h) ? o : { h, hash: false, fc: false };
+    n.hash = n.hash || hash; n.fc = n.fc || fc; _meosHeadPend.set(key, n);
+  }
+}
+function meosHeadLeave(e) {
+  const ed = e && e.textEditor, doc = ed && ed.document; if (!doc) return;
+  const o = _meosHeadPend.get(doc.uri.toString()); if (!o) return;
+  const ln = ed.selection.active.line; if (ln >= o.h && ln <= meosHeadPairEnd(doc, o.h)) return;
+  meosHeadResolve(doc, o);
+}
+function meosHeadResolve(doc, o) {
+  _meosHeadPend.delete(doc.uri.toString());
+  if (doc.isClosed || o.h >= doc.lineCount || !MEOS_HEAD_LINE_RE.test(doc.lineAt(o.h).text)) return;
+  if (o.fc && !o.hash) meosSyncHashFromFc(doc, o.h); else meosSyncHeadFc(doc, o.h);
+}
+// FC の H → 見出しの # (FC の H の数字だけを直した時)
+function meosSyncHashFromFc(doc, h) {
+  const t = doc.lineAt(h).text, m = MEOS_HEAD_LINE_RE.exec(t); if (!m) return;
+  for (let i = h + 1; i < doc.lineCount; i++) {
+    const p = meosParseSpecLine(doc.lineAt(i).text); if (!p) return;
+    const d = p.line ? meosLineDirective(p.line) : null; if (!d || !d.level) continue;
+    if (d.not || d.level === m[2].length) return;
     const r = new vscode.Range(h, m[1].length, h, m[1].length + m[2].length), lv = d.level;
     setTimeout(() => { try {
       if (doc.isClosed || doc.lineAt(h).text !== t) return;
       const we = new vscode.WorkspaceEdit(); we.replace(doc.uri, r, '#'.repeat(lv)); vscode.workspace.applyEdit(we);
-      meosDbg('[headSync] ' + (h + 1) + '行目 ' + m[2] + ' → ' + '#'.repeat(lv));
+      meosDbg('[headSync] FC→# ' + (h + 1) + '行目 ' + m[2] + ' → ' + '#'.repeat(lv));
     } catch (_) { } }, 0);
+    return;
   }
 }
-// ★v5.1.381(俊克 11.01 pm05:50「同様に、頭の##を直接#に変更したら、H2をH1に変更しようよ。既存のマークダウンエディターを使っていた人は、その方が慣れている」):
-//   v5.1.382: 見出しの行のどこを直しても、FC の H と食い違っていれば # を信じて FC を直す(元からの不一致も、触った時に直る= 一括では直さない)
-//   逆向き= 見出しの行の # の数を打ち替えたら、真下に続く FC 行のうち段を持つ最初の1行の H の数字を揃える(H2not は触らない・## と書いた命令も触らない)
 const MEOS_FC_HEAD_H_RE = /(Mew![ \t]*FC[ \t]+(?:-?1(?:\.\d+|[a-z])*\.?|-)?[ \t]*)H([1-6])(?![0-9])/;
 function meosSyncHeadFc(doc, h) {
   const t = doc.lineAt(h).text, m = /^[ \t]*(?:[-*+][ \t]+|\d+\.[ \t]+)?(#{1,6})(?=[ \t])/.exec(t); if (!m) return;
@@ -46613,6 +46645,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       }
     }),
     vscode.workspace.onDidChangeTextDocument(e => { try { meosSyncHeadHashes(e); } catch (_) { } }),   // v5.1.380
+    vscode.window.onDidChangeTextEditorSelection(e => { try { meosHeadLeave(e); } catch (_) { } }),   // v5.1.383: 組の外へ出た時に揃える
     vscode.workspace.onDidChangeTextDocument(e => {
       // ★★★v4.0.446(俊克 8/27 pm00:45 改良1「今回のRaw設定などでメタ膜が変更したのに、Me Dockの
       //   ファイル名ボタンの右のマークが×のままだね。やはり、**●表示にして、Cmd+Sをするように
