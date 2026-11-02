@@ -14465,7 +14465,7 @@ function meosRealHost() { try { return !!(process.versions && process.versions.e
 // ★v5.1.367: MW-GATE ロゴ(v5.1.368: 俊克の絵 mGATEver2(v5.1.369 pm06:53「mGATEver2.pngにしよう」) = media/logo/mgate-original.png を縮めただけ・l/d 同じ)をヘルパーの置き場へ写す= VSCodium を閉じていても、版が替わって古い拡張の所が消えても読める
 function meosGateLogoCopy(dir) {
   try { const fs = require('fs'), path = require('path'); fs.mkdirSync(dir, { recursive: true });
-    for (const n of ['mgate-l.png', 'mgate-d.png']) { const a = path.join(extensionContext.extensionPath, 'media', 'logo', n), b = path.join(dir, n); const x = fs.readFileSync(a); let y = null; try { y = fs.readFileSync(b); } catch (_) { } if (!y || !x.equals(y)) fs.writeFileSync(b, x); } } catch (_) { }
+    for (const n of ['mgate-l.png', 'mgate-d.png', 'mgate-big.png']) { const a = path.join(extensionContext.extensionPath, 'media', 'logo', n), b = path.join(dir, n); const x = fs.readFileSync(a); let y = null; try { y = fs.readFileSync(b); } catch (_) { } if (!y || !x.equals(y)) fs.writeFileSync(b, x); } } catch (_) { }
 }
 function meosHelperEnsure() {
   if (!meosRealHost()) return;   // v4.2.519

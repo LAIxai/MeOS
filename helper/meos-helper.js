@@ -738,7 +738,10 @@ function run(argv) {
   // ★v5.1.414(俊克 pm01:56「押すタイミングで、認識したりしなかったりする」): 413 は「今押されているか」を0.02秒ごとに見た→ 札の描き直しやファイル読みで見張りが0.1秒以上遅れると、素早いクリック(押して放すまで0.1秒未満)は丸ごと間に落ちた。
   //   → Mac が数えている「押した回数・放した回数」(CGEventSourceCounterForEventType)を見る= 見張りが遅れても「前に見た時から1回放された」が分かる。放された時の位置がタイルの外なら、押された時に見たタイル
   const dockOutCnt = (t) => { try { return Number($.CGEventSourceCounterForEventType(0, t)) || 0; } catch (e) { return 0; } };
-  const dockOutFast = () => { if (!dockOut.shown) return; const dn = dockOutCnt(1), up = dockOutCnt(2);
+  // ★v5.1.416(俊克 pm04:50 バグ1「しばらくすると、ぶら下がりツールにホーバーすると、レインボー風車が回る」): wGATE は NSApplication を回さない→ 自分の小窓へ来た出来事(マウスが入った・動いた等)が読まれずに溜まり、数秒で macOS が「応答なし」と見なして小窓の上だけ風車にする(実測: CPU 8%で回ってはいない= 無限ループでない)
+  //   → 小窓が出ている間は溜まった出来事を汲み出して渡す(sendEvent)。押した判定は従来どおり Mac の回数で
+  const dockOutDrain = () => { try { const app = $.NSApplication.sharedApplication, past = $.NSDate.distantPast; for (let k = 0; k < 64; k++) { const ev = app.nextEventMatchingMaskUntilDateInModeDequeue(0xFFFFFFFF, past, $.NSDefaultRunLoopMode, true); if (!ev || ev.isNil()) break; app.sendEvent(ev); } } catch (e) {} };
+  const dockOutFast = () => { if (!dockOut.shown) return; dockOutDrain(); const dn = dockOutCnt(1), up = dockOutCnt(2);
     if (dn !== dockOut.dnN) { dockOut.dnN = dn; dockOut.downAt = dockOutAt(); }
     if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } } };
   ObjC.registerSubclass({ name: 'MeOSDockOutT', methods: { 'fast:': { types: ['void', ['id']], implementation: function (t) { try { dockOutFast(); } catch (e) {} } } } });
@@ -750,7 +753,8 @@ function run(argv) {
     dockOut.lg = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_LX, (H - DO_LG) / 2, DO_LG, DO_LG)); dockOut.lg.imageScaling = 3; ve.addSubview(dockOut.lg);   // v5.1.415: ロゴ
     dockOut.ivs = []; for (let i = 0; i < n; i++) { const iv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_X0 + i * (DO_TW + DO_GAP), DO_PAD, DO_TW, DO_TH)); iv.imageScaling = 2; ve.addSubview(iv); dockOut.ivs.push(iv); }
     dockOut.win = w; return w; };
-  const dockOutPaint = () => { try { if (!dockOut.win) return; try { const gi = gateLoad(); if (gi && dockOut.lg) dockOut.lg.image = gateDark() ? gi.d : gi.l; } catch (e) {} const o = String(pzl.ord || ''); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } } catch (e) {} };
+  // v5.1.416(俊克「44ピクセルにすると、ロゴの絵が汚くなる」): 54px の札用を44ptへ引き伸ばしていた→ ver2 の原寸から作った 176px(mgate-big.png)
+  const dockOutPaint = () => { try { if (!dockOut.win) return; try { if (!dockOut.big) { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), b = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-big.png')); if (b && !b.isNil()) dockOut.big = b; } const gi = gateLoad(), im = dockOut.big || (gi && (gateDark() ? gi.d : gi.l)); if (im && dockOut.lg) dockOut.lg.image = im; } catch (e) {} const o = String(pzl.ord || ''); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } } catch (e) {} };
   const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.leaveAt = 0; dockOut.downAt = -1; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
     const w = dockOutBuild(), f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
