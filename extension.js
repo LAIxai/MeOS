@@ -33128,10 +33128,10 @@ b.classList.add('dw-editable');if(dial)dial.classList.add('dw-dial-off');return;
 b.removeAttribute('title');/* v4.2.777-19(俊克「tipは年のところだけ。うっとうしい」) / v4.2.777-23(俊克「拡大した↻のtipが箱を覆って邪魔」): ↻とNの tip も外した(箱の中の tip は年の札だけ) */b.classList.add('dw-editable');_dwVars(b);}else{b.innerHTML='<span class="dw-lbl">'+_dwLabels[i]+'</span>';b.style.background=_dwColors[i];b.removeAttribute('title');
 }_dwVars(b);};window.__dwRenderScope();try{vscode.postMessage({type:'dwCaretDayAsk'});}catch(e){}/* v5.0.0-24: 開き直した Me Dock にも日記の膜の日付を */
 /* v2.0.45(俊克): 固定幅=スコープ名(Ⓣday/Week/Month/Year)に加え、現在の基準ラベル(日付「6/26 2025」/検索語)の幅も含めた最大に。基準を変えた瞬間に測り直し(_dwRelock)→長い日付基準でも↻巡回で不動。__dwRenderScopeが毎回__dwScopeMinWを再適用(v2.0.44)。 */
-function _dwRelock(){var b=document.getElementById('dw-scope');if(!b)return;var save=b.innerHTML;window.__dwScopeMinW=0;
+/* ★v5.1.422(俊克 11.03 am04:28 バグ1「日付ボタン(神獣付き)の幅が時々、広がる。だいぶ前のバージョンから」): 真因= 幅を getBoundingClientRect で測っていた→ 箱(.dw-split)がホバー/日替わりの点滅で scale(2) の最中に測り直すと2倍の幅が min-width に固まる。拡大を含まない offsetWidth で測る */function _dwRelock(){var b=document.getElementById('dw-scope');if(!b)return;var save=b.innerHTML;window.__dwScopeMinW=0;
 b.style.minWidth='';var mw=0,htmls=[_dwDayHtml({y:2026,mo:12,d:28}),'Week','Month','Year'];for(var k=0;k<htmls.length;k++){b.innerHTML=htmls[k];
-var w=b.getBoundingClientRect().width;if(w>mw)mw=w;}var extra=null;if(window.__dwSearch!=null){var q=window.__dwSearch;extra=(q.length>14?(q.slice(0,14)+'…'):q);
-}if(extra!=null){b.textContent=extra;var we=b.getBoundingClientRect().width;if(we>mw)mw=we;}b.innerHTML=save;if(mw>=40)window.__dwScopeMinW=Math.ceil(mw);
+var w=b.offsetWidth;if(w>mw)mw=w;}var extra=null;if(window.__dwSearch!=null){var q=window.__dwSearch;extra=(q.length>14?(q.slice(0,14)+'…'):q);
+}if(extra!=null){b.textContent=extra;var we=b.offsetWidth;if(we>mw)mw=we;}b.innerHTML=save;if(mw>=40)window.__dwScopeMinW=Math.ceil(mw);
 window.__dwRenderScope();}
 requestAnimationFrame(function(){requestAnimationFrame(_dwRelock);});if(document.fonts&&document.fonts.ready&&document.fonts.ready.then)document.fonts.ready.then(_dwRelock);
 setTimeout(_dwRelock,500);
