@@ -331,6 +331,8 @@ function run(argv) {
     tab.setFill; $.NSBezierPath.fillRect($.NSMakeRect(0.5, 2.5, 7, H - 5));
     rgb(0x9a, 0x84, 0x55).setStroke; const bp = $.NSBezierPath.bezierPathWithRect(r); bp.lineWidth = 1; bp.stroke;
     img.unlockFocus; return img; } catch (e) { return null; } };
+  // ★v5.1.399(俊克 11.02 am09:24 改良3「メニューバーの中のCB FUSENをこの四角形の大きな付箋の絵に統一しよう」): CB= Me Dock の付箋ボタン(```)の拡大中の絵と同じ四角の付箋(白い紙＋上の色の帯＋右下の折れ)。IC は横長のまま(` の絵と同じ)
+  const fusenIconSq = (tab) => { try { const W = 20, H = 12, img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H)); img.lockFocus; const tf = $.NSAffineTransform.transform; tf.translateXByYBy(3, H); tf.scaleXByYBy(1.2, -1.2); tf.concat; const pg = $.NSBezierPath.bezierPath; pg.moveToPoint($.NSMakePoint(1, 1)); pg.lineToPoint($.NSMakePoint(11, 1)); pg.lineToPoint($.NSMakePoint(11, 6.5)); pg.lineToPoint($.NSMakePoint(7.5, 9)); pg.lineToPoint($.NSMakePoint(1, 9)); pg.closePath; rgb(0xff, 0xfd, 0xf7).setFill; pg.fill; tab.setFill; $.NSBezierPath.fillRect($.NSMakeRect(1.4, 1.4, 9.2, 2.4)); rgb(0x6b, 0x5a, 0x3a).setStroke; pg.lineWidth = 0.8; pg.stroke; const fo = $.NSBezierPath.bezierPath; fo.moveToPoint($.NSMakePoint(7.5, 9)); fo.lineToPoint($.NSMakePoint(7.5, 6.5)); fo.lineToPoint($.NSMakePoint(11, 6.5)); fo.lineWidth = 0.8; fo.stroke; img.unlockFocus; return img; } catch (e) { return null; } };
   const fusenIcons = {};
   // ★v5.1.326(俊克 10.30 am10:26 改良2「畳んでいる時の▶を緑・開いている時の▼を水色に。赤は⏰があるから」): 見出しの三角だけ色を付ける(TAG・FUSEN・群の見出しの全部)
   // v5.1.327(俊克 改良3「パステル調でなく原色の濃い色(青と緑)に」): system の緑/水色 → sRGB の濃い緑(0,135,0 ← v5.1.336 俊克「濃過ぎて緑らしさがない」 0,115,0 ← v5.1.329 俊克「もう少し暗め・濃い緑に」 0,153,0)と青(0,64,255)
@@ -492,7 +494,7 @@ function run(argv) {
     const its = e.items || [], p = { name: e.fusen, its: its, slots: [], off: fusenOff[e.fusen] || 0 };
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
-    try { const k = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'); if (!(k in fusenIcons)) { const h = parseInt(k.slice(1), 16); fusenIcons[k] = fusenIcon(rgb((h >> 16) & 255, (h >> 8) & 255, h & 255)); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
+    try { const k0 = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'), cb = /^CB/.test(e.fusen), k = k0 + (cb ? 'S' : ''); if (!(k in fusenIcons)) { const h = parseInt(k0.slice(1), 16), tc = rgb((h >> 16) & 255, (h >> 8) & 255, h & 255); fusenIcons[k] = cb ? fusenIconSq(tc) : fusenIcon(tc); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
     p.hb.frame = $.NSMakeRect(14, 1, 220, 20); p.hb.tag = pagers.length; hv.addSubview(p.hb);
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); p.hd = hd;
     const add = (it) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); mi.indentationLevel = 1; return mi; };
