@@ -722,6 +722,8 @@ function run(argv) {
   //   小窓は前に出ない窓(押してもアプリが前へ出ない・焦点を取らない)。小窓の上に居る間は保ち、ピースからも小窓からも離れて0.5秒で閉じる(斜めに移る間の猶予)。メニューを開いたら閉じる。
   //   押す= どのタイルかを数え、/puzzle?ch= で拡張へ(ピースと同じ口)。押した字は返事を待たずに最後へ・前の最後は1つ前へ= 札の2枚もすぐ入れ替わる
   const DO_S = 2, DO_TW = 16 * DO_S, DO_TH = 18 * DO_S, DO_GAP = 4, DO_PAD = 8;
+  // ★v5.1.415(俊克 pm03:53「このツールボタンの左端にwGATEのロゴマークをでかでかと付けて、高らかに、The GATEを布告しよう」): 左端に MW-GATE ロゴ(札の左と同じ絵)を 44pt で。タイルはその右から
+  const DO_LG = 44, DO_LX = 6, DO_X0 = DO_LX + DO_LG + 8;
   const dockOut = { win: null, ivs: [], shown: false, leaveAt: 0, ft: null, dnN: 0, upN: 0, downAt: -1 };
   const dockOutTile = (ch) => { const im = $.NSImage.alloc.initWithSize($.NSMakeSize(DO_TW, DO_TH)); im.lockFocus;
     const tf = $.NSAffineTransform.transform; tf.scaleXByYBy(DO_S, DO_S); tf.concat; drawPiece(1, 18, ch, ch !== pzl.ch); im.unlockFocus; return im; };
@@ -732,7 +734,7 @@ function run(argv) {
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord }; try { step(); } catch (x) {} dockOutPaint(); }
     openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); };
   const dockOutAt = () => { try { if (!dockOut.win) return -1; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y;
-    if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_PAD + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < 7 ? i : -1; } catch (e) { return -1; } };
+    if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_X0 + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < 7 ? i : -1; } catch (e) { return -1; } };
   // ★v5.1.414(俊克 pm01:56「押すタイミングで、認識したりしなかったりする」): 413 は「今押されているか」を0.02秒ごとに見た→ 札の描き直しやファイル読みで見張りが0.1秒以上遅れると、素早いクリック(押して放すまで0.1秒未満)は丸ごと間に落ちた。
   //   → Mac が数えている「押した回数・放した回数」(CGEventSourceCounterForEventType)を見る= 見張りが遅れても「前に見た時から1回放された」が分かる。放された時の位置がタイルの外なら、押された時に見たタイル
   const dockOutCnt = (t) => { try { return Number($.CGEventSourceCounterForEventType(0, t)) || 0; } catch (e) { return 0; } };
@@ -741,13 +743,14 @@ function run(argv) {
     if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } } };
   ObjC.registerSubclass({ name: 'MeOSDockOutT', methods: { 'fast:': { types: ['void', ['id']], implementation: function (t) { try { dockOutFast(); } catch (e) {} } } } });
   const dockOutTgt = $.MeOSDockOutT.alloc.init;
-  const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_PAD * 2 + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
+  const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
     const w = $.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(rc, 128, 2, false);   // 128= 前に出ない窓(枠なし)
     w.level = 101; w.opaque = false; w.backgroundColor = $.NSColor.clearColor; w.hasShadow = true; w.hidesOnDeactivate = false; w.becomesKeyOnlyIfNeeded = true; w.floatingPanel = true; w.collectionBehavior = 1 | 16 | 256;
     const ve = $.NSVisualEffectView.alloc.initWithFrame(rc); ve.material = 5; ve.state = 1; ve.blendingMode = 0; ve.wantsLayer = true; ve.layer.cornerRadius = 10; ve.layer.masksToBounds = true; w.contentView = ve;
-    dockOut.ivs = []; for (let i = 0; i < n; i++) { const iv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_PAD + i * (DO_TW + DO_GAP), DO_PAD, DO_TW, DO_TH)); iv.imageScaling = 2; ve.addSubview(iv); dockOut.ivs.push(iv); }
+    dockOut.lg = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_LX, (H - DO_LG) / 2, DO_LG, DO_LG)); dockOut.lg.imageScaling = 3; ve.addSubview(dockOut.lg);   // v5.1.415: ロゴ
+    dockOut.ivs = []; for (let i = 0; i < n; i++) { const iv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_X0 + i * (DO_TW + DO_GAP), DO_PAD, DO_TW, DO_TH)); iv.imageScaling = 2; ve.addSubview(iv); dockOut.ivs.push(iv); }
     dockOut.win = w; return w; };
-  const dockOutPaint = () => { try { if (!dockOut.win) return; const o = String(pzl.ord || ''); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } } catch (e) {} };
+  const dockOutPaint = () => { try { if (!dockOut.win) return; try { const gi = gateLoad(); if (gi && dockOut.lg) dockOut.lg.image = gateDark() ? gi.d : gi.l; } catch (e) {} const o = String(pzl.ord || ''); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } } catch (e) {} };
   const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.leaveAt = 0; dockOut.downAt = -1; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
     const w = dockOutBuild(), f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
