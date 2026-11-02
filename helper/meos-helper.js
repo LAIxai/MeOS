@@ -14,6 +14,7 @@ ObjC.import('stdlib');   // v5.1.335: $.exit(起こし直す)   // v5.1.237: ポ
 ObjC.bindFunction('kill', ['int', ['int', 'int']]);
 ObjC.bindFunction('CGEventSourceSecondsSinceLastEventType', ['double', ['int', 'unsigned int']]);   // v5.1.366: Mac 全体の無操作の秒数
 ObjC.bindFunction('CGEventSourceFlagsState', ['unsigned long long', ['int']]);   // v4.2.742: 左右の区別まで入った修飾キーの状態(機械の状態= 1)
+ObjC.bindFunction('CGEventSourceCounterForEventType', ['unsigned int', ['int', 'unsigned int']]);   // v5.1.414: マウスを押した/放した回数(Mac が数える)= 見張りが遅れても取りこぼさない
 function run(argv) {
   const dir = argv[0];
   const statePath = dir + '/state.json', clickPath = dir + '/click.json';
@@ -721,7 +722,7 @@ function run(argv) {
   //   小窓は前に出ない窓(押してもアプリが前へ出ない・焦点を取らない)。小窓の上に居る間は保ち、ピースからも小窓からも離れて0.5秒で閉じる(斜めに移る間の猶予)。メニューを開いたら閉じる。
   //   押す= どのタイルかを数え、/puzzle?ch= で拡張へ(ピースと同じ口)。押した字は返事を待たずに最後へ・前の最後は1つ前へ= 札の2枚もすぐ入れ替わる
   const DO_S = 2, DO_TW = 16 * DO_S, DO_TH = 18 * DO_S, DO_GAP = 4, DO_PAD = 8;
-  const dockOut = { win: null, ivs: [], shown: false, leaveAt: 0, ft: null, down: false, downAt: -1 };
+  const dockOut = { win: null, ivs: [], shown: false, leaveAt: 0, ft: null, dnN: 0, upN: 0, downAt: -1 };
   const dockOutTile = (ch) => { const im = $.NSImage.alloc.initWithSize($.NSMakeSize(DO_TW, DO_TH)); im.lockFocus;
     const tf = $.NSAffineTransform.transform; tf.scaleXByYBy(DO_S, DO_S); tf.concat; drawPiece(1, 18, ch, ch !== pzl.ch); im.unlockFocus; return im; };
   // ★v5.1.413(俊克 pm01:47「表示したよ。でも、クリックしてもワープはしない」): 実測= events.log に「開いた」は在るが「押した」が1つも無い= 押した事が wGATE に届いていない。
@@ -732,8 +733,12 @@ function run(argv) {
     openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); };
   const dockOutAt = () => { try { if (!dockOut.win) return -1; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y;
     if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_PAD + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < 7 ? i : -1; } catch (e) { return -1; } };
-  const dockOutFast = () => { if (!dockOut.shown) return; const down = (Number($.NSEvent.pressedMouseButtons) & 1) !== 0, i = dockOutAt();
-    if (down && !dockOut.down) { dockOut.down = true; dockOut.downAt = i; } else if (!down && dockOut.down) { dockOut.down = false; if (i >= 0 && i === dockOut.downAt) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } } };
+  // ★v5.1.414(俊克 pm01:56「押すタイミングで、認識したりしなかったりする」): 413 は「今押されているか」を0.02秒ごとに見た→ 札の描き直しやファイル読みで見張りが0.1秒以上遅れると、素早いクリック(押して放すまで0.1秒未満)は丸ごと間に落ちた。
+  //   → Mac が数えている「押した回数・放した回数」(CGEventSourceCounterForEventType)を見る= 見張りが遅れても「前に見た時から1回放された」が分かる。放された時の位置がタイルの外なら、押された時に見たタイル
+  const dockOutCnt = (t) => { try { return Number($.CGEventSourceCounterForEventType(0, t)) || 0; } catch (e) { return 0; } };
+  const dockOutFast = () => { if (!dockOut.shown) return; const dn = dockOutCnt(1), up = dockOutCnt(2);
+    if (dn !== dockOut.dnN) { dockOut.dnN = dn; dockOut.downAt = dockOutAt(); }
+    if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } } };
   ObjC.registerSubclass({ name: 'MeOSDockOutT', methods: { 'fast:': { types: ['void', ['id']], implementation: function (t) { try { dockOutFast(); } catch (e) {} } } } });
   const dockOutTgt = $.MeOSDockOutT.alloc.init;
   const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_PAD * 2 + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
@@ -743,11 +748,11 @@ function run(argv) {
     dockOut.ivs = []; for (let i = 0; i < n; i++) { const iv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_PAD + i * (DO_TW + DO_GAP), DO_PAD, DO_TW, DO_TH)); iv.imageScaling = 2; ve.addSubview(iv); dockOut.ivs.push(iv); }
     dockOut.win = w; return w; };
   const dockOutPaint = () => { try { if (!dockOut.win) return; const o = String(pzl.ord || ''); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } } catch (e) {} };
-  const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.leaveAt = 0; dockOut.down = false; };
+  const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.leaveAt = 0; dockOut.downAt = -1; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
     const w = dockOutBuild(), f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
     let x = x1 - f.size.width; try { const sf = bw.screen.visibleFrame; x = Math.max(sf.origin.x + 4, Math.min(x, sf.origin.x + sf.size.width - f.size.width - 4)); } catch (e) {}
-    w.setFrameOrigin($.NSMakePoint(x, r.origin.y - f.size.height - 2)); dockOutPaint(); w.orderFrontRegardless; if (!dockOut.ft) { dockOut.down = (Number($.NSEvent.pressedMouseButtons) & 1) !== 0; dockOut.downAt = -1; dockOut.ft = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, dockOutTgt, 'fast:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(dockOut.ft, $.NSRunLoopCommonModes); } if (!dockOut.shown) hlog('[dockOut] 開いた'); dockOut.shown = true; dockOut.leaveAt = 0; } catch (e) { hlog('[dockOut] 開けない ' + e); } };
+    w.setFrameOrigin($.NSMakePoint(x, r.origin.y - f.size.height - 2)); dockOutPaint(); w.orderFrontRegardless; if (!dockOut.ft) { dockOut.dnN = dockOutCnt(1); dockOut.upN = dockOutCnt(2); dockOut.downAt = -1; dockOut.ft = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, dockOutTgt, 'fast:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(dockOut.ft, $.NSRunLoopCommonModes); } if (!dockOut.shown) hlog('[dockOut] 開いた'); dockOut.shown = true; dockOut.leaveAt = 0; } catch (e) { hlog('[dockOut] 開けない ' + e); } };
   const dockOutTick = () => { if (!pzl.ch || String(pzl.ord || '').length !== 7) { dockOutHide(); return; } let tr = false; try { tr = tracking(); } catch (e) {} if (tr) { dockOutHide(); return; }
     const onPiece = !!pieceHit(); let onWin = false;
     if (dockOut.shown && dockOut.win) { try { const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; onWin = p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height + 4; } catch (e) {} }
