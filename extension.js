@@ -7066,6 +7066,15 @@ const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=/;
 const MEOS_PUZZLE_LETTERS = 'MeDock';
 const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=[ \t]*([^\s*]+)[^\r\n]*?\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;   // v4.2.565: 飾り用(殻ごと)
 // v2.0.4(俊克): Date Warp=暦の軸で日記膜へ相対/絶対ジャンプ。基準=今いる日付膜(無ければ今日)/完全一致のみ。v4.2.777-1: Me Dock の受け口から関数へ出した
+// ★v5.1.423(俊克 11.03 am04:55「日記を表す絵文字が無いのが不思議だね。そこで、🄳iaryをファイル全体を覆う膜の開始膜のコメント部分に書いてあるものを日記ファイルと定義しようか?膜名とかファイル名に入れると、見栄えも悪くなる」):
+//   日記帳= 外側の膜(他の膜に包まれていない膜)の開始膜の、膜名より後ろ(コメント)に 🄳iary(U+1F133)が在るファイル。Ⓣが今日の膜を作るのは日記帳だけ
+const MEOS_DIARY_MARK = '\u{1F133}iary';
+function meosIsDiaryFile(doc) {
+  try { const os = collectAllOpenMembranes(doc);
+    for (const o of os) { if (os.some(q => q !== o && q.start < o.start && q.end >= o.end)) continue;
+      const t = doc.lineAt(o.start).text, i = t.indexOf(o.id); if (t.indexOf(MEOS_DIARY_MARK, i < 0 ? 0 : i + o.id.length) >= 0) return true; } } catch (_) { }
+  return false;
+}
 function meosWarpToDate(message) {
       const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
       if (!ed) return;
@@ -7091,9 +7100,11 @@ function meosWarpToDate(message) {
         for (const o of opens) { const dt = parseDiaryDateFromName(o.id); if (!dt) continue; const k = dt.y * 10000 + dt.mo * 100 + dt.d; if (k <= tk && (k > bk || (k === bk && o.start < hit.start))) { bk = k; hit = o; } } }
       // ★v4.2.777-2: 今日の膜が無い時の Ⓣ= 新しい日を作るか選ぶ(前日の複製 / 原型1〜3 / 一番新しい日へ)
       const _nw = new Date();
-      if (hit && !_exact && message.orBefore && ty === _nw.getFullYear() && tmo === _nw.getMonth() + 1 && td === _nw.getDate()) { meosDiaryNewDay(ed, hit, { y: ty, mo: tmo, d: td }); return; }
+      const _isToday = message.orBefore && ty === _nw.getFullYear() && tmo === _nw.getMonth() + 1 && td === _nw.getDate(), _diary = _isToday && !_exact && meosIsDiaryFile(ed.document);   // v5.1.423: 作るのは 🄳iary の日記帳だけ
+      if (hit && !_exact && _isToday && _diary) { meosDiaryNewDay(ed, hit, { y: ty, mo: tmo, d: td }); return; }
       if (hit) { jumpToWorkingTocItem(hit.id); }
-      else if (message.orBefore && ty === _nw.getFullYear() && tmo === _nw.getMonth() + 1 && td === _nw.getDate()) { meosDiaryNewDay(ed, null, { y: ty, mo: tmo, d: td }); }   // v4.2.777-6: 日記が1つも無い= 新しい人。原型(無ければ内蔵の原型)で今日を作る
+      else if (_isToday && _diary) { meosDiaryNewDay(ed, null, { y: ty, mo: tmo, d: td }); }
+      else if (_isToday) { vscode.window.showInformationMessage('MeOS: this file is not a diary, so Ⓣ made no new day. To make it one, write ' + MEOS_DIARY_MARK + ' in the comment of the membrane that wraps the whole file.'); }   // v4.2.777-6: 日記が1つも無い= 新しい人。原型(無ければ内蔵の原型)で今日を作る
       else { vscode.window.showInformationMessage('Date Warp: no diary entry for ' + tmo + '/' + td + ' ' + ty + ' (exact match only).'); }
 }
 // ★v4.2.777-2(俊克「マウス操作が難しい人でも1ファイル生涯日記を。次の日の日記を自動作成」「新しいものが先頭に近い方」
@@ -18107,8 +18118,10 @@ async function meosNewMdDiarySample(editor, lv) {
     '| 07:00 | Woke up, made green tea, and wrote the first lines of this diary before breakfast | <!--🤝↓2--> One cell, two rows |',
     '| 22:00 | Pressed the table button and watched the long text wrap inside its cell | |', '');
   const yesterday = day(y, yBody, 'N');
-  await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), today.join('\n') + '\n\n' + yesterday.join('\n') + '\n'); });
-  const pos = new vscode.Position(1, 'Today: '.length);
+  // v5.1.423: 見本は日記帳= 全体を包む膜のコメントに 🄳iary(Ⓣが明日からも今日の膜を作れるように)
+  const dName = 'Diary_' + meosMembraneStamp(now), dOpen = buildMembraneOpenLine(doc, '', dName, MEOS_DIARY_MARK, ''), dClose = meosNewMembraneCloseBlock(doc, '', dName, '', '(📊⊕0+0D0B)');
+  await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), dOpen + '\n' + today.join('\n') + '\n\n' + yesterday.join('\n') + '\n' + dClose + '\n'); });
+  const pos = new vscode.Position(2, 'Today: '.length);
   editor.selection = new vscode.Selection(pos, pos);
   try { refresh(editor); } catch (_) { }
   vscode.window.setStatusBarMessage('MeOS: a diary with yesterday and today — write today’s line, then Cmd+S to save', 5000);
