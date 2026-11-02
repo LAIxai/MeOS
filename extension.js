@@ -14409,7 +14409,7 @@ function meosPuzzleLastSet(ch) {
 let _meosPuzzleBadgeLast = '';
 function meosPuzzleBadgeFile() {
   if (!meosRealHost()) return;
-  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || '') });   // v5.1.407: prev= 1つ前
+  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles() });   // v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
     if (j === _meosPuzzleBadgeLast) return; _meosPuzzleBadgeLast = j;
     const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(path.join(meosHelperDir(), 'puzzle-last'), j); } catch (_) { }
 }
@@ -36850,7 +36850,7 @@ function toggleMeDock(editorOverride) {
         if (_kind(o) && _kind(o) !== _kind(was)) { try { meosPlayNoChange(true, true); } catch (_) { } }
         if (o === 'MecoDTk' && was !== o) { try { meosPlayRocket(); if (!extensionContext.globalState.get('meosRocketWon')) { extensionContext.globalState.update('meosRocketWon', true); setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300); } } catch (_) { } }   // v4.2.667: ☿を出した瞬間に🚀・その人だけ音の一覧に 🚀ROCKET
         if (o === 'DockeTM' && was !== o) { try { meosPlayPinpon(); if (!extensionContext.globalState.get('meosDingDongWon')) { extensionContext.globalState.update('meosDingDongWon', true); setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300); } } catch (_) { } }   // v4.2.618: 鳴らした人だけ 🛎️DING-DONG! が音の一覧に   // v4.2.617: Docke™(Dock Extreme)= ピンポーン
-        try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o);
+        try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o); meosPuzzleBadgeFile();   // v5.1.412: 並べ替えたら出張所にも
         if (meosPuzzleNote(o)) { try { meDockPanel.webview.postMessage({ type: 'mdGold' }); } catch (_) { } meosGoldPrizeTry(); }   // v4.2.776-13   // v4.2.776-11
         // ★v4.2.509(俊克「折り返しボタンの色も消えていた。ボタンを押すと復旧した。本当にロックで壊れかけたって感じ」): 閉じている間は Me Dock の問い合わせにも
         //   答えなかった= 開いた後も、テーマ/鐘の名前・折り返しの色が空のまま。→ 開いた時は Me Dock を描き直す(問い合わせをやり直させる)

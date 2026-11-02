@@ -302,8 +302,9 @@ function run(argv) {
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
+    try { dockOutHide(); } catch (e) {}   // v5.1.412: メニューを開いたら出張所は閉じる
     try { const hc = pzl.ch ? pieceHit() : ''; if (hc) { hlog('[menu] 札の右端のピース ' + hc + (hc === pzl.ch ? '(最後)' : '(1つ前)') + ' を押した→ 閉じてワープ'); m.cancelTracking;
-      if (hc !== pzl.ch) { pzl = { ch: hc, lv: pzl.lv, prev: pzl.ch }; try { step(); } catch (x) {} }   // v5.1.407: 1つ前を押した= 拡張の返事を待たずに入れ替えて描く(続けて押せる)
+      if (hc !== pzl.ch) { pzl = { ch: hc, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord }; try { step(); } catch (x) {} }   // v5.1.407: 1つ前を押した= 拡張の返事を待たずに入れ替えて描く(続けて押せる)
       openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(hc)); return; } } catch (e) {}   // v5.1.402
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
   } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
@@ -715,6 +716,40 @@ function run(argv) {
     const lv = white ? 1 : pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
     (white ? $.NSColor.whiteColor : pzRgb([0xe5, 0x39, 0x35])).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)).fill;
     $.NSColor.colorWithWhiteAlpha(0, 0.5).setStroke; const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)); ov.lineWidth = 0.5; ov.stroke; };
+  // ★v5.1.412(俊克 11.02 pm01:41「小さいのはそのまま操作できるようにして、その上で、MeDockⓉすべてをメニューバーの直ぐ下に並べる。これで、Me Dockを非表示にしてあっても、Me Dockの出張所が開設した感じに」):
+  //   札の右端のピースに乗ったら、メニューバーの直ぐ下(ピースの右端に揃える)に、Me Dock のタイル7枚(M e D o c k Ⓣ・Me Dock と同じ並び ord・点は白・最後だけ🔴の段)を2倍で並べた小窓。
+  //   小窓は前に出ない窓(押してもアプリが前へ出ない・焦点を取らない)。小窓の上に居る間は保ち、ピースからも小窓からも離れて0.5秒で閉じる(斜めに移る間の猶予)。メニューを開いたら閉じる。
+  //   押す= 透明な受け皿(最初の1押しで効く)がどのタイルかを数え、/puzzle?ch= で拡張へ(ピースと同じ口)。押した字は返事を待たずに最後へ・前の最後は1つ前へ= 札の2枚もすぐ入れ替わる
+  const DO_S = 2, DO_TW = 16 * DO_S, DO_TH = 18 * DO_S, DO_GAP = 4, DO_PAD = 8;
+  const dockOut = { win: null, ivs: [], shown: false, leaveAt: 0 };
+  const dockOutTile = (ch) => { const im = $.NSImage.alloc.initWithSize($.NSMakeSize(DO_TW, DO_TH)); im.lockFocus;
+    const tf = $.NSAffineTransform.transform; tf.scaleXByYBy(DO_S, DO_S); tf.concat; drawPiece(1, 18, ch, ch !== pzl.ch); im.unlockFocus; return im; };
+  ObjC.registerSubclass({ name: 'MeOSDockOutV', superclass: 'NSView', methods: {
+    'acceptsFirstMouse:': { types: ['bool', ['id']], implementation: function (ev) { return true; } },
+    'mouseDown:': { types: ['void', ['id']], implementation: function (ev) { try {
+      const p = this.convertPointFromView(ev.locationInWindow, $()), i = Math.floor((p.x - DO_PAD + DO_GAP / 2) / (DO_TW + DO_GAP)), ch = String(pzl.ord || '').charAt(i);
+      if (!ch || i < 0) return; hlog('[dockOut] ' + ch + ' を押した→ ワープ');
+      if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord }; try { step(); } catch (x) {} dockOutPaint(); }
+      openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); } catch (e) { hlog('[dockOut] 例外 ' + e); } } } } });
+  const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_PAD * 2 + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
+    const w = $.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(rc, 128, 2, false);   // 128= 前に出ない窓(枠なし)
+    w.level = 101; w.opaque = false; w.backgroundColor = $.NSColor.clearColor; w.hasShadow = true; w.hidesOnDeactivate = false; w.becomesKeyOnlyIfNeeded = true; w.floatingPanel = true; w.collectionBehavior = 1 | 16 | 256;
+    const ve = $.NSVisualEffectView.alloc.initWithFrame(rc); ve.material = 5; ve.state = 1; ve.blendingMode = 0; ve.wantsLayer = true; ve.layer.cornerRadius = 10; ve.layer.masksToBounds = true; w.contentView = ve;
+    dockOut.ivs = []; for (let i = 0; i < n; i++) { const iv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_PAD + i * (DO_TW + DO_GAP), DO_PAD, DO_TW, DO_TH)); iv.imageScaling = 2; ve.addSubview(iv); dockOut.ivs.push(iv); }
+    const cv = $.MeOSDockOutV.alloc.initWithFrame(rc); ve.addSubview(cv);   // 一番上の透明な受け皿
+    dockOut.win = w; return w; };
+  const dockOutPaint = () => { try { if (!dockOut.win) return; const o = String(pzl.ord || ''); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } } catch (e) {} };
+  const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} dockOut.shown = false; dockOut.leaveAt = 0; };
+  const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
+    const w = dockOutBuild(), f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
+    let x = x1 - f.size.width; try { const sf = bw.screen.visibleFrame; x = Math.max(sf.origin.x + 4, Math.min(x, sf.origin.x + sf.size.width - f.size.width - 4)); } catch (e) {}
+    w.setFrameOrigin($.NSMakePoint(x, r.origin.y - f.size.height - 2)); dockOutPaint(); w.orderFrontRegardless; if (!dockOut.shown) hlog('[dockOut] 開いた'); dockOut.shown = true; dockOut.leaveAt = 0; } catch (e) { hlog('[dockOut] 開けない ' + e); } };
+  const dockOutTick = () => { if (!pzl.ch || String(pzl.ord || '').length !== 7) { dockOutHide(); return; } let tr = false; try { tr = tracking(); } catch (e) {} if (tr) { dockOutHide(); return; }
+    const onPiece = !!pieceHit(); let onWin = false;
+    if (dockOut.shown && dockOut.win) { try { const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; onWin = p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height + 4; } catch (e) {} }
+    if (onPiece) { if (!dockOut.shown) dockOutShow(); dockOut.leaveAt = 0; return; }
+    if (!dockOut.shown) return; if (onWin) { dockOut.leaveAt = 0; return; }
+    const now = Date.now(); if (!dockOut.leaveAt) dockOut.leaveAt = now; else if (now - dockOut.leaveAt > 500) dockOutHide(); };
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
@@ -943,9 +978,9 @@ function run(argv) {
   // v5.1.398: 構えの🧩= arm の中身は置いた時刻。古い物(25秒= 長押し10秒＋待ち10秒より長い)は拡張が消し損ねたとみなす。変わった時だけ札を描き直す
   let armOn = false;
   // v5.1.401: 札の右端のピース= 拡張が置く puzzle-last({ch,lv})。0.5秒に1回読み、変わったら描き直す
-  let pzl = { ch: '', lv: 1, prev: '' }, pzlN = 0;
+  let pzl = { ch: '', lv: 1, prev: '', ord: '' }, pzlN = 0;
   const pzlTick = () => { if (pzlN++ % 5) return; let o = null; try { const f = dir + '/puzzle-last'; if ($.NSFileManager.defaultManager.fileExistsAtPath(f)) o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null))); } catch (e) {}
-    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '' }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev) return; pzl = n; try { step(); } catch (e) {} };
+    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '', ord: o && o.ord ? String(o.ord).slice(0, 7) : '' }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev && n.ord === pzl.ord) return; pzl = n; try { step(); } catch (e) {} try { dockOutPaint(); } catch (e) {} };
   const armTick = () => { let on = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) on = Date.now() - Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))) < 25000; } catch (e) {}
     if (on === armOn) return; armOn = on; try { step(); } catch (e) {} };
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):
@@ -980,6 +1015,7 @@ function run(argv) {
     try { warpPtr(); } catch (e) {}
     try { armTick(); } catch (e) {}
     try { pzlTick(); } catch (e) {}
+    try { dockOutTick(); } catch (e) {}
     if (!$.NSFileManager.defaultManager.fileExistsAtPath(dir + '/mods-want')) { modsLast = -1; return; }
     let f = 0; try { f = Number($.CGEventSourceFlagsState(1)) || 0; } catch (e) {} if (!f) f = Number($.NSEvent.modifierFlags) || 0;   // v4.2.742(俊克「エディタから入ると左右どちらも濃紺」): NSEvent は左右を返さない→ CG の機械の状態を先に
     const k = (f & 0x20000 ? 1 : 0) | (f & 0x40000 ? 2 : 0) | (f & 0x80000 ? 4 : 0) | (f & 0x100000 ? 8 : 0) | (f & 0x2 ? 16 : 0) | (f & 0x4 ? 32 : 0);   // v4.2.741: 左右の Shift(機械の左=0x2・右=0x4)
