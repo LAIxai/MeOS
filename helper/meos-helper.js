@@ -692,13 +692,15 @@ function run(argv) {
   //   札は押すとメニューが開く→ 開く直前(menuWillOpen)にポインターが札の右端のピースの上なら、閉じて /puzzle で拡張へ(Opt+クリックと同じ作り)。ピースの場所= 札の枠の中で絵は真ん中寄せ→ 右端から余白と幅で
   let pieceImgW = 0;
   const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
-    const pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad, x0 = x1 - 18; return p.x >= x0 - 1 && p.x <= x1 + pad && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; } catch (e) { return false; } };
-  const drawPiece = (x0, H) => { const ch = pzl.ch, isT = ch === 'T', TW = 15, TH = 13, ty = 4;
+    const pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad, x0 = x1 - 17; return p.x >= x0 - 1 && p.x <= x1 + pad && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; } catch (e) { return false; } };
+  // ★v5.1.403(俊克 11.02 am11:03「🔴の配置は直してよ」= Me Dock と大きく違う): 401 は🔴(4/6/8pt)がピース(13pt)の下端に食い込んでいた。Me Dock= ピースの下に隙間を空けて小さな点(ピースの高さの約1/5)。
+  //   → ピースを 14×11.5 に縮めて上へ寄せ(下に6pt空ける)、🔴は 3/4.5/6pt(Me Dock の 4/6/8 と同じ 2:3:4)・下端は札の下0.5ptで揃える= 段1は2.5ptの隙間・段3だけ上へ育ってピースに少し被る(Me Dock と同じ)
+  const drawPiece = (x0, H) => { const ch = pzl.ch, isT = ch === 'T', TW = 14, TH = 11.5, ty = 6;
     (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(ch)); const r = $.NSMakeRange(0, a.length);
-    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(11, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2));
-    const lv = pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
+    const lv = pzl.lv, d = lv === 3 ? 6 : lv === 2 ? 4.5 : 3, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
     pzRgb([0xe5, 0x39, 0x35]).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, 0.5, d, d)).fill;
     $.NSColor.colorWithWhiteAlpha(0, 0.5).setStroke; const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, 0.5, d, d)); ov.lineWidth = 0.5; ov.stroke; };
   function show(text, menu, anchor) {
@@ -749,7 +751,7 @@ function run(argv) {
       const sz = styled(t, font, true).size;
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const gi = gateLoad(), GW = gi ? H + 3 : 0; lastDark = gateDark();   // v5.1.367: ロゴの分だけ広げる
-      const PW = pzl.ch ? 18 : 0;   // v5.1.401: 右端のピースの分(隙間3＋ピース15)
+      const PW = pzl.ch ? 17 : 0;   // v5.1.401: 右端のピースの分(隙間3＋ピース14 ← v5.1.403 15)
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW + PW, H));
       pieceImgW = pzl.ch ? W + GW + PW : 0;   // v5.1.402
       img.lockFocus;
