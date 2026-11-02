@@ -14403,8 +14403,17 @@ function meosDotLvOf(ms) { return ms <= 3000 ? 1 : ms <= 6000 ? 2 : 3; }
 function meosPuzzleLastSet(ch) {
   try { const gs = extensionContext.globalState, old = String(gs.get('meosPuzzleLast') || ''); ch = String(ch || '').slice(0, 1);
     if (ch && old && ch !== old) gs.update('meosPuzzlePrev', old);
-    gs.update('meosPuzzleLast', ch); } catch (_) { }
+    gs.update('meosPuzzleLast', ch);
+    if (old === 'M' && ch === 'e') meosJumbleSet(true, true); else if (old === 'e' && ch === 'M') meosJumbleSet(false, true); } catch (_) { }
   meosPuzzleBadgeFile();
+}
+// ★v5.1.419(俊克 pm07:12「MEWを一鳴きで良いんじゃない?そして、パズルをドラッグできるようにする鍵の1つにする…eMになると再び鍵がかかる」→ pm07:19「Aということだね」):
+//   [1つ前][最後]が [M][e] になったら🔤 Jumble(並べ替え)を開く= ロゴのドラッグと同じ働きのもう1つの入口・閉じていた時だけ MEW を一鳴き。[e][M] で黙って閉じる。隠さない(M と e を使えば出る)
+let meosJumbleOn = false;
+function meosJumbleSet(on, fromPuzzle) {
+  on = !!on; if (on === meosJumbleOn) return; meosJumbleOn = on;
+  if (on && fromPuzzle) { try { meosSoundSpawn('MEW'); } catch (_) { } }
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdJumble', on }); } catch (_) { }
 }
 let _meosPuzzleBadgeLast = '';
 function meosPuzzleBadgeFile() {
@@ -36077,9 +36086,10 @@ window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='diaryMode')
 show();})();
 // {* ▲mCN=dock_js_ttctl *}
 // {* ▼mCN=dock_js_logo // v4.2.721 MeOSロゴ= クリックでVSX(Shift=Git)・クリックドラッグで🔤 Jumble の出入り *}
-(function(){const lg=document.getElementById('meos-logo');if(!lg)return;let p=null;window.__mdJumble=false;
+(function(){const lg=document.getElementById('meos-logo');if(!lg)return;let p=null;window.__mdJumble=false;/* v5.1.419: 拡張が覚えた開閉で始める・[M][e]/[e][M] の知らせ(mdJumble)を受ける */
 /* v4.2.722(俊克「拡大した時、1回だけtipを出そう」): 飛び先の tip は Me Dock を開いて最初の1回だけ= 一度出て離れたら外す */let tipT=0;lg.addEventListener('pointerenter',()=>{clearTimeout(tipT);tipT=setTimeout(()=>{lg.__tipSeen=true;},900);});lg.addEventListener('pointerleave',()=>{clearTimeout(tipT);if(lg.__tipSeen&&!window.__mdJumble)lg.removeAttribute('data-tip');});
-function set(on){window.__mdJumble=on;lg.classList.toggle('ml-on',on);if(on)lg.setAttribute('data-tip','Jumble Me DockⓉ');else lg.removeAttribute('data-tip');}
+function set(on,quiet){window.__mdJumble=on;lg.classList.toggle('ml-on',on);if(on)lg.setAttribute('data-tip','Jumble Me DockⓉ');else lg.removeAttribute('data-tip');if(!quiet)vscode.postMessage({type:'mdJumbleState',on:!!on});}
+set(${meosJumbleOn ? 'true' : 'false'},true);window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='mdJumble')set(!!m.on,true);});
 lg.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;ev.preventDefault();p={pid:ev.pointerId,x:ev.clientX,y:ev.clientY,moved:false,shift:ev.shiftKey};try{lg.setPointerCapture(ev.pointerId);}catch(_){}});
 lg.addEventListener('pointermove',ev=>{if(!p||ev.pointerId!==p.pid||p.moved)return;if(Math.abs(ev.clientX-p.x)+Math.abs(ev.clientY-p.y)<5)return;p.moved=true;document.body.classList.add('meos-gripping');});
 lg.addEventListener('pointerup',ev=>{if(!p||ev.pointerId!==p.pid)return;const q=p;p=null;try{lg.releasePointerCapture(ev.pointerId);}catch(_){}document.body.classList.remove('meos-gripping');
@@ -37316,6 +37326,7 @@ function toggleMeDock(editorOverride) {
             try { extensionContext.globalState.update('meDockWidthRatio', bpx / T); } catch (_) { }
             meosDbg('[dockWidth] 枠が最小 ' + Math.round(b) + 'px → ' + bpx + 'px'); } } } } catch (_) { } return; }
     if (message && message.type === 'mdTileJump') { await meosPuzzleTag(message.ch); return; }   // v4.2.562
+    if (message && message.type === 'mdJumbleState') { meosJumbleSet(!!message.on, false); return; }   // v5.1.419: ロゴのドラッグで開け閉めした時も拡張が覚える
     if (message && message.type === 'meosLogoOpen') { try { await vscode.env.openExternal(vscode.Uri.parse(message.git ? 'https://github.com/LAIxai/MeOS' : 'https://open-vsx.org/extension/lai/lai-membrane')); } catch (_) { } return; }   // v4.2.721: MeOSロゴ(Shift=Git)
     if (message && message.type === 'handPoof') { meosPlayNoChange(true); return; }   // v4.2.548: 手の駒を捨てた音= 🔔 で選んだ音
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
