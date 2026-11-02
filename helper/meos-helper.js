@@ -724,7 +724,7 @@ function run(argv) {
   const DO_S = 2, DO_TW = 16 * DO_S, DO_TH = 18 * DO_S, DO_GAP = 4, DO_PAD = 8;
   // ★v5.1.415(俊克 pm03:53「このツールボタンの左端にwGATEのロゴマークをでかでかと付けて、高らかに、The GATEを布告しよう」): 左端に MW-GATE ロゴ(札の左と同じ絵)を 44pt で。タイルはその右から
   const DO_LG = 44, DO_LX = 6, DO_X0 = DO_LX + DO_LG + 8;
-  const dockOut = { win: null, ivs: [], shown: false, leaveAt: 0, ft: null, dnN: 0, upN: 0, downAt: -1 };
+  const dockOut = { win: null, ivs: [], shown: false, pin: false, leaveAt: 0, ft: null, dnN: 0, upN: 0, downAt: -1 };
   const dockOutTile = (ch) => { const im = $.NSImage.alloc.initWithSize($.NSMakeSize(DO_TW, DO_TH)); im.lockFocus;
     const tf = $.NSAffineTransform.transform; tf.scaleXByYBy(DO_S, DO_S); tf.concat; drawPiece(1, 18, ch, ch !== pzl.ch); im.unlockFocus; return im; };
   // ★v5.1.413(俊克 pm01:47「表示したよ。でも、クリックしてもワープはしない」): 実測= events.log に「開いた」は在るが「押した」が1つも無い= 押した事が wGATE に届いていない。
@@ -732,7 +732,7 @@ function run(argv) {
   //   → 全体の受け渡しは変えない(メニューを壊さない)。小窓が開いている間だけ0.02秒ごとにマウスのボタンを見て、同じタイルの上で押して放したら押したとみなす
   const dockOutFire = (i) => { const ch = String(pzl.ord || '').charAt(i); if (!ch || i < 0) return; hlog('[dockOut] ' + ch + ' を押した→ ワープ');
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord }; try { step(); } catch (x) {} dockOutPaint(); }
-    openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); };
+    openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); if (dockOut.pin) dockOutHide(); };   // v5.1.417: 出しっぱなしはワープで消す
   const dockOutAt = () => { try { if (!dockOut.win) return -1; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y;
     if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_X0 + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < 7 ? i : -1; } catch (e) { return -1; } };
   // ★v5.1.414(俊克 pm01:56「押すタイミングで、認識したりしなかったりする」): 413 は「今押されているか」を0.02秒ごとに見た→ 札の描き直しやファイル読みで見張りが0.1秒以上遅れると、素早いクリック(押して放すまで0.1秒未満)は丸ごと間に落ちた。
@@ -741,9 +741,12 @@ function run(argv) {
   // ★v5.1.416(俊克 pm04:50 バグ1「しばらくすると、ぶら下がりツールにホーバーすると、レインボー風車が回る」): wGATE は NSApplication を回さない→ 自分の小窓へ来た出来事(マウスが入った・動いた等)が読まれずに溜まり、数秒で macOS が「応答なし」と見なして小窓の上だけ風車にする(実測: CPU 8%で回ってはいない= 無限ループでない)
   //   → 小窓が出ている間は溜まった出来事を汲み出して渡す(sendEvent)。押した判定は従来どおり Mac の回数で
   const dockOutDrain = () => { try { const app = $.NSApplication.sharedApplication, past = $.NSDate.distantPast; for (let k = 0; k < 64; k++) { const ev = app.nextEventMatchingMaskUntilDateInModeDequeue(0xFFFFFFFF, past, $.NSDefaultRunLoopMode, true); if (!ev || ev.isNil()) break; app.sendEvent(ev); } } catch (e) {} };
+  // ★v5.1.417(俊克 pm06:03 改良1「shift長押しのときに、このぶら下がりツールも出すようにしよう…出しっぱなしで、メニューバーの背景をclickすれば消す…あるいは、ワープしたあとには消す」):
+  //   構え(arm)が点いた時に出し、離れても消さない(pin)。消すのは= メニューバーの地を押した/タイルでワープした/最後の字が変わった(キーでワープした)/メニューを開いた
+  const dockOutOnBar = () => { try { const p = $.NSEvent.mouseLocation, sc = $.NSScreen.screens; for (let k = 0; k < sc.count; k++) { const f = sc.objectAtIndex(k).frame, v = sc.objectAtIndex(k).visibleFrame; if (p.x < f.origin.x || p.x > f.origin.x + f.size.width) continue; const top = f.origin.y + f.size.height, bar = Math.max(22, top - (v.origin.y + v.size.height)); return p.y >= top - bar - 1 && p.y <= top + 1; } } catch (e) {} return false; };
   const dockOutFast = () => { if (!dockOut.shown) return; dockOutDrain(); const dn = dockOutCnt(1), up = dockOutCnt(2);
     if (dn !== dockOut.dnN) { dockOut.dnN = dn; dockOut.downAt = dockOutAt(); }
-    if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } } };
+    if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else if (dockOut.pin && dockOutOnBar()) { hlog('[dockOut] メニューバーの地を押した→ 消す'); dockOutHide(); } } };
   ObjC.registerSubclass({ name: 'MeOSDockOutT', methods: { 'fast:': { types: ['void', ['id']], implementation: function (t) { try { dockOutFast(); } catch (e) {} } } } });
   const dockOutTgt = $.MeOSDockOutT.alloc.init;
   const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
@@ -755,7 +758,7 @@ function run(argv) {
     dockOut.win = w; return w; };
   // v5.1.416(俊克「44ピクセルにすると、ロゴの絵が汚くなる」): 54px の札用を44ptへ引き伸ばしていた→ ver2 の原寸から作った 176px(mgate-big.png)
   const dockOutPaint = () => { try { if (!dockOut.win) return; try { if (!dockOut.big) { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), b = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-big.png')); if (b && !b.isNil()) dockOut.big = b; } const gi = gateLoad(), im = dockOut.big || (gi && (gateDark() ? gi.d : gi.l)); if (im && dockOut.lg) dockOut.lg.image = im; } catch (e) {} const o = String(pzl.ord || ''); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } } catch (e) {} };
-  const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.leaveAt = 0; dockOut.downAt = -1; };
+  const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.pin = false; dockOut.leaveAt = 0; dockOut.downAt = -1; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
     const w = dockOutBuild(), f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
     let x = x1 - f.size.width; try { const sf = bw.screen.visibleFrame; x = Math.max(sf.origin.x + 4, Math.min(x, sf.origin.x + sf.size.width - f.size.width - 4)); } catch (e) {}
@@ -764,7 +767,7 @@ function run(argv) {
     const onPiece = !!pieceHit(); let onWin = false;
     if (dockOut.shown && dockOut.win) { try { const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; onWin = p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height + 4; } catch (e) {} }
     if (onPiece) { if (!dockOut.shown) dockOutShow(); dockOut.leaveAt = 0; return; }
-    if (!dockOut.shown) return; if (onWin) { dockOut.leaveAt = 0; return; }
+    if (!dockOut.shown) return; if (onWin || dockOut.pin) { dockOut.leaveAt = 0; return; }
     const now = Date.now(); if (!dockOut.leaveAt) dockOut.leaveAt = now; else if (now - dockOut.leaveAt > 500) dockOutHide(); };
   function show(text, menu, anchor) {
     const idle = !text;
@@ -996,9 +999,10 @@ function run(argv) {
   // v5.1.401: 札の右端のピース= 拡張が置く puzzle-last({ch,lv})。0.5秒に1回読み、変わったら描き直す
   let pzl = { ch: '', lv: 1, prev: '', ord: '' }, pzlN = 0;
   const pzlTick = () => { if (pzlN++ % 5) return; let o = null; try { const f = dir + '/puzzle-last'; if ($.NSFileManager.defaultManager.fileExistsAtPath(f)) o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null))); } catch (e) {}
-    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '', ord: o && o.ord ? String(o.ord).slice(0, 7) : '' }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev && n.ord === pzl.ord) return; pzl = n; try { step(); } catch (e) {} try { dockOutPaint(); } catch (e) {} };
+    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '', ord: o && o.ord ? String(o.ord).slice(0, 7) : '' }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev && n.ord === pzl.ord) return; const chg = n.ch !== pzl.ch; pzl = n; try { step(); } catch (e) {} try { dockOutPaint(); } catch (e) {} if (chg && dockOut.pin) { hlog('[dockOut] 最後の字が変わった→ 消す'); dockOutHide(); } };
   const armTick = () => { let on = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) on = Date.now() - Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))) < 25000; } catch (e) {}
-    if (on === armOn) return; armOn = on; try { step(); } catch (e) {} };
+    if (on === armOn) return; armOn = on; try { step(); } catch (e) {}
+    if (on && pzl.ch && String(pzl.ord || '').length === 7) { try { dockOutShow(); dockOut.pin = true; hlog('[dockOut] 構えで出す(出しっぱなし)'); } catch (e) {} } };   // v5.1.417
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):
   //   Me Dock の🔰に乗るとロゴごと右下へ2.2倍に膨らむ= ポインターの下の図形が逃げる。拡張が warp-ptr.json(実の画素での片道)を置いたら、
   //   今のポインターをその分だけ運ぶ(画素→ポイントは、ポインターが居る画面の倍率で割る)。Web ページの中からはポインターを動かせない
