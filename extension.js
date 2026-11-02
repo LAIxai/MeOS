@@ -7375,10 +7375,12 @@ function meosPostPuzzleDots(soon) {
       // ★v4.2.607(俊克「コメント文にtipを書き込めるように。パズルボタンでそれをtipとして表示。ワープ前に分かるので誤爆がなくなる」): 字ごとに F の印の説明
       const _all = meosPuzzleTagsOf(ed.document, 0), tips = {};
       for (let n = 1; n <= 6; n++) { const g = _all.filter(h => h.n === n); if (!g.length) continue; const fn = meosPuzzleFGet(ed.document, n); const f = g.find(h => h.name === fn) || g[0]; if (f.desc) tips[MEOS_PUZZLE_LETTERS.charAt(n - 1)] = f.desc; }
-      const key = ed.document.uri.toString() + '|' + letters + '|' + JSON.stringify(tips);
+      const diary = meosIsDiaryFile(ed.document);   // ★v5.1.428(俊克 am05:50「日記ではないファイルでは、MeDockⓉのⓉをクリックしても、Ⓣの下に🔴も白い円も出ないように」)
+      const key = ed.document.uri.toString() + '|' + letters + '|' + JSON.stringify(tips) + '|' + diary;
       if (key === _meosPuzzleDotsLast && !soon) return; _meosPuzzleDotsLast = key;
-      meDockPanel.webview.postMessage({ type: 'mdDots', letters, tips });
-      if (meosPuzzleDotLetters !== letters) { meosPuzzleDotLetters = letters; meosPuzzleBadgeFile(); }   // v5.1.421: wGATE の札と Barman も同じ白い点
+      meDockPanel.webview.postMessage({ type: 'mdDots', letters, tips, diary });
+      const _bl = letters + (diary ? 'T' : '');   // v5.1.428: 札と Barman も Ⓣ の点は日記帳だけ
+      if (meosPuzzleDotLetters !== _bl) { meosPuzzleDotLetters = _bl; meosPuzzleBadgeFile(); }   // v5.1.421: wGATE の札と Barman も同じ白い点
     } catch (_) { }
   }, soon ? 60 : 1200);
 }
@@ -35862,7 +35864,7 @@ if(m.on&&_tx){if(!_at){_at=document.createElement('span');_at.id='md-armtip';_at
 if(m&&m.type==='mdLast'){const _r=document.getElementById('md-tiles');if(_r)_r.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-last',t.getAttribute('data-ch')===m.ch));return;}
 if(m&&m.type==='mdTodayClick'){const _tn=document.getElementById('dw-todaynow');if(_tn)_tn.click();return;}/* v4.2.776-24: Shift+Esc の赤い点がⓉ */
 if(m&&m.type==='mdGold'){const _r=document.getElementById('md-tiles');if(_r)_r.classList.add('md-gold');return;}/* v4.2.776-11 */
-if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');if(c==='T')return;/* v4.2.610: Ⓣ は常に点・tip は Today のまま */t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
+if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');if(c==='T'){if(m.diary!==undefined)t.classList.toggle('md-dot',!!m.diary);return;}/* v4.2.610: Ⓣ は常に点・tip は Today のまま / v5.1.428: 点(白も赤も)は日記帳(#Diary)の時だけ */t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
 if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;window.__clkTargetMode=m.mode||'';clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){

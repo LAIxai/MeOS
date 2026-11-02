@@ -714,7 +714,7 @@ function run(argv) {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(isT ? '\u24c9' : ch)); const r = $.NSMakeRange(0, a.length);   // v5.1.407: Ⓣは Me Dock と同じ丸囲みの字
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(isT ? 11 : 10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2));
-    if (white && !isT && typeof pzl.dots === 'string' && pzl.dots.indexOf(ch) < 0) return;   // ★v5.1.421(俊克 11.03 am04:06 バグ1「MW-GATEに表示されるMeDockⓉが、Me Dockの白い点と赤い点の通りに表示されない」): 白い点= 印の在る字だけ(Me Dock の md-dot と同じ letters)・Ⓣは常に
+    if (typeof pzl.dots === 'string' && pzl.dots.indexOf(ch) < 0 && (white || isT)) return;   // v5.1.428: Ⓣ も dots に在る時(日記帳)だけ点(白も赤も)   // ★v5.1.421(俊克 11.03 am04:06 バグ1「MW-GATEに表示されるMeDockⓉが、Me Dockの白い点と赤い点の通りに表示されない」): 白い点= 印の在る字だけ(Me Dock の md-dot と同じ letters)・Ⓣは常に
     const lv = white ? 1 : pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
     (white ? $.NSColor.whiteColor : pzRgb([0xe5, 0x39, 0x35])).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)).fill;
     $.NSColor.colorWithWhiteAlpha(0, 0.5).setStroke; const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)); ov.lineWidth = 0.5; ov.stroke; };
