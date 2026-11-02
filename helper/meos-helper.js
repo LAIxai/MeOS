@@ -301,6 +301,7 @@ function run(argv) {
     menuOpenAt = Date.now();
     cycRevLoad();   // v5.1.364
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
+    try { if (pzl.ch && pieceHit()) { hlog('[menu] 札の右端のピース ' + pzl.ch + ' を押した→ 閉じてワープ'); m.cancelTracking; openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(pzl.ch)); return; } } catch (e) {}   // v5.1.402
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
   } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
     try { hlog('[menu] close' + (quick ? ' (' + (now - menuOpenAt) + 'ms= 指を放した所で閉じた)' : '')); } catch (e) {} freshMenu = true;
@@ -487,7 +488,7 @@ function run(argv) {
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 8; ptrTo(s);   /* v5.1.374(改良1「ポインターの先が円のギリギリ外…少しだけ円の中に」): 10→8(半径14の内側 11.3) */   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
     'cycHov:': { types: ['void', ['id']], implementation: function (t) { cycHoverStep(); } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
-    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const allF = pagers.length > 0 && pagers.every(p => !!fusenFold[p.name]); for (const p of pagers) { fusenFold[p.name] = !allF; pgPaint(p); } grpPaint(); } catch (e) {} } },
+    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const allO = pagers.length > 0 && pagers.every(p => !fusenFold[p.name]); for (const p of pagers) { fusenFold[p.name] = allO; pgPaint(p); } grpPaint(); } catch (e) {} } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -536,12 +537,12 @@ function run(argv) {
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); clockTitle();
     return hd;
   }
-  // ★v5.1.401(俊克 11.02 am10:02 改良3「メニューバーのFUSENのなかの6つの項目を全て折り畳めるように。▼ FUSENの右端にそのためのボタン・▼という同じマークは紛らわしい」): 右端に ⊟(群を全部畳む)/⊞(全部畳まれていれば全部開く)。色は FUSEN の▾と同じ青。FUSEN 全体を畳んでいる間は隠す
-  const grpPaint = () => { try { const b = fusenAll.grp; if (!b) return; const allF = pagers.length > 0 && pagers.every(p => !!fusenFold[p.name]); const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(String.fromCharCode(allF ? 0x229e : 0x229f))); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize(17), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1), r); b.attributedTitle = a; b.toolTip = $(allF ? 'Open all the FUSEN groups' : 'Fold all the FUSEN groups'); b.hidden = !!fusenFold[String.fromCharCode(0) + 'all'] || !pagers.length; } catch (e) {} };
+  // ★v5.1.401(俊克 11.02 am10:02 改良3「メニューバーのFUSENのなかの6つの項目を全て折り畳めるように。▼ FUSENの右端にそのためのボタン・▼という同じマークは紛らわしい」): 右端に ⊟(群を全部畳む)/⊞(全部畳まれていれば全部開く)。色は FUSEN の▾と同じ青。FUSEN 全体を畳んでいる間は隠す→ v5.1.402(俊克 am10:27 改良3「緑色の▶で「▶ALL」、押すとすべてが展開し、青色の「▼ALL」に変える」): 全部開いていれば青の▾ALL(押すと全部畳む)・1つでも畳んでいれば緑の▸ALL(押すと全部開く)。三角は見出しと同じ triCol(2倍・色)
+  const grpPaint = () => { try { const b = fusenAll.grp; if (!b) return; const allO = pagers.length > 0 && pagers.every(p => !fusenFold[p.name]); const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((allO ? '\u25be' : '\u25b8') + 'ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, !allO); b.attributedTitle = a; b.toolTip = $(allO ? 'Fold all the FUSEN groups' : 'Open all the FUSEN groups'); b.hidden = !!fusenFold['\u0000all'] || !pagers.length; } catch (e) {} };
   function buildFusenAll(m) {   // v5.1.321: 全体の見出し
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     fusenAll.hb = $.NSButton.buttonWithTitleTargetAction($('FUSEN'), pgt, 'pgAll:'); fusenAll.hb.bordered = false; fusenAll.hb.alignment = 0;
-    fusenAll.hb.frame = $.NSMakeRect(14, 1, 190, 20); hv.addSubview(fusenAll.hb); fusenAll.grp = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgGrp:'); fusenAll.grp.bordered = false; fusenAll.grp.frame = $.NSMakeRect(206, 1, 26, 20); fusenAll.grp.autoresizingMask = 1; hv.addSubview(fusenAll.grp); hv.autoresizingMask = 2;
+    fusenAll.hb.frame = $.NSMakeRect(14, 1, 160, 20); hv.addSubview(fusenAll.hb); fusenAll.grp = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgGrp:'); fusenAll.grp.bordered = false; fusenAll.grp.alignment = 1; fusenAll.grp.frame = $.NSMakeRect(170, 1, 64, 20); fusenAll.grp.autoresizingMask = 1; hv.addSubview(fusenAll.grp); hv.autoresizingMask = 2;
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); allTitle();
     return hd;
   }
@@ -687,6 +688,11 @@ function run(argv) {
   //   Me Dock の .md-tile と同じ= 白い角丸の地に字の色(M赤 e橙 D緑 o青 c紫 k紅)・Ⓣは緑の地に白。下に🔴= 段1は真ん中4px・段2は左端6px・段3は右端8px(下端は揃え、上へ育ってピースに被る)
   const PZ_COL = { M: [0xe5, 0x39, 0x35], e: [0xf5, 0x7c, 0x00], D: [0x2e, 0x9d, 0x3a], o: [0x1e, 0x7f, 0xd6], c: [0x8e, 0x24, 0xaa], k: [0xc2, 0x18, 0x5b] };
   const pzRgb = (a) => $.NSColor.colorWithSRGBRedGreenBlueAlpha(a[0] / 255, a[1] / 255, a[2] / 255, 1);
+  // ★v5.1.402(俊克 11.02 am10:27 改良1「[c]にワープしたあとに、他の場所にタイマーなどで飛んだ時、このメニューバーの[c]をクリックすると、戻れるように」):
+  //   札は押すとメニューが開く→ 開く直前(menuWillOpen)にポインターが札の右端のピースの上なら、閉じて /puzzle で拡張へ(Opt+クリックと同じ作り)。ピースの場所= 札の枠の中で絵は真ん中寄せ→ 右端から余白と幅で
+  let pieceImgW = 0;
+  const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
+    const pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad, x0 = x1 - 18; return p.x >= x0 - 1 && p.x <= x1 + pad && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; } catch (e) { return false; } };
   const drawPiece = (x0, H) => { const ch = pzl.ch, isT = ch === 'T', TW = 15, TH = 13, ty = 4;
     (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(ch)); const r = $.NSMakeRange(0, a.length);
@@ -745,6 +751,7 @@ function run(argv) {
       const gi = gateLoad(), GW = gi ? H + 3 : 0; lastDark = gateDark();   // v5.1.367: ロゴの分だけ広げる
       const PW = pzl.ch ? 18 : 0;   // v5.1.401: 右端のピースの分(隙間3＋ピース15)
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW + PW, H));
+      pieceImgW = pzl.ch ? W + GW + PW : 0;   // v5.1.402
       img.lockFocus;
       if (gi) { try { (lastDark ? gi.d : gi.l).drawInRectFromRectOperationFraction($.NSMakeRect(0, 0, H, H), $.NSZeroRect, 2, 1); const tf = $.NSAffineTransform.transform; tf.translateXByYBy(GW, 0); tf.concat; } catch (e) {} }
       (idle ? gray : (anchor ? blue : (myScheme === 'vscode' ? purple : orange))).setFill;
