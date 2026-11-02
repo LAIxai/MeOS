@@ -30735,6 +30735,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 /* v4.2.593: 並びを上から 道具/亀/テーマ・音/ファイル名/パズル+版 に。パズルは一番下(Dock)・版はその行の右端(角に浮かせない) */
 .title-row-dock{align-items:flex-end;margin-top:4px}
 .md-tile{position:relative}
+body.md-nodiary .md-tile[data-ch="T"],body.md-nodiary .dw-split{display:none!important}   /* ★v5.1.429(俊克 am05:54「そもそも、日記でないファイルでは、MeDockのように、Ⓣを非表示に…神獣付きの日付ボタンも出す必要がない」): #Diary の無いファイルでは Ⓣ のタイルと日付ボタン(↻・N ごと)を隠す */
 .md-tile.md-dot::after{content:'';position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}
 .md-tile.md-dot.md-last::after{background:#e53935}
 .md-tiles[data-dot="2"] .md-tile.md-dot.md-last::after{width:6px;height:6px;left:0;margin-left:0}.md-tiles[data-dot="3"] .md-tile.md-dot.md-last::after{width:8px;height:8px;left:auto;right:0;margin-left:0}   /* ★v5.1.378(俊克 pm03:36「🔴だけを時間に応じて大きく…3秒以内、6秒以内、10秒の3段階」): 字は大きくしない。v5.1.379(俊克 pm04:00 改良1「3〜6秒は左端・6秒以上は右端へ」改良2「下端を一定に・パズルに被っても良い」): 下端は1段と同じ -6px(上へ育つ)・2段=字の左端・3段=字の右端 */
@@ -35864,7 +35865,7 @@ if(m.on&&_tx){if(!_at){_at=document.createElement('span');_at.id='md-armtip';_at
 if(m&&m.type==='mdLast'){const _r=document.getElementById('md-tiles');if(_r)_r.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-last',t.getAttribute('data-ch')===m.ch));return;}
 if(m&&m.type==='mdTodayClick'){const _tn=document.getElementById('dw-todaynow');if(_tn)_tn.click();return;}/* v4.2.776-24: Shift+Esc の赤い点がⓉ */
 if(m&&m.type==='mdGold'){const _r=document.getElementById('md-tiles');if(_r)_r.classList.add('md-gold');return;}/* v4.2.776-11 */
-if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');if(c==='T'){if(m.diary!==undefined)t.classList.toggle('md-dot',!!m.diary);return;}/* v4.2.610: Ⓣ は常に点・tip は Today のまま / v5.1.428: 点(白も赤も)は日記帳(#Diary)の時だけ */t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
+if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');if(c==='T'){if(m.diary!==undefined)t.classList.toggle('md-dot',!!m.diary);return;}if(m.diary!==undefined)document.body.classList.toggle('md-nodiary',!m.diary);/* v4.2.610: Ⓣ は常に点・tip は Today のまま / v5.1.428: 点(白も赤も)は日記帳(#Diary)の時だけ */t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
 if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;window.__clkTargetMode=m.mode||'';clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){

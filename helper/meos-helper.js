@@ -731,11 +731,14 @@ function run(argv) {
   // ★v5.1.413(俊克 pm01:47「表示したよ。でも、クリックしてもワープはしない」): 実測= events.log に「開いた」は在るが「押した」が1つも無い= 押した事が wGATE に届いていない。
   //   wGATE は NSApplication を回さず(runUntilDate だけ)、札とメニューのクリックは macOS が代わりに扱う→ 自分の小窓へのクリックは誰も読まない。412 の受け皿(mouseDown)は呼ばれなかった。
   //   → 全体の受け渡しは変えない(メニューを壊さない)。小窓が開いている間だけ0.02秒ごとにマウスのボタンを見て、同じタイルの上で押して放したら押したとみなす
-  const dockOutFire = (i) => { const ch = String(pzl.ord || '').charAt(i); if (!ch || i < 0) return; hlog('[dockOut] ' + ch + ' を押した→ ワープ');
+  // ★v5.1.429(俊克 am05:54「日記でないファイルでは、Ⓣを非表示に」): 並べる字= 並び(ord)から、日記帳でない時(dots に T が無い)は T を抜く。窓の幅も枚数に合わせる
+  const doOrd = () => { const o = String(pzl.ord || ''); return (typeof pzl.dots === 'string' && pzl.dots.indexOf('T') < 0) ? o.replace('T', '') : o; };
+  const doW = (n) => DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP;
+  const dockOutFire = (i) => { const ch = doOrd().charAt(i); if (!ch || i < 0) return; hlog('[dockOut] ' + ch + ' を押した→ ワープ');
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} dockOutPaint(); }
     openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); if (dockOut.pin) dockOutHide(); };   // v5.1.417: 出しっぱなしはワープで消す
   const dockOutAt = () => { try { if (!dockOut.win) return -1; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y;
-    if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_X0 + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < 7 ? i : -1; } catch (e) { return -1; } };
+    if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_X0 + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < doOrd().length ? i : -1; } catch (e) { return -1; } };
   // ★v5.1.414(俊克 pm01:56「押すタイミングで、認識したりしなかったりする」): 413 は「今押されているか」を0.02秒ごとに見た→ 札の描き直しやファイル読みで見張りが0.1秒以上遅れると、素早いクリック(押して放すまで0.1秒未満)は丸ごと間に落ちた。
   //   → Mac が数えている「押した回数・放した回数」(CGEventSourceCounterForEventType)を見る= 見張りが遅れても「前に見た時から1回放された」が分かる。放された時の位置がタイルの外なら、押された時に見たタイル
   const dockOutCnt = (t) => { try { return Number($.CGEventSourceCounterForEventType(0, t)) || 0; } catch (e) { return 0; } };
@@ -753,15 +756,15 @@ function run(argv) {
   const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
     const w = $.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(rc, 128, 2, false);   // 128= 前に出ない窓(枠なし)
     w.level = 101; w.opaque = false; w.backgroundColor = $.NSColor.clearColor; w.hasShadow = true; w.hidesOnDeactivate = false; w.becomesKeyOnlyIfNeeded = true; w.floatingPanel = true; w.collectionBehavior = 1 | 16 | 256;
-    const ve = $.NSVisualEffectView.alloc.initWithFrame(rc); ve.material = 5; ve.state = 1; ve.blendingMode = 0; ve.wantsLayer = true; ve.layer.cornerRadius = 10; ve.layer.masksToBounds = true; w.contentView = ve;
+    const ve = $.NSVisualEffectView.alloc.initWithFrame(rc); ve.material = 5; ve.state = 1; ve.blendingMode = 0; ve.wantsLayer = true; ve.layer.cornerRadius = 10; ve.layer.masksToBounds = true; ve.autoresizingMask = 18; w.contentView = ve;
     dockOut.lg = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_LX, (H - DO_LG) / 2, DO_LG, DO_LG)); dockOut.lg.imageScaling = 3; ve.addSubview(dockOut.lg);   // v5.1.415: ロゴ
     dockOut.ivs = []; for (let i = 0; i < n; i++) { const iv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_X0 + i * (DO_TW + DO_GAP), DO_PAD, DO_TW, DO_TH)); iv.imageScaling = 2; ve.addSubview(iv); dockOut.ivs.push(iv); }
     dockOut.win = w; return w; };
   // v5.1.416(俊克「44ピクセルにすると、ロゴの絵が汚くなる」): 54px の札用を44ptへ引き伸ばしていた→ ver2 の原寸から作った 176px(mgate-big.png)
-  const dockOutPaint = () => { try { if (!dockOut.win) return; try { if (!dockOut.big) { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), b = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-big.png')); if (b && !b.isNil()) dockOut.big = b; } const gi = gateLoad(), im = dockOut.big || (gi && (gateDark() ? gi.d : gi.l)); if (im && dockOut.lg) dockOut.lg.image = im; } catch (e) {} const o = String(pzl.ord || ''); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } } catch (e) {} };
+  const dockOutPaint = () => { try { if (!dockOut.win) return; try { if (!dockOut.big) { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), b = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-big.png')); if (b && !b.isNil()) dockOut.big = b; } const gi = gateLoad(), im = dockOut.big || (gi && (gateDark() ? gi.d : gi.l)); if (im && dockOut.lg) dockOut.lg.image = im; } catch (e) {} const o = doOrd(); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } try { const f = dockOut.win.frame, w = doW(o.length); if (Math.abs(f.size.width - w) > 0.5) { const r = f.origin.x + f.size.width; dockOut.win.setFrameDisplay($.NSMakeRect(dockOut.shown ? r - w : f.origin.x, f.origin.y, w, f.size.height), true); } } catch (e) {} } catch (e) {} };   // 右端(ピースの側)は動かさず幅だけ
   const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.pin = false; dockOut.leaveAt = 0; dockOut.downAt = -1; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
-    const w = dockOutBuild(), f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
+    const w = dockOutBuild(); try { w.setContentSize($.NSMakeSize(doW(doOrd().length), DO_TH + DO_PAD * 2)); } catch (e) {} const f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
     let x = x1 - f.size.width; try { const sf = bw.screen.visibleFrame; x = Math.max(sf.origin.x + 4, Math.min(x, sf.origin.x + sf.size.width - f.size.width - 4)); } catch (e) {}
     w.setFrameOrigin($.NSMakePoint(x, r.origin.y - f.size.height - 2)); dockOutPaint(); w.orderFrontRegardless; if (!dockOut.ft) { dockOut.dnN = dockOutCnt(1); dockOut.upN = dockOutCnt(2); dockOut.downAt = -1; dockOut.ft = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, dockOutTgt, 'fast:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(dockOut.ft, $.NSRunLoopCommonModes); } if (!dockOut.shown) hlog('[dockOut] 開いた'); dockOut.shown = true; dockOut.leaveAt = 0; } catch (e) { hlog('[dockOut] 開けない ' + e); } };
   const dockOutTick = () => { if (!pzl.ch || String(pzl.ord || '').length !== 7) { dockOutHide(); return; } let tr = false; try { tr = tracking(); } catch (e) {} if (tr) { dockOutHide(); return; }
