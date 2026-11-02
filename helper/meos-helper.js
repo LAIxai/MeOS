@@ -302,7 +302,9 @@ function run(argv) {
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
-    try { if (pzl.ch && pieceHit()) { hlog('[menu] 札の右端のピース ' + pzl.ch + ' を押した→ 閉じてワープ'); m.cancelTracking; openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(pzl.ch)); return; } } catch (e) {}   // v5.1.402
+    try { const hc = pzl.ch ? pieceHit() : ''; if (hc) { hlog('[menu] 札の右端のピース ' + hc + (hc === pzl.ch ? '(最後)' : '(1つ前)') + ' を押した→ 閉じてワープ'); m.cancelTracking;
+      if (hc !== pzl.ch) { pzl = { ch: hc, lv: pzl.lv, prev: pzl.ch }; try { step(); } catch (x) {} }   // v5.1.407: 1つ前を押した= 拡張の返事を待たずに入れ替えて描く(続けて押せる)
+      openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(hc)); return; } } catch (e) {}   // v5.1.402
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
   } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
     try { hlog('[menu] close' + (quick ? ' (' + (now - menuOpenAt) + 'ms= 指を放した所で閉じた)' : '')); } catch (e) {} freshMenu = true;
@@ -689,22 +691,24 @@ function run(argv) {
   //   Me Dock の .md-tile と同じ= 白い角丸の地に字の色(M赤 e橙 D緑 o青 c紫 k紅)・Ⓣは緑の地に白。下に🔴= 段1は真ん中4px・段2は左端6px・段3は右端8px(下端は揃え、上へ育ってピースに被る)
   const PZ_COL = { M: [0xe5, 0x39, 0x35], e: [0xf5, 0x7c, 0x00], D: [0x2e, 0x9d, 0x3a], o: [0x1e, 0x7f, 0xd6], c: [0x8e, 0x24, 0xaa], k: [0xc2, 0x18, 0x5b] };
   const pzRgb = (a) => $.NSColor.colorWithSRGBRedGreenBlueAlpha(a[0] / 255, a[1] / 255, a[2] / 255, 1);
+  // ★v5.1.407(俊克 pm00:00「1つ前のも追加…[Ⓣ][c]…[Ⓣ]をクリックすれば[c][Ⓣ]のように入れ替る」): [1つ前(白い点)][最後(🔴)]の2枚。左を押すとその字へ飛び、2枚が入れ替わる(拡張の meosPuzzleLastSet が1つ前を送る)
   // ★v5.1.402(俊克 11.02 am10:27 改良1「[c]にワープしたあとに、他の場所にタイマーなどで飛んだ時、このメニューバーの[c]をクリックすると、戻れるように」):
   //   札は押すとメニューが開く→ 開く直前(menuWillOpen)にポインターが札の右端のピースの上なら、閉じて /puzzle で拡張へ(Opt+クリックと同じ作り)。ピースの場所= 札の枠の中で絵は真ん中寄せ→ 右端から余白と幅で
   let pieceImgW = 0;
   const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
-    const pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad, x0 = x1 - 17; return p.x >= x0 - 1 && p.x <= x1 + pad && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; } catch (e) { return false; } };
+    const pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad, x0 = x1 - 17; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
+    if (p.x >= x0 - 1 && p.x <= x1 + pad) return pzl.ch; if (pzl.prev && p.x >= x0 - 18 && p.x < x0 - 1) return pzl.prev; return ''; } catch (e) { return ''; } };   // v5.1.407: 押した字(右=最後・左=1つ前)を返す
   // ★v5.1.403(俊克 11.02 am11:03「🔴の配置は直してよ」= Me Dock と大きく違う): 401 は🔴(4/6/8pt)がピース(13pt)の下端に食い込んでいた。Me Dock= ピースの下に隙間を空けて小さな点(ピースの高さの約1/5)。
   //   → ピースを 14×11.5 に縮めて上へ寄せ(下に6pt空ける)、🔴は 3/4.5/6pt(Me Dock の 4/6/8 と同じ 2:3:4)・下端は札の下0.5ptで揃える= 段1は2.5ptの隙間・段3だけ上へ育ってピースに少し被る(Me Dock と同じ)
   // ★v5.1.404(俊克 am11:06 改良1「メニューバーは小さいので、🔴はさっきの大きさの方が見やすい・今回は明らかに小さい」「🔴の表示位置が微妙に異なる」): 🔴は 4/6/8pt に戻す。
   //   位置は Me Dock の .md-tile.md-dot::after と同じ数= 🔴の下端はピースの下端の6pt下(bottom:-6px)・段1は真ん中・段2は左端・段3は右端 → 段1は2ptの隙間・段2は接する・段3は2pt被る(Me Dock と同じ)。ピースは14×12・下端を札の下から6pt
-  const drawPiece = (x0, H) => { const ch = pzl.ch, isT = ch === 'T', TW = 14, TH = 12, ty = 6;
+  const drawPiece = (x0, H, chArg, white) => { const ch = chArg || pzl.ch, isT = ch === 'T', TW = 14, TH = 12, ty = 6;
     (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(ch)); const r = $.NSMakeRange(0, a.length);
-    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(isT ? '\u24c9' : ch)); const r = $.NSMakeRange(0, a.length);   // v5.1.407: Ⓣは Me Dock と同じ丸囲みの字
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(isT ? 11 : 10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2));
-    const lv = pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
-    pzRgb([0xe5, 0x39, 0x35]).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)).fill;
+    const lv = white ? 1 : pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
+    (white ? $.NSColor.whiteColor : pzRgb([0xe5, 0x39, 0x35])).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)).fill;
     $.NSColor.colorWithWhiteAlpha(0, 0.5).setStroke; const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)); ov.lineWidth = 0.5; ov.stroke; };
   function show(text, menu, anchor) {
     const idle = !text;
@@ -741,7 +745,7 @@ function run(argv) {
       } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
-    const pk = pzl.ch + pzl.lv;
+    const pk = pzl.ch + pzl.lv + pzl.prev;
     if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle || gateDark() !== lastDark || pk !== lastPk) {
       lastPk = pk;
       lastIdle = idle;
@@ -754,7 +758,7 @@ function run(argv) {
       const sz = styled(t, font, true).size;
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const gi = gateLoad(), GW = gi ? H + 3 : 0; lastDark = gateDark();   // v5.1.367: ロゴの分だけ広げる
-      const PW = pzl.ch ? 17 : 0;   // v5.1.401: 右端のピースの分(隙間3＋ピース14 ← v5.1.403 15)
+      const PW = pzl.ch ? (pzl.prev ? 34 : 17) : 0;   // v5.1.407: 1つ前が在れば2枚   // v5.1.401: 右端のピースの分(隙間3＋ピース14 ← v5.1.403 15)
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW + PW, H));
       pieceImgW = pzl.ch ? W + GW + PW : 0;   // v5.1.402
       img.lockFocus;
@@ -763,7 +767,7 @@ function run(argv) {
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
       if (!idle) fillSeat(t, font, PX, W, H);   // v5.1.57
       drawStyled(t, font, PX, (H - sz.height) / 2);
-      if (pzl.ch) { try { drawPiece(W + 3, H); } catch (e) {} }
+      if (pzl.ch) { try { if (pzl.prev) { drawPiece(W + 3, H, pzl.prev, true); drawPiece(W + 20, H); } else drawPiece(W + 3, H); } catch (e) {} }   // v5.1.407: [1つ前][最後]
       img.unlockFocus;
       img.template = false;
       item.button.image = img; item.button.title = '';
@@ -934,9 +938,9 @@ function run(argv) {
   // v5.1.398: 構えの🧩= arm の中身は置いた時刻。古い物(25秒= 長押し10秒＋待ち10秒より長い)は拡張が消し損ねたとみなす。変わった時だけ札を描き直す
   let armOn = false;
   // v5.1.401: 札の右端のピース= 拡張が置く puzzle-last({ch,lv})。0.5秒に1回読み、変わったら描き直す
-  let pzl = { ch: '', lv: 1 }, pzlN = 0;
+  let pzl = { ch: '', lv: 1, prev: '' }, pzlN = 0;
   const pzlTick = () => { if (pzlN++ % 5) return; let o = null; try { const f = dir + '/puzzle-last'; if ($.NSFileManager.defaultManager.fileExistsAtPath(f)) o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null))); } catch (e) {}
-    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1 }; if (n.ch === pzl.ch && n.lv === pzl.lv) return; pzl = n; try { step(); } catch (e) {} };
+    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '' }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev) return; pzl = n; try { step(); } catch (e) {} };
   const armTick = () => { let on = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) on = Date.now() - Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))) < 25000; } catch (e) {}
     if (on === armOn) return; armOn = on; try { step(); } catch (e) {} };
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):

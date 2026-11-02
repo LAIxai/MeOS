@@ -14398,10 +14398,18 @@ const MEOS_ARM_MAX = 10000;
 function meosDotLvOf(ms) { return ms <= 3000 ? 1 : ms <= 6000 ? 2 : 3; }
 // ★v5.1.401(俊克 11.02 am10:02 改良2「Me Dockが表示/非表示にかかわらず、🔴マークが付いたパズルのピース、例えば[c]をメニューバーの離席表示の右側に表示しよう」):
 //   最後の字(meosPuzzleLast)と🔴の段(meosDotLv)を置き場の puzzle-last へ= V-helper が札の右端に白いピース＋色の字＋下に🔴(段の大きさ・位置は Me Dock と同じ)。変わった時だけ書く
+// ★v5.1.407(俊克 11.02 pm00:00「メニューバーのパズルボタンを1つ前のも追加しよう。[Ⓣ][c]のように、1つ前、最後に飛んだ場所の順に…[Ⓣ]をクリックすれば[c][Ⓣ]のように入れ替る= ポインターを動かさずに連続して切り替えられる」):
+//   最後の字を変える口を1つに(meosPuzzleLastSet)= 違う字になった時だけ、それまでの最後を1つ前(meosPuzzlePrev)へ送る。Me Dock の字・数字の2連打・メニューバーのピースの3つの入口が全部ここを通る
+function meosPuzzleLastSet(ch) {
+  try { const gs = extensionContext.globalState, old = String(gs.get('meosPuzzleLast') || ''); ch = String(ch || '').slice(0, 1);
+    if (ch && old && ch !== old) gs.update('meosPuzzlePrev', old);
+    gs.update('meosPuzzleLast', ch); } catch (_) { }
+  meosPuzzleBadgeFile();
+}
 let _meosPuzzleBadgeLast = '';
 function meosPuzzleBadgeFile() {
   if (!meosRealHost()) return;
-  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1 });
+  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || '') });   // v5.1.407: prev= 1つ前
     if (j === _meosPuzzleBadgeLast) return; _meosPuzzleBadgeLast = j;
     const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(path.join(meosHelperDir(), 'puzzle-last'), j); } catch (_) { }
 }
@@ -36833,7 +36841,7 @@ function toggleMeDock(editorOverride) {
     // ★v4.2.500 パズルロック: 並びを覚える。MockeD の間は、並べ替えのほかは何も受け付けない(Me Dock だけ操作できない)
     if (message && message.type === 'cycRevAsk') { meosCycRevWatch(); meosCycRevPost(); meosDotPost(); return; }   // v5.1.364: 開いた Me Dock に今の向きを渡す
     if (message && message.type === 'mdDbg') { meosDbg('[mdDbg] ' + String(message.info || '').slice(0, 1500)); return; }   // v4.2.512
-    if (message && message.type === 'mdTileLast') { try { extensionContext.globalState.update('meosPuzzleLast', String(message.ch || '').slice(0, 1)); } catch (_) { } meosPuzzleBadgeFile(); meosGoldPrizeTry(); return; }   // v4.2.776-13: 金の人がパズルを押した時も栄誉の音を取りに行く   // v4.2.776-10
+    if (message && message.type === 'mdTileLast') { try { meosPuzzleLastSet(String(message.ch || '').slice(0, 1)); } catch (_) { } meosPuzzleBadgeFile(); meosGoldPrizeTry(); return; }   // v4.2.776-13: 金の人がパズルを押した時も栄誉の音を取りに行く   // v4.2.776-10
     if (message && message.type === 'mdTiles') { const o = String(message.order || ''); if (meosDockTilesValid(o)) {
         const was = meosDockTiles(), wasShut = meosDockLocked(was) || meosDockCrypt(was) || meosDockHideEnc(was);
         // ★v4.2.549(俊克「間抜けになった時などの特別な並びのときに、効果音を2回。まぬけ、まぬけ!!と言っている感じ。ピンポーンと真逆」):
@@ -45712,7 +45720,7 @@ function activate(context) {
       if (n < 1) return;
       const o = meosDockTiles(), ch = o.charAt(n - 1); meosDbg('[puzzleWarpNth] n=' + n + ' 字=' + ch + ' 並び=' + o);
       if (!ch) return;
-      extensionContext.globalState.update('meosPuzzleLast', ch);
+      meosPuzzleLastSet(ch);
       try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { }
       meosPuzzleBadgeFile();   // v5.1.401
       await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed');
@@ -46124,7 +46132,7 @@ function activate(context) {
         if (u && u.path === '/puzzle') {   // ★v5.1.402(俊克 11.02 am10:27 改良1「メニューバーの[c]をクリックすると、戻れるように」): V-helper の札の右端のピースを押した= 🔴の字へ(Shift長押し＋字と同じ puzzleWarpRed)
           const ch = String(new URLSearchParams(u.query || '').get('ch') || '').slice(0, 1); meosDbg('[helper] puzzle ' + ch);
           if (!_meosLastLineDone) meosLastLineFinish('ピースが先 → 戻さない');
-          if (ch) { try { extensionContext.globalState.update('meosPuzzleLast', ch); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { } }
+          if (ch) { try { meosPuzzleLastSet(ch); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { } }
           await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed'); return;
         }
         if (u && u.path === '/fusen') {   // v5.1.348: 閉じている時に V-helper の付箋を押した= 起きてその付箋へ
