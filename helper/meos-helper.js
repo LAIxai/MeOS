@@ -463,10 +463,10 @@ function run(argv) {
   const pgPaint = (p) => {
     const A = !!fusenFold['\u0000all'];
     try { p.hd.hidden = A; } catch (e) {}
-    const f = A || !!fusenFold[p.name], rest = p.its.slice(1);
+    const f = A || !!fusenFold[p.name] || pgCover(p), rest = p.its.slice(1);
     if (p.off > 0 && p.off >= rest.length) p.off = Math.max(0, Math.floor((rest.length - 1) / 5) * 5);   // v5.1.347: 付箋が減って覚えた頁が無くなったら最後の頁へ
     fusenOff[p.name] = p.off;
-    pgTitle(p, !!fusenFold[p.name]);
+    pgTitle(p, !!fusenFold[p.name] || pgCover(p));
     p.pin.hidden = f || !p.its[0];
     for (let k = 0; k < p.slots.length; k++) { const it = rest[p.off + k], mi = p.slots[k];
       if (it) { mi.title = $(it.title); mi.representedObject = $(it.id); } mi.hidden = f || !it; }
@@ -477,7 +477,7 @@ function run(argv) {
   ObjC.registerSubclass({ name: 'MeOSPagerH', methods: {
     'pgUp:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off > 0) { p.off -= 5; pgPaint(p); ptrTo(s); } } catch (e) {} } },
     'pgDn:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p && p.off + 5 < p.its.length - 1) { p.off += 5; pgPaint(p); ptrTo(s); } } catch (e) {} } },
-    'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (p) { fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } } catch (e) {} } },
+    'pgFold:': { types: ['void', ['id']], implementation: function (s) { try { const p = pagers[s.tag]; if (!p) return; if (pgCover(p)) { delete fusenFold[pgCovK('All')]; delete fusenFold[pgCovK(String(p.name).slice(0, 2))]; fusenFold[p.name] = false; for (const q of pagers) pgPaint(q); grpPaint(); kindPaint(); return; } fusenFold[p.name] = !fusenFold[p.name]; pgPaint(p); } catch (e) {} } },
     'pgTag:': { types: ['void', ['id']], implementation: function (s) { try { tagAll.fold = !tagAll.fold; tagTitle(); tagPaint(); } catch (e) {} } },   // v5.1.325
     'ptr:': { types: ['void', ['id']], implementation: function (t) { try { const b = t.userInfo, w = b.window; if (!w || w.isNil()) return; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), H = $.NSScreen.screens.objectAtIndex(0).frame.size.height, d = ptrDiag; ptrDiag = 0; $.CGWarpMouseCursorPosition({ x: r.origin.x + r.size.width / 2 + d, y: H - (r.origin.y + r.size.height / 2) + d }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {} } },   // v5.1.343
     'pgTagUp:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off > 0) { tagAll.off -= 1; tagPaint(); ptrTo(s); } } catch (e) {} } },   // v5.1.327
@@ -491,8 +491,8 @@ function run(argv) {
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 8; ptrTo(s);   /* v5.1.374(改良1「ポインターの先が円のギリギリ外…少しだけ円の中に」): 10→8(半径14の内側 11.3) */   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
     'cycHov:': { types: ['void', ['id']], implementation: function (t) { cycHoverStep(); } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
-    'pgKind:': { types: ['void', ['id']], implementation: function (s) { try { const p0 = pagers[Number(s.tag)]; if (!p0) return; const kd = String(p0.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), allO = g.every(q => !fusenFold[q.name]); for (const p of g) { fusenFold[p.name] = allO; pgPaint(p); } grpPaint(); kindPaint(); } catch (e) {} } },
-    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const allO = pagers.length > 0 && pagers.every(p => !fusenFold[p.name]); for (const p of pagers) { fusenFold[p.name] = allO; pgPaint(p); } grpPaint(); kindPaint(); } catch (e) {} } },
+    'pgKind:': { types: ['void', ['id']], implementation: function (s) { try { const p0 = pagers[Number(s.tag)]; if (!p0) return; const kd = String(p0.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), k = pgCovK(kd); fusenFold[k] = !fusenFold[k]; for (const p of g) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
+    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const k = pgCovK('All'); fusenFold[k] = !fusenFold[k]; for (const p of pagers) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -542,9 +542,11 @@ function run(argv) {
     return hd;
   }
   // ★v5.1.401(俊克 11.02 am10:02 改良3「メニューバーのFUSENのなかの6つの項目を全て折り畳めるように。▼ FUSENの右端にそのためのボタン・▼という同じマークは紛らわしい」): 右端に ⊟(群を全部畳む)/⊞(全部畳まれていれば全部開く)。色は FUSEN の▾と同じ青。FUSEN 全体を畳んでいる間は隠す→ v5.1.402(俊克 am10:27 改良3「緑色の▶で「▶ALL」、押すとすべてが展開し、青色の「▼ALL」に変える」): 全部開いていれば青の▾ALL(押すと全部畳む)・1つでも畳んでいれば緑の▸ALL(押すと全部開く)。三角は見出しと同じ triCol(2倍・色)
-  const grpPaint = () => { try { const b = fusenAll.grp; if (!b) return; const allO = pagers.length > 0 && pagers.every(p => !fusenFold[p.name]); const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((allO ? '\u25be' : '\u25b8') + 'ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, !allO); b.attributedTitle = a; b.toolTip = $(allO ? 'Fold all the FUSEN groups' : 'Open all the FUSEN groups'); b.hidden = !!fusenFold['\u0000all'] || !pagers.length; } catch (e) {} };
+  // ★v5.1.410(俊克 11.02 pm01:02 改良1「ALLは、子や孫まですべてを畳むのではなく、再度開き直しても、閉じていたものは閉じたまま、開いたままのものは開いたままに。外枠だけを畳む」): ALL / CB-ALL / IC-ALL= 群の開閉の覚え(fusenFold[群名])には触らない「外枠の蓋」(fusenFold[\0ovAll]/[\0ovCB]/[\0ovIC])。蓋が在る間は群の中身を隠し、外すと各群が覚えた姿に戻る。蓋の中の群を押したら= その蓋を外してその群を開く
+  const pgCovK = (kd) => String.fromCharCode(0) + 'ov' + kd; const pgCover = (p) => !!fusenFold[pgCovK('All')] || !!fusenFold[pgCovK(String(p.name).slice(0, 2))];
+  const grpPaint = () => { try { const b = fusenAll.grp; if (!b) return; const allO = !fusenFold[pgCovK('All')]; const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((allO ? '\u25be' : '\u25b8') + 'ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, !allO); b.attributedTitle = a; b.toolTip = $(allO ? 'Fold all the FUSEN groups' : 'Open all the FUSEN groups'); b.hidden = !!fusenFold['\u0000all'] || !pagers.length; } catch (e) {} };
   // ★v5.1.409(俊克 11.02 pm00:46 改良1「CB FUSEN・Yellowの右端に▼CB-ALL/▶CB-ALLボタンを付けよう。ICのほうにもね」): 種類(CB/IC)の最初の群の見出しの右端に、その種類の群だけを全部開く/畳む(▾ALL と同じ作り・同じ色の決まり)
-  const kindPaint = () => { try { for (const p of pagers) { const b = p.kb; if (!b) continue; const kd = String(p.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), allO = g.length > 0 && g.every(q => !fusenFold[q.name]); const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((allO ? '\u25be' : '\u25b8') + kd + '-ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, !allO); b.attributedTitle = a; b.toolTip = $((allO ? 'Fold all the ' : 'Open all the ') + kd + ' FUSEN groups'); } } catch (e) {} };
+  const kindPaint = () => { try { for (const p of pagers) { const b = p.kb; if (!b) continue; const kd = String(p.name).slice(0, 2), allO = !fusenFold[pgCovK(kd)]; const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((allO ? '\u25be' : '\u25b8') + kd + '-ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, !allO); b.attributedTitle = a; b.toolTip = $((allO ? 'Fold all the ' : 'Open all the ') + kd + ' FUSEN groups'); } } catch (e) {} };
   function buildFusenAll(m) {   // v5.1.321: 全体の見出し
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     fusenAll.hb = $.NSButton.buttonWithTitleTargetAction($('FUSEN'), pgt, 'pgAll:'); fusenAll.hb.bordered = false; fusenAll.hb.alignment = 0;
