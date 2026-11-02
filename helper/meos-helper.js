@@ -695,14 +695,16 @@ function run(argv) {
     const pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad, x0 = x1 - 17; return p.x >= x0 - 1 && p.x <= x1 + pad && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; } catch (e) { return false; } };
   // ★v5.1.403(俊克 11.02 am11:03「🔴の配置は直してよ」= Me Dock と大きく違う): 401 は🔴(4/6/8pt)がピース(13pt)の下端に食い込んでいた。Me Dock= ピースの下に隙間を空けて小さな点(ピースの高さの約1/5)。
   //   → ピースを 14×11.5 に縮めて上へ寄せ(下に6pt空ける)、🔴は 3/4.5/6pt(Me Dock の 4/6/8 と同じ 2:3:4)・下端は札の下0.5ptで揃える= 段1は2.5ptの隙間・段3だけ上へ育ってピースに少し被る(Me Dock と同じ)
-  const drawPiece = (x0, H) => { const ch = pzl.ch, isT = ch === 'T', TW = 14, TH = 11.5, ty = 6;
+  // ★v5.1.404(俊克 am11:06 改良1「メニューバーは小さいので、🔴はさっきの大きさの方が見やすい・今回は明らかに小さい」「🔴の表示位置が微妙に異なる」): 🔴は 4/6/8pt に戻す。
+  //   位置は Me Dock の .md-tile.md-dot::after と同じ数= 🔴の下端はピースの下端の6pt下(bottom:-6px)・段1は真ん中・段2は左端・段3は右端 → 段1は2ptの隙間・段2は接する・段3は2pt被る(Me Dock と同じ)。ピースは14×12・下端を札の下から6pt
+  const drawPiece = (x0, H) => { const ch = pzl.ch, isT = ch === 'T', TW = 14, TH = 12, ty = 6;
     (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(ch)); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2));
-    const lv = pzl.lv, d = lv === 3 ? 6 : lv === 2 ? 4.5 : 3, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
-    pzRgb([0xe5, 0x39, 0x35]).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, 0.5, d, d)).fill;
-    $.NSColor.colorWithWhiteAlpha(0, 0.5).setStroke; const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, 0.5, d, d)); ov.lineWidth = 0.5; ov.stroke; };
+    const lv = pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
+    pzRgb([0xe5, 0x39, 0x35]).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)).fill;
+    $.NSColor.colorWithWhiteAlpha(0, 0.5).setStroke; const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)); ov.lineWidth = 0.5; ov.stroke; };
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
