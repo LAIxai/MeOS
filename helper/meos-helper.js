@@ -331,8 +331,8 @@ function run(argv) {
     tab.setFill; $.NSBezierPath.fillRect($.NSMakeRect(0.5, 2.5, 7, H - 5));
     rgb(0x9a, 0x84, 0x55).setStroke; const bp = $.NSBezierPath.bezierPathWithRect(r); bp.lineWidth = 1; bp.stroke;
     img.unlockFocus; return img; } catch (e) { return null; } };
-  // ★v5.1.399(俊克 11.02 am09:24 改良3「メニューバーの中のCB FUSENをこの四角形の大きな付箋の絵に統一しよう」): CB= Me Dock の付箋ボタン(```)の拡大中の絵と同じ四角の付箋(白い紙＋上の色の帯＋右下の折れ)。IC は横長のまま(` の絵と同じ)
-  const fusenIconSq = (tab) => { try { const W = 20, H = 12, img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H)); img.lockFocus; const tf = $.NSAffineTransform.transform; tf.translateXByYBy(3, H); tf.scaleXByYBy(1.2, -1.2); tf.concat; const pg = $.NSBezierPath.bezierPath; pg.moveToPoint($.NSMakePoint(1, 1)); pg.lineToPoint($.NSMakePoint(11, 1)); pg.lineToPoint($.NSMakePoint(11, 6.5)); pg.lineToPoint($.NSMakePoint(7.5, 9)); pg.lineToPoint($.NSMakePoint(1, 9)); pg.closePath; rgb(0xff, 0xfd, 0xf7).setFill; pg.fill; tab.setFill; $.NSBezierPath.fillRect($.NSMakeRect(1.4, 1.4, 9.2, 2.4)); rgb(0x6b, 0x5a, 0x3a).setStroke; pg.lineWidth = 0.8; pg.stroke; const fo = $.NSBezierPath.bezierPath; fo.moveToPoint($.NSMakePoint(7.5, 9)); fo.lineToPoint($.NSMakePoint(7.5, 6.5)); fo.lineToPoint($.NSMakePoint(11, 6.5)); fo.lineWidth = 0.8; fo.stroke; img.unlockFocus; return img; } catch (e) { return null; } };
+  // ★v5.1.399(俊克 11.02 am09:24 改良3「メニューバーの中のCB FUSENをこの四角形の大きな付箋の絵に統一しよう」): CB= Me Dock の付箋ボタン(```)の拡大中の絵と同じ四角の付箋(白い紙＋上の色の帯＋右下の折れ)。IC は横長のまま(` の絵と同じ)。v5.1.401(俊克 am10:02 改良1「細長いほうが大きいのでバランスが悪い→四角形の幅を細長い付箋と同じ幅に」): 紙の幅を横長と同じ19pt(1.9倍・高さ16)・線は0.55(画面で約1pt)
+  const fusenIconSq = (tab) => { try { const W = 20, H = 16, img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H)); img.lockFocus; const tf = $.NSAffineTransform.transform; tf.translateXByYBy(-1.4, H + 1.5); tf.scaleXByYBy(1.9, -1.9); tf.concat; const pg = $.NSBezierPath.bezierPath; pg.moveToPoint($.NSMakePoint(1, 1)); pg.lineToPoint($.NSMakePoint(11, 1)); pg.lineToPoint($.NSMakePoint(11, 6.5)); pg.lineToPoint($.NSMakePoint(7.5, 9)); pg.lineToPoint($.NSMakePoint(1, 9)); pg.closePath; rgb(0xff, 0xfd, 0xf7).setFill; pg.fill; tab.setFill; $.NSBezierPath.fillRect($.NSMakeRect(1.4, 1.4, 9.2, 2.4)); rgb(0x6b, 0x5a, 0x3a).setStroke; pg.lineWidth = 0.55; pg.stroke; const fo = $.NSBezierPath.bezierPath; fo.moveToPoint($.NSMakePoint(7.5, 9)); fo.lineToPoint($.NSMakePoint(7.5, 6.5)); fo.lineToPoint($.NSMakePoint(11, 6.5)); fo.lineWidth = 0.55; fo.stroke; img.unlockFocus; return img; } catch (e) { return null; } };
   const fusenIcons = {};
   // ★v5.1.326(俊克 10.30 am10:26 改良2「畳んでいる時の▶を緑・開いている時の▼を水色に。赤は⏰があるから」): 見出しの三角だけ色を付ける(TAG・FUSEN・群の見出しの全部)
   // v5.1.327(俊克 改良3「パステル調でなく原色の濃い色(青と緑)に」): system の緑/水色 → sRGB の濃い緑(0,135,0 ← v5.1.336 俊克「濃過ぎて緑らしさがない」 0,115,0 ← v5.1.329 俊克「もう少し暗め・濃い緑に」 0,153,0)と青(0,64,255)
@@ -341,7 +341,7 @@ function run(argv) {
   const TRI_RED = [0.85, 0.1, 0.1], TRI_PURPLE = [0.55, 0.2, 0.85];
   const triCol = (a, f, o) => { try { const r0 = $.NSMakeRange(0, 1); a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.53, 0, 1) : (o ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(o[0], o[1], o[2], 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1)), r0);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize($.NSFont.systemFontSize * 2), r0); a.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(f ? -3 : -2), r0); } catch (e) {} };
-  const pgTitle = (p, f) => { try {
+  const pgTitle = (p, f) => { try { grpPaint();
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r);   // v5.1.338(俊克 pm01:41「CB FUSEN・Yellow などの見出しも太字＋イタリックに。項目名と区別しやすいように」): 3= 太字|斜体
     a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
@@ -349,7 +349,7 @@ function run(argv) {
   // ★v5.1.321(俊克 am02:47 改良1「FUSEN という全体ラベルを ⏰0y… の下に入れ、間に罫線。FUSEN をクリックすると付箋すべてを折り畳める」):
   //   全体の見出し= 群と同じ「メニューの中のボタン」(押しても閉じない)。畳むと群の見出しも中身も、CB と IC の間の区切りも隠す。群ごとの畳みは覚えたまま
   const fusenAll = { hb: null, seps: [] };
-  const allTitle = () => { try { if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
+  const allTitle = () => { try { grpPaint(); if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + 'FUSEN')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
@@ -487,6 +487,7 @@ function run(argv) {
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 8; ptrTo(s);   /* v5.1.374(改良1「ポインターの先が円のギリギリ外…少しだけ円の中に」): 10→8(半径14の内側 11.3) */   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
     'cycHov:': { types: ['void', ['id']], implementation: function (t) { cycHoverStep(); } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
+    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const allF = pagers.length > 0 && pagers.every(p => !!fusenFold[p.name]); for (const p of pagers) { fusenFold[p.name] = !allF; pgPaint(p); } grpPaint(); } catch (e) {} } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -535,10 +536,12 @@ function run(argv) {
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); clockTitle();
     return hd;
   }
+  // ★v5.1.401(俊克 11.02 am10:02 改良3「メニューバーのFUSENのなかの6つの項目を全て折り畳めるように。▼ FUSENの右端にそのためのボタン・▼という同じマークは紛らわしい」): 右端に ⊟(群を全部畳む)/⊞(全部畳まれていれば全部開く)。色は FUSEN の▾と同じ青。FUSEN 全体を畳んでいる間は隠す
+  const grpPaint = () => { try { const b = fusenAll.grp; if (!b) return; const allF = pagers.length > 0 && pagers.every(p => !!fusenFold[p.name]); const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(String.fromCharCode(allF ? 0x229e : 0x229f))); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize(17), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1), r); b.attributedTitle = a; b.toolTip = $(allF ? 'Open all the FUSEN groups' : 'Fold all the FUSEN groups'); b.hidden = !!fusenFold[String.fromCharCode(0) + 'all'] || !pagers.length; } catch (e) {} };
   function buildFusenAll(m) {   // v5.1.321: 全体の見出し
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     fusenAll.hb = $.NSButton.buttonWithTitleTargetAction($('FUSEN'), pgt, 'pgAll:'); fusenAll.hb.bordered = false; fusenAll.hb.alignment = 0;
-    fusenAll.hb.frame = $.NSMakeRect(14, 1, 220, 20); hv.addSubview(fusenAll.hb);
+    fusenAll.hb.frame = $.NSMakeRect(14, 1, 190, 20); hv.addSubview(fusenAll.hb); fusenAll.grp = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgGrp:'); fusenAll.grp.bordered = false; fusenAll.grp.frame = $.NSMakeRect(206, 1, 26, 20); fusenAll.grp.autoresizingMask = 1; hv.addSubview(fusenAll.grp); hv.autoresizingMask = 2;
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); allTitle();
     return hd;
   }
@@ -671,7 +674,7 @@ function run(argv) {
   const blue = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x2f / 255, 0x80 / 255, 0xb8 / 255, 1);   // v4.2.316: ⚓停泊中
   // ★v4.2.373(俊克「VSCm用helperは今まで通りオレンジ色、本家VSC用のhelperを別の色に」): 本家は紫(青は⚓の色なので使わない)
   const purple = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x7c / 255, 0x3a / 255, 0xed / 255, 1);
-  let lastAnchor = null, lastIdle = null;
+  let lastAnchor = null, lastIdle = null, lastPk = null;
   // ★v4.2.363: 常駐の係は、⏰が無い時も消えない= 灰色の ⏰ で居る(そこからアプリの起動/終了ができる)。
   const gray = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x6b / 255, 0x72 / 255, 0x80 / 255, 1);
   // v5.1.60(俊克「⚓の青い札の時は、椅子の部分との境目に細い白い線を」)→ v5.1.61(「一律で白い境界線を入れよう」): 境目には札の色によらず1ptの白
@@ -680,6 +683,18 @@ function run(argv) {
   const seatPart = (t) => { t = String(t); for (const s of SEATS) { const i = t.lastIndexOf(s[0]); if (i < 0) continue; const tail = t.slice(i + s[0].length); if (/^([0-9]+m|<1m|0:[0-9][0-9])$/.test(tail)) return { at: i, rgb: s }; } return null; };
   const fillSeat = (t, font, PX, W, H) => { try { const sp = seatPart(t); if (!sp) return; const pre = String(t).slice(0, sp.at); const x0 = pre.replace(/ +$/, '') ? Math.max(0, PX + styled(pre, font, true).size.width - 4) : 0;
     $.NSColor.colorWithSRGBRedGreenBlueAlpha(sp.rgb[1] / 255, sp.rgb[2] / 255, sp.rgb[3] / 255, 1).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, 0, W - x0, H), 5, 5).fill; if (x0 > 0) $.NSBezierPath.fillRect($.NSMakeRect(x0, 0, 6, H)); if (x0 > 0) { $.NSColor.whiteColor.setFill; $.NSBezierPath.fillRect($.NSMakeRect(x0, 0, 1, H)); } } catch (e) {} };   // v5.1.58(俊克「色の境界線をラウンドではなく、直線に」): 境目は直線・右の端だけ札と同じ丸み
+  // ★v5.1.401(俊克 11.02 am10:02 改良2「Me Dockが表示/非表示にかかわらず、🔴マークが付いたパズルのピース、例えば[c]をメニューバーの離席表示の右側に」):
+  //   Me Dock の .md-tile と同じ= 白い角丸の地に字の色(M赤 e橙 D緑 o青 c紫 k紅)・Ⓣは緑の地に白。下に🔴= 段1は真ん中4px・段2は左端6px・段3は右端8px(下端は揃え、上へ育ってピースに被る)
+  const PZ_COL = { M: [0xe5, 0x39, 0x35], e: [0xf5, 0x7c, 0x00], D: [0x2e, 0x9d, 0x3a], o: [0x1e, 0x7f, 0xd6], c: [0x8e, 0x24, 0xaa], k: [0xc2, 0x18, 0x5b] };
+  const pzRgb = (a) => $.NSColor.colorWithSRGBRedGreenBlueAlpha(a[0] / 255, a[1] / 255, a[2] / 255, 1);
+  const drawPiece = (x0, H) => { const ch = pzl.ch, isT = ch === 'T', TW = 15, TH = 13, ty = 4;
+    (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(ch)); const r = $.NSMakeRange(0, a.length);
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(11, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
+    const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2));
+    const lv = pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
+    pzRgb([0xe5, 0x39, 0x35]).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, 0.5, d, d)).fill;
+    $.NSColor.colorWithWhiteAlpha(0, 0.5).setStroke; const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, 0.5, d, d)); ov.lineWidth = 0.5; ov.stroke; };
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
@@ -715,7 +730,9 @@ function run(argv) {
       } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
-    if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle || gateDark() !== lastDark) {
+    const pk = pzl.ch + pzl.lv;
+    if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle || gateDark() !== lastDark || pk !== lastPk) {
+      lastPk = pk;
       lastIdle = idle;
       lastText = text; lastAnchor = !!anchor;
       const t = String(text).length > 40 ? String(text).slice(0, 39) + '…' : String(text);   // ノッチの裏に隠れないよう短く
@@ -726,13 +743,15 @@ function run(argv) {
       const sz = styled(t, font, true).size;
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const gi = gateLoad(), GW = gi ? H + 3 : 0; lastDark = gateDark();   // v5.1.367: ロゴの分だけ広げる
-      const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW, H));
+      const PW = pzl.ch ? 18 : 0;   // v5.1.401: 右端のピースの分(隙間3＋ピース15)
+      const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW + PW, H));
       img.lockFocus;
       if (gi) { try { (lastDark ? gi.d : gi.l).drawInRectFromRectOperationFraction($.NSMakeRect(0, 0, H, H), $.NSZeroRect, 2, 1); const tf = $.NSAffineTransform.transform; tf.translateXByYBy(GW, 0); tf.concat; } catch (e) {} }
       (idle ? gray : (anchor ? blue : (myScheme === 'vscode' ? purple : orange))).setFill;
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
       if (!idle) fillSeat(t, font, PX, W, H);   // v5.1.57
       drawStyled(t, font, PX, (H - sz.height) / 2);
+      if (pzl.ch) { try { drawPiece(W + 3, H); } catch (e) {} }
       img.unlockFocus;
       img.template = false;
       item.button.image = img; item.button.title = '';
@@ -902,6 +921,10 @@ function run(argv) {
   let modsLast = -1;
   // v5.1.398: 構えの🧩= arm の中身は置いた時刻。古い物(25秒= 長押し10秒＋待ち10秒より長い)は拡張が消し損ねたとみなす。変わった時だけ札を描き直す
   let armOn = false;
+  // v5.1.401: 札の右端のピース= 拡張が置く puzzle-last({ch,lv})。0.5秒に1回読み、変わったら描き直す
+  let pzl = { ch: '', lv: 1 }, pzlN = 0;
+  const pzlTick = () => { if (pzlN++ % 5) return; let o = null; try { const f = dir + '/puzzle-last'; if ($.NSFileManager.defaultManager.fileExistsAtPath(f)) o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null))); } catch (e) {}
+    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1 }; if (n.ch === pzl.ch && n.lv === pzl.lv) return; pzl = n; try { step(); } catch (e) {} };
   const armTick = () => { let on = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) on = Date.now() - Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))) < 25000; } catch (e) {}
     if (on === armOn) return; armOn = on; try { step(); } catch (e) {} };
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):
@@ -935,6 +958,7 @@ function run(argv) {
   const modsTick = () => {
     try { warpPtr(); } catch (e) {}
     try { armTick(); } catch (e) {}
+    try { pzlTick(); } catch (e) {}
     if (!$.NSFileManager.defaultManager.fileExistsAtPath(dir + '/mods-want')) { modsLast = -1; return; }
     let f = 0; try { f = Number($.CGEventSourceFlagsState(1)) || 0; } catch (e) {} if (!f) f = Number($.NSEvent.modifierFlags) || 0;   // v4.2.742(俊克「エディタから入ると左右どちらも濃紺」): NSEvent は左右を返さない→ CG の機械の状態を先に
     const k = (f & 0x20000 ? 1 : 0) | (f & 0x40000 ? 2 : 0) | (f & 0x80000 ? 4 : 0) | (f & 0x100000 ? 8 : 0) | (f & 0x2 ? 16 : 0) | (f & 0x4 ? 32 : 0);   // v4.2.741: 左右の Shift(機械の左=0x2・右=0x4)
