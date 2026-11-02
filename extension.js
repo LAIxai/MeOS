@@ -14404,14 +14404,15 @@ function meosPuzzleLastSet(ch) {
   try { const gs = extensionContext.globalState, old = String(gs.get('meosPuzzleLast') || ''); ch = String(ch || '').slice(0, 1);
     if (ch && old && ch !== old) gs.update('meosPuzzlePrev', old);
     gs.update('meosPuzzleLast', ch);
-    if (old === 'M' && ch === 'e') meosJumbleSet(true, true); else if (old === 'e' && ch === 'M') meosJumbleSet(false, true); } catch (_) { }
+    // v5.1.420(俊克 pm09:17 バグ1「小猫が一鳴きしてabcの鍵が開いたあと、Ⓣcなどになっても、鍵が元に戻らない」): [M][e] で開けた鍵は、2枚が [M][e] でなくなったら(どの並びでも)閉じる。ロゴのドラッグで開けた物は触らない
+    if (ch && ch !== old) { if (old === 'M' && ch === 'e') meosJumbleSet(true, true); else if (meosJumbleByMe) meosJumbleSet(false, true); } } catch (_) { }
   meosPuzzleBadgeFile();
 }
 // ★v5.1.419(俊克 pm07:12「MEWを一鳴きで良いんじゃない?そして、パズルをドラッグできるようにする鍵の1つにする…eMになると再び鍵がかかる」→ pm07:19「Aということだね」):
 //   [1つ前][最後]が [M][e] になったら🔤 Jumble(並べ替え)を開く= ロゴのドラッグと同じ働きのもう1つの入口・閉じていた時だけ MEW を一鳴き。[e][M] で黙って閉じる。隠さない(M と e を使えば出る)
-let meosJumbleOn = false;
+let meosJumbleOn = false, meosJumbleByMe = false;
 function meosJumbleSet(on, fromPuzzle) {
-  on = !!on; if (on === meosJumbleOn) return; meosJumbleOn = on;
+  on = !!on; if (on === meosJumbleOn) return; meosJumbleOn = on; meosJumbleByMe = on && !!fromPuzzle;
   if (on && fromPuzzle) { try { meosSoundSpawn('MEW'); } catch (_) { } }
   try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdJumble', on }); } catch (_) { }
 }
