@@ -7069,11 +7069,12 @@ const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*\u25b6\u25c
 // ★v5.1.423(俊克 11.03 am04:55「日記を表す絵文字が無いのが不思議だね。そこで、🄳iaryをファイル全体を覆う膜の開始膜のコメント部分に書いてあるものを日記ファイルと定義しようか?膜名とかファイル名に入れると、見栄えも悪くなる」):
 //   日記帳= 外側の膜(他の膜に包まれていない膜)の開始膜の、膜名より後ろ(コメント)に 🄳iary(U+1F133)が在るファイル。Ⓣが今日の膜を作るのは日記帳だけ
 // v5.1.426(俊克 am05:37「タグの1つとして、#🄳iaryと書くことにしようか」): 印はタグ= 開始膜のコメントの #🄳iary(TAG と同じ読み方 meosMembraneTags)
-const MEOS_DIARY_MARK = '\u{1F133}iary';
+// v5.1.427(俊克 am05:40「入力のしやすさを考えると、単純に、#Diaryにしようか」): 印= #Diary(大文字小文字は問わない)
+const MEOS_DIARY_MARK = 'Diary';
 function meosIsDiaryFile(doc) {
   try { const os = collectAllOpenMembranes(doc);
     for (const o of os) { if (os.some(q => q !== o && q.start < o.start && q.end >= o.end)) continue;
-      if (meosMembraneTags(doc, o.start).indexOf(MEOS_DIARY_MARK) >= 0) return true; } } catch (_) { }
+      if (meosMembraneTags(doc, o.start).some(g => g.toLowerCase() === MEOS_DIARY_MARK.toLowerCase())) return true; } } catch (_) { }
   return false;
 }
 function meosWarpToDate(message) {
