@@ -345,7 +345,7 @@ function run(argv) {
   const TRI_RED = [0.85, 0.1, 0.1], TRI_PURPLE = [0.55, 0.2, 0.85];
   const triCol = (a, f, o) => { try { const r0 = $.NSMakeRange(0, 1); a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.53, 0, 1) : (o ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(o[0], o[1], o[2], 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1)), r0);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize($.NSFont.systemFontSize * 2), r0); a.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(f ? -3 : -2), r0); } catch (e) {} };
-  const pgTitle = (p, f) => { try { grpPaint();
+  const pgTitle = (p, f) => { try { grpPaint(); kindPaint();
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r);   // v5.1.338(俊克 pm01:41「CB FUSEN・Yellow などの見出しも太字＋イタリックに。項目名と区別しやすいように」): 3= 太字|斜体
     a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
@@ -491,7 +491,8 @@ function run(argv) {
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 8; ptrTo(s);   /* v5.1.374(改良1「ポインターの先が円のギリギリ外…少しだけ円の中に」): 10→8(半径14の内側 11.3) */   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
     'cycHov:': { types: ['void', ['id']], implementation: function (t) { cycHoverStep(); } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
-    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const allO = pagers.length > 0 && pagers.every(p => !fusenFold[p.name]); for (const p of pagers) { fusenFold[p.name] = allO; pgPaint(p); } grpPaint(); } catch (e) {} } },
+    'pgKind:': { types: ['void', ['id']], implementation: function (s) { try { const p0 = pagers[Number(s.tag)]; if (!p0) return; const kd = String(p0.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), allO = g.every(q => !fusenFold[q.name]); for (const p of g) { fusenFold[p.name] = allO; pgPaint(p); } grpPaint(); kindPaint(); } catch (e) {} } },
+    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const allO = pagers.length > 0 && pagers.every(p => !fusenFold[p.name]); for (const p of pagers) { fusenFold[p.name] = allO; pgPaint(p); } grpPaint(); kindPaint(); } catch (e) {} } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
@@ -500,7 +501,7 @@ function run(argv) {
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
     try { const k0 = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'), cb = /^CB/.test(e.fusen), k = k0 + (cb ? 'S' : ''); if (!(k in fusenIcons)) { const h = parseInt(k0.slice(1), 16), tc = rgb((h >> 16) & 255, (h >> 8) & 255, h & 255); fusenIcons[k] = cb ? fusenIconSq(tc) : fusenIcon(tc); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
-    p.hb.frame = $.NSMakeRect(14, 1, 220, 20); p.hb.tag = pagers.length; hv.addSubview(p.hb);
+    p.hb.frame = $.NSMakeRect(14, 1, 220, 20); p.hb.tag = pagers.length; hv.addSubview(p.hb); if (/^(CB|IC)/.test(e.fusen) && !pagers.some(q => String(q.name).slice(0, 2) === String(e.fusen).slice(0, 2))) { p.hb.frame = $.NSMakeRect(14, 1, 140, 20); p.kb = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgKind:'); p.kb.bordered = false; p.kb.alignment = 1; p.kb.frame = $.NSMakeRect(150, 1, 84, 20); p.kb.autoresizingMask = 1; p.kb.tag = pagers.length; hv.addSubview(p.kb); hv.autoresizingMask = 2; }
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); p.hd = hd;
     const add = (it) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); mi.indentationLevel = 1; return mi; };
     p.pin = add(its[0]);
@@ -542,6 +543,8 @@ function run(argv) {
   }
   // ★v5.1.401(俊克 11.02 am10:02 改良3「メニューバーのFUSENのなかの6つの項目を全て折り畳めるように。▼ FUSENの右端にそのためのボタン・▼という同じマークは紛らわしい」): 右端に ⊟(群を全部畳む)/⊞(全部畳まれていれば全部開く)。色は FUSEN の▾と同じ青。FUSEN 全体を畳んでいる間は隠す→ v5.1.402(俊克 am10:27 改良3「緑色の▶で「▶ALL」、押すとすべてが展開し、青色の「▼ALL」に変える」): 全部開いていれば青の▾ALL(押すと全部畳む)・1つでも畳んでいれば緑の▸ALL(押すと全部開く)。三角は見出しと同じ triCol(2倍・色)
   const grpPaint = () => { try { const b = fusenAll.grp; if (!b) return; const allO = pagers.length > 0 && pagers.every(p => !fusenFold[p.name]); const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((allO ? '\u25be' : '\u25b8') + 'ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, !allO); b.attributedTitle = a; b.toolTip = $(allO ? 'Fold all the FUSEN groups' : 'Open all the FUSEN groups'); b.hidden = !!fusenFold['\u0000all'] || !pagers.length; } catch (e) {} };
+  // ★v5.1.409(俊克 11.02 pm00:46 改良1「CB FUSEN・Yellowの右端に▼CB-ALL/▶CB-ALLボタンを付けよう。ICのほうにもね」): 種類(CB/IC)の最初の群の見出しの右端に、その種類の群だけを全部開く/畳む(▾ALL と同じ作り・同じ色の決まり)
+  const kindPaint = () => { try { for (const p of pagers) { const b = p.kb; if (!b) continue; const kd = String(p.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), allO = g.length > 0 && g.every(q => !fusenFold[q.name]); const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((allO ? '\u25be' : '\u25b8') + kd + '-ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, !allO); b.attributedTitle = a; b.toolTip = $((allO ? 'Fold all the ' : 'Open all the ') + kd + ' FUSEN groups'); } } catch (e) {} };
   function buildFusenAll(m) {   // v5.1.321: 全体の見出し
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     fusenAll.hb = $.NSButton.buttonWithTitleTargetAction($('FUSEN'), pgt, 'pgAll:'); fusenAll.hb.bordered = false; fusenAll.hb.alignment = 0;
