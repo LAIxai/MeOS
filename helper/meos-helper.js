@@ -150,10 +150,10 @@ function run(argv) {
     const days = kind === 'MTWRF' ? presets.wd : (kind === 'SU' ? presets.we : kind);   // v5.0.0-51: 平日の席は選んだ曜日 / v5.0.0-55: 週末の席も
     if (wakeJob || !WAKE_DAYS[kind] || !/^[MTWRFSU]+$/.test(days) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;   // 決まった字だけを命令に入れる
     wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat wakeorpoweron ' + days + ' ' + hm + ':00" with administrator privileges with prompt "'
-      + asq('MeOS V-helper will start up (or wake) your Mac at ' + hm + ' ' + dayLabel(days) + '.') + '"']), { kind: 'set', days, hm });
+      + asq('MeOS wGATE will start up (or wake) your Mac at ' + hm + ' ' + dayLabel(days) + '.') + '"']), { kind: 'set', days, hm });
   };
   const offWake = () => { if (wakeJob) return;
-    wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat cancel" with administrator privileges with prompt "MeOS V-helper will turn off the daily start-up of your Mac."']), { kind: 'off' }); };
+    wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat cancel" with administrator privileges with prompt "MeOS wGATE will turn off the daily start-up of your Mac."']), { kind: 'off' }); };
   const askWakeTime = (days) => { if (wakeJob || !WAKE_DAYS[days]) return;   // v5.0.0-50: 既定値はその種類の覚えた時刻
     wakeJob = Object.assign(task(['osascript', '-e', 'text returned of (display dialog "Start-up time, ' + WAKE_DAYS[days] + ' (24-hour, HH:MM)" default answer "' + asq(presets[days] || '06:30')
       + '" buttons {"Cancel", "Set"} default button "Set" with title "MeOS - Wake")']), { kind: 'ask', days }); };
@@ -915,7 +915,7 @@ function run(argv) {
       } catch (e) {}
       if (lastPass && lastPass.at > now) menu.push({ id: 'h:unpass', title: '\u21a9\ufe0e ' + lastPass.name + '   ' + _lab(lastPass.at) + '   \u2014 last passed' }, { sep: true });   // v4.2.459
       menu.push({ id: 'h:open', title: 'Start ' + appName });   // v4.2.363: Dock の代わり
-      menu.push({ id: 'h:quithelper', title: 'Quit V-helper for VSCs' });   // v4.2.371: 両方   // v4.2.364
+      menu.push({ id: 'h:quithelper', title: 'Quit wGATE for VSCs' });   // v5.1.408: 表示の名前= wGATE(俊克 11.02「V-helper改め wGATE」)   // v4.2.371: 両方   // v4.2.364
       // ★v4.2.334(俊克 改良1「VSCmを閉じている時の⚓タイマーで、鳴っている間に残タイマーが表示されなくなった」):
       //   拡張の最下段(v4.2.328)と同じく、鳴っている時計がまだ数えていれば残り時間を添える。♪/♬も拡張と同じ拍(0.8秒)で入れ替える。
       const ra = ringing ? next.find(a => (a.name || '') === ringing.name) : null;

@@ -76,7 +76,7 @@ The countdown shows on the badge line at the top of the database even when the r
 a coloured tile — `🪑3m`. *The ⏰ counts toward the time you chose; the 🪑 inside it counts the time you have been
 away.* When nobody has touched the Mac for that long (MeOS counts the way macOS does before it sleeps), MeOS saves,
 locks every 🔐 membrane and quits VSCodium — like a TV that switches itself off. Your clocks keep ringing from
-V-helper, and when you come back a note tells you what happened. Pick a seat with the button beside **Encrypt Me**
+wGATE, and when you come back a note tells you what happened. Pick a seat with the button beside **Encrypt Me**
 in Me Dock: 🪑 chair 3 minutes, 🛋️ sofa 15, 💺 train seat 30 (each one 3–60), and the tile takes the seat's colour —
 sky blue, red-brown, gold. In the last 75 seconds it counts in seconds, `🪑0:42`, and a minute before the end it
 rings like any ⏰; touch anything and it stops. Doze off at the keyboard, and it wakes you up — along with everyone
@@ -239,24 +239,24 @@ box, with its drum. **Opt** while you roll the year steps through the decades, a
 exactly as it will look in the editor — `▶️⏰🚢💨🔓 …` — where 🚢💨 and 🔓 are buttons, the same ones you will press on
 the line itself. Pick a preset and press Set; the rest you learn from the clock that appears in your text.
 
-**V-helper — the ⏰ that stays in the menu bar (macOS).** V-helper lives in the menu bar and keeps the clocks you
+**wGATE — the ⏰ that stays in the menu bar (macOS).** wGATE (the Warpgate, formerly V-helper) lives in the menu bar and keeps the clocks you
 set in VSCodium running even when VSCodium is not: it counts, rings, moves a row of clocks on to the next one, and
 when a bell is due it wakes VSCodium and brings you to the membrane. Like the Dock, it starts and quits VSCodium,
 and while VSCodium is closed it lists your Tag & Go rooms — pick one and you are there. Turn it on or off with
-**[V-helper]** at the top right of the ⏰ panel (orange = in the menu bar, grey = nothing there). Every clock counts down in
+the **🛟** ring beside the ⏰ in Timed Me (orange = in the menu bar, grey = nothing there). Every clock counts down in
 its menu, but only the next one shows its seconds, in red — 4:51**.25** — so your eye finds it at once.
 
 **Pass the next.** Not taking this dose? **⏭️ Pass the next** at the top of the menu-bar ⏰ skips the next bell of
 the nearest clock without a sound: a repeat moves on to its next turn, the last turn of a `×N` or a one-off clock
 is marked done, and a row hands over to its next line — just as if it had rung. **↩︎ last passed**, beside
-**last stopped**, brings it back while its time is still to come. It works with VSCodium closed too: V-helper moves
+**last stopped**, brings it back while its time is still to come. It works with VSCodium closed too: wGATE moves
 on by itself, and VSCodium picks the pass up the next time it opens, so the skipped bell stays silent.
 
-**Two editors, two lives.** VS Code and VSCodium each get their own V-helper — **purple for VS Code, orange for
+**Two editors, two lives.** VS Code and VSCodium each get their own wGATE — **purple for VS Code, orange for
 VSCodium** — and each keeps only the clocks of the files open in its own editor. So you can run work clocks in
 one and private clocks in the other, side by side in the menu bar. Give them different sounds too: press **🔔** beside the 🎨 Theme button in each editor's Me Dock, move with ↑/↓ to
 hear every sound, and press Enter to keep one (it is saved as `laiMembrane.clockSound`, per editor). It is that editor's standard sound —
-for ⏰ lines that name no bell of their own, for V-helper while the editor is closed, and for Cmd+S when there is nothing new to save —
+for ⏰ lines that name no bell of their own, for wGATE while the editor is closed, and for Cmd+S when there is nothing new to save —
 so you know whose clock rang before you even look.
 Keep the two lives in separate files — the same file open in both editors shows its clocks in both.
 
@@ -269,14 +269,14 @@ dialog (MeOS never sees it); that line becomes the start-up time of your Mac. Pr
 Only one line runs at a time — macOS keeps only one start-up schedule. Under 🌅LaunchD the ⏰ is drawn as 🌅, it does
 not ring 🔕, and it does not warp you anywhere ⚓; it only wakes the Mac. When macOS has the line, **🍏** appears at the
 end of it; from twelve hours before start-up it ripens into **🍎** on screen and in the menu bar, where 🌅 Wake counts
-down with your other clocks. Click **🌅 Wake** in the V-helper menu and you warp to the membrane — or, the first time,
+down with your other clocks. Click **🌅 Wake** in the wGATE menu and you warp to the membrane — or, the first time,
 a sample is placed just below the meta membrane of the file you are in (or run *MeOS: New 🌅LaunchD*). If you have
 more than one 🌅LaunchD, the one with the newest timestamp in its name wins. The schedule lives in macOS, not in MeOS,
 so it stays through quitting VSCodium and restarting the Mac, and it starts the Mac from shut down, not only from sleep
 (tested on an iMac with M3: it started at 07:00.06 on the first morning). Start-up only — nothing here shuts your Mac down.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-iwarpship-poster.png" alt="iWarpShip poster - Membrane OS ver5.0: the menu-bar clocks of VSCodium (orange) and VS Code (purple), the V-helper menu with Pass the next, every clock counting down (🌅 Wake among them), Tag&amp;Go and Spells, a spaceship over the Earth, and a boarding pass to Anywhere - When" width="92%"><br>
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-iwarpship-poster.png" alt="iWarpShip poster - Membrane OS ver5.0: the menu-bar clocks of VSCodium (orange) and VS Code (purple), the wGATE menu with Pass the next, every clock counting down (🌅 Wake among them), Tag&amp;Go and Spells, a spaceship over the Earth, and a boarding pass to Anywhere - When" width="92%"><br>
   <sub><b>NEW in v5.0 — this is what the menu bar looks like.</b> Your clocks keep counting in the menu bar — orange for VSCodium, purple for VS Code — and one click opens every one of them, from five hours to 115 days away — only the next one counts its seconds, in red: 4:51<b>.25</b> — and 🌅 Wake, the next time your Mac starts up on its own, counts down among them. When a bell rings, MeOS warps you to the membrane you set it on; pick any clock from here and you warp there yourself; or let it just ring, at anchor ⚓. <b>Boarding pass: Passenger YOU — Destination Anywhere-When — Seat NOW — Fare 0.</b></sub>
 </p>
 
@@ -306,7 +306,7 @@ change the wrap width this directly.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-medock-warp.png" alt="Me DockⓉ Warp - hold and release Shift, the tile with the red dot magnifies for 1.2 seconds, then type M twice to warp to the M mark, or E twice to put a new mark there" width="60%"><br>
-  <sub><b>Me DockⓉ Warp.</b> Hold and release Shift, and the tile with the red dot (the last one you used) grows for 1.2 seconds. Type a Me Dock letter twice: <b>M M</b> warps to the M mark, <b>E E</b> puts a new mark at the cursor. Seven marks — six you set yourself, and Ⓣ, which moves to today's diary on its own — and your fingers hardly leave the home position. <b>It works with Me Dock closed, too</b> — keyboard only, for anyone who finds the mouse hard (V-helper watches the Shift key on macOS; without it, Shift+Esc warps to the red dot). Marks live in your text, as a comment like <code>&lt;!-- {* ▶◀mP4=o_20261011S105212JST //  *} --&gt;</code> — they travel with it, and you delete one like any other line.</sub>
+  <sub><b>Me DockⓉ Warp.</b> Hold and release Shift, and the tile with the red dot (the last one you used) grows for 1.2 seconds. Type a Me Dock letter twice: <b>M M</b> warps to the M mark, <b>E E</b> puts a new mark at the cursor. Seven marks — six you set yourself, and Ⓣ, which moves to today's diary on its own — and your fingers hardly leave the home position. <b>It works with Me Dock closed, too</b> — keyboard only, for anyone who finds the mouse hard (wGATE watches the Shift key on macOS; without it, Shift+Esc warps to the red dot). Marks live in your text, as a comment like <code>&lt;!-- {* ▶◀mP4=o_20261011S105212JST //  *} --&gt;</code> — they travel with it, and you delete one like any other line.</sub>
 </p>
 
 <p align="center">
@@ -339,7 +339,7 @@ change the wrap width this directly.
 - **📂 Reopen folder** — if a window comes back with no folder open (the Explorer and Git are empty, though your files
   are still in the tabs), a blinking button in Me Dock brings back the folder you usually work in.
 - **Two editors, two ⏰** — if MeOS runs in both VS Code and VSCodium, each menu-bar ⏰ says which one it is, and
-  **Quit V-helper for VSCs** at the bottom stops it for both.
+  **Quit wGATE for VSCs** at the bottom stops it for both.
 
 - **Three pointing hands** — the BTRON hand, a slim 22.5° classic macOS hand, or your OS's own. The tip of the
   finger is where you point, and it does not jump when the hand changes shape.
