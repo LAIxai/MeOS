@@ -547,6 +547,8 @@ function run(argv) {
   // ★v5.1.331(俊克 10.30 am11:47「他のメニューは開く・本家 VS Code の古い MeOS(10.25 の V-helper)のメニューバーも開く」): 古い版との違いは、メニューの中のボタン(FUSEN/TAG の見出しと▲▼= MeOSPagerH)だけ。
   //   切り分けのスイッチ= 置き場所に noviews が在れば、それらを作らない(在るかは毎回見て、変わったら作り直す)
   const noViews = () => { try { return $.NSFileManager.defaultManager.fileExistsAtPath(dir + '/noviews'); } catch (e) { return false; } };
+  // ★v5.1.398(俊克 11.02 am09:12 改良3「今日の分の⏰と明日以降の間に一点鎖線を引こう。1週間以内、1ヶ月以内、1年未満にも」): dd= 一点鎖線の区切り(線8・間3・点1.5・間3)= 絵の項目。畳むと⏰の行と一緒に隠す
+  const dashImg = () => { if (dashImg.im) return dashImg.im; const W = 900, H = 7, im = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H)); im.lockFocus; $.NSColor.colorWithWhiteAlpha(0.5, 0.85).setFill; for (let x = 0; x < W; x += 15) { $.NSBezierPath.fillRect($.NSMakeRect(x, 3, 8, 1)); $.NSBezierPath.fillRect($.NSMakeRect(x + 11, 3, 1.5, 1)); } im.unlockFocus; return dashImg.im = im; }; const dashItem = () => { const mi = $.NSMenuItem.alloc.init; const box = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 100, 9)); box.autoresizingMask = 2; const iv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(14, 1, 72, 7)); iv.image = dashImg(); iv.imageScaling = 2; iv.imageAlignment = 4; iv.autoresizingMask = 2; box.addSubview(iv); box.clipsToBounds = true; iv.clipsToBounds = true; mi.view = box; mi.enabled = false; return mi; };
   let lastNoViews = false;
   function build(entries, top) {
     const m = $.NSMenu.alloc.init; m.autoenablesItems = false;
@@ -554,6 +556,7 @@ function run(argv) {
     const nv = lastNoViews = noViews();
     for (const e of entries) {
       if (nv && (e.clockAll || e.fusenAll || e.fusen || e.tagAll || e.tagPager)) { its.push(null); continue; }   // v5.1.331: 切り分け
+      if (e.sep && e.dd && !nv) { try { const di = dashItem(); m.addItem(di); clockAll.seps.push(di); di.hidden = clockFold && !!clockAll.hb; } catch (x) {} its.push(null); continue; }   // v5.1.398
       if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.cz) { clockAll.seps.push(sp); sp.hidden = clockFold && !!clockAll.hb; } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
       if (e.fusenAll) { try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
       if (e.clockAll) { try { its.push(buildClockAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.356
@@ -681,12 +684,13 @@ function run(argv) {
     try { menu = (menu || []).slice(); if (menu.some(e => e && !e.sep && /^\ud83c\udf05 /.test(e.title || ''))) throw 0;   // v5.0.0-62: 🌅 の時計が一覧に居れば、別の行は出さない
       let qi = menu.findIndex(e => e && (e.id === 'quitapp' || e.id === 'h:open')); if (qi < 0) qi = menu.length; else if (qi > 0 && menu[qi - 1] && menu[qi - 1].sep) qi--; menu.splice(qi, 0, ...(qi > 0 ? [{ sep: true }] : []), ...wakeEntries().slice(0, 1)); } catch (e) {}
     if (idle) text = '\u23f0';
+    if (armOn) text = '\ud83e\udde9 ' + text;   // ★v5.1.398(俊克 11.02 am09:12 改良2「Me Dockを呪文で消してあっても、shift長押しのあとのccなどのワープができる…このときに、メニューバーにパズルのピースを表示すると分かりやすい」): 拡張が arm を置いている間(Me Dock が見えない時の構え)だけ札の頭に🧩
     item.visible = true;
     const mj = JSON.stringify(menu || []);
     // ★v5.1.328(俊克 10.30 am11:06 バグ1「メニューバーが開いて直ぐ閉じる・今もまだ」): 実測(sample)= 本体の時間の55%が「メニューを丸ごと作り直して item.menu を差し替える」に使われていた。
     //   ⏰の秒が変わるたびに JSON が変わり、閉じている間は毎回作り直していた。macOS 27 の札は別の係(MenuBarAgent)が開くので、開きかけた所で差し替えると開きかけのメニューが捨てられて閉じる。
     //   v5.1.327 の TAG の▲▼で作り直しが重くなり、重なる率が上がった。→ 並び(区切り・id・群の中身・TAG の並び)が同じなら、開いていても閉じていても字だけ差し替える。並びが変わった時だけ、閉じている間に作り直す
-    const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') + (e.cz ? 'c' : '') : e.clockAll ? 'CA' : e.fusenAll ? 'FA' : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || '') + (e.clk ? '\u23f0' : ''))).join('|');
+    const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') + (e.cz ? 'c' : '') + (e.dd ? 'd' : '') : e.clockAll ? 'CA' : e.fusenAll ? 'FA' : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || '') + (e.clk ? '\u23f0' : ''))).join('|');
     if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }
     if (freshMenu && !tracking()) { freshMenu = false; lastMenu = null; lastEntries = []; }   // v5.1.332: 閉じた後は新しいメニューに差し替える
     if (renewItem && !tracking()) { renewItem = false;   // ★v5.1.335(俊克 pm00:30「札が一瞬消えて出るのは見えたが改善しない・手で🛟をオフオンすると復旧・0.5〜1秒完全に消えてから」):
@@ -735,6 +739,8 @@ function run(argv) {
   // ★v4.2.340: 連動の次の1歩(鳴った a から、次に鳴る行・回・時刻)。過ぎた分は同じ規則で飛ばす(眠っていた間など)
   // ★v4.2.341(俊克 バグ1「VSCmを閉じていると、目薬2本目のときに、メニューバーは、1本目と誤表示される」):
   //   名前の器(タイトルの `1.`)に回数を入れるのは拡張(meosChainFillSlot)だけだった→ 同じ規則をここにも1つ
+  // v5.1.398: ⏰の時刻の帯= 0今日 / 1 1週間以内 / 2 1ヶ月以内 / 3 1年未満 / 4 それより先(拡張の meosClockZone と同じ)
+  const clockZone = (t, now) => { const d = new Date(now), e = new Date(t); if (e.getFullYear() === d.getFullYear() && e.getMonth() === d.getMonth() && e.getDate() === d.getDate()) return 0; if (t - now <= 7 * 864e5) return 1; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 2; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 3 : 4; };
   const fillSlot = (text, round) => { let s = String(text || '').replace(/^\s*\d{1,3}[.)]\s*/, ''); if (round > 0) s = s.replace(/\d{1,3}[.)]/, String(round)); return s.trim(); };
   const chainNext = (a, now) => {
     const ch = a.chain, n = ch.length; const stepOf = (r, k) => ((r.steps && r.steps.length) ? r.steps[k % r.steps.length] : 0);
@@ -840,7 +846,8 @@ function run(argv) {
       const _p2 = (d) => (d < 10 ? '0' : '') + d, _lab = (t) => { const d = new Date(t); return _p2(d.getMonth() + 1) + '-' + _p2(d.getDate()) + '(' + 'SMTWtFs'[d.getDay()] + ') ' + _p2(d.getHours()) + ':' + _p2(d.getMinutes()); };   // 拡張の meosClockLastLabel と同じ形(年は省く)
       if (next.length) menu.push({ id: 'h:pass', title: '\u23ed\ufe0f Pass the next   ' + (next[0].name || next[0].key || '') + '   ' + _lab(next[0].at) }, { sep: true });   // v4.2.459
       if (next.length) menu.push({ clockAll: true });   // v5.1.356: 閉じている時も ⏰の見出し(畳む・⊟)
-      next.forEach((a, i) => { menu.push({ clk: 1, id: 'h:' + alarms.indexOf(a), title: (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
+      next.forEach((a, i) => { if (i && clockZone(a.at, now) !== clockZone(next[i - 1].at, now)) menu.push({ sep: true, cz: 1, dd: 1 });   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線
+        menu.push({ clk: 1, id: 'h:' + alarms.indexOf(a), title: (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
       if (next.length) menu.push({ sep: true });
       // ★v4.2.342(俊克「VSCmが閉じている時は、その時のリストをメニューバーのメニューのTag&Goの下に表示する」):
       //   最後に見ていた部屋の姿(選んだ札・打った字・札の並び)で、札ごとに並べる(v4.2.309の形)。押せば VSCodium を起こして膜へ
@@ -891,6 +898,10 @@ function run(argv) {
   //   焦点が編集画面に在ると、キーは Me Dock に届かない。→ 拡張が mods-want を置いている間(ポインターが Me Dock の上)だけ、
   //   0.1秒ごとに Mac の修飾キーの状態を見て、変わった時だけ mods.json に書く(拡張がそれを Me Dock へ渡す)。
   let modsLast = -1;
+  // v5.1.398: 構えの🧩= arm の中身は置いた時刻。古い物(25秒= 長押し10秒＋待ち10秒より長い)は拡張が消し損ねたとみなす。変わった時だけ札を描き直す
+  let armOn = false;
+  const armTick = () => { let on = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) on = Date.now() - Number(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))) < 25000; } catch (e) {}
+    if (on === armOn) return; armOn = on; try { step(); } catch (e) {} };
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):
   //   Me Dock の🔰に乗るとロゴごと右下へ2.2倍に膨らむ= ポインターの下の図形が逃げる。拡張が warp-ptr.json(実の画素での片道)を置いたら、
   //   今のポインターをその分だけ運ぶ(画素→ポイントは、ポインターが居る画面の倍率で割る)。Web ページの中からはポインターを動かせない
@@ -921,6 +932,7 @@ function run(argv) {
   };
   const modsTick = () => {
     try { warpPtr(); } catch (e) {}
+    try { armTick(); } catch (e) {}
     if (!$.NSFileManager.defaultManager.fileExistsAtPath(dir + '/mods-want')) { modsLast = -1; return; }
     let f = 0; try { f = Number($.CGEventSourceFlagsState(1)) || 0; } catch (e) {} if (!f) f = Number($.NSEvent.modifierFlags) || 0;   // v4.2.742(俊克「エディタから入ると左右どちらも濃紺」): NSEvent は左右を返さない→ CG の機械の状態を先に
     const k = (f & 0x20000 ? 1 : 0) | (f & 0x40000 ? 2 : 0) | (f & 0x80000 ? 4 : 0) | (f & 0x100000 ? 8 : 0) | (f & 0x2 ? 16 : 0) | (f & 0x4 ? 32 : 0);   // v4.2.741: 左右の Shift(機械の左=0x2・右=0x4)
