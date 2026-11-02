@@ -7104,7 +7104,7 @@ function meosWarpToDate(message) {
       if (hit && !_exact && _isToday && _diary) { meosDiaryNewDay(ed, hit, { y: ty, mo: tmo, d: td }); return; }
       if (hit) { jumpToWorkingTocItem(hit.id); }
       else if (_isToday && _diary) { meosDiaryNewDay(ed, null, { y: ty, mo: tmo, d: td }); }
-      else if (_isToday) { vscode.window.showInformationMessage('MeOS: ' + MEOS_DIARY_MARK + ' missing — no new day. Write ' + MEOS_DIARY_MARK + ' in the comment of the whole-file membrane.'); }   // v5.1.424: 通知は1行で切れる→ 肝(🄳iary)を頭に   // v4.2.777-6: 日記が1つも無い= 新しい人。原型(無ければ内蔵の原型)で今日を作る
+      else if (_isToday) { vscode.window.showInformationMessage('MeOS: no new day — put ' + MEOS_DIARY_MARK + ' in the outer membrane’s comment.'); }   // v5.1.425: 通知は約66字で切れる(424でも切れた)→ 1行に収まる長さ   // v4.2.777-6: 日記が1つも無い= 新しい人。原型(無ければ内蔵の原型)で今日を作る
       else { vscode.window.showInformationMessage('Date Warp: no diary entry for ' + tmo + '/' + td + ' ' + ty + ' (exact match only).'); }
 }
 // ★v4.2.777-2(俊克「マウス操作が難しい人でも1ファイル生涯日記を。次の日の日記を自動作成」「新しいものが先頭に近い方」
