@@ -7350,7 +7350,7 @@ function meosPuzzleTagsOf(doc, n) {
   return out;
 }
 // ★v4.2.593(俊克「パズルをクリックしてワープした時、そのパズルの下に白い点を」= mac の Dock の「起動中」の点): 印の在る字の下に白い点
-let _meosPuzzleDotsTimer = null, _meosPuzzleDotsLast = null, _meosPuzzleLastCh = '';   // v4.2.594(俊克「白い点は、最後にクリックした所だけに」)
+let _meosPuzzleDotsTimer = null, _meosPuzzleDotsLast = null, _meosPuzzleLastCh = '', meosPuzzleDotLetters = '';   // v4.2.594(俊克「白い点は、最後にクリックした所だけに」)
 function meosPostPuzzleDots(soon) {
   if (_meosPuzzleDotsTimer) clearTimeout(_meosPuzzleDotsTimer);
   _meosPuzzleDotsTimer = setTimeout(() => {
@@ -7365,6 +7365,7 @@ function meosPostPuzzleDots(soon) {
       const key = ed.document.uri.toString() + '|' + letters + '|' + JSON.stringify(tips);
       if (key === _meosPuzzleDotsLast && !soon) return; _meosPuzzleDotsLast = key;
       meDockPanel.webview.postMessage({ type: 'mdDots', letters, tips });
+      if (meosPuzzleDotLetters !== letters) { meosPuzzleDotLetters = letters; meosPuzzleBadgeFile(); }   // v5.1.421: wGATE の札と Barman も同じ白い点
     } catch (_) { }
   }, soon ? 60 : 1200);
 }
@@ -14419,7 +14420,7 @@ function meosJumbleSet(on, fromPuzzle) {
 let _meosPuzzleBadgeLast = '';
 function meosPuzzleBadgeFile() {
   if (!meosRealHost()) return;
-  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles() });   // v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
+  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters });   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
     if (j === _meosPuzzleBadgeLast) return; _meosPuzzleBadgeLast = j;
     const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(path.join(meosHelperDir(), 'puzzle-last'), j); } catch (_) { }
 }
