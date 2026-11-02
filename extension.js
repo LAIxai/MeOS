@@ -7068,11 +7068,12 @@ const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*\u25b6\u25c
 // v2.0.4(俊克): Date Warp=暦の軸で日記膜へ相対/絶対ジャンプ。基準=今いる日付膜(無ければ今日)/完全一致のみ。v4.2.777-1: Me Dock の受け口から関数へ出した
 // ★v5.1.423(俊克 11.03 am04:55「日記を表す絵文字が無いのが不思議だね。そこで、🄳iaryをファイル全体を覆う膜の開始膜のコメント部分に書いてあるものを日記ファイルと定義しようか?膜名とかファイル名に入れると、見栄えも悪くなる」):
 //   日記帳= 外側の膜(他の膜に包まれていない膜)の開始膜の、膜名より後ろ(コメント)に 🄳iary(U+1F133)が在るファイル。Ⓣが今日の膜を作るのは日記帳だけ
+// v5.1.426(俊克 am05:37「タグの1つとして、#🄳iaryと書くことにしようか」): 印はタグ= 開始膜のコメントの #🄳iary(TAG と同じ読み方 meosMembraneTags)
 const MEOS_DIARY_MARK = '\u{1F133}iary';
 function meosIsDiaryFile(doc) {
   try { const os = collectAllOpenMembranes(doc);
     for (const o of os) { if (os.some(q => q !== o && q.start < o.start && q.end >= o.end)) continue;
-      const t = doc.lineAt(o.start).text, i = t.indexOf(o.id); if (t.indexOf(MEOS_DIARY_MARK, i < 0 ? 0 : i + o.id.length) >= 0) return true; } } catch (_) { }
+      if (meosMembraneTags(doc, o.start).indexOf(MEOS_DIARY_MARK) >= 0) return true; } } catch (_) { }
   return false;
 }
 function meosWarpToDate(message) {
@@ -7104,7 +7105,7 @@ function meosWarpToDate(message) {
       if (hit && !_exact && _isToday && _diary) { meosDiaryNewDay(ed, hit, { y: ty, mo: tmo, d: td }); return; }
       if (hit) { jumpToWorkingTocItem(hit.id); }
       else if (_isToday && _diary) { meosDiaryNewDay(ed, null, { y: ty, mo: tmo, d: td }); }
-      else if (_isToday) { vscode.window.showInformationMessage('MeOS: no new day — put ' + MEOS_DIARY_MARK + ' in the outer membrane’s comment.'); }   // v5.1.425: 通知は約66字で切れる(424でも切れた)→ 1行に収まる長さ   // v4.2.777-6: 日記が1つも無い= 新しい人。原型(無ければ内蔵の原型)で今日を作る
+      else if (_isToday) { vscode.window.showInformationMessage('MeOS: no new day — put #' + MEOS_DIARY_MARK + ' in the outer membrane’s comment.'); }   // v5.1.425: 通知は約66字で切れる(424でも切れた)→ 1行に収まる長さ   // v4.2.777-6: 日記が1つも無い= 新しい人。原型(無ければ内蔵の原型)で今日を作る
       else { vscode.window.showInformationMessage('Date Warp: no diary entry for ' + tmo + '/' + td + ' ' + ty + ' (exact match only).'); }
 }
 // ★v4.2.777-2(俊克「マウス操作が難しい人でも1ファイル生涯日記を。次の日の日記を自動作成」「新しいものが先頭に近い方」
@@ -18119,7 +18120,7 @@ async function meosNewMdDiarySample(editor, lv) {
     '| 22:00 | Pressed the table button and watched the long text wrap inside its cell | |', '');
   const yesterday = day(y, yBody, 'N');
   // v5.1.423: 見本は日記帳= 全体を包む膜のコメントに 🄳iary(Ⓣが明日からも今日の膜を作れるように)
-  const dName = 'Diary_' + meosMembraneStamp(now), dOpen = buildMembraneOpenLine(doc, '', dName, MEOS_DIARY_MARK, ''), dClose = meosNewMembraneCloseBlock(doc, '', dName, '', '(📊⊕0+0D0B)');
+  const dName = 'Diary_' + meosMembraneStamp(now), dOpen = buildMembraneOpenLine(doc, '', dName, '#' + MEOS_DIARY_MARK, ''), dClose = meosNewMembraneCloseBlock(doc, '', dName, '', '(📊⊕0+0D0B)');
   await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), dOpen + '\n' + today.join('\n') + '\n\n' + yesterday.join('\n') + '\n' + dClose + '\n'); });
   const pos = new vscode.Position(2, 'Today: '.length);
   editor.selection = new vscode.Selection(pos, pos);
