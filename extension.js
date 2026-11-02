@@ -14430,14 +14430,14 @@ function meosPuzzleArmSet(on) {
   if (on) meosCycRevSet(!meosCycRevGet());   // v5.1.364: 長押しのたびに裏返す(前は Me Dock の中だけで裏返していた)
   try { vscode.commands.executeCommand('setContext', 'meos.puzzleArmed', on); } catch (_) { }
   try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdArm', on }); } catch (_) { }
-  meosArmBadge(on && !(meDockPanel && meDockPanel.visible));
+  meosArmBadge(on, !!(meDockPanel && meDockPanel.visible));   // v5.1.418: Me Dock が出ていても構えは渡す(出張所用)・🧩は Me Dock が無い時だけ(ヘルパーが ' d' で見分ける)
 }
 // ★v5.1.398(俊克 11.02 am09:12 改良2「Me Dockを呪文で消してあっても、shift長押しのあとのccなどのワープができる…このときに、メニューバーにパズルのピースを表示すると分かりやすい」):
 //   Me Dock が見えない時の構えの間だけ、置き場に arm(中身=時刻)を置く→ V-helper が札の頭に🧩。Me Dock が見えている時は🔴の拡大が知らせるので置かない
-function meosArmBadge(on) {
+function meosArmBadge(on, dockVisible) {
   if (!meosRealHost()) return;
   try { const fs = require('fs'), path = require('path'), f = path.join(meosHelperDir(), 'arm');
-    if (on) { fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(f, String(Date.now())); } else { try { fs.unlinkSync(f); } catch (_) { } } } catch (_) { }
+    if (on) { fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(f, String(Date.now()) + (dockVisible ? ' d' : '')); } else { try { fs.unlinkSync(f); } catch (_) { } } } catch (_) { }
 }
 function meosPuzzleArmHold() { if (_meosArm.offT) { clearTimeout(_meosArm.offT); _meosArm.offT = null; } }   // v4.2.776-28: 1打目を預かっている間は構えを解かない
 // ★v4.2.777-1(俊克「Me Dockを閉じていても、キーボードだけでワープできる。しばらくすると動かなくなる。常態化できないか? マウス操作が難しい人のためにも」):
