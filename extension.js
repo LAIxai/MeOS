@@ -34994,7 +34994,7 @@ try{/* ★★v4.2.465(俊克「Navigate Meも固定したい。MepyによるAdd 
   const _nb=document.createElement('div');_nb.className='nav-box';_nb.id='nav-box';_nb.appendChild(_nav);if(_hint)_nb.appendChild(_hint);
   const _mb=document.createElement('div');_mb.className='mepy-box';_mb.id='mepy-box';_mb.appendChild(_mp);
   /* ★v4.2.679: H-IDX はヘッダーのすぐ下(パズルの直ぐ下に同族のワープボタン)。Current Me は Format Me の下のまま */
-  {const _hd=_st.querySelector('header.title'),_fm=document.getElementById('format-tools');(_fm||_hx).after(_cur);if(_hd)_hd.after(_hx);const _mbm=document.getElementById('mbm');if(_mbm)_cur.before(_mbm);}   /* ★v5.1.451(俊克 pm08:25「そこでもないよ」): メニューバーの分身= Format Me と Current Me の箱の間(固定の箱の中) */
+  {const _hd=_st.querySelector('header.title'),_fm=document.getElementById('format-tools');(_fm||_hx).after(_cur);if(_hd)_hd.after(_hx);const _mbm=document.getElementById('mbm');if(_mbm)(_fm||_cur).before(_mbm);}   /* ★v5.1.453(俊克 pm08:37「MeDockⓉとFormat Meの間に決っているでしょ」): メニューバーの分身= ヘッダー(パズル)と Format Me の間(固定の箱の中)。v5.1.451 は Format Me と Current Me の間だった */
   _cur.after(_gh);_gh.after(_nrp);_nrp.after(_nb);
   _mn.insertBefore(_mb,_ft);
   /* ★v4.2.599(俊克「[Ⓣ|Ⓣday]をパズルの1つ上に移動。最も使うボタンが集中する。H-IDXはほとんど使わない初期型の立ち位置」): 出来上がった部品をヘッダーのファイル名の行の右へ(動きはそのまま) */
