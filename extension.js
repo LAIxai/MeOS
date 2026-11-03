@@ -14438,6 +14438,7 @@ function meosJumbleSet(on, fromPuzzle) {
 }
 let _meosPuzzleBadgeLast = '';
 function meosPuzzleBadgeFile() {
+  meosMbmPzPost();   // v5.1.462: Me Dock の分身の2枚も
   if (!meosRealHost()) return;
   try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters });   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
     if (j === _meosPuzzleBadgeLast) return; _meosPuzzleBadgeLast = j;
@@ -14559,6 +14560,24 @@ function meosHelperHandOff() { if (meosHelperOn()) { meosHelperWrite(null, [], 0
 //   Mac でなくても(メニューバーが無くても)写す= Windows/Linux も同じ体験。リストは開いている時だけ渡す(⏰の残りで毎秒変わる)
 const _meosMbMirror = { rawText: null, rawMenu: null, menuKey: '', want: false };
 function meosMbMirrorUi() { let u = null; try { u = extensionContext && extensionContext.globalState.get('meosMbMirrorUi'); } catch (_) { } return { fold: u ? !!u.fold : process.platform === 'darwin', open: !!(u && u.open) }; }
+// ★v5.1.462(俊克 11.04 am01:42 改良1「メニューバーと同様に、直近2つのパズルとロゴマークを離席ボタンの右に・直近2ボタンは操作可能に」): 札の右端と同じ [1つ前][最後]＋自分のエディターの絵
+function meosMbmPzPost() {
+  try { if (!meDockPanel) return; const gs = extensionContext.globalState;
+    meDockPanel.webview.postMessage({ type: 'mbmPz', ch: String(gs.get('meosPuzzleLast') || ''), prev: String(gs.get('meosPuzzlePrev') || ''), lv: Number(gs.get('meosDotLv')) || 1, dots: typeof meosPuzzleDotLetters === 'string' ? meosPuzzleDotLetters : null }); } catch (_) { }
+}
+let _meosEdIconSrc = null;   // 自分のエディターの絵(札の右端と同じ= アプリの絵)。mac= Info.plist の CFBundleIconFile を sips で png に・他= resources の code.png
+function meosMbmEdIconPost() {
+  const send = () => { try { if (meDockPanel && _meosEdIconSrc) meDockPanel.webview.postMessage({ type: 'mbmEd', src: _meosEdIconSrc }); } catch (_) { } };
+  if (_meosEdIconSrc !== null) { send(); return; } _meosEdIconSrc = '';
+  try { const fs = require('fs'), path = require('path'), cp = require('child_process'), root = vscode.env.appRoot;
+    const done = (f) => { try { _meosEdIconSrc = 'data:image/png;base64,' + fs.readFileSync(f).toString('base64'); send(); } catch (_) { } };
+    if (process.platform === 'darwin') {
+      const cont = path.join(root, '..', '..'), out = path.join(require('os').tmpdir(), 'meos-edicon-' + vscode.env.appName.replace(/[^A-Za-z0-9]/g, '') + '.png');
+      cp.execFile('/usr/bin/plutil', ['-extract', 'CFBundleIconFile', 'raw', path.join(cont, 'Info.plist')], (e, so) => { if (e) return; let n = String(so || '').trim(); if (!n) return; if (!/\.icns$/.test(n)) n += '.icns';
+        cp.execFile('/usr/bin/sips', ['-s', 'format', 'png', '-Z', '64', path.join(cont, 'Resources', n), '--out', out], (e2) => { if (!e2) done(out); }); });
+    } else { for (const f of [path.join(root, 'resources', 'linux', 'code.png'), path.join(root, 'resources', 'win32', 'code_70x70.png'), path.join(root, 'resources', 'win32', 'code_150x150.png')]) { if (fs.existsSync(f)) { done(f); break; } } }
+  } catch (_) { }
+}
 function meosMbMirrorPost(text, menu, anchor) {
   try {
     _meosMbMirror.rawText = text; _meosMbMirror.rawMenu = menu; if (anchor !== undefined) _meosMbMirror.anchor = !!anchor;
@@ -31037,7 +31056,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm-label.mbm-anc{background:#2f80b8}
 .mbm-label.mbm-idle{background:#6b7280}
 .mbm-lt{padding:0 7px;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
-.mbm-seat{padding:0 6px 0 5px;border-left:1px solid #fff;flex:0 0 auto}   /* v5.1.454(俊克 pm08:40「離席ボタンの色と境界線がない」): 札と同じ= 席の色の地＋左に白い1本 */
+.mbm-seat{padding:0 6px 0 5px;border-left:1px solid #fff;flex:0 0 auto}.mbm-pz{display:inline-flex;align-items:flex-start;gap:3px;height:18px;flex:0 0 auto;margin-left:2px}.mbm-pz:empty{display:none}.mbm-pt{position:relative;display:inline-flex;align-items:center;justify-content:center;width:14px;height:12px;border-radius:3.5px;background:#fff;cursor:var(--meos-hand);user-select:none;box-shadow:0 1px 2px rgba(0,0,0,.5)}.mbm-pt.mbm-pt-t{background:#2e9d3a}.mbm-pg{font-weight:800;font-size:10px;line-height:1}.mbm-pt-t .mbm-pg{color:#fff;font-size:11px}.mbm-pd{position:absolute;bottom:-6px;border-radius:50%;background:#e53935;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}.mbm-pd.mbm-pd-w{background:#fff}.mbm-pd1{width:4px;height:4px;left:5px}.mbm-pd2{width:6px;height:6px;left:0}.mbm-pd3{width:8px;height:8px;right:0}.mbm-ed{display:none;width:18px;height:18px;flex:0 0 auto}.mbm-ed.mbm-ed-on{display:block}   /* v5.1.454(俊克 pm08:40「離席ボタンの色と境界線がない」): 札と同じ= 席の色の地＋左に白い1本 */
 .mbm-caret{font-size:10px;opacity:.7;flex:0 0 auto}
 .mbm.mbm-open .mbm-caret{transform:rotate(180deg)}
 .mbm-list{display:none;margin:4px 7px 0 17px;padding:4px 0;border-radius:8px;background:var(--vscode-menu-background,var(--vscode-editorWidget-background));color:var(--vscode-menu-foreground,var(--vscode-foreground));border:1px solid color-mix(in srgb,var(--vscode-foreground) 18%,transparent);box-shadow:0 2px 8px rgba(0,0,0,.35);max-height:45vh;overflow-y:auto}
@@ -32579,7 +32598,7 @@ color:#ffffff;z-index:4;padding:0}
   <div class="clk-foot"><span class="clk-modes"><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button><button class="clk-set" id="clk-create" data-tip="Create \u23f0 | Add a new clock to this membrane. Off a membrane, it makes a new membrane for it.">Create \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button></div></div>
 </div><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><!-- {* ▼mCN=dock_mbmirror // ★v5.1.449(俊克 pm07:44「メニューバーの分身を、Format MeとCurrent Meの間に入れる…クリックすると、メニューバーと同じリストを下に延ばす…Windows/Linuxユーザも全く同じ体験…macユーザは折り畳めるように」) *} -->
-<div class="mbm${_mbmUi.fold ? ' mbm-folded' : ''}${_mbmUi.open ? ' mbm-open' : ''}" id="mbm"><div class="mbm-head"><span class="mbm-fold" id="mbm-fold" data-tip="mGATE menu | ▶ folded → ▶▶ the menu-bar tag → ▼ with its list → ▶ (Mac users can keep it folded and use the real menu bar).">${_mbmUi.fold ? '▶' : _mbmUi.open ? '▼' : '▶▶'}</span><span class="mbm-name" id="mbm-name">mGATE</span><span class="mbm-bar" id="mbm-bar"><img class="mbm-logo" alt="" src="${meosMgateUri()}"><span class="mbm-label${meosHelperScheme() === 'vscode' ? ' mbm-vsc' : ''}" id="mbm-label">⏰</span></span></div><div class="mbm-list" id="mbm-list"></div></div>
+<div class="mbm${_mbmUi.fold ? ' mbm-folded' : ''}${_mbmUi.open ? ' mbm-open' : ''}" id="mbm"><div class="mbm-head"><span class="mbm-fold" id="mbm-fold" data-tip="mGATE menu | ▶ folded → ▶▶ the menu-bar tag → ▼ with its list → ▶ (Mac users can keep it folded and use the real menu bar).">${_mbmUi.fold ? '▶' : _mbmUi.open ? '▼' : '▶▶'}</span><span class="mbm-name" id="mbm-name">mGATE</span><span class="mbm-bar" id="mbm-bar"><img class="mbm-logo" alt="" src="${meosMgateUri()}"><span class="mbm-label${meosHelperScheme() === 'vscode' ? ' mbm-vsc' : ''}" id="mbm-label">⏰</span><span class="mbm-pz" id="mbm-pz"></span><img class="mbm-ed" id="mbm-ed" alt="" draggable="false"></span></div><div class="mbm-list" id="mbm-list"></div></div>
 <!-- {* ▲mCN=dock_mbmirror *} --><!-- v5.1.450(俊克 pm08:14 バグ1「Mepyの上に出てきた」): H-TOC の枠(main.body)の中に入れていた→ 枠の外= 固定の箱(Format Me)の直後・枠の上へ -->
 <main class="body">
 
@@ -32676,7 +32695,13 @@ function render(){if(!menu)return;const st=list.scrollTop;list.textContent='';le
   if(it.sub){const k='s:'+it.title;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.title));if(!shut[k])for(const x of it.sub)list.appendChild(item(x,1));continue;}
   list.appendChild(item(it));}
  list.scrollTop=st;}
-window.addEventListener('message',e=>{const m=e.data;if(!m||m.type!=='mbMirror')return;mbmLabel(m.text||'',!!m.anchor);if(m.menu){menu=m.menu;render();}});
+const pzBox=document.getElementById('mbm-pz'),edImg=document.getElementById('mbm-ed');let pz=null;
+const PZC={M:'#e53935',e:'#f57c00',D:'#2e9d3a',o:'#1e7fd6',c:'#8e24aa',k:'#c2185b'};
+function pzTile(ch,white){const t=document.createElement('span');t.className='mbm-pt'+(ch==='T'?' mbm-pt-t':'');t.dataset.ch=ch;const g=document.createElement('span');g.className='mbm-pg';g.textContent=ch==='T'?'\u24c9':ch;if(ch!=='T')g.style.color=PZC[ch]||'#333';t.appendChild(g);
+ const dotsOk=!(typeof pz.dots==='string'&&pz.dots.indexOf(ch)<0&&(white||ch==='T'));if(dotsOk){const lv=white?1:(pz.lv||1),d=document.createElement('span');d.className='mbm-pd mbm-pd'+lv+(white?' mbm-pd-w':'');t.appendChild(d);}
+ t.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();if(ch!==pz.ch){pz.prev=pz.ch;pz.ch=ch;pzRender();}vscode.postMessage({type:'mbmPz',ch});});return t;}
+function pzRender(){pzBox.textContent='';if(!pz||!pz.ch)return;if(pz.prev&&pz.prev!==pz.ch)pzBox.appendChild(pzTile(pz.prev,true));pzBox.appendChild(pzTile(pz.ch,false));}
+window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='mbmPz'){pz={ch:m.ch||'',prev:m.prev||'',lv:m.lv||1,dots:m.dots};pzRender();return;}if(m&&m.type==='mbmEd'){edImg.src=m.src;edImg.classList.add('mbm-ed-on');return;}if(!m||m.type!=='mbMirror')return;mbmLabel(m.text||'',!!m.anchor);if(m.menu){menu=m.menu;render();}});
 vscode.postMessage({type:'mbMirrorReq'});want();})();
 // {* ▲mCN=dock_js_mbmirror *}
 (function(){const q=document.getElementById('quit-btn');if(q)q.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'meosMgate',how:(ev.metaKey||ev.ctrlKey)?'quit':(ev.shiftKey?'close':'front')});});})();/* v5.1.436: 終了ボタン */
@@ -37444,7 +37469,11 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'mbPick') { meosMenuBarPick(message.id); return; }   // v5.1.449: 分身のリストを押した= メニューバーと同じ口
     if (message && message.type === 'mbMirrorUi') { try { await extensionContext.globalState.update('meosMbMirrorUi', { fold: !!message.fold, open: !!message.open }); } catch (_) { } return; }
     if (message && message.type === 'mbMirrorWant') { _meosMbMirror.want = !!message.open; if (_meosMbMirror.want) { _meosMbMirror.menuKey = ''; meosMbMirrorPost(_meosMbMirror.rawText, _meosMbMirror.rawMenu); } return; }
-    if (message && message.type === 'mbMirrorReq') { _meosMbMirror.menuKey = ''; meosMbMirrorPost(_meosMbMirror.rawText, _meosMbMirror.rawMenu); return; }
+    if (message && message.type === 'mbmPz') {   // v5.1.462: 分身のピース= 札の右端のピースと同じ(/puzzle と同じ流れ= 🔴の字へ)
+      const ch = String(message.ch || '').slice(0, 1); if (!ch) return;
+      try { meosPuzzleLastSet(ch); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { }
+      try { await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed'); } catch (_) { } return; }
+    if (message && message.type === 'mbMirrorReq') { meosMbmPzPost(); meosMbmEdIconPost(); _meosMbMirror.menuKey = ''; meosMbMirrorPost(_meosMbMirror.rawText, _meosMbMirror.rawMenu); return; }
     if (message && message.type === 'meosMgate') { const how = message.how;   // v5.1.448: Me Dock の mGATE(本家= メニューバーの下の mGATE と同じ扱い)
       if (how === 'quit') { try { await vscode.commands.executeCommand('workbench.action.quit'); } catch (_) { } }
       else if (how === 'close') { try { if (meosRealHost()) { const fs = require('fs'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(require('path').join(meosHelperDir(), 'dockout-hide'), String(Date.now())); } } catch (_) { } }
