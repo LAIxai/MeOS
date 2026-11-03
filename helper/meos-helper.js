@@ -304,9 +304,12 @@ function run(argv) {
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
     try { if (pieceHit() === '\u0000quit') { hlog('[menu] 札の終了ボタンを押した→ 閉じてエディターを終える(Barman はそのまま)'); m.cancelTracking; edQuit(); return; } } catch (e) {}   // v5.1.437
-    try { dockOutHide(); } catch (e) {}   // v5.1.412: メニューを開いたら出張所は閉じる
-    try { const hc = pzl.ch ? pieceHit() : ''; if (hc && hc !== '\u0000quit') { hlog('[menu] 札の右端のピース ' + hc + (hc === pzl.ch ? '(最後)' : '(1つ前)') + ' を押した→ 閉じてワープ'); m.cancelTracking;
+    // ★v5.1.438(俊克 pm00:50 改良1「2つのパズルボタンを押すと、mGATEが一瞬消えてから再描画される。mGATEをクリックした時は自然に切り替る。同じように」): ピースを押した時は Barman を閉じない(Barman のタイルと同じ= 出しっぱなしの時だけワープで消す)
+    let _hc0 = ''; try { _hc0 = pzl.ch ? pieceHit() : ''; } catch (e) {} if (_hc0) pieceClickAt = Date.now();
+    if (!_hc0) { try { dockOutHide(); } catch (e) {} }   // v5.1.412: メニューを開いたら出張所は閉じる
+    try { const hc = _hc0; if (hc && hc !== '\u0000quit') { hlog('[menu] 札の右端のピース ' + hc + (hc === pzl.ch ? '(最後)' : '(1つ前)') + ' を押した→ 閉じてワープ'); m.cancelTracking;
       if (hc !== pzl.ch) { pzl = { ch: hc, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} }   // v5.1.407: 1つ前を押した= 拡張の返事を待たずに入れ替えて描く(続けて押せる)
+      try { if (dockOut.pin) dockOutHide(); else dockOutPaint(); } catch (x) {}   // v5.1.438
       openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(hc)); return; } } catch (e) {}   // v5.1.402
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
   } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
@@ -712,7 +715,7 @@ function run(argv) {
   const drawQuit = (x0, H) => { const TW = 20, TH = 12, ty = 6; pzRgb([0x55, 0x55, 0x5a]).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u2318Q')); const rg = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(8.5, 0.5), rg); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, rg);
     const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2)); };
-  let quitShown = false;
+  let quitShown = false, pieceClickAt = 0;
   const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
     const pad = Math.max(0, (r.size.width - pieceImgW) / 2), xr = r.origin.x + r.size.width - pad; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
     if (quitShown && p.x >= xr - 20 - 1 && p.x <= xr + pad) return '\u0000quit'; if (!pzl.ch) return '';
@@ -746,12 +749,18 @@ function run(argv) {
   //   → 全体の受け渡しは変えない(メニューを壊さない)。小窓が開いている間だけ0.02秒ごとにマウスのボタンを見て、同じタイルの上で押して放したら押したとみなす
   // ★v5.1.429(俊克 am05:54「日記でないファイルでは、Ⓣを非表示に」): 並べる字= 並び(ord)から、日記帳でない時(dots に T が無い)は T を抜く。窓の幅も枚数に合わせる
   const doOrd = () => { const o = String(pzl.ord || ''); return (typeof pzl.dots === 'string' && pzl.dots.indexOf('T') < 0) ? o.replace('T', '') : o; };
-  const doW = (n) => DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP;
-  const dockOutFire = (i) => { const ch = doOrd().charAt(i); if (!ch || i < 0) return; hlog('[dockOut] ' + ch + ' を押した→ ワープ');
+  const doW = (n) => DO_X0 + DO_PAD + (n + 1) * DO_TW + n * DO_GAP;   // v5.1.438: 字 n 枚＋起動ボタン1枚
+  // ★v5.1.438(俊克 pm00:50 改良2「⌘Qの下に、VSCm起動ボタンを付けよう。これで、オン/オフもすべて、メニューバーから制御できる」): Barman の右端(札の ⌘Q の真下)= エディターのアイコン。
+  //   動いていなければ起こす・動いていれば前へ出す
+  const edAppUrl = () => { try { const u = $.NSWorkspace.sharedWorkspace.URLForApplicationWithBundleIdentifier(edBundle()); return (u && !u.isNil()) ? u : null; } catch (e) { return null; } };
+  const edLaunch = () => { try { const a = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(edBundle()); if (Number(a.count) > 0) { a.objectAtIndex(0).activateWithOptions(2); hlog('[launch] 前へ出した'); }
+    else { const u = edAppUrl(); if (u) { $.NSWorkspace.sharedWorkspace.openURL(u); hlog('[launch] 起こした'); } } } catch (e) { hlog('[launch] 失敗 ' + e); } edRunAt = 0; };
+  const dockOutFire = (i) => { if (i >= 0 && i === doOrd().length) { hlog('[dockOut] 起動ボタンを押した'); edLaunch(); if (dockOut.pin) dockOutHide(); return; }   // v5.1.438
+    const ch = doOrd().charAt(i); if (!ch || i < 0) return; hlog('[dockOut] ' + ch + ' を押した→ ワープ');
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} dockOutPaint(); }
     openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); if (dockOut.pin) dockOutHide(); };   // v5.1.417: 出しっぱなしはワープで消す
   const dockOutAt = () => { try { if (!dockOut.win) return -1; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y;
-    if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_X0 + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < doOrd().length ? i : -1; } catch (e) { return -1; } };
+    if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_X0 + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i <= doOrd().length ? i : -1; } catch (e) { return -1; } };   // v5.1.438: 長さ= 起動ボタン
   // ★v5.1.414(俊克 pm01:56「押すタイミングで、認識したりしなかったりする」): 413 は「今押されているか」を0.02秒ごとに見た→ 札の描き直しやファイル読みで見張りが0.1秒以上遅れると、素早いクリック(押して放すまで0.1秒未満)は丸ごと間に落ちた。
   //   → Mac が数えている「押した回数・放した回数」(CGEventSourceCounterForEventType)を見る= 見張りが遅れても「前に見た時から1回放された」が分かる。放された時の位置がタイルの外なら、押された時に見たタイル
   const dockOutCnt = (t) => { try { return Number($.CGEventSourceCounterForEventType(0, t)) || 0; } catch (e) { return 0; } };
@@ -773,15 +782,17 @@ function run(argv) {
     const ve = $.NSVisualEffectView.alloc.initWithFrame(rc); ve.material = 5; ve.state = 1; ve.blendingMode = 0; ve.wantsLayer = true; ve.layer.cornerRadius = 10; ve.layer.masksToBounds = true; ve.autoresizingMask = 18; w.contentView = ve;
     dockOut.lg = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_LX, (H - DO_LG) / 2, DO_LG, DO_LG)); dockOut.lg.imageScaling = 3; ve.addSubview(dockOut.lg);   // v5.1.415: ロゴ
     dockOut.ivs = []; for (let i = 0; i < n; i++) { const iv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_X0 + i * (DO_TW + DO_GAP), DO_PAD, DO_TW, DO_TH)); iv.imageScaling = 2; ve.addSubview(iv); dockOut.ivs.push(iv); }
+    dockOut.lv = $.NSImageView.alloc.initWithFrame($.NSMakeRect(DO_X0 + n * (DO_TW + DO_GAP), DO_PAD, DO_TW, DO_TH)); dockOut.lv.imageScaling = 3; ve.addSubview(dockOut.lv);   // v5.1.438: 起動ボタン
     dockOut.win = w; return w; };
   // v5.1.416(俊克「44ピクセルにすると、ロゴの絵が汚くなる」): 54px の札用を44ptへ引き伸ばしていた→ ver2 の原寸から作った 176px(mgate-big.png)
-  const dockOutPaint = () => { try { if (!dockOut.win) return; try { if (!dockOut.big) { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), b = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-big.png')); if (b && !b.isNil()) dockOut.big = b; } const gi = gateLoad(), im = dockOut.big || (gi && (gateDark() ? gi.d : gi.l)); if (im && dockOut.lg) dockOut.lg.image = im; } catch (e) {} const o = doOrd(); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } try { const f = dockOut.win.frame, w = doW(o.length); if (Math.abs(f.size.width - w) > 0.5) { const r = f.origin.x + f.size.width; dockOut.win.setFrameDisplay($.NSMakeRect(dockOut.shown ? r - w : f.origin.x, f.origin.y, w, f.size.height), true); } } catch (e) {} } catch (e) {} };   // 右端(ピースの側)は動かさず幅だけ
+  const dockOutPaint = () => { try { if (!dockOut.win) return; try { if (!dockOut.big) { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), b = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-big.png')); if (b && !b.isNil()) dockOut.big = b; } const gi = gateLoad(), im = dockOut.big || (gi && (gateDark() ? gi.d : gi.l)); if (im && dockOut.lg) dockOut.lg.image = im; } catch (e) {} const o = doOrd(); try { if (dockOut.lv) { dockOut.lv.setFrame($.NSMakeRect(DO_X0 + o.length * (DO_TW + DO_GAP), DO_PAD + 2, DO_TW, DO_TH - 4)); if (!dockOut.icon) { const u = edAppUrl(); if (u) dockOut.icon = $.NSWorkspace.sharedWorkspace.iconForFile(u.path); } if (dockOut.icon) dockOut.lv.image = dockOut.icon; } } catch (e) {}   // v5.1.438: 起動ボタン= エディターのアイコン(字の右・⌘Q の真下)
+    for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } try { const f = dockOut.win.frame, w = doW(o.length); if (Math.abs(f.size.width - w) > 0.5) { const r = f.origin.x + f.size.width; dockOut.win.setFrameDisplay($.NSMakeRect(dockOut.shown ? r - w : f.origin.x, f.origin.y, w, f.size.height), true); } } catch (e) {} } catch (e) {} };   // 右端(ピースの側)は動かさず幅だけ
   const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.pin = false; dockOut.leaveAt = 0; dockOut.downAt = -1; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
     const w = dockOutBuild(); try { w.setContentSize($.NSMakeSize(doW(doOrd().length), DO_TH + DO_PAD * 2)); } catch (e) {} const f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
     let x = x1 - f.size.width; try { const sf = bw.screen.visibleFrame; x = Math.max(sf.origin.x + 4, Math.min(x, sf.origin.x + sf.size.width - f.size.width - 4)); } catch (e) {}
     w.setFrameOrigin($.NSMakePoint(x, r.origin.y - f.size.height - 2)); dockOutPaint(); w.orderFrontRegardless; if (!dockOut.ft) { dockOut.dnN = dockOutCnt(1); dockOut.upN = dockOutCnt(2); dockOut.downAt = -1; dockOut.ft = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, dockOutTgt, 'fast:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(dockOut.ft, $.NSRunLoopCommonModes); } if (!dockOut.shown) hlog('[dockOut] 開いた'); dockOut.shown = true; dockOut.leaveAt = 0; } catch (e) { hlog('[dockOut] 開けない ' + e); } };
-  const dockOutTick = () => { if (!pzl.ch || String(pzl.ord || '').length !== 7) { dockOutHide(); return; } let tr = false; try { tr = tracking(); } catch (e) {} if (tr) { dockOutHide(); return; }
+  const dockOutTick = () => { if (!pzl.ch || String(pzl.ord || '').length !== 7) { dockOutHide(); return; } let tr = false; try { tr = tracking(); } catch (e) {} if (tr && Date.now() - pieceClickAt > 600) { dockOutHide(); return; }   // v5.1.438: ピースを押した直後の一瞬の「メニューが開いた」では閉じない
     const _ph = pieceHit(), onPiece = !!_ph && _ph !== '\u0000quit'; let onWin = false;   // v5.1.437: 終了ボタンの上では出さない
     if (dockOut.shown && dockOut.win) { try { const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; onWin = p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height + 4; } catch (e) {} }
     if (onPiece) { if (!dockOut.shown) dockOutShow(); dockOut.leaveAt = 0; return; }
