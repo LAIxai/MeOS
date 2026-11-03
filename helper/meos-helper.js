@@ -1065,6 +1065,8 @@ function run(argv) {
   let armAny = false;
   const armTick = () => { let on = false, dk = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) { const t = String(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))); on = Date.now() - parseFloat(t) < 25000; dk = / d/.test(t); } } catch (e) {}
     if (on !== armAny) { armAny = on; if (on && pzl.ch && String(pzl.ord || '').length === 7) { try { dockOutShow(); dockOut.pin = 'arm'; hlog('[dockOut] 構えで出す(出しっぱなし)'); } catch (e) {} } }   // v5.1.417
+    try { const sp = dir + '/dockout-show', fm = $.NSFileManager.defaultManager; if (fm.fileExistsAtPath(sp)) { let age = 0; try { const at = fm.attributesOfItemAtPathError(sp, null).fileModificationDate; age = -Number(at.timeIntervalSinceNow); } catch (e) {}   // ★v5.1.473: 起動直後に Barman を出す(ピースの並びが届くまで待つ・60秒で諦める)
+        if (dockOut.shown) fm.removeItemAtPathError(sp, null); else if (pzl.ch && String(pzl.ord || '').length === 7) { fm.removeItemAtPathError(sp, null); try { dockOutShow(); dockOut.pin = 'arm'; hlog('[dockOut] 起動直後に出す(出しっぱなし)'); } catch (e) {} } else if (age > 60) fm.removeItemAtPathError(sp, null); } } catch (e) {}
     try { const hp = dir + '/dockout-hide'; if ($.NSFileManager.defaultManager.fileExistsAtPath(hp)) { $.NSFileManager.defaultManager.removeItemAtPathError(hp, null); dockOutToggle('Me Dock の mGATE を Shift クリック'); } } catch (e) {}   // v5.1.468: 閉じるだけ→ オン/オフ   // v5.1.448
     const bd = on && !dk; if (bd === armOn) return; armOn = bd; try { step(); } catch (e) {} };
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):

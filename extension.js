@@ -14498,6 +14498,21 @@ function meosGateLogoCopy(dir) {
   try { const fs = require('fs'), path = require('path'); fs.mkdirSync(dir, { recursive: true });
     for (const n of ['mgate-l.png', 'mgate-d.png', 'mgate-big.png']) { const a = path.join(extensionContext.extensionPath, 'media', 'logo', n), b = path.join(dir, n); const x = fs.readFileSync(a); let y = null; try { y = fs.readFileSync(b); } catch (_) { } if (!y || !x.equals(y)) fs.writeFileSync(b, x); } } catch (_) { }
 }
+// ★v5.1.473(俊克 11.04 am03:43「macOS上では、VSCmを起動直後に、デフォルトとして、自動で、メニューバーの下にmGATEを起動しよう」):
+//   V-helper が入っている= 起動のたびに Barman を出す(出しっぱなし・Shift クリックで閉じる)。入っていない= 初めての時に1度だけ訊く(黙ってログイン項目を足さない)→ はいなら入れて出す
+function meosMgateShowSoon() {
+  try { if (!meosRealHost() || !meosHelperOn()) return; const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(path.join(meosHelperDir(), 'dockout-show'), String(Date.now())); } catch (_) { }
+}
+async function meosMgateStartup() {
+  if (process.platform !== 'darwin' || !meosRealHost()) return;
+  if (meosHelperOn()) { meosMgateShowSoon(); return; }
+  const gs = extensionContext.globalState; if (gs.get('meosMgateAsked')) return; await gs.update('meosMgateAsked', true);
+  const yes = 'Use mGATE', no = 'Not now';
+  const pick = await vscode.window.showInformationMessage('MeOS: Open mGATE under the menu bar? It keeps your \u23f0 ringing even while ' + meosAppName() + ' is closed, and brings you back to the membrane in one click. (macOS will say a background item was added. You can turn it off any time in Settings: laiMembrane.menuBarHelper.)', yes, no);
+  if (pick !== yes) return;
+  await vscode.workspace.getConfiguration('laiMembrane').update('menuBarHelper', true, vscode.ConfigurationTarget.Global);
+  setTimeout(meosMgateShowSoon, 1500);
+}
 function meosHelperEnsure() {
   if (!meosRealHost()) return;   // v4.2.519
   meosPuzzleBadgeFile();   // v5.1.401: 起きた時にも今の字を渡す
@@ -46356,6 +46371,7 @@ function activate(context) {
     } }));
   } catch (_) { }
   try { if (meosHelperOn()) { meosHelperEnsure(); meosUpdateTimerBar(); } } catch (_) { }
+  try { setTimeout(() => { meosMgateStartup().catch(() => { }); }, 2500); } catch (_) { }   // v5.1.473
   // ★v4.2.208(俊克「この呪文は、ショートカットを付けたいとユーザは思うかも」): 呪文4つのうち見出しの前/次だけコマンドが無かった
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.headingPrev', () => navMeHeadingJump(-1)));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.headingNext', () => navMeHeadingJump(1)));
