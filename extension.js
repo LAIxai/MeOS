@@ -39378,8 +39378,8 @@ function meosTcwLayout(lines, W, draw) {
   // ★v5.1.432(俊克 am09:53「縦結合のケースの折り返しを進めて」): 縦の結合(🤝↓N)も入れる= 結合のセルの段を、下の行の高さへ順に割り振る(足りなければ最後の行を高くする)・間の細い横線を引かない
   const VM = /<!--\s*\u{1F91D}\u2193\s*(\d+)\s*-->/u;
   // ★v5.1.434(俊克 am11:07「未対応の例…それを整形しないと言う理由も無いよね?」): 表計算の印(Σ/Π)とノート内リンクの在る表も入れる= 入れないのは、それ以外のコメント(⏰など= 別の装飾が描く物)の在る表だけ
-  const _okCm = (t) => t.replace(new RegExp(HM.source, 'gu'), '').replace(new RegExp(VM.source, 'gu'), '').replace(new RegExp(MEOS_CALC_RE.source, 'gu'), '').replace(new RegExp(MEOS_MELINK_RE.source, 'g'), '$1');
-  if (lines.some(t => _okCm(t).indexOf('<!--') >= 0)) return null;
+  // ★v5.1.435(俊克 am11:12「なぜ⑲が対象外なのかがよく分からない」→「やめて全部入れて」): コメントで表を外す門をやめた= 表のセルで MeOS が描き替えるコメントは結合・表計算・リンクで全部。
+  //   分からないコメントは普通の表示でも字のまま出る→ 見せかけでも同じ字(meosStripHiddenForWidth が残す字)を描けば食い違わない
   const rs = lines.map(t => meosSplitTableRow(t)); const sep = rs.findIndex(r => meosIsTableSeparator(r)); if (sep < 0) return null;
   // v5.1.434: 表計算= 自動計算(tableAutoCalc)の時は焼いた値の代わりに今の値(表計算の装飾と同じ meosCalcResolver)・手動の時は焼いた値。印は見せかけの字から外れる
   let _calc = null; const _hasCalc = MEOS_TABLE_CALC && lines.some(t => MEOS_CALC_RE.test(t)); if (_hasCalc && meosTableAutoCalc()) { try { _calc = meosCalcResolver(rs, sep); } catch (_) { _calc = null; } }
