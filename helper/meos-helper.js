@@ -708,18 +708,19 @@ function run(argv) {
   //   札は押すとメニューが開く→ 開く直前(menuWillOpen)にポインターが札の右端のピースの上なら、閉じて /puzzle で拡張へ(Opt+クリックと同じ作り)。ピースの場所= 札の枠の中で絵は真ん中寄せ→ 右端から余白と幅で
   let pieceImgW = 0;
   // ★v5.1.437(俊克 pm00:23 改良2「メニューバーにも、⏻ボタンを付けよう。ここをクリックしても、mGATEは消えないようにする」): 札の右端= 終了ボタン(⌘Q)。押すとエディターだけ終える(メニューは開かず Barman も消さない)
-  const QUIT_W = 23, LAUNCH_W = 19;   // 隙間3＋ボタン20 / v5.1.439: 起動ボタン= 隙間3＋アイコン16
+  const QUIT_W = 19, LAUNCH_W = 19;   // v5.1.442: どちらも 隙間3＋16   // 隙間3＋ボタン20 / v5.1.439: 起動ボタン= 隙間3＋アイコン16
   let edRunAt = 0, edRun = false;
   const edBundle = () => myScheme === 'vscode' ? 'com.microsoft.VSCode' : 'com.vscodium';
   const edRunning = () => { const now = Date.now(); if (now - edRunAt > 1500) { edRunAt = now; try { edRun = Number($.NSRunningApplication.runningApplicationsWithBundleIdentifier(edBundle()).count) > 0; } catch (e) { edRun = false; } } return edRun; };
   const edQuit = () => { try { const a = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(edBundle()); for (let i = 0; i < a.count; i++) a.objectAtIndex(i).terminate; hlog('[quit] ' + edBundle() + ' に終了を頼んだ'); } catch (e) { hlog('[quit] 失敗 ' + e); } edRunAt = 0; };
-  const drawQuit = (x0, H) => { const TW = 20, TH = 12, ty = 6; pzRgb([0x55, 0x55, 0x5a]).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u2318Q')); const rg = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(8.5, 0.5), rg); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, rg);
+  // ★v5.1.442(俊克 pm01:34 改良1「[VSCmマーク][⌘Q] の順…終了の方が端っこ」改良2「⌘Qの地の色を赤に。押すと危険、という感じ。VSCmアイコンと同じ大きさに」): 16×16 の赤い角丸・右端
+  const drawQuit = (x0, H) => { const TW = 13, TH = 13, ty = 2.5; x0 += 1.5; pzRgb([0xd9, 0x3a, 0x3a]).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3, 3).fill;   // アイコンの絵は16の枠の中で約13(余白込みの絵)= 見える大きさを揃える
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u2318Q')); const rg = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(6.6, 0.6), rg); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, rg);
     const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2)); };
   let quitShown = false, pieceClickAt = 0, ctlW = 0, menuIcon = null;
   const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
     const pad = Math.max(0, (r.size.width - pieceImgW) / 2), xr = r.origin.x + r.size.width - pad; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
-    if (ctlW) { if (p.x >= xr - 16 - 1 && p.x <= xr + pad) return '\u0000launch'; if (quitShown && p.x >= xr - LAUNCH_W - 20 - 1 && p.x < xr - 16 - 1) return '\u0000quit'; }   // v5.1.439: 右端= 起動・その左= ⌘Q
+    if (ctlW) { const lx = xr - (quitShown ? QUIT_W : 0); if (quitShown && p.x >= xr - 16 - 1 && p.x <= xr + pad) return '\u0000quit'; if (p.x >= lx - 16 - 1 && p.x <= lx + (quitShown ? 1 : pad)) return '\u0000launch'; }   // v5.1.442: 右端= ⌘Q・その左= 起動
     if (!pzl.ch) return '';
     const x1 = xr - ctlW, x0 = x1 - 17;
     if (p.x >= x0 - 1 && p.x <= x1 + (ctlW ? 1 : pad)) return pzl.ch; if (pzl.prev && p.x >= x0 - 18 && p.x < x0 - 1) return pzl.prev; return ''; } catch (e) { return ''; } };   // v5.1.407: 押した字(右=最後・左=1つ前)を返す
@@ -857,8 +858,8 @@ function run(argv) {
       if (!idle) fillSeat(t, font, PX, W, H);   // v5.1.57
       drawStyled(t, font, PX, (H - sz.height) / 2);
       if (pzl.ch) { try { if (pzl.prev) { drawPiece(W + 3, H, pzl.prev, true); drawPiece(W + 20, H); } else drawPiece(W + 3, H); } catch (e) {} }   // v5.1.407: [1つ前][最後]
-      if (quitShown) { try { drawQuit(W + PW - QW + 3, H); } catch (e) {} }   // v5.1.437
-      if (_au && menuIcon) { try { menuIcon.drawInRectFromRectOperationFraction($.NSMakeRect(W + PW - 16, 1, 16, 16), $.NSZeroRect, 2, 1); } catch (e) {} }   // ★v5.1.439(俊克 pm01:04 改良2「そこ(Barman)にあると、押すとmGATEが消えてしまう。メニューバーと…に入れた方が良い。狭いなら横並びでも」): 起動ボタンは札の右端= ⌘Q の右(エディターのアイコン)
+      if (quitShown) { try { drawQuit(W + PW - 16, H); } catch (e) {} }   // v5.1.437 / v5.1.442: 右端
+      if (_au && menuIcon) { try { menuIcon.drawInRectFromRectOperationFraction($.NSMakeRect(W + PW - (quitShown ? QUIT_W : 0) - 16, 1, 16, 16), $.NSZeroRect, 2, 1); } catch (e) {} }   // ★v5.1.439(俊克 pm01:04 改良2「そこ(Barman)にあると、押すとmGATEが消えてしまう。メニューバーと…に入れた方が良い。狭いなら横並びでも」): 起動ボタンは札の右端= ⌘Q の右(エディターのアイコン)
       img.unlockFocus;
       img.template = false;
       item.button.image = img; item.button.title = '';
