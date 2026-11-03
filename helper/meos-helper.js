@@ -303,7 +303,8 @@ function run(argv) {
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
-    try { const _q = pieceHit(); if (_q === '\u0000logo') { m.cancelTracking; hlog('[menu] 札のロゴをクリック→ 最前面/起動'); edLaunch(); return; }   // v5.1.467(俊克 am02:39「メニューバーのそれは、最前面or再起動だけの機能」): 修飾キーは見ない   // v5.1.463
+    try { const _q = pieceHit(); if (_q === '\u0000logo') { m.cancelTracking; const _cm = (fl & 0x100000) !== 0, _sh = (fl & 0x20000) !== 0;
+        if (_cm) { hlog('[menu] 札のロゴを Cmd クリック→ エディターを終える'); edQuit(); } else if (_sh) { dockOutToggle('札のロゴを Shift クリック'); } else { hlog('[menu] 札のロゴをクリック→ 最前面/起動'); edLaunch(); } return; }   // ★v5.1.468(俊克 am02:43「Barman が出ていなくても、メニューバーだけで終了・Shiftクリックで Barman のオン/オフ」): 467 を戻し Shift= 出す/閉じる   // v5.1.463
       if (_q === '\u0000quit') { hlog('[menu] 札の終了ボタンを押した→ 閉じてエディターを終える(Barman はそのまま)'); m.cancelTracking; edQuit(); return; }
       if (_q === '\u0000launch') { hlog('[menu] 札の自分のアイコンを押した→ 何もしない(名札)'); m.cancelTracking; return; }   // ★v5.1.446(俊克「VSCm/VSCodeロゴは自分自身が何者かだけを示す(何も起動しない)」)
       if (_q === '\u0000launch2') { hlog('[menu] 札のもう一方のエディターを押した→ 起こす'); m.cancelTracking; launchBid(otherBundle()); return; } } catch (e) {}   // v5.1.439   // v5.1.437
@@ -807,6 +808,7 @@ function run(argv) {
     dockOut.win = w; return w; };
   // v5.1.416(俊克「44ピクセルにすると、ロゴの絵が汚くなる」): 54px の札用を44ptへ引き伸ばしていた→ ver2 の原寸から作った 176px(mgate-big.png)
   const dockOutPaint = () => { try { if (!dockOut.win) return; try { if (!dockOut.big) { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), b = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-big.png')); if (b && !b.isNil()) dockOut.big = b; } const gi = gateLoad(), im = dockOut.big || (gi && (gateDark() ? gi.d : gi.l)); if (im && dockOut.lg) dockOut.lg.image = im; } catch (e) {} const o = doOrd(); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } try { const f = dockOut.win.frame, w = doW(o.length); if (Math.abs(f.size.width - w) > 0.5) { const r = f.origin.x + f.size.width; dockOut.win.setFrameDisplay($.NSMakeRect(dockOut.shown ? r - w : f.origin.x, f.origin.y, w, f.size.height), true); } } catch (e) {} } catch (e) {} };   // 右端(ピースの側)は動かさず幅だけ
+  const dockOutToggle = (why) => { try { if (dockOut.shown) { hlog('[dockOut] ' + why + '→ 閉じる'); dockOutHide(); } else if (pzl.ch && String(pzl.ord || '').length === 7) { dockOutShow(); dockOut.pin = 'arm'; hlog('[dockOut] ' + why + '→ 出す(出しっぱなし)'); } } catch (e) {} };   // v5.1.468: Shift クリック= Barman のオン/オフ
   const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.pin = false; dockOut.leaveAt = 0; dockOut.downAt = -1; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
     const w = dockOutBuild(); try { w.setContentSize($.NSMakeSize(doW(doOrd().length), DO_TH + DO_PAD * 2)); } catch (e) {} const f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
@@ -1057,7 +1059,7 @@ function run(argv) {
   let armAny = false;
   const armTick = () => { let on = false, dk = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) { const t = String(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))); on = Date.now() - parseFloat(t) < 25000; dk = / d/.test(t); } } catch (e) {}
     if (on !== armAny) { armAny = on; if (on && pzl.ch && String(pzl.ord || '').length === 7) { try { dockOutShow(); dockOut.pin = 'arm'; hlog('[dockOut] 構えで出す(出しっぱなし)'); } catch (e) {} } }   // v5.1.417
-    try { const hp = dir + '/dockout-hide'; if ($.NSFileManager.defaultManager.fileExistsAtPath(hp)) { $.NSFileManager.defaultManager.removeItemAtPathError(hp, null); if (dockOut.shown) { hlog('[dockOut] Me Dock の mGATE を Shift クリック→ 閉じる'); dockOutHide(); } } } catch (e) {}   // v5.1.448
+    try { const hp = dir + '/dockout-hide'; if ($.NSFileManager.defaultManager.fileExistsAtPath(hp)) { $.NSFileManager.defaultManager.removeItemAtPathError(hp, null); dockOutToggle('Me Dock の mGATE を Shift クリック'); } } catch (e) {}   // v5.1.468: 閉じるだけ→ オン/オフ   // v5.1.448
     const bd = on && !dk; if (bd === armOn) return; armOn = bd; try { step(); } catch (e) {} };
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):
   //   Me Dock の🔰に乗るとロゴごと右下へ2.2倍に膨らむ= ポインターの下の図形が逃げる。拡張が warp-ptr.json(実の画素での片道)を置いたら、
