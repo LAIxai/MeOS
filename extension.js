@@ -31051,7 +31051,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm.mbm-folded .mbm-bar,.mbm.mbm-folded .mbm-list{display:none}
 .mbm-bar{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:calc(100% - 18px);cursor:default;padding:0 0 0 3px;line-height:18px;border-radius:7px;background:color-mix(in srgb,var(--vscode-foreground) 10%,transparent)}
 .mbm-logo{width:16px;height:16px;flex:0 0 auto}
-.mbm-label{display:flex;align-items:stretch;background:#e0803a;color:#fff;font-weight:700;font-size:12px;border-radius:5px;white-space:nowrap;overflow:hidden;min-width:0}
+.mbm-label{cursor:var(--meos-hand);display:flex;align-items:stretch;background:#e0803a;color:#fff;font-weight:700;font-size:12px;border-radius:5px;white-space:nowrap;overflow:hidden;min-width:0}
 .mbm-label.mbm-vsc{background:#7c3aed}
 .mbm-label.mbm-anc{background:#2f80b8}
 .mbm-label.mbm-idle{background:#6b7280}
@@ -32671,6 +32671,7 @@ function save(){vscode.postMessage({type:'mbMirrorUi',fold:box.classList.contain
 function want(){vscode.postMessage({type:'mbMirrorWant',open:box.classList.contains('mbm-open')&&!box.classList.contains('mbm-folded')});}
 function glyph(){fold.textContent=box.classList.contains('mbm-folded')?'▶':box.classList.contains('mbm-open')?'▼':'▶▶';}
 fold.addEventListener('click',ev=>{ev.preventDefault();if(box.classList.contains('mbm-folded')){box.classList.remove('mbm-folded');box.classList.remove('mbm-open');}else if(!box.classList.contains('mbm-open'))box.classList.add('mbm-open');else{box.classList.remove('mbm-open');box.classList.add('mbm-folded');}glyph();save();want();});
+lab.addEventListener('click',ev=>{ev.preventDefault();if(box.classList.contains('mbm-folded'))return;box.classList.toggle('mbm-open');glyph();save();want();});/* v5.1.464(俊克 am02:18 改良1): 次の予定と離席の札を押す= メニューバーと同じくリストを下に延ばす(▶▶→▼)・もう一度で畳む(▼→▶▶) */
 document.getElementById('mbm-name').addEventListener('click',ev=>{ev.preventDefault();box.classList.remove('mbm-folded');box.classList.remove('mbm-open');glyph();save();want();});
 const SEATS=[['\u{1FA91}','#2f9ccc'],['\u{1F6CB}\uFE0F','#c24a3e'],['\u{1F4BA}','#c4951a']];
 function mbmLabel(t,anc){lab.textContent='';lab.classList.toggle('mbm-idle',!t);lab.classList.toggle('mbm-anc',anc);let main=t,seat=null;
