@@ -303,8 +303,9 @@ function run(argv) {
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
+    try { if (pieceHit() === '\u0000quit') { hlog('[menu] 札の終了ボタンを押した→ 閉じてエディターを終える(Barman はそのまま)'); m.cancelTracking; edQuit(); return; } } catch (e) {}   // v5.1.437
     try { dockOutHide(); } catch (e) {}   // v5.1.412: メニューを開いたら出張所は閉じる
-    try { const hc = pzl.ch ? pieceHit() : ''; if (hc) { hlog('[menu] 札の右端のピース ' + hc + (hc === pzl.ch ? '(最後)' : '(1つ前)') + ' を押した→ 閉じてワープ'); m.cancelTracking;
+    try { const hc = pzl.ch ? pieceHit() : ''; if (hc && hc !== '\u0000quit') { hlog('[menu] 札の右端のピース ' + hc + (hc === pzl.ch ? '(最後)' : '(1つ前)') + ' を押した→ 閉じてワープ'); m.cancelTracking;
       if (hc !== pzl.ch) { pzl = { ch: hc, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} }   // v5.1.407: 1つ前を押した= 拡張の返事を待たずに入れ替えて描く(続けて押せる)
       openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(hc)); return; } } catch (e) {}   // v5.1.402
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
@@ -702,9 +703,21 @@ function run(argv) {
   // ★v5.1.402(俊克 11.02 am10:27 改良1「[c]にワープしたあとに、他の場所にタイマーなどで飛んだ時、このメニューバーの[c]をクリックすると、戻れるように」):
   //   札は押すとメニューが開く→ 開く直前(menuWillOpen)にポインターが札の右端のピースの上なら、閉じて /puzzle で拡張へ(Opt+クリックと同じ作り)。ピースの場所= 札の枠の中で絵は真ん中寄せ→ 右端から余白と幅で
   let pieceImgW = 0;
+  // ★v5.1.437(俊克 pm00:23 改良2「メニューバーにも、⏻ボタンを付けよう。ここをクリックしても、mGATEは消えないようにする」): 札の右端= 終了ボタン(⌘Q)。押すとエディターだけ終える(メニューは開かず Barman も消さない)
+  const QUIT_W = 23;   // 隙間3＋ボタン20
+  let edRunAt = 0, edRun = false;
+  const edBundle = () => myScheme === 'vscode' ? 'com.microsoft.VSCode' : 'com.vscodium';
+  const edRunning = () => { const now = Date.now(); if (now - edRunAt > 1500) { edRunAt = now; try { edRun = Number($.NSRunningApplication.runningApplicationsWithBundleIdentifier(edBundle()).count) > 0; } catch (e) { edRun = false; } } return edRun; };
+  const edQuit = () => { try { const a = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(edBundle()); for (let i = 0; i < a.count; i++) a.objectAtIndex(i).terminate; hlog('[quit] ' + edBundle() + ' に終了を頼んだ'); } catch (e) { hlog('[quit] 失敗 ' + e); } edRunAt = 0; };
+  const drawQuit = (x0, H) => { const TW = 20, TH = 12, ty = 6; pzRgb([0x55, 0x55, 0x5a]).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u2318Q')); const rg = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(8.5, 0.5), rg); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, rg);
+    const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2)); };
+  let quitShown = false;
   const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
-    const pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad, x0 = x1 - 17; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
-    if (p.x >= x0 - 1 && p.x <= x1 + pad) return pzl.ch; if (pzl.prev && p.x >= x0 - 18 && p.x < x0 - 1) return pzl.prev; return ''; } catch (e) { return ''; } };   // v5.1.407: 押した字(右=最後・左=1つ前)を返す
+    const pad = Math.max(0, (r.size.width - pieceImgW) / 2), xr = r.origin.x + r.size.width - pad; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
+    if (quitShown && p.x >= xr - 20 - 1 && p.x <= xr + pad) return '\u0000quit'; if (!pzl.ch) return '';
+    const x1 = xr - (quitShown ? QUIT_W : 0), x0 = x1 - 17;
+    if (p.x >= x0 - 1 && p.x <= x1 + (quitShown ? 1 : pad)) return pzl.ch; if (pzl.prev && p.x >= x0 - 18 && p.x < x0 - 1) return pzl.prev; return ''; } catch (e) { return ''; } };   // v5.1.407: 押した字(右=最後・左=1つ前)を返す
   // ★v5.1.403(俊克 11.02 am11:03「🔴の配置は直してよ」= Me Dock と大きく違う): 401 は🔴(4/6/8pt)がピース(13pt)の下端に食い込んでいた。Me Dock= ピースの下に隙間を空けて小さな点(ピースの高さの約1/5)。
   //   → ピースを 14×11.5 に縮めて上へ寄せ(下に6pt空ける)、🔴は 3/4.5/6pt(Me Dock の 4/6/8 と同じ 2:3:4)・下端は札の下0.5ptで揃える= 段1は2.5ptの隙間・段3だけ上へ育ってピースに少し被る(Me Dock と同じ)
   // ★v5.1.404(俊克 am11:06 改良1「メニューバーは小さいので、🔴はさっきの大きさの方が見やすい・今回は明らかに小さい」「🔴の表示位置が微妙に異なる」): 🔴は 4/6/8pt に戻す。
@@ -747,7 +760,8 @@ function run(argv) {
   const dockOutDrain = () => { try { const app = $.NSApplication.sharedApplication, past = $.NSDate.distantPast; for (let k = 0; k < 64; k++) { const ev = app.nextEventMatchingMaskUntilDateInModeDequeue(0xFFFFFFFF, past, $.NSDefaultRunLoopMode, true); if (!ev || ev.isNil()) break; app.sendEvent(ev); } } catch (e) {} };
   // ★v5.1.417(俊克 pm06:03 改良1「shift長押しのときに、このぶら下がりツールも出すようにしよう…出しっぱなしで、メニューバーの背景をclickすれば消す…あるいは、ワープしたあとには消す」):
   //   構え(arm)が点いた時に出し、離れても消さない(pin)。消すのは= メニューバーの地を押した/タイルでワープした/最後の字が変わった(キーでワープした)/メニューを開いた
-  const dockOutOnBar = () => { try { const p = $.NSEvent.mouseLocation, sc = $.NSScreen.screens; for (let k = 0; k < sc.count; k++) { const f = sc.objectAtIndex(k).frame, v = sc.objectAtIndex(k).visibleFrame; if (p.x < f.origin.x || p.x > f.origin.x + f.size.width) continue; const top = f.origin.y + f.size.height, bar = Math.max(22, top - (v.origin.y + v.size.height)); return p.y >= top - bar - 1 && p.y <= top + 1; } } catch (e) {} return false; };
+  const dockOutOnBar = () => { try { const p = $.NSEvent.mouseLocation; try { const b = item.button, bw = b.window; if (bw && !bw.isNil()) { const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $())); if (p.x >= r.origin.x && p.x <= r.origin.x + r.size.width && p.y >= r.origin.y - 1 && p.y <= r.origin.y + r.size.height + 1) return false; } } catch (e) {}   // v5.1.437: 自分の札は地でない(札の終了ボタンで Barman を消さない)
+    const sc = $.NSScreen.screens; for (let k = 0; k < sc.count; k++) { const f = sc.objectAtIndex(k).frame, v = sc.objectAtIndex(k).visibleFrame; if (p.x < f.origin.x || p.x > f.origin.x + f.size.width) continue; const top = f.origin.y + f.size.height, bar = Math.max(22, top - (v.origin.y + v.size.height)); return p.y >= top - bar - 1 && p.y <= top + 1; } } catch (e) {} return false; };
   const dockOutFast = () => { if (!dockOut.shown) return; dockOutDrain(); const dn = dockOutCnt(1), up = dockOutCnt(2);
     if (dn !== dockOut.dnN) { dockOut.dnN = dn; dockOut.downAt = dockOutAt(); }
     if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else if (dockOut.pin && dockOutOnBar()) { hlog('[dockOut] メニューバーの地を押した→ 消す'); dockOutHide(); } } };
@@ -768,7 +782,7 @@ function run(argv) {
     let x = x1 - f.size.width; try { const sf = bw.screen.visibleFrame; x = Math.max(sf.origin.x + 4, Math.min(x, sf.origin.x + sf.size.width - f.size.width - 4)); } catch (e) {}
     w.setFrameOrigin($.NSMakePoint(x, r.origin.y - f.size.height - 2)); dockOutPaint(); w.orderFrontRegardless; if (!dockOut.ft) { dockOut.dnN = dockOutCnt(1); dockOut.upN = dockOutCnt(2); dockOut.downAt = -1; dockOut.ft = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, dockOutTgt, 'fast:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(dockOut.ft, $.NSRunLoopCommonModes); } if (!dockOut.shown) hlog('[dockOut] 開いた'); dockOut.shown = true; dockOut.leaveAt = 0; } catch (e) { hlog('[dockOut] 開けない ' + e); } };
   const dockOutTick = () => { if (!pzl.ch || String(pzl.ord || '').length !== 7) { dockOutHide(); return; } let tr = false; try { tr = tracking(); } catch (e) {} if (tr) { dockOutHide(); return; }
-    const onPiece = !!pieceHit(); let onWin = false;
+    const _ph = pieceHit(), onPiece = !!_ph && _ph !== '\u0000quit'; let onWin = false;   // v5.1.437: 終了ボタンの上では出さない
     if (dockOut.shown && dockOut.win) { try { const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; onWin = p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height + 4; } catch (e) {} }
     if (onPiece) { if (!dockOut.shown) dockOutShow(); dockOut.leaveAt = 0; return; }
     if (!dockOut.shown) return; if (onWin || dockOut.pin) { dockOut.leaveAt = 0; return; }
@@ -808,7 +822,7 @@ function run(argv) {
       } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
-    const pk = pzl.ch + pzl.lv + pzl.prev;
+    const pk = pzl.ch + pzl.lv + pzl.prev + (edRunning() ? 'Q' : '');
     if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle || gateDark() !== lastDark || pk !== lastPk) {
       lastPk = pk;
       lastIdle = idle;
@@ -821,9 +835,10 @@ function run(argv) {
       const sz = styled(t, font, true).size;
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const gi = gateLoad(), GW = gi ? H + 3 : 0; lastDark = gateDark();   // v5.1.367: ロゴの分だけ広げる
-      const PW = pzl.ch ? (pzl.prev ? 34 : 17) : 0;   // v5.1.407: 1つ前が在れば2枚   // v5.1.401: 右端のピースの分(隙間3＋ピース14 ← v5.1.403 15)
+      const QW = edRunning() ? QUIT_W : 0; quitShown = !!QW;   // v5.1.437: 終了ボタン(エディターが動いている時だけ)
+      const PW = (pzl.ch ? (pzl.prev ? 34 : 17) : 0) + QW;   // v5.1.407: 1つ前が在れば2枚   // v5.1.401: 右端のピースの分(隙間3＋ピース14 ← v5.1.403 15)
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW + PW, H));
-      pieceImgW = pzl.ch ? W + GW + PW : 0;   // v5.1.402
+      pieceImgW = PW ? W + GW + PW : 0;   // v5.1.402
       img.lockFocus;
       if (gi) { try { (lastDark ? gi.d : gi.l).drawInRectFromRectOperationFraction($.NSMakeRect(0, 0, H, H), $.NSZeroRect, 2, 1); const tf = $.NSAffineTransform.transform; tf.translateXByYBy(GW, 0); tf.concat; } catch (e) {} }
       (idle ? gray : (anchor ? blue : (myScheme === 'vscode' ? purple : orange))).setFill;
@@ -831,6 +846,7 @@ function run(argv) {
       if (!idle) fillSeat(t, font, PX, W, H);   // v5.1.57
       drawStyled(t, font, PX, (H - sz.height) / 2);
       if (pzl.ch) { try { if (pzl.prev) { drawPiece(W + 3, H, pzl.prev, true); drawPiece(W + 20, H); } else drawPiece(W + 3, H); } catch (e) {} }   // v5.1.407: [1つ前][最後]
+      if (QW) { try { drawQuit(W + PW - 20, H); } catch (e) {} }   // v5.1.437
       img.unlockFocus;
       img.template = false;
       item.button.image = img; item.button.title = '';
