@@ -39381,7 +39381,7 @@ function meosTcwLayout(lines, W, draw) {
   const span = rs.map((r, i) => { const a = new Array(nc).fill(1); if (i === sep) return a; for (let k = 0; k < nc; k++) { if (a[k] === 0) continue; const m = HM.exec(r[k] || ''); if (m) { const n = Math.max(1, Math.min(nc - k, parseInt(m[1], 10) || 1)); a[k] = n; for (let q = k + 1; q < k + n; q++) a[q] = 0; } } return a; });   // v5.1.430: n= 結合の頭の列数・0= 頭に覆われた列
   span.forEach((a, i) => { if (i !== sep) a.forEach((n, k) => { if (n > 1 && typeof vis[i][k] === 'string') vis[i][k] = vis[i][k].replace(/^\s+/, ''); }); });   // 印を外した後の頭の空白
   const nat = new Array(nc).fill(1); vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { if (span[i][k] === 1) nat[k] = Math.max(nat[k], Math.ceil(meosStrWidth(t))); }); });
-  vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { const n = span[i][k]; if (n > 1) { const need = Math.ceil(meosStrWidth(t)); let have = 3 * (n - 1); for (let q = k; q < k + n; q++) have += nat[q]; if (need > have) nat[k + n - 1] += need - have; } }); });   // 結合のセルが収まらない分は最後の列へ
+  vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { const n = span[i][k]; if (n > 1) { const need = Math.ceil(meosStrWidth(t)); let have = 3 * (n - 1); for (let q = k; q < k + n; q++) have += nat[q]; if (need > have) { const d = need - have; for (let q = 0; q < n; q++) nat[k + q] += Math.floor(d / n) + (q >= n - (d % n) ? 1 : 0); } } }); });   // 結合のセルが収まらない分は、またがる列へ等しく配る(v5.1.431 俊克「xとyを等幅にすべき」: 430 は最後の列へ全部→ 1,41 になった)
   const tot = (x) => x.reduce((p, q) => p + q, 0) + 3 * nc + 1;
   // ★v5.1.200(俊克 am00:31 バグ1「今あなたがここで書いた表は、なぜ整形しても、セル折り返しにならないのか?」): 字の幅の合計(46桁)は幅50に収まるので入らないと判断していた。
   //   ところが今までの整形では区切りの行がちょうど50桁(--- は3つ以上)になり、全角1.67の端数が積もって行が50桁をわずかに越えて折れていた(どの行も段2)。
