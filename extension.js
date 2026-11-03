@@ -31024,7 +31024,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 /* ★v5.1.436(俊克 pm00:18 改良1「Me Dockの右上角に、VSCmの終了ボタンを付けよう。これを押せば、mGATEをそのままに終了できる…マウス派のために」): 右上角= Standards の右・押すと Cmd+Q と同じ(workbench.action.quit) */
 /* ★v5.1.448(俊克 pm06:51「Me Dockの⌘Qを廃止…mGATEの方が本家で、Me Dockにその分身を置く」): mGATE ロゴ= 押す→前へ・⌘/Ctrl+押す→終了・Shift+押す→ Barman を閉じる */.quit-btn{border:0;background:transparent;width:30px;height:30px;padding:0;margin-right:5px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;cursor:var(--meos-hand)}.quit-btn img{width:30px;height:30px;display:block}.quit-btn:hover img{filter:brightness(1.12) drop-shadow(0 0 2px rgba(217,58,58,.6))}
 /* v5.1.449: メニューバーの分身(mGATE menu)= 札＋押すと同じリスト */
-.mbm{margin:2px 0 6px;padding:0 4px}
+.mbm{margin:4px 0 0;padding:0 2px}   /* v5.1.451: 固定の箱の中= 本文と同じ縮尺を掛ける(450 は縮尺の外で馬鹿でかくなった) */
 .mbm-head{display:flex;align-items:center;gap:5px}
 .mbm-fold{cursor:var(--meos-hand);color:#1e7fd6;font-size:11px;width:12px;text-align:center;user-select:none}
 .mbm-name{font-weight:800;font-size:11px;opacity:.8;display:none}
@@ -31039,7 +31039,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm-label.mbm-idle{background:#8a8a8a}
 .mbm-caret{font-size:10px;opacity:.7;flex:0 0 auto}
 .mbm.mbm-open .mbm-caret{transform:rotate(180deg)}
-.mbm-list{display:none;margin:4px 0 0 17px;padding:4px 0;border-radius:8px;background:var(--vscode-menu-background,var(--vscode-editorWidget-background));color:var(--vscode-menu-foreground,var(--vscode-foreground));border:1px solid color-mix(in srgb,var(--vscode-foreground) 18%,transparent);box-shadow:0 2px 8px rgba(0,0,0,.35);max-height:60vh;overflow-y:auto}
+.mbm-list{display:none;margin:4px 0 0 17px;padding:4px 0;border-radius:8px;background:var(--vscode-menu-background,var(--vscode-editorWidget-background));color:var(--vscode-menu-foreground,var(--vscode-foreground));border:1px solid color-mix(in srgb,var(--vscode-foreground) 18%,transparent);box-shadow:0 2px 8px rgba(0,0,0,.35);max-height:45vh;overflow-y:auto}
 .mbm.mbm-open .mbm-list{display:block}
 .mbm-it{padding:2px 10px;white-space:pre;overflow:hidden;text-overflow:ellipsis;cursor:var(--meos-hand);font-size:12.5px;line-height:1.55}
 .mbm-it:hover{background:var(--vscode-menu-selectionBackground,#0a64d8);color:var(--vscode-menu-selectionForeground,#fff)}
@@ -32740,7 +32740,7 @@ var __MZ=[0.6,0.6286,0.6571,0.6857,0.7143,0.7429,0.7714,0.8,0.9,1];   /* v4.2.35
 function __mzStep(z){var b=0,d=9;for(var k=0;k<__MZ.length;k++){var e=Math.abs(__MZ[k]-z);if(e<d){d=e;b=k;}}return b+1;}
 function __mzOfStep(n){return __MZ[Math.max(1,Math.min(__MZ.length,n))-1];}
 function __mzApply(){try{var z=__mdZoom,inv=(z?1/z:1);/* v3.1.24(俊克 v3.1.23 NG): v3.1.16〜3.1.20で「本文だけzoom＋#toc-tooltipは本文内」の時は本文tipが正常だった=同一zoom(＋同一スクロール)文脈にtipと対象が同居していた為。v3.1.21以降tipを本文外(section.dock直下)へ出したのが全崩れの元凶(GBCRのzoom論理座標とfixed配置の座標系が別文脈でズレ→下ほど比例拡大)。→**tipを本文(main.body)内へ戻す**。ヘッダ帯もscaleさせる改良4は「main.bodyとheaderを同一zで常時ズーム(トグル無し=バグ2解消)」で実現。dock全体zoomは廃止(スクロール文脈が絡み崩れる為)。 */var m=document.querySelector('main.body');
-if(m)m.style.zoom=z;var h=document.querySelector('header.title');if(h)h.style.zoom=z;var __ft=document.getElementById('format-tools');if(__ft)__ft.style.zoom=z;var __hb=document.getElementById('hidx-box');if(__hb)__hb.style.zoom=z;/* v4.2.464 */['cur-box','gh-wizard','new-rename-panel','nav-box'].forEach(function(id){var e=document.getElementById(id);if(e&&e.parentElement&&e.parentElement.id==='dock-stick')e.style.zoom=z;});/* v4.2.465: 固定の箱へ移った物だけ(本文に居る間に掛けると二重に縮む) *//* v4.2.569(俊克 バグ1「スクショ1〜3の色パネルは、まだ小さい」): 色の窓に縮尺を掛けるのをやめる= 表の▾・🐱の▾と同じ大きさ(v4.2.461 の縮尺は外す) *//* v4.2.461(俊克「でっかくなっちゃったよー」): v4.2.460 で Format Me を main.body の外(固定の箱)へ出したので、本文と同じ縮尺を掛け直す。色の窓も本文に居た時と同じ縮尺 *//* ズームUIのpopup(スライダー)は逆ズームで物理サイズ一定=ドラッグ中もノブが動かない。 */var pop=document.getElementById('mz-pop');
+if(m)m.style.zoom=z;var h=document.querySelector('header.title');if(h)h.style.zoom=z;var __ft=document.getElementById('format-tools');if(__ft)__ft.style.zoom=z;var __hb=document.getElementById('hidx-box');if(__hb)__hb.style.zoom=z;/* v4.2.464 */['cur-box','gh-wizard','new-rename-panel','nav-box','mbm'].forEach(function(id){var e=document.getElementById(id);if(e&&e.parentElement&&e.parentElement.id==='dock-stick')e.style.zoom=z;});/* v4.2.465: 固定の箱へ移った物だけ(本文に居る間に掛けると二重に縮む) *//* v4.2.569(俊克 バグ1「スクショ1〜3の色パネルは、まだ小さい」): 色の窓に縮尺を掛けるのをやめる= 表の▾・🐱の▾と同じ大きさ(v4.2.461 の縮尺は外す) *//* v4.2.461(俊克「でっかくなっちゃったよー」): v4.2.460 で Format Me を main.body の外(固定の箱)へ出したので、本文と同じ縮尺を掛け直す。色の窓も本文に居た時と同じ縮尺 *//* ズームUIのpopup(スライダー)は逆ズームで物理サイズ一定=ドラッグ中もノブが動かない。 */var pop=document.getElementById('mz-pop');
 /* v4.2.355: 窓も他のボタンと同じ縮尺(逆ズームで実寸に戻すと、小さい段ほど窓だけ巨大になった) */if(pop)pop.style.zoom='';var st=__mzStep(z);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=st+'/'+__MZ.length;
 var zi=document.getElementById('mz-in'),zo=document.getElementById('mz-out');if(zi)zi.title='Bigger \u00b7 '+st+'/'+__MZ.length+(st>=__MZ.length?' (max)':'');if(zo)zo.title='Smaller \u00b7 '+st+'/'+__MZ.length+(st<=1?' (min)':'');
 var sl=document.getElementById('mz-slider');if(sl){if(document.activeElement!==sl)sl.value=st;/* v3.1.21改良3: Time Machine式=ノブ左を橙で塗る(1〜15段→0〜100%)。 */var __fill=Math.max(0,Math.min(100,(st-1)/(__MZ.length-1)*100));
@@ -34994,7 +34994,7 @@ try{/* ★★v4.2.465(俊克「Navigate Meも固定したい。MepyによるAdd 
   const _nb=document.createElement('div');_nb.className='nav-box';_nb.id='nav-box';_nb.appendChild(_nav);if(_hint)_nb.appendChild(_hint);
   const _mb=document.createElement('div');_mb.className='mepy-box';_mb.id='mepy-box';_mb.appendChild(_mp);
   /* ★v4.2.679: H-IDX はヘッダーのすぐ下(パズルの直ぐ下に同族のワープボタン)。Current Me は Format Me の下のまま */
-  {const _hd=_st.querySelector('header.title'),_fm=document.getElementById('format-tools');(_fm||_hx).after(_cur);if(_hd)_hd.after(_hx);}
+  {const _hd=_st.querySelector('header.title'),_fm=document.getElementById('format-tools');(_fm||_hx).after(_cur);if(_hd)_hd.after(_hx);const _mbm=document.getElementById('mbm');if(_mbm)_cur.before(_mbm);}   /* ★v5.1.451(俊克 pm08:25「そこでもないよ」): メニューバーの分身= Format Me と Current Me の箱の間(固定の箱の中) */
   _cur.after(_gh);_gh.after(_nrp);_nrp.after(_nb);
   _mn.insertBefore(_mb,_ft);
   /* ★v4.2.599(俊克「[Ⓣ|Ⓣday]をパズルの1つ上に移動。最も使うボタンが集中する。H-IDXはほとんど使わない初期型の立ち位置」): 出来上がった部品をヘッダーのファイル名の行の右へ(動きはそのまま) */
