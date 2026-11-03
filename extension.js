@@ -14559,12 +14559,12 @@ function meosHelperHandOff() { if (meosHelperOn()) { meosHelperWrite(null, [], 0
 //   Mac でなくても(メニューバーが無くても)写す= Windows/Linux も同じ体験。リストは開いている時だけ渡す(⏰の残りで毎秒変わる)
 const _meosMbMirror = { rawText: null, rawMenu: null, menuKey: '', want: false };
 function meosMbMirrorUi() { let u = null; try { u = extensionContext && extensionContext.globalState.get('meosMbMirrorUi'); } catch (_) { } return { fold: u ? !!u.fold : process.platform === 'darwin', open: !!(u && u.open) }; }
-function meosMbMirrorPost(text, menu) {
+function meosMbMirrorPost(text, menu, anchor) {
   try {
-    _meosMbMirror.rawText = text; _meosMbMirror.rawMenu = menu;
+    _meosMbMirror.rawText = text; _meosMbMirror.rawMenu = menu; if (anchor !== undefined) _meosMbMirror.anchor = !!anchor;
     if (!meDockPanel) return;
     let t = text ? String(text) : ''; { const sf = meosAwayMenuSuffix(); if (sf) t = (t ? t + '  ' : '') + sf; }
-    const msg = { type: 'mbMirror', text: t };
+    const msg = { type: 'mbMirror', text: t, anchor: !!_meosMbMirror.anchor };
     if (_meosMbMirror.want) {
       let full = (text ? (menu || []) : []).concat(meosMenuBarTail());
       if (process.platform !== 'darwin') full = full.filter(x => !(x && /helper|quitbar/.test(String(x.id || ''))));   // wGATE は Mac だけ
@@ -14575,7 +14575,7 @@ function meosMbMirrorPost(text, menu) {
 }
 function meosMenuBarSet(text, menu, opts) {
   try {
-    meosMbMirrorPost(text, menu);   // v5.1.449: 分身へ(Mac でなくても)
+    meosMbMirrorPost(text, menu, !!(opts && opts.anchor));   // v5.1.449: 分身へ(Mac でなくても)
     if (process.platform !== 'darwin') return;
     if (!meosRealHost()) return;   // v4.2.519: 検査から本物のメニューバーに触らない
     { const _sf = meosAwayMenuSuffix(); if (_sf) { const _b = text ? String(text) : ''; text = (_b.length > 33 ? _b.slice(0, 32) + '\u2026' : _b) + (_b ? '  ' : '') + _sf; } }   // v5.1.51: 離席の残り(💺28m)を末尾に。字が長い時は本体を詰めて残りは必ず見せる
@@ -31034,9 +31034,12 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm-bar{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:calc(100% - 18px);cursor:var(--meos-hand);padding:2px 6px 2px 3px;border-radius:7px;background:color-mix(in srgb,var(--vscode-foreground) 10%,transparent)}
 .mbm-bar:hover{background:color-mix(in srgb,var(--vscode-foreground) 18%,transparent)}
 .mbm-logo{width:18px;height:18px;flex:0 0 auto}
-.mbm-label{background:#e98a2c;color:#fff;font-weight:700;font-size:12px;border-radius:5px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.mbm-label.mbm-vsc{background:#7b4fd6}
-.mbm-label.mbm-idle{background:#8a8a8a}
+.mbm-label{display:flex;align-items:stretch;background:#e0803a;color:#fff;font-weight:700;font-size:12px;border-radius:5px;white-space:nowrap;overflow:hidden;min-width:0}
+.mbm-label.mbm-vsc{background:#7c3aed}
+.mbm-label.mbm-anc{background:#2f80b8}
+.mbm-label.mbm-idle{background:#6b7280}
+.mbm-lt{padding:1px 7px;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+.mbm-seat{padding:1px 6px 1px 5px;border-left:1px solid #fff;flex:0 0 auto}   /* v5.1.454(俊克 pm08:40「離席ボタンの色と境界線がない」): 札と同じ= 席の色の地＋左に白い1本 */
 .mbm-caret{font-size:10px;opacity:.7;flex:0 0 auto}
 .mbm.mbm-open .mbm-caret{transform:rotate(180deg)}
 .mbm-list{display:none;margin:4px 0 0 17px;padding:4px 0;border-radius:8px;background:var(--vscode-menu-background,var(--vscode-editorWidget-background));color:var(--vscode-menu-foreground,var(--vscode-foreground));border:1px solid color-mix(in srgb,var(--vscode-foreground) 18%,transparent);box-shadow:0 2px 8px rgba(0,0,0,.35);max-height:45vh;overflow-y:auto}
@@ -32652,6 +32655,11 @@ function want(){vscode.postMessage({type:'mbMirrorWant',open:box.classList.conta
 fold.addEventListener('click',ev=>{ev.preventDefault();box.classList.toggle('mbm-folded');save();want();});
 document.getElementById('mbm-name').addEventListener('click',ev=>{ev.preventDefault();box.classList.remove('mbm-folded');save();want();});
 bar.addEventListener('click',ev=>{ev.preventDefault();box.classList.toggle('mbm-open');save();want();});
+const SEATS=[['\u{1FA91}','#2f9ccc'],['\u{1F6CB}\uFE0F','#c24a3e'],['\u{1F4BA}','#c4951a']];
+function mbmLabel(t,anc){lab.textContent='';lab.classList.toggle('mbm-idle',!t);lab.classList.toggle('mbm-anc',anc);let main=t,seat=null;
+ for(const sp of SEATS){const i=t.lastIndexOf(sp[0]);if(i<0)continue;const tail=t.slice(i+sp[0].length);if(/^([0-9]+m|<1m|0:[0-9][0-9])$/.test(tail)){main=t.slice(0,i).replace(/ +$/,'');seat={s:t.slice(i),c:sp[1]};break;}}
+ const a=document.createElement('span');a.className='mbm-lt';a.textContent=main||'⏰';lab.appendChild(a);
+ if(seat){const b=document.createElement('span');b.className='mbm-seat';b.style.background=seat.c;b.textContent=seat.s;lab.appendChild(b);}}
 function el(c,t){const d=document.createElement('div');d.className=c;if(t!=null)d.textContent=t;return d;}
 function item(it,ind){const d=el('mbm-it'+(ind?' mbm-ind':'')+(it.id?'':' mbm-off'));if(it.pill){d.appendChild(document.createTextNode(it.pre||''));const p=document.createElement('span');p.className='mbm-pill';p.textContent=it.pill;d.appendChild(p);d.appendChild(document.createTextNode(it.post||''));}else d.textContent=it.title||'';
  if(it.id)d.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'mbPick',id:it.id});});return d;}
@@ -32670,7 +32678,7 @@ function render(){if(!menu)return;const st=list.scrollTop;list.textContent='';le
   if(it.sub){const k='s:'+it.title;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.title));if(!shut[k])for(const x of it.sub)list.appendChild(item(x,1));continue;}
   list.appendChild(item(it));}
  list.scrollTop=st;}
-window.addEventListener('message',e=>{const m=e.data;if(!m||m.type!=='mbMirror')return;lab.textContent=m.text||'⏰';lab.classList.toggle('mbm-idle',!m.text);if(m.menu){menu=m.menu;render();}});
+window.addEventListener('message',e=>{const m=e.data;if(!m||m.type!=='mbMirror')return;mbmLabel(m.text||'',!!m.anchor);if(m.menu){menu=m.menu;render();}});
 vscode.postMessage({type:'mbMirrorReq'});want();})();
 // {* ▲mCN=dock_js_mbmirror *}
 (function(){const q=document.getElementById('quit-btn');if(q)q.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'meosMgate',how:(ev.metaKey||ev.ctrlKey)?'quit':(ev.shiftKey?'close':'front')});});})();/* v5.1.436: 終了ボタン */
