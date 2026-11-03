@@ -304,7 +304,8 @@ function run(argv) {
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
     try { const _q = pieceHit(); if (_q === '\u0000quit') { hlog('[menu] 札の終了ボタンを押した→ 閉じてエディターを終える(Barman はそのまま)'); m.cancelTracking; edQuit(); return; }
-      if (_q === '\u0000launch') { hlog('[menu] 札の起動ボタンを押した→ 閉じてエディターを起こす/前へ(Barman はそのまま)'); m.cancelTracking; edLaunch(); return; } } catch (e) {}   // v5.1.439   // v5.1.437
+      if (_q === '\u0000launch') { hlog('[menu] 札の起動ボタンを押した→ 閉じてエディターを起こす(Barman はそのまま)'); m.cancelTracking; edLaunch(); return; }
+      if (_q === '\u0000launch2') { hlog('[menu] 札のもう一方のエディターを押した→ 起こす'); m.cancelTracking; launchBid(otherBundle()); return; } } catch (e) {}   // v5.1.439   // v5.1.437
     // ★v5.1.438(俊克 pm00:50 改良1「2つのパズルボタンを押すと、mGATEが一瞬消えてから再描画される。mGATEをクリックした時は自然に切り替る。同じように」): ピースを押した時は Barman を閉じない(Barman のタイルと同じ= 出しっぱなしの時だけワープで消す)
     let _hc0 = ''; try { _hc0 = pzl.ch ? pieceHit() : ''; } catch (e) {} if (_hc0) pieceClickAt = Date.now();
     if (!_hc0) { try { dockOutHide(); } catch (e) {} }   // v5.1.412: メニューを開いたら出張所は閉じる
@@ -717,10 +718,18 @@ function run(argv) {
   const drawQuit = (x0, H) => { const TW = 13, TH = 13, ty = 2.5; x0 += 1.5; pzRgb([0xd9, 0x3a, 0x3a]).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3, 3).fill;   // アイコンの絵は16の枠の中で約13(余白込みの絵)= 見える大きさを揃える
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u2318Q')); const rg = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(6.6, 0.6), rg); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, rg);
     const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2)); };
-  let quitShown = false, pieceClickAt = 0, ctlW = 0, menuIcon = null;
+  let quitShown = false, pieceClickAt = 0, ctlW = 0, menuIcon = null, ctlItems = [], iconCache = {};
+  // ★v5.1.443(俊克 pm01:52「VSCmが起動中は、[VSCmマーク]を消そう…ついでに、[VSCodeマーク]もVSCodeが起動してない場合は一緒に出そう。すべてをここからコントロールできる」):
+  //   札の右端= [もう一方のエディター(入っていて動いていない時)][自分のエディター: 動いていれば ⌘Q / いなければアイコン]
+  const otherBundle = () => myScheme === 'vscode' ? 'com.vscodium' : 'com.microsoft.VSCode';
+  const runOf = {}; const isRunning = (bid) => { const now = Date.now(), c = runOf[bid]; if (c && now - c.at < 1500) return c.v; let v = false; try { v = Number($.NSRunningApplication.runningApplicationsWithBundleIdentifier(bid).count) > 0; } catch (e) {} runOf[bid] = { at: now, v: v }; return v; };
+  const urlOf = (bid) => { try { const u = $.NSWorkspace.sharedWorkspace.URLForApplicationWithBundleIdentifier(bid); return (u && !u.isNil()) ? u : null; } catch (e) { return null; } };
+  const iconOf = (bid) => { if (iconCache[bid] !== undefined) return iconCache[bid]; const u = urlOf(bid); let ic = null; try { if (u) ic = $.NSWorkspace.sharedWorkspace.iconForFile(u.path); } catch (e) {} iconCache[bid] = ic; return ic; };
+  const launchBid = (bid) => { try { const u = urlOf(bid); if (u) { $.NSWorkspace.sharedWorkspace.openURL(u); hlog('[launch] ' + bid + ' を起こした'); } } catch (e) { hlog('[launch] 失敗 ' + e); } runOf[bid] = null; };
+  const ctlBuild = () => { const a = []; const ob = otherBundle(); if (urlOf(ob) && !isRunning(ob)) a.push('launch2'); if (edRunning()) a.push('quit'); else if (urlOf(edBundle())) a.push('launch'); return a; };
   const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
     const pad = Math.max(0, (r.size.width - pieceImgW) / 2), xr = r.origin.x + r.size.width - pad; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
-    if (ctlW) { const lx = xr - (quitShown ? QUIT_W : 0); if (quitShown && p.x >= xr - 16 - 1 && p.x <= xr + pad) return '\u0000quit'; if (p.x >= lx - 16 - 1 && p.x <= lx + (quitShown ? 1 : pad)) return '\u0000launch'; }   // v5.1.442: 右端= ⌘Q・その左= 起動
+    for (let j = 0; j < ctlItems.length; j++) { const rx = xr - j * 19; if (p.x >= rx - 16 - 1 && p.x <= rx + (j === 0 ? pad : 1)) return '\u0000' + ctlItems[ctlItems.length - 1 - j]; }   // v5.1.443: 右から ⌘Q/起動・もう一方   // v5.1.442: 右端= ⌘Q・その左= 起動
     if (!pzl.ch) return '';
     const x1 = xr - ctlW, x0 = x1 - 17;
     if (p.x >= x0 - 1 && p.x <= x1 + (ctlW ? 1 : pad)) return pzl.ch; if (pzl.prev && p.x >= x0 - 18 && p.x < x0 - 1) return pzl.prev; return ''; } catch (e) { return ''; } };   // v5.1.407: 押した字(右=最後・左=1つ前)を返す
@@ -833,7 +842,7 @@ function run(argv) {
       } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
-    const pk = pzl.ch + pzl.lv + pzl.prev + (edRunning() ? 'Q' : '');
+    const pk = pzl.ch + pzl.lv + pzl.prev + (edRunning() ? 'Q' : '') + (isRunning(otherBundle()) ? 'O' : '');
     if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle || gateDark() !== lastDark || pk !== lastPk) {
       lastPk = pk;
       lastIdle = idle;
@@ -846,8 +855,7 @@ function run(argv) {
       const sz = styled(t, font, true).size;
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const gi = gateLoad(), GW = gi ? H + 3 : 0; lastDark = gateDark();   // v5.1.367: ロゴの分だけ広げる
-      quitShown = edRunning(); const _au = edAppUrl(); const QW = (quitShown ? QUIT_W : 0) + (_au ? LAUNCH_W : 0); ctlW = QW;   // v5.1.437: 終了ボタン(エディターが動いている時だけ)・v5.1.439: 右端に起動ボタン(いつも)
-      if (_au && !menuIcon) { try { menuIcon = $.NSWorkspace.sharedWorkspace.iconForFile(_au.path); } catch (e) {} }
+      quitShown = edRunning(); ctlItems = ctlBuild(); const QW = ctlItems.length * 19; ctlW = QW;   // v5.1.443   // v5.1.437: 終了ボタン(エディターが動いている時だけ)・v5.1.439: 右端に起動ボタン(いつも)
       const PW = (pzl.ch ? (pzl.prev ? 34 : 17) : 0) + QW;   // v5.1.407: 1つ前が在れば2枚   // v5.1.401: 右端のピースの分(隙間3＋ピース14 ← v5.1.403 15)
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW + PW, H));
       pieceImgW = PW ? W + GW + PW : 0;   // v5.1.402
@@ -858,8 +866,8 @@ function run(argv) {
       if (!idle) fillSeat(t, font, PX, W, H);   // v5.1.57
       drawStyled(t, font, PX, (H - sz.height) / 2);
       if (pzl.ch) { try { if (pzl.prev) { drawPiece(W + 3, H, pzl.prev, true); drawPiece(W + 20, H); } else drawPiece(W + 3, H); } catch (e) {} }   // v5.1.407: [1つ前][最後]
-      if (quitShown) { try { drawQuit(W + PW - 16, H); } catch (e) {} }   // v5.1.437 / v5.1.442: 右端
-      if (_au && menuIcon) { try { menuIcon.drawInRectFromRectOperationFraction($.NSMakeRect(W + PW - (quitShown ? QUIT_W : 0) - 16, 1, 16, 16), $.NSZeroRect, 2, 1); } catch (e) {} }   // ★v5.1.439(俊克 pm01:04 改良2「そこ(Barman)にあると、押すとmGATEが消えてしまう。メニューバーと…に入れた方が良い。狭いなら横並びでも」): 起動ボタンは札の右端= ⌘Q の右(エディターのアイコン)
+      ctlItems.forEach((k, idx) => { const x = W + PW - 16 - (ctlItems.length - 1 - idx) * 19; try { if (k === 'quit') drawQuit(x, H); else { const ic = iconOf(k === 'launch2' ? otherBundle() : edBundle()); if (ic) ic.drawInRectFromRectOperationFraction($.NSMakeRect(x, 1, 16, 16), $.NSZeroRect, 2, 1); } } catch (e) {} });   // v5.1.443
+      // v5.1.439〜442 の起動ボタンは ctlItems へ
       img.unlockFocus;
       img.template = false;
       item.button.image = img; item.button.title = '';
