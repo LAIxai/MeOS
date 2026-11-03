@@ -39377,9 +39377,15 @@ function meosTcwLayout(lines, W, draw) {
   const HM = /<!--\s*\u{1F91D}\u2192\s*(\d+)\s*-->/u;
   // ★v5.1.432(俊克 am09:53「縦結合のケースの折り返しを進めて」): 縦の結合(🤝↓N)も入れる= 結合のセルの段を、下の行の高さへ順に割り振る(足りなければ最後の行を高くする)・間の細い横線を引かない
   const VM = /<!--\s*\u{1F91D}\u2193\s*(\d+)\s*-->/u;
-  if (lines.some(t => t.replace(new RegExp(HM.source, 'gu'), '').replace(new RegExp(VM.source, 'gu'), '').indexOf('<!--') >= 0)) return null;
+  // ★v5.1.434(俊克 am11:07「未対応の例…それを整形しないと言う理由も無いよね?」): 表計算の印(Σ/Π)とノート内リンクの在る表も入れる= 入れないのは、それ以外のコメント(⏰など= 別の装飾が描く物)の在る表だけ
+  const _okCm = (t) => t.replace(new RegExp(HM.source, 'gu'), '').replace(new RegExp(VM.source, 'gu'), '').replace(new RegExp(MEOS_CALC_RE.source, 'gu'), '').replace(new RegExp(MEOS_MELINK_RE.source, 'g'), '$1');
+  if (lines.some(t => _okCm(t).indexOf('<!--') >= 0)) return null;
   const rs = lines.map(t => meosSplitTableRow(t)); const sep = rs.findIndex(r => meosIsTableSeparator(r)); if (sep < 0) return null;
-  const nc = Math.max(...rs.map(r => r.length)); const sty = rs.map((r, i) => i === sep ? [] : r.map(x => meosTcwStyled(x))); const vis = rs.map((r, i) => i === sep ? r : sty[i].map(o => o.text));   // v5.1.208: 飾り付き
+  // v5.1.434: 表計算= 自動計算(tableAutoCalc)の時は焼いた値の代わりに今の値(表計算の装飾と同じ meosCalcResolver)・手動の時は焼いた値。印は見せかけの字から外れる
+  let _calc = null; const _hasCalc = MEOS_TABLE_CALC && lines.some(t => MEOS_CALC_RE.test(t)); if (_hasCalc && meosTableAutoCalc()) { try { _calc = meosCalcResolver(rs, sep); } catch (_) { _calc = null; } }
+  const calcFix = (i, k, x) => { if (!_calc) return x; const m = MEOS_CALC_RE.exec(x || ''); if (!m) return x; try { if (meosCalcCellRole(rs, sep, i, k) === 'boundary') return x;
+    const before = x.slice(0, m.index), after = x.slice(m.index + m[0].length).replace(/^\s*-?[\d.,]+/, ''); return before + meosFmtCalc(_calc(i, k)) + after; } catch (_) { return x; } };
+  const nc = Math.max(...rs.map(r => r.length)); const sty = rs.map((r, i) => i === sep ? [] : r.map((x, k) => meosTcwStyled(calcFix(i, k, x)))); const vis = rs.map((r, i) => i === sep ? r : sty[i].map(o => o.text));   // v5.1.208: 飾り付き
   const span = rs.map((r, i) => { const a = new Array(nc).fill(1); if (i === sep) return a; for (let k = 0; k < nc; k++) { if (a[k] === 0) continue; const m = HM.exec(r[k] || ''); if (m) { const n = Math.max(1, Math.min(nc - k, parseInt(m[1], 10) || 1)); a[k] = n; for (let q = k + 1; q < k + n; q++) a[q] = 0; } } return a; });   // v5.1.430: n= 結合の頭の列数・0= 頭に覆われた列
   // v5.1.432: 縦の結合= vh[i][k]= 頭がまたがる行の数・vc[q][k]= 頭に覆われた(下の)セル。覆われた行も頭と同じ横の広がり(span)にする。区切りの行は越えない
   const vh = rs.map(() => new Array(nc).fill(0)), vc = rs.map(() => new Array(nc).fill(false));
