@@ -1053,6 +1053,7 @@ function run(argv) {
   let armAny = false;
   const armTick = () => { let on = false, dk = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) { const t = String(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))); on = Date.now() - parseFloat(t) < 25000; dk = / d/.test(t); } } catch (e) {}
     if (on !== armAny) { armAny = on; if (on && pzl.ch && String(pzl.ord || '').length === 7) { try { dockOutShow(); dockOut.pin = 'arm'; hlog('[dockOut] 構えで出す(出しっぱなし)'); } catch (e) {} } }   // v5.1.417
+    try { const hp = dir + '/dockout-hide'; if ($.NSFileManager.defaultManager.fileExistsAtPath(hp)) { $.NSFileManager.defaultManager.removeItemAtPathError(hp, null); if (dockOut.shown) { hlog('[dockOut] Me Dock の mGATE を Shift クリック→ 閉じる'); dockOutHide(); } } } catch (e) {}   // v5.1.448
     const bd = on && !dk; if (bd === armOn) return; armOn = bd; try { step(); } catch (e) {} };
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):
   //   Me Dock の🔰に乗るとロゴごと右下へ2.2倍に膨らむ= ポインターの下の図形が逃げる。拡張が warp-ptr.json(実の画素での片道)を置いたら、
