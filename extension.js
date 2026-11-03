@@ -14555,8 +14555,27 @@ function meosHelperRemove() {
 //     しかも owner はまだ生きている自分の pid= ヘルパーに残るのは「予定0本」の表→ 何も出さなくなっていた。
 //   ★→ 渡したら、この窓からは二度と書かない(_meosHelper.handedOff)。
 function meosHelperHandOff() { if (meosHelperOn()) { meosHelperWrite(null, [], 0); _meosHelper.handedOff = true; } }
+// ★v5.1.449(俊克 pm07:44): メニューバーの分身= Me Dock の Format Me と Current Me の間。札の字と同じリスト(メニューバーへ渡す物と同じ menu＋常の段)を Me Dock へ写す。
+//   Mac でなくても(メニューバーが無くても)写す= Windows/Linux も同じ体験。リストは開いている時だけ渡す(⏰の残りで毎秒変わる)
+const _meosMbMirror = { rawText: null, rawMenu: null, menuKey: '', want: false };
+function meosMbMirrorUi() { let u = null; try { u = extensionContext && extensionContext.globalState.get('meosMbMirrorUi'); } catch (_) { } return { fold: u ? !!u.fold : process.platform === 'darwin', open: !!(u && u.open) }; }
+function meosMbMirrorPost(text, menu) {
+  try {
+    _meosMbMirror.rawText = text; _meosMbMirror.rawMenu = menu;
+    if (!meDockPanel) return;
+    let t = text ? String(text) : ''; { const sf = meosAwayMenuSuffix(); if (sf) t = (t ? t + '  ' : '') + sf; }
+    const msg = { type: 'mbMirror', text: t };
+    if (_meosMbMirror.want) {
+      let full = (text ? (menu || []) : []).concat(meosMenuBarTail());
+      if (process.platform !== 'darwin') full = full.filter(x => !(x && /helper|quitbar/.test(String(x.id || ''))));   // wGATE は Mac だけ
+      const key = JSON.stringify(full); if (key !== _meosMbMirror.menuKey) { _meosMbMirror.menuKey = key; msg.menu = full; }
+    }
+    meDockPanel.webview.postMessage(msg);
+  } catch (_) { }
+}
 function meosMenuBarSet(text, menu, opts) {
   try {
+    meosMbMirrorPost(text, menu);   // v5.1.449: 分身へ(Mac でなくても)
     if (process.platform !== 'darwin') return;
     if (!meosRealHost()) return;   // v4.2.519: 検査から本物のメニューバーに触らない
     { const _sf = meosAwayMenuSuffix(); if (_sf) { const _b = text ? String(text) : ''; text = (_b.length > 33 ? _b.slice(0, 32) + '\u2026' : _b) + (_b ? '  ' : '') + _sf; } }   // v5.1.51: 離席の残り(💺28m)を末尾に。字が長い時は本体を詰めて残りは必ず見せる
@@ -30570,6 +30589,7 @@ function meDockHtml() {
   // v5.1.286(俊克 am09:58 改良1「↻で `` ` `` と ```` ``` ```` の2つのケースも・違いを出すために記号を1個/3個の赤文字に」): ↻は4つ= 0 ` / 1 ``` / 2 赤` / 3 赤```(2/3= ` そのものを板にして置く)
   const fusenColorNow = meosFusenColorNow();   // v5.1.315: 次に取る付箋の色
   const fmtCodeMode = (() => { try { const v = extensionContext && extensionContext.globalState.get('fmtCodeMode'); if (typeof v === 'number' && v >= 0 && v <= 3) return v; return extensionContext && extensionContext.globalState.get('fmtCodeFence') === true ? 1 : 0; } catch (_) { return 0; } })();   // v5.1.280: Format Me の ` / ``` (既定= `)
+  const _mbmUi = meosMbMirrorUi();   // v5.1.449: メニューバーの分身の畳み
   const hidxOpen = !!(extensionContext && extensionContext.globalState.get('hidxOpen') === true);   // ★v4.2.679(俊克「H-IDXをヘッダーの下へ・パズルの右の▼で開閉・普段は閉じておく。将来廃止しやすくする布石」): 既定=閉   // v4.2.251(俊克「H-TOCは通常は最小化しておく」): 既定=閉
   const fmtTipSeen = (() => { try { const v = extensionContext && extensionContext.globalState.get('fmtTipSeen'); return (v && typeof v === 'object') ? v : {}; } catch (_) { return {}; } })();   // v4.2.239: Format Meのtipを今日見たボタン
   const mdZoom = (extensionContext && Number(extensionContext.globalState.get('meDockZoom'))) || 1; // v3.1.16(俊克): Me Dock全体のズーム倍率(本家VS CodeでMe Dockが相対的に大きくなる件のバランス調整)
@@ -31003,6 +31023,36 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .title-actions{display:flex;align-items:center;gap:7px}
 /* ★v5.1.436(俊克 pm00:18 改良1「Me Dockの右上角に、VSCmの終了ボタンを付けよう。これを押せば、mGATEをそのままに終了できる…マウス派のために」): 右上角= Standards の右・押すと Cmd+Q と同じ(workbench.action.quit) */
 /* ★v5.1.448(俊克 pm06:51「Me Dockの⌘Qを廃止…mGATEの方が本家で、Me Dockにその分身を置く」): mGATE ロゴ= 押す→前へ・⌘/Ctrl+押す→終了・Shift+押す→ Barman を閉じる */.quit-btn{border:0;background:transparent;width:30px;height:30px;padding:0;margin-right:5px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;cursor:var(--meos-hand)}.quit-btn img{width:30px;height:30px;display:block}.quit-btn:hover img{filter:brightness(1.12) drop-shadow(0 0 2px rgba(217,58,58,.6))}
+/* v5.1.449: メニューバーの分身(mGATE menu)= 札＋押すと同じリスト */
+.mbm{margin:4px 0 6px;padding:0 2px}
+.mbm-head{display:flex;align-items:center;gap:5px}
+.mbm-fold{cursor:var(--meos-hand);color:#1e7fd6;font-size:11px;width:12px;text-align:center;user-select:none}
+.mbm-name{font-weight:800;font-size:11px;opacity:.8;display:none}
+.mbm.mbm-folded .mbm-fold{transform:rotate(-90deg)}
+.mbm.mbm-folded .mbm-name{display:inline}
+.mbm.mbm-folded .mbm-bar,.mbm.mbm-folded .mbm-list{display:none}
+.mbm-bar{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:calc(100% - 18px);cursor:var(--meos-hand);padding:2px 6px 2px 3px;border-radius:7px;background:color-mix(in srgb,var(--vscode-foreground) 10%,transparent)}
+.mbm-bar:hover{background:color-mix(in srgb,var(--vscode-foreground) 18%,transparent)}
+.mbm-logo{width:18px;height:18px;flex:0 0 auto}
+.mbm-label{background:#e98a2c;color:#fff;font-weight:700;font-size:12px;border-radius:5px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mbm-label.mbm-vsc{background:#7b4fd6}
+.mbm-label.mbm-idle{background:#8a8a8a}
+.mbm-caret{font-size:10px;opacity:.7;flex:0 0 auto}
+.mbm.mbm-open .mbm-caret{transform:rotate(180deg)}
+.mbm-list{display:none;margin:4px 0 0 17px;padding:4px 0;border-radius:8px;background:var(--vscode-menu-background,var(--vscode-editorWidget-background));color:var(--vscode-menu-foreground,var(--vscode-foreground));border:1px solid color-mix(in srgb,var(--vscode-foreground) 18%,transparent);box-shadow:0 2px 8px rgba(0,0,0,.35);max-height:60vh;overflow-y:auto}
+.mbm.mbm-open .mbm-list{display:block}
+.mbm-it{padding:2px 10px;white-space:pre;overflow:hidden;text-overflow:ellipsis;cursor:var(--meos-hand);font-size:12.5px;line-height:1.55}
+.mbm-it:hover{background:var(--vscode-menu-selectionBackground,#0a64d8);color:var(--vscode-menu-selectionForeground,#fff)}
+.mbm-it.mbm-off{opacity:.55;cursor:default}.mbm-it.mbm-off:hover{background:none;color:inherit}
+.mbm-it.mbm-ind{padding-left:24px}
+.mbm-sep{border-top:1px solid color-mix(in srgb,var(--vscode-foreground) 22%,transparent);margin:4px 8px}
+.mbm-sep.mbm-dash{border-top-style:dashed}
+.mbm-hd{padding:2px 10px;font-weight:800;font-size:12px;cursor:var(--meos-hand);user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbm-hd .mbm-tri{display:inline-block;width:12px;color:#1e7fd6}.mbm-hd.mbm-shut .mbm-tri{color:#2e9d3a}
+.mbm-hd .mbm-sq{display:inline-block;width:11px;height:9px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+.mbm-hd.mbm-sub{font-style:italic;padding-left:18px}
+.mbm-hd.mbm-empty{opacity:.45}
+.mbm-pill{background:#d93a3a;color:#fff;border-radius:5px;padding:0 5px}
 .standards-toggle{border:1px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;padding:3px 7px;line-height:1.2;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;cursor:var(--meos-hand)}
 .standards-toggle .standards-switch{width:30px;height:14px;border-radius:999px;background:var(--vscode-input-background);border:1px solid var(--vscode-panel-border);position:relative;box-sizing:border-box;display:inline-block;flex:0 0 auto;transition:background .12s ease,border-color .12s ease}
 .standards-toggle .standards-knob{width:10px;height:10px;border-radius:50%;background:var(--vscode-editor-foreground);opacity:.78;position:absolute;top:1px;left:1px;transition:left .12s ease,background .12s ease,opacity .12s ease}
@@ -32529,6 +32579,9 @@ color:#ffffff;z-index:4;padding:0}
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button></div></div>
 </div><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
 
+<!-- {* ▼mCN=dock_mbmirror // ★v5.1.449(俊克 pm07:44「メニューバーの分身を、Format MeとCurrent Meの間に入れる…クリックすると、メニューバーと同じリストを下に延ばす…Windows/Linuxユーザも全く同じ体験…macユーザは折り畳めるように」) *} -->
+<div class="mbm${_mbmUi.fold ? ' mbm-folded' : ''}${_mbmUi.open ? ' mbm-open' : ''}" id="mbm"><div class="mbm-head"><span class="mbm-fold" id="mbm-fold" data-tip="mGATE menu | Fold / unfold this copy of the menu bar (Mac users can keep it folded and use the real menu bar).">▼</span><span class="mbm-name" id="mbm-name">mGATE</span><span class="mbm-bar" id="mbm-bar" data-tip="mGATE menu | The same menu as the menu bar. Click to open / close the list below."><img class="mbm-logo" alt="" src="${meosMgateUri()}"><span class="mbm-label${meosHelperScheme() === 'vscode' ? ' mbm-vsc' : ''}" id="mbm-label">⏰</span><span class="mbm-caret">▾</span></span></div><div class="mbm-list" id="mbm-list"></div></div>
+<!-- {* ▲mCN=dock_mbmirror *} -->
 <!-- {* ▼mCN=dock_toc // 固定TOC(H-TOC) *} -->
 <div class="fixed-toc${htocOpen ? '' : ' htoc-closed'}" id="fixed-toc"><div class="toc-tools dock-lead" id="dock-lead"><span class="hidx-title tms-title" data-tip="Timed Me-System (TMS) | MeOS at its root: a membrane (Me) that the clock brings you back to. Write the next job inside, set the \u23f0, and it will find you.">Timed Me-System:</span><span class="hidx-title htoc-title">Hyper TOC:</span><button class="htoc-btn" id="htoc-btn" data-tip="Hyper TOC | Click to open or close the list. The number is how many items are not checked yet."><span class="htoc-ic">\ud83d\udcd1</span><span class="htoc-lab" id="htoc-lab">Hyper TOC</span><span class="htoc-n" id="htoc-n"></span><span class="htoc-arrow" id="htoc-arrow">${htocOpen ? '\u25b4' : '\u25be'}</span></button></div><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/><span class="htoc-ops"><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></span></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div></div>
 <!-- {* ▲mCN=dock_toc *} -->
@@ -32591,6 +32644,35 @@ const vscode=acquireVsCodeApi();let currentMode=${JSON.stringify(initial.mode)};
 let draftName=currentValue||'';let draftDirty=false;let currentLine=${JSON.stringify(initial.line || '')};let markerOn=${JSON.stringify(!!meDockCurrentLineMarkerActive)};
 let historyState={canBack:false,canForward:false};let currentColor='';let draftColor='';let flipMinusColor='';let flipPlusColor='';
 let meScope='me';
+// {* ▼mCN=dock_js_mbmirror // v5.1.449 メニューバーの分身 *}
+(function(){const box=document.getElementById('mbm');if(!box)return;const bar=document.getElementById('mbm-bar'),fold=document.getElementById('mbm-fold'),lab=document.getElementById('mbm-label'),list=document.getElementById('mbm-list');
+let menu=null;const shut={};
+function save(){vscode.postMessage({type:'mbMirrorUi',fold:box.classList.contains('mbm-folded'),open:box.classList.contains('mbm-open')});}
+function want(){vscode.postMessage({type:'mbMirrorWant',open:box.classList.contains('mbm-open')&&!box.classList.contains('mbm-folded')});}
+fold.addEventListener('click',ev=>{ev.preventDefault();box.classList.toggle('mbm-folded');save();want();});
+document.getElementById('mbm-name').addEventListener('click',ev=>{ev.preventDefault();box.classList.remove('mbm-folded');save();want();});
+bar.addEventListener('click',ev=>{ev.preventDefault();box.classList.toggle('mbm-open');save();want();});
+function el(c,t){const d=document.createElement('div');d.className=c;if(t!=null)d.textContent=t;return d;}
+function item(it,ind){const d=el('mbm-it'+(ind?' mbm-ind':'')+(it.id?'':' mbm-off'));if(it.pill){d.appendChild(document.createTextNode(it.pre||''));const p=document.createElement('span');p.className='mbm-pill';p.textContent=it.pill;d.appendChild(p);d.appendChild(document.createTextNode(it.post||''));}else d.textContent=it.title||'';
+ if(it.id)d.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'mbPick',id:it.id});});return d;}
+function head(key,text,cls,sq,empty){const h=el('mbm-hd'+(cls?' '+cls:'')+(shut[key]?' mbm-shut':'')+(empty?' mbm-empty':''));const tr=document.createElement('span');tr.className='mbm-tri';tr.textContent=shut[key]?'▶':'▼';h.appendChild(tr);
+ if(sq){const q=document.createElement('span');q.className='mbm-sq';q.style.background=sq;h.appendChild(q);}h.appendChild(document.createTextNode(text));h.addEventListener('click',ev=>{ev.preventDefault();shut[key]=!shut[key];render();});return h;}
+function render(){if(!menu)return;const st=list.scrollTop;list.textContent='';let sec='';
+ for(const it of menu){if(!it)continue;
+  if(it.clockAll){sec='clk';list.appendChild(head('clk','⏰'));continue;}
+  if(it.fusenAll){sec='fusen';list.appendChild(head('fusen','FUSEN'));continue;}
+  if(it.tagAll){sec='tag';if(!('tag' in shut))shut.tag=true;list.appendChild(head('tag','TAG'));continue;}
+  if(it.sep){if(it.cz&&sec==='clk'&&shut.clk)continue;if(it.fz&&shut.fusen)continue;sec=(it.cz||it.fz)?sec:'';list.appendChild(el('mbm-sep'+(it.dd||it.cz?' mbm-dash':'')));continue;}
+  if(it.clk){if(sec==='clk'&&shut.clk)continue;list.appendChild(item(it));continue;}
+  if(it.fusen){if(shut.fusen)continue;const k='f:'+it.fusen,n=(it.items||[]).length;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.fusen,'mbm-sub',it.color,!n));if(!shut[k])for(const x of it.items||[])list.appendChild(item(x,1));continue;}
+  if(it.tagPager){if(shut.tag)continue;for(const r of it.rows||[])list.appendChild(item(r,r.indent));continue;}
+  if(it.tg){if(shut.tag)continue;list.appendChild(item(it));continue;}
+  if(it.sub){const k='s:'+it.title;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.title));if(!shut[k])for(const x of it.sub)list.appendChild(item(x,1));continue;}
+  list.appendChild(item(it));}
+ list.scrollTop=st;}
+window.addEventListener('message',e=>{const m=e.data;if(!m||m.type!=='mbMirror')return;lab.textContent=m.text||'⏰';lab.classList.toggle('mbm-idle',!m.text);if(m.menu){menu=m.menu;render();}});
+vscode.postMessage({type:'mbMirrorReq'});want();})();
+// {* ▲mCN=dock_js_mbmirror *}
 (function(){const q=document.getElementById('quit-btn');if(q)q.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'meosMgate',how:(ev.metaKey||ev.ctrlKey)?'quit':(ev.shiftKey?'close':'front')});});})();/* v5.1.436: 終了ボタン */
 const closeButton=document.querySelector('.close'),standardsToggle=document.getElementById('standards-toggle'),title=document.getElementById('inline-title'),
 editModeSelect=document.getElementById('edit-mode-select'),zoomScopeIndicator=document.getElementById('zoom-scope-indicator'),
@@ -37353,6 +37435,10 @@ function toggleMeDock(editorOverride) {
             try { extensionContext.globalState.update('meDockWidthRatio', bpx / T); } catch (_) { }
             meosDbg('[dockWidth] 枠が最小 ' + Math.round(b) + 'px → ' + bpx + 'px'); } } } } catch (_) { } return; }
     if (message && message.type === 'mdTileJump') { await meosPuzzleTag(message.ch); return; }   // v4.2.562
+    if (message && message.type === 'mbPick') { meosMenuBarPick(message.id); return; }   // v5.1.449: 分身のリストを押した= メニューバーと同じ口
+    if (message && message.type === 'mbMirrorUi') { try { await extensionContext.globalState.update('meosMbMirrorUi', { fold: !!message.fold, open: !!message.open }); } catch (_) { } return; }
+    if (message && message.type === 'mbMirrorWant') { _meosMbMirror.want = !!message.open; if (_meosMbMirror.want) { _meosMbMirror.menuKey = ''; meosMbMirrorPost(_meosMbMirror.rawText, _meosMbMirror.rawMenu); } return; }
+    if (message && message.type === 'mbMirrorReq') { _meosMbMirror.menuKey = ''; meosMbMirrorPost(_meosMbMirror.rawText, _meosMbMirror.rawMenu); return; }
     if (message && message.type === 'meosMgate') { const how = message.how;   // v5.1.448: Me Dock の mGATE(本家= メニューバーの下の mGATE と同じ扱い)
       if (how === 'quit') { try { await vscode.commands.executeCommand('workbench.action.quit'); } catch (_) { } }
       else if (how === 'close') { try { if (meosRealHost()) { const fs = require('fs'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(require('path').join(meosHelperDir(), 'dockout-hide'), String(Date.now())); } } catch (_) { } }
