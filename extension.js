@@ -39375,11 +39375,18 @@ function meosTcwLayout(lines, W, draw) {
   // ★v5.1.430(俊克 11.03 am09:11「結合ができると今まで言っていたのに、折り返しができるようになったけど、結合はできないと言うのは、筋が通らない」→「横の結合から作って」):
   //   横の結合の印(🤝→N)の在る表も入れる= そのセルは N 列分の幅(間の縦線の分も)で折り返し、間の縦線を描かない。縦の結合(🤝↓N)とほかのコメントの在る表は今まで通り
   const HM = /<!--\s*\u{1F91D}\u2192\s*(\d+)\s*-->/u;
-  if (lines.some(t => t.replace(new RegExp(HM.source, 'gu'), '').indexOf('<!--') >= 0)) return null;
+  // ★v5.1.432(俊克 am09:53「縦結合のケースの折り返しを進めて」): 縦の結合(🤝↓N)も入れる= 結合のセルの段を、下の行の高さへ順に割り振る(足りなければ最後の行を高くする)・間の細い横線を引かない
+  const VM = /<!--\s*\u{1F91D}\u2193\s*(\d+)\s*-->/u;
+  if (lines.some(t => t.replace(new RegExp(HM.source, 'gu'), '').replace(new RegExp(VM.source, 'gu'), '').indexOf('<!--') >= 0)) return null;
   const rs = lines.map(t => meosSplitTableRow(t)); const sep = rs.findIndex(r => meosIsTableSeparator(r)); if (sep < 0) return null;
   const nc = Math.max(...rs.map(r => r.length)); const sty = rs.map((r, i) => i === sep ? [] : r.map(x => meosTcwStyled(x))); const vis = rs.map((r, i) => i === sep ? r : sty[i].map(o => o.text));   // v5.1.208: 飾り付き
   const span = rs.map((r, i) => { const a = new Array(nc).fill(1); if (i === sep) return a; for (let k = 0; k < nc; k++) { if (a[k] === 0) continue; const m = HM.exec(r[k] || ''); if (m) { const n = Math.max(1, Math.min(nc - k, parseInt(m[1], 10) || 1)); a[k] = n; for (let q = k + 1; q < k + n; q++) a[q] = 0; } } return a; });   // v5.1.430: n= 結合の頭の列数・0= 頭に覆われた列
-  span.forEach((a, i) => { if (i !== sep) a.forEach((n, k) => { if (n > 1 && typeof vis[i][k] === 'string') vis[i][k] = vis[i][k].replace(/^\s+/, ''); }); });   // 印を外した後の頭の空白
+  // v5.1.432: 縦の結合= vh[i][k]= 頭がまたがる行の数・vc[q][k]= 頭に覆われた(下の)セル。覆われた行も頭と同じ横の広がり(span)にする。区切りの行は越えない
+  const vh = rs.map(() => new Array(nc).fill(0)), vc = rs.map(() => new Array(nc).fill(false));
+  rs.forEach((r, i) => { if (i === sep) return; for (let k = 0; k < nc; k++) { if (vc[i][k] || span[i][k] === 0) continue; const m = VM.exec(r[k] || ''); if (!m) continue; const M = Math.max(1, parseInt(m[1], 10) || 1), n = span[i][k]; let got = 1;
+    for (let q = i + 1; q < rs.length && q < i + M; q++) { if (q === sep) break; for (let u = k; u < k + n && u < nc; u++) { vc[q][u] = true; span[q][u] = u === k ? n : 0; } got++; }
+    if (got > 1) vh[i][k] = got; } });
+  span.forEach((a, i) => { if (i !== sep) a.forEach((n, k) => { if ((n > 1 || vh[i][k] > 1) && typeof vis[i][k] === 'string') { const t0 = vis[i][k], t1 = t0.replace(/^\s+/, ''); if (t1 !== t0) { vis[i][k] = t1; if (sty[i][k] && sty[i][k].st) sty[i][k] = { text: t1, st: sty[i][k].st.slice(Array.from(t0).length - Array.from(t1).length) }; } } }); });   // 印を外した後の頭の空白(飾りも同じだけ詰める)
   const nat = new Array(nc).fill(1); vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { if (span[i][k] === 1) nat[k] = Math.max(nat[k], Math.ceil(meosStrWidth(t))); }); });
   vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { const n = span[i][k]; if (n > 1) { const need = Math.ceil(meosStrWidth(t)); let have = 3 * (n - 1); for (let q = k; q < k + n; q++) have += nat[q]; if (need > have) { const d = need - have; for (let q = 0; q < n; q++) nat[k + q] += Math.floor(d / n) + (q >= n - (d % n) ? 1 : 0); } } }); });   // 結合のセルが収まらない分は、またがる列へ等しく配る(v5.1.431 俊克「xとyを等幅にすべき」: 430 は最後の列へ全部→ 1,41 になった)
   const tot = (x) => x.reduce((p, q) => p + q, 0) + 3 * nc + 1;
@@ -39397,17 +39404,28 @@ function meosTcwLayout(lines, W, draw) {
   const c = nat.slice(); let g = 0; while (tot(c) > W - 1 && g++ < 4000) { const k = c.indexOf(Math.max(...c)); if (c[k] <= 3) break; c[k]--; }
   if (tot(c) > W - 1) return null;
   const al = rs[sep].map(x => { const t = String(x || '').replace(/\s/g, ''); const l = t.startsWith(':'), r = t.length > 1 && t.endsWith(':'); return (l && r) ? 'c' : (r ? 'r' : 'l'); });   // v5.1.207: 揃えの印
+  const capRow = (i, k) => { const sp = span[i]; let w = 3 * (sp[k] - 1); for (let q = k; q < k + sp[k]; q++) w += c[q]; return w; };   // v5.1.430: 結合のセルは N 列分の幅
+  const styOf = (i, k, segs) => { const full = Array.from((vis[i][k] || '')), fs = (sty[i][k] && sty[i][k].st) || []; let p = 0;
+    return segs.map(seg => { const a = Array.from(seg); if (a.length && full.slice(p, p + a.length).join('') !== seg && full[p] === ' ') p++; const o = fs.slice(p, p + a.length); p += a.length; return o; }); };
+  // v5.1.432: 先に各行の段(縦の結合のセルを除く)を出し、縦の結合のセルの段を上の行から順に詰める
+  const SG = vis.map((r, i) => i === sep ? null : c.map((x, k) => (span[i][k] === 0 || vc[i][k] || vh[i][k] > 1) ? [] : meosTcwSegs(r[k] || '', capRow(i, k))));
+  const ST = SG.map((sg, i) => i === sep ? null : sg.map((segs, k) => styOf(i, k, segs)));
+  const HH = SG.map((sg, i) => i === sep ? 1 : Math.max(1, ...sg.map(q => q.length)));
+  // 縦の結合の頭の行= ソースに文が全部入っている→ Monaco はその行を何段にも折る(段の数は変えられない)= 頭の行の高さを少なくともその段にしてから詰める
+  vh.forEach((a, i) => { if (a.some(M => M > 1)) HH[i] = Math.max(HH[i], meosTcwRowsOf(lines[i], W)); });
+  vh.forEach((a, i) => a.forEach((M, k) => { if (M < 2) return; const segs = meosTcwSegs(vis[i][k] || '', capRow(i, k)), st = styOf(i, k, segs); let at = 0;
+    for (let q = i; q < i + M; q++) { const last = q === i + M - 1, take = last ? segs.length - at : Math.min(HH[q], segs.length - at); SG[q][k] = segs.slice(at, at + take); ST[q][k] = st.slice(at, at + take); at += take; if (take > HH[q]) HH[q] = take; } }));
   const rows = vis.map((r, i) => {
     if (i === sep) return { vis: ['|' + c.map(x => '-'.repeat(x + 2)).join('|') + '|'], h: 1, sep: true };
-    const sp = span[i], capOf = (k) => { let w = 3 * (sp[k] - 1); for (let q = k; q < k + sp[k]; q++) w += c[q]; return w; };   // v5.1.430: 結合のセルは N 列分の幅
-    const sg = c.map((x, k) => sp[k] === 0 ? [] : meosTcwSegs(r[k] || '', capOf(k))); const h = Math.max(...sg.map(q => q.length)); const v = [];
+    const sp = span[i], capOf = (k) => capRow(i, k);
+    const sg = SG[i]; const h = HH[i]; const v = [];
     const gk = c.map((x, k) => k).filter(k => sp[k] > 0), gc = gk.map(capOf), ga = gk.map(k => al[k]);
     for (let j = 0; j < h; j++) v.push(meosTcwRowStr(gk.map(k => sg[k][j] || ''), gc, ga));
     // ★v5.1.208: 描く駒= 縦線と、セルの字を飾りの同じ塊ごとに、桁の位置(半角=1)を決めて置く(1本の字で描くと飾りを部分に掛けられない)。
     //   縦線は目標の桁そのもの(端数を空白で丸めない)= 全角1.67の端数で縦線が揺れない
     const P = [0]; for (let k = 0; k < c.length; k++) P.push(P[k] + c[k] + 3);
-    const stOf = c.map((x, k) => { const full = Array.from((r[k] || '')), fs = (sty[i][k] && sty[i][k].st) || []; let p = 0;
-      return sg[k].map(seg => { const a = Array.from(seg); if (a.length && full.slice(p, p + a.length).join('') !== seg && full[p] === ' ') p++; const o = fs.slice(p, p + a.length); p += a.length; return o; }); });
+    const stOf = ST[i];
+    const gaps = []; if (i + 1 < rs.length && i + 1 !== sep) for (let k = 0; k < nc; k++) if (sp[k] > 0 && vc[i + 1][k] && (vh[i][k] > 1 || vc[i][k])) gaps.push([P[k] + 1, P[k + sp[k]]]);   // v5.1.432: 縦の結合が下へ続く列= この行の下の細い線を引かない
     const pc = [];
     for (let j = 0; j < h; j++) { const row = P.map((x, b) => ({ x, t: '|', st: 'p', b })).filter(o => !(o.b > 0 && o.b < nc && sp[o.b] === 0)).map(o => ({ x: o.x, t: o.t, st: o.st }));   // v5.1.430: 結合の中の縦線は描かない
       c.forEach((cw0, k) => { if (sp[k] === 0) return; const cw = capOf(k); const seg = sg[k][j] || ''; if (!seg) return; const a = Array.from(seg), ss = stOf[k][j] || [], w0 = meosStrWidth(seg), free = Math.max(0, cw - w0);
@@ -39415,7 +39433,7 @@ function meosTcwLayout(lines, W, draw) {
         const flush = () => { if (run) { row.push({ x, t: run, st: rs0 || '' }); x += meosStrWidth(run); } run = ''; };
         a.forEach((u, q) => { const s0 = ss[q] || ''; if (rs0 !== null && s0 !== rs0) flush(); rs0 = s0; run += u; }); flush(); });
       pc.push(row); }
-    return { vis: v, h, pc };
+    return { vis: v, h, pc, gaps };
   });
   return { c, rows, sep, nc };
 }
@@ -39512,8 +39530,9 @@ function meosApplyTableCellWrapDecorations(editor) {
         // ★v5.1.199(俊克 10.26 am00:13 改良1「セル折り返しをしたケースで、細い横罫線が引かれていない」): 行の罫線の装飾(手を引かせた)と同じ線を自分で引く=
         //   各行が取っている段(ソースの段 R)の下端に細い線(panel.border 2px)・区切りの行は --- を描かず下に太い線(foreground 3px)・表の上端に細い線
         const tw = L.c.reduce((p, q) => p + q, 0) + 3 * L.nc + 1, em = (x) => Math.round(x * lhEm * 1000) / 1000;
-        const rule = (ln2, rowsDown, px, col) => rules.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '',
-          textDecoration: 'none; position: absolute; left: 0; top: calc(' + em(rowsDown) + 'em - ' + px + 'px); width: ' + tw + 'ch; height: ' + px + 'px; background: ' + col + '; z-index: 4; pointer-events: none;' } } });
+        const rule = (ln2, rowsDown, px, col, gaps) => { const segs = []; let x0 = 0; (gaps || []).slice().sort((a, b) => a[0] - b[0]).forEach(g => { if (g[0] > x0) segs.push([x0, g[0]]); x0 = Math.max(x0, g[1]); }); segs.push([x0, tw]);   // v5.1.432: 縦の結合の所は線を抜く
+          segs.forEach(([a, b]) => { if (b - a <= 0) return; rules.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: '',
+          textDecoration: 'none; position: absolute; left: ' + a + 'ch; top: calc(' + em(rowsDown) + 'em - ' + px + 'px); width: ' + (b - a) + 'ch; height: ' + px + 'px; background: ' + col + '; z-index: 4; pointer-events: none;' } } }); }); };
         rule(blk.start, 0, 2, 'var(--vscode-panel-border)');   // 上端= 最初の行の上に
         for (let i = 0; i < lines.length; i++) {
           const ln2 = blk.start + i, t = lines[i]; set.add(ln2); hides.push(new vscode.Range(ln2, 0, ln2, t.length));
@@ -39525,7 +39544,7 @@ function meosApplyTableCellWrapDecorations(editor) {
           // ★v5.1.274(俊克 pm06:58「115行目と116行目の全体を1つの行のように見せて、文字を今の薄い罫線の辺りを中心に」): 見出しが自分の段に収まる時(区切りの行が空く時)は、
           //   見出しの段＋区切りの行を1つの見出しの帯にする= 細い線を引かず、字を帯の上下の真ん中へ下げ、縦線は帯の上から下まで(Excel の上下中央揃え)
           const headBand = (i === L.sep - 1) && !headOnSep, shift = headBand ? (Ri + 1 - L.rows[i].h) / 2 : 0;
-          if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else if (!headOnSep && !headBand) rule(ln2, Ri, 2, 'var(--vscode-panel-border)');
+          if (L.rows[i].sep) rule(ln2, Ri, 3, 'var(--vscode-foreground)'); else if (!headOnSep && !headBand) rule(ln2, Ri, 2, 'var(--vscode-panel-border)', L.rows[i].gaps);
           if (headBand && L.rows[i].pc && L.rows[i].pc[0]) for (let k = 0; k <= Ri; k++) L.rows[i].pc[0].filter(pz => pz.st === 'p').forEach(pz => pieces.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: pz.t,
             textDecoration: 'none; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + (Math.round(k * lhEm * 1000) / 1000) + 'em; white-space: pre; z-index: 3; pointer-events: none; color: ' + fg + ' !important; -webkit-text-fill-color: ' + fg + ' !important;' } } }));
           if (L.rows[i].sep) { logs.push((ln2 + 1) + ':sep'); continue; }   // 区切りの行の --- は描かない(太い線だけ)
