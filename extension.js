@@ -14202,6 +14202,9 @@ function meosVHelperHearOff() {   // 他のアプリ(or 閉じている間のヘ
     if (!(t > seen)) return;
     if (extensionContext) extensionContext.globalState.update('meosVHelperOffSeen', t);
     if (m.pid === process.pid) return;
+    // ★v5.1.444(俊克 pm02:10「今まで2つメニューバーが出ていたのに、なぜ設定がオフになったのかな?」): 知らせは「今もう片方が止めた」ためだけの物= 古い知らせ(9.25 の VSCodium の物が残っていた)を、
+    //   覚えの無いアプリ(見た印 meosVHelperOffSeen が空)が後から読んで自分も切っていた→ 2分より古い知らせは聞かない
+    if (Date.now() - t > 120000) { meosDbg('[vhelper] 古い止めの知らせ(' + new Date(t).toISOString() + ' ' + (m.app || '?') + ')は聞かない'); return; }
     if (meosVHelperOn() || meosHelperOn()) { meosDbg('[vhelper] ' + (m.app || '?') + ' が止めた → こちらも切る'); meosVHelperSet(false, true); }
   } catch (_) { }
 }
