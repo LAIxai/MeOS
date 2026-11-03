@@ -31024,7 +31024,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 /* ★v5.1.436(俊克 pm00:18 改良1「Me Dockの右上角に、VSCmの終了ボタンを付けよう。これを押せば、mGATEをそのままに終了できる…マウス派のために」): 右上角= Standards の右・押すと Cmd+Q と同じ(workbench.action.quit) */
 /* ★v5.1.448(俊克 pm06:51「Me Dockの⌘Qを廃止…mGATEの方が本家で、Me Dockにその分身を置く」): mGATE ロゴ= 押す→前へ・⌘/Ctrl+押す→終了・Shift+押す→ Barman を閉じる */.quit-btn{border:0;background:transparent;width:30px;height:30px;padding:0;margin-right:5px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;cursor:var(--meos-hand)}.quit-btn img{width:30px;height:30px;display:block}.quit-btn:hover img{filter:brightness(1.12) drop-shadow(0 0 2px rgba(217,58,58,.6))}
 /* v5.1.449: メニューバーの分身(mGATE menu)= 札＋押すと同じリスト */
-.mbm{margin:4px 0 0;padding:0 2px}   /* v5.1.451: 固定の箱の中= 本文と同じ縮尺を掛ける(450 は縮尺の外で馬鹿でかくなった) */
+.mbm{margin:4px 0 0;padding:5px 8px;border:1px solid var(--meos-frame);border-radius:8px;background:var(--vscode-editor-background);font-size:13px}.mbm .mbm-bar{flex:1 1 auto;max-width:none}.mbm .mbm-label{flex:1 1 auto}.mbm.mbm-folded{padding:3px 8px}   /* v5.1.452(俊克 pm08:30「もう一声」): 他の段と同じ枠に入れ、札は枠の幅いっぱいに */   /* v5.1.451: 固定の箱の中= 本文と同じ縮尺を掛ける(450 は縮尺の外で馬鹿でかくなった) */
 .mbm-head{display:flex;align-items:center;gap:5px}
 .mbm-fold{cursor:var(--meos-hand);color:#1e7fd6;font-size:11px;width:12px;text-align:center;user-select:none}
 .mbm-name{font-weight:800;font-size:11px;opacity:.8;display:none}
