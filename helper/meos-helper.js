@@ -303,7 +303,9 @@ function run(argv) {
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
-    try { const _q = pieceHit(); if (_q === '\u0000quit') { hlog('[menu] 札の終了ボタンを押した→ 閉じてエディターを終える(Barman はそのまま)'); m.cancelTracking; edQuit(); return; }
+    try { const _q = pieceHit(); if (_q === '\u0000logo') { m.cancelTracking; const _cm = (fl & 0x100000) !== 0, _sh = (fl & 0x20000) !== 0;
+        if (_cm) { hlog('[menu] 札のロゴを Cmd クリック→ エディターを終える'); edQuit(); } else if (_sh) { hlog('[menu] 札のロゴを Shift クリック→ Barman を閉じる'); dockOutHide(); } else { hlog('[menu] 札のロゴをクリック→ 最前面/起動'); edLaunch(); } return; }   // v5.1.463
+      if (_q === '\u0000quit') { hlog('[menu] 札の終了ボタンを押した→ 閉じてエディターを終える(Barman はそのまま)'); m.cancelTracking; edQuit(); return; }
       if (_q === '\u0000launch') { hlog('[menu] 札の自分のアイコンを押した→ 何もしない(名札)'); m.cancelTracking; return; }   // ★v5.1.446(俊克「VSCm/VSCodeロゴは自分自身が何者かだけを示す(何も起動しない)」)
       if (_q === '\u0000launch2') { hlog('[menu] 札のもう一方のエディターを押した→ 起こす'); m.cancelTracking; launchBid(otherBundle()); return; } } catch (e) {}   // v5.1.439   // v5.1.437
     // ★v5.1.438(俊克 pm00:50 改良1「2つのパズルボタンを押すと、mGATEが一瞬消えてから再描画される。mGATEをクリックした時は自然に切り替る。同じように」): ピースを押した時は Barman を閉じない(Barman のタイルと同じ= 出しっぱなしの時だけワープで消す)
@@ -707,7 +709,7 @@ function run(argv) {
   // ★v5.1.407(俊克 pm00:00「1つ前のも追加…[Ⓣ][c]…[Ⓣ]をクリックすれば[c][Ⓣ]のように入れ替る」): [1つ前(白い点)][最後(🔴)]の2枚。左を押すとその字へ飛び、2枚が入れ替わる(拡張の meosPuzzleLastSet が1つ前を送る)
   // ★v5.1.402(俊克 11.02 am10:27 改良1「[c]にワープしたあとに、他の場所にタイマーなどで飛んだ時、このメニューバーの[c]をクリックすると、戻れるように」):
   //   札は押すとメニューが開く→ 開く直前(menuWillOpen)にポインターが札の右端のピースの上なら、閉じて /puzzle で拡張へ(Opt+クリックと同じ作り)。ピースの場所= 札の枠の中で絵は真ん中寄せ→ 右端から余白と幅で
-  let pieceImgW = 0;
+  let pieceImgW = 0, imgAllW = 0, logoW = 0;   // v5.1.463: 札の絵の全幅と左端ロゴの幅(ロゴの当たり)
   // ★v5.1.437(俊克 pm00:23 改良2「メニューバーにも、⏻ボタンを付けよう。ここをクリックしても、mGATEは消えないようにする」): 札の右端= 終了ボタン(⌘Q)。押すとエディターだけ終える(メニューは開かず Barman も消さない)
   const QUIT_W = 19, LAUNCH_W = 19;   // v5.1.442: どちらも 隙間3＋16   // 隙間3＋ボタン20 / v5.1.439: 起動ボタン= 隙間3＋アイコン16
   let edRunAt = 0, edRun = false;
@@ -730,7 +732,9 @@ function run(argv) {
   //   いつも[自分のアイコン][⌘Q]= アイコンは動いていれば明るく(押す=前へ出す)・閉じていれば暗く(押す=起こす)。⌘Q は動いている時だけ
   // ★v5.1.447(俊克 pm06:31「⌘Qボタンを廃止、mGATEをcmdクリックで終了にしよう」): 札は[自分のアイコン]だけ
   const ctlBuild = () => { const a = []; if (urlOf(edBundle())) a.push('launch'); return a; };
-  const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
+  const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !imgAllW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
+    if (logoW && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height) { const xl = r.origin.x + Math.max(0, (r.size.width - imgAllW) / 2); if (p.x >= r.origin.x && p.x <= xl + logoW) return '\u0000logo'; }   // ★v5.1.463(俊克 am02:10「VSCodeを閉じて、mGATEも消した時、VSCodeを起動できない」): 札の左端の小さいロゴ= Barman のロゴと同じ(クリック=最前面/起動・Cmd=終了・Shift=Barmanを閉じる)
+    if (!pieceImgW) return false;
     const pad = Math.max(0, (r.size.width - pieceImgW) / 2), xr = r.origin.x + r.size.width - pad; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
     for (let j = 0; j < ctlItems.length; j++) { const rx = xr - j * 19; if (p.x >= rx - 16 - 1 && p.x <= rx + (j === 0 ? pad : 1)) return '\u0000' + ctlItems[ctlItems.length - 1 - j]; }   // v5.1.443: 右から ⌘Q/起動・もう一方   // v5.1.442: 右端= ⌘Q・その左= 起動
     if (!pzl.ch) return '';
@@ -867,6 +871,7 @@ function run(argv) {
       const PW = (pzl.ch ? (pzl.prev ? 34 : 17) : 0) + QW;   // v5.1.407: 1つ前が在れば2枚   // v5.1.401: 右端のピースの分(隙間3＋ピース14 ← v5.1.403 15)
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W + GW + PW, H));
       pieceImgW = PW ? W + GW + PW : 0;   // v5.1.402
+      imgAllW = W + GW + PW; logoW = gi ? H + 1 : 0;   // v5.1.463
       img.lockFocus;
       if (gi) { try { (lastDark ? gi.d : gi.l).drawInRectFromRectOperationFraction($.NSMakeRect(0, 0, H, H), $.NSZeroRect, 2, 1); const tf = $.NSAffineTransform.transform; tf.translateXByYBy(GW, 0); tf.concat; } catch (e) {} }
       (idle ? gray : (anchor ? blue : (myScheme === 'vscode' ? purple : orange))).setFill;
