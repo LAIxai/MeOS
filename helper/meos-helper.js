@@ -726,7 +726,9 @@ function run(argv) {
   const urlOf = (bid) => { try { const u = $.NSWorkspace.sharedWorkspace.URLForApplicationWithBundleIdentifier(bid); return (u && !u.isNil()) ? u : null; } catch (e) { return null; } };
   const iconOf = (bid) => { if (iconCache[bid] !== undefined) return iconCache[bid]; const u = urlOf(bid); let ic = null; try { if (u) ic = $.NSWorkspace.sharedWorkspace.iconForFile(u.path); } catch (e) {} iconCache[bid] = ic; return ic; };
   const launchBid = (bid) => { try { const u = urlOf(bid); if (u) { $.NSWorkspace.sharedWorkspace.openURL(u); hlog('[launch] ' + bid + ' を起こした'); } } catch (e) { hlog('[launch] 失敗 ' + e); } runOf[bid] = null; };
-  const ctlBuild = () => { const a = []; const ob = otherBundle(); if (urlOf(ob) && !isRunning(ob)) a.push('launch2'); if (edRunning()) a.push('quit'); else if (urlOf(edBundle())) a.push('launch'); return a; };
+  // ★v5.1.445(俊克 pm05:36 改良1「どっちがVSCmかが分からない…自分自身のロゴを表示…起動中は明るい色、閉じている時は暗い色…自分のことだけをする」): もう一方のエディターの起動(launch2)はやめ、
+  //   いつも[自分のアイコン][⌘Q]= アイコンは動いていれば明るく(押す=前へ出す)・閉じていれば暗く(押す=起こす)。⌘Q は動いている時だけ
+  const ctlBuild = () => { const a = []; if (urlOf(edBundle())) a.push('launch'); if (edRunning()) a.push('quit'); return a; };
   const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
     const pad = Math.max(0, (r.size.width - pieceImgW) / 2), xr = r.origin.x + r.size.width - pad; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
     for (let j = 0; j < ctlItems.length; j++) { const rx = xr - j * 19; if (p.x >= rx - 16 - 1 && p.x <= rx + (j === 0 ? pad : 1)) return '\u0000' + ctlItems[ctlItems.length - 1 - j]; }   // v5.1.443: 右から ⌘Q/起動・もう一方   // v5.1.442: 右端= ⌘Q・その左= 起動
@@ -782,9 +784,11 @@ function run(argv) {
   //   構え(arm)が点いた時に出し、離れても消さない(pin)。消すのは= メニューバーの地を押した/タイルでワープした/最後の字が変わった(キーでワープした)/メニューを開いた
   const dockOutOnBar = () => { try { const p = $.NSEvent.mouseLocation; try { const b = item.button, bw = b.window; if (bw && !bw.isNil()) { const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $())); if (p.x >= r.origin.x && p.x <= r.origin.x + r.size.width && p.y >= r.origin.y - 1 && p.y <= r.origin.y + r.size.height + 1) return false; } } catch (e) {}   // v5.1.437: 自分の札は地でない(札の終了ボタンで Barman を消さない)
     const sc = $.NSScreen.screens; for (let k = 0; k < sc.count; k++) { const f = sc.objectAtIndex(k).frame, v = sc.objectAtIndex(k).visibleFrame; if (p.x < f.origin.x || p.x > f.origin.x + f.size.width) continue; const top = f.origin.y + f.size.height, bar = Math.max(22, top - (v.origin.y + v.size.height)); return p.y >= top - bar - 1 && p.y <= top + 1; } } catch (e) {} return false; };
+  // ★v5.1.445(俊克 pm05:36 改良2「mGATEのパズル以外の背景をクリックすると…閉じずに、ウィンドウを最前面に出す…macのDockをクリックする代わりに、ここですべてをコントロールしたい」): 自分の Barman の中でタイルの外を押したら edLaunch(動いていれば前へ・閉じていれば起こす)
+  const dockOutOnWin = () => { try { if (!dockOut.win) return false; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; return p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height; } catch (e) { return false; } };
   const dockOutFast = () => { if (!dockOut.shown) return; dockOutDrain(); const dn = dockOutCnt(1), up = dockOutCnt(2);
     if (dn !== dockOut.dnN) { dockOut.dnN = dn; dockOut.downAt = dockOutAt(); }
-    if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else if (dockOut.pin && dockOutOnBar()) { hlog('[dockOut] メニューバーの地を押した→ 消す'); dockOutHide(); } } };
+    if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else if (dockOutOnWin()) { hlog('[dockOut] タイルの外(地)を押した→ エディターを前へ(消さない)'); edLaunch(); } else if (dockOut.pin && dockOutOnBar()) { hlog('[dockOut] メニューバーの地を押した→ 消す'); dockOutHide(); } } };
   ObjC.registerSubclass({ name: 'MeOSDockOutT', methods: { 'fast:': { types: ['void', ['id']], implementation: function (t) { try { dockOutFast(); } catch (e) {} } } } });
   const dockOutTgt = $.MeOSDockOutT.alloc.init;
   const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
@@ -801,12 +805,12 @@ function run(argv) {
     const w = dockOutBuild(); try { w.setContentSize($.NSMakeSize(doW(doOrd().length), DO_TH + DO_PAD * 2)); } catch (e) {} const f = w.frame, pad = Math.max(0, (r.size.width - pieceImgW) / 2), x1 = r.origin.x + r.size.width - pad;
     let x = x1 - f.size.width; try { const sf = bw.screen.visibleFrame; x = Math.max(sf.origin.x + 4, Math.min(x, sf.origin.x + sf.size.width - f.size.width - 4)); } catch (e) {}
     w.setFrameOrigin($.NSMakePoint(x, r.origin.y - f.size.height - 2)); dockOutPaint(); w.orderFrontRegardless; if (!dockOut.ft) { dockOut.dnN = dockOutCnt(1); dockOut.upN = dockOutCnt(2); dockOut.downAt = -1; dockOut.ft = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, dockOutTgt, 'fast:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(dockOut.ft, $.NSRunLoopCommonModes); } if (!dockOut.shown) hlog('[dockOut] 開いた'); dockOut.shown = true; dockOut.leaveAt = 0; } catch (e) { hlog('[dockOut] 開けない ' + e); } };
-  const dockOutTick = () => { if (!pzl.ch || String(pzl.ord || '').length !== 7) { dockOutHide(); return; } let tr = false; try { tr = tracking(); } catch (e) {} if (tr && Date.now() - pieceClickAt > 600) { dockOutHide(); return; }   // v5.1.438: ピースを押した直後の一瞬の「メニューが開いた」では閉じない
+  const dockOutTick = () => { if (!pzl.ch || String(pzl.ord || '').length !== 7) { dockOutHide(); return; } let tr = false; try { tr = tracking(); } catch (e) {} if (tr && Date.now() - pieceClickAt > 600) { if (dockOut.shown) hlog('[dockOut] メニューが開いている→ 消す'); dockOutHide(); return; }   // v5.1.438: ピースを押した直後の一瞬の「メニューが開いた」では閉じない
     const _ph = pieceHit(), onPiece = typeof _ph === 'string' && !!_ph && _ph.charAt(0) !== '\u0000'; let onWin = false;   // v5.1.437: 終了ボタンの上では出さない
     if (dockOut.shown && dockOut.win) { try { const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; onWin = p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height + 4; } catch (e) {} }
     if (onPiece) { if (!dockOut.shown) dockOutShow(); dockOut.leaveAt = 0; return; }
     if (!dockOut.shown) return; if (onWin || dockOut.pin) { dockOut.leaveAt = 0; return; }
-    const now = Date.now(); if (!dockOut.leaveAt) dockOut.leaveAt = now; else if (now - dockOut.leaveAt > 500) dockOutHide(); };
+    const now = Date.now(); if (!dockOut.leaveAt) dockOut.leaveAt = now; else if (now - dockOut.leaveAt > 500) { hlog('[dockOut] 離れて0.5秒→ 消す'); dockOutHide(); } };
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
@@ -842,7 +846,7 @@ function run(argv) {
       } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
-    const pk = pzl.ch + pzl.lv + pzl.prev + (edRunning() ? 'Q' : '') + (isRunning(otherBundle()) ? 'O' : '');
+    const pk = pzl.ch + pzl.lv + pzl.prev + (edRunning() ? 'Q' : '');   // v5.1.445: もう一方は見ない
     if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle || gateDark() !== lastDark || pk !== lastPk) {
       lastPk = pk;
       lastIdle = idle;
@@ -866,7 +870,7 @@ function run(argv) {
       if (!idle) fillSeat(t, font, PX, W, H);   // v5.1.57
       drawStyled(t, font, PX, (H - sz.height) / 2);
       if (pzl.ch) { try { if (pzl.prev) { drawPiece(W + 3, H, pzl.prev, true); drawPiece(W + 20, H); } else drawPiece(W + 3, H); } catch (e) {} }   // v5.1.407: [1つ前][最後]
-      ctlItems.forEach((k, idx) => { const x = W + PW - 16 - (ctlItems.length - 1 - idx) * 19; try { if (k === 'quit') drawQuit(x, H); else { const ic = iconOf(k === 'launch2' ? otherBundle() : edBundle()); if (ic) ic.drawInRectFromRectOperationFraction($.NSMakeRect(x, 1, 16, 16), $.NSZeroRect, 2, 1); } } catch (e) {} });   // v5.1.443
+      ctlItems.forEach((k, idx) => { const x = W + PW - 16 - (ctlItems.length - 1 - idx) * 19; try { if (k === 'quit') drawQuit(x, H); else { const ic = iconOf(edBundle()); if (ic) ic.drawInRectFromRectOperationFraction($.NSMakeRect(x, 1, 16, 16), $.NSZeroRect, 2, edRunning() ? 1 : 0.35); } } catch (e) {} });   // v5.1.443
       // v5.1.439〜442 の起動ボタンは ctlItems へ
       img.unlockFocus;
       img.template = false;
