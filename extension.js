@@ -46775,6 +46775,10 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       try { meosPasteProbeMaybe(e); } catch (_) { }   // ★v4.2.97: 貼り付けの直後を測る(debugLogPath がある人だけ)
       // v4.0.272: **一番先に**行の配列を直す(この後の誰かthat meosDocLines を呼んでも刻み直さない)。
       try { meosPatchDocLines(e); } catch (_) { }
+      // ★v5.1.433(俊克 am10:05「整形後のRawの表に、見せかけの表が重なっている」): 見せかけで描いている表の行を書き換えると(▦の整形= 行ごと置き換え)、VS Code は置き換えた所の装飾を
+      //   最後の行へ寄せて残す→ 表全部の駒がその1行に重なる。MeOS 自身の編集の間は描き直しが止まる(deferRefreshCount)ので、次の描き直しまで残っていた。→ 描いている行に触れたら、すぐ描き直す
+      try { const _vs = _meosTcwVirtual.get(e.document.uri.toString()); if (_vs && _vs.size && e.contentChanges.some(ch => { for (let l = ch.range.start.line; l <= ch.range.end.line; l++) if (_vs.has(l)) return true; return false; })) {
+        for (const _ed of vscode.window.visibleTextEditors) if (_ed.document === e.document) { try { meosApplyTableCellWrapDecorations(_ed); } catch (_) { } } } } catch (_) { }
       // v4.0.258: 分割した行への変更を、理由と中身ごと記録する(誰が消したかを名指しさせる)。
       try {
         if (_meosSplitWatch && Date.now() < _meosSplitWatch.until && e.document.uri.toString() === _meosSplitWatch.uri) {
