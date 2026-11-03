@@ -39372,10 +39372,16 @@ function meosTcwStyled(x) {
 }
 function meosTcwLayout(lines, W, draw) {
   if (!(W > 0) || !lines.length) return null;
-  if (lines.some(t => t.indexOf('<!--') >= 0)) return null;
+  // ★v5.1.430(俊克 11.03 am09:11「結合ができると今まで言っていたのに、折り返しができるようになったけど、結合はできないと言うのは、筋が通らない」→「横の結合から作って」):
+  //   横の結合の印(🤝→N)の在る表も入れる= そのセルは N 列分の幅(間の縦線の分も)で折り返し、間の縦線を描かない。縦の結合(🤝↓N)とほかのコメントの在る表は今まで通り
+  const HM = /<!--\s*\u{1F91D}\u2192\s*(\d+)\s*-->/u;
+  if (lines.some(t => t.replace(new RegExp(HM.source, 'gu'), '').indexOf('<!--') >= 0)) return null;
   const rs = lines.map(t => meosSplitTableRow(t)); const sep = rs.findIndex(r => meosIsTableSeparator(r)); if (sep < 0) return null;
   const nc = Math.max(...rs.map(r => r.length)); const sty = rs.map((r, i) => i === sep ? [] : r.map(x => meosTcwStyled(x))); const vis = rs.map((r, i) => i === sep ? r : sty[i].map(o => o.text));   // v5.1.208: 飾り付き
-  const nat = new Array(nc).fill(1); vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { nat[k] = Math.max(nat[k], Math.ceil(meosStrWidth(t))); }); });
+  const span = rs.map((r, i) => { const a = new Array(nc).fill(1); if (i === sep) return a; for (let k = 0; k < nc; k++) { if (a[k] === 0) continue; const m = HM.exec(r[k] || ''); if (m) { const n = Math.max(1, Math.min(nc - k, parseInt(m[1], 10) || 1)); a[k] = n; for (let q = k + 1; q < k + n; q++) a[q] = 0; } } return a; });   // v5.1.430: n= 結合の頭の列数・0= 頭に覆われた列
+  span.forEach((a, i) => { if (i !== sep) a.forEach((n, k) => { if (n > 1 && typeof vis[i][k] === 'string') vis[i][k] = vis[i][k].replace(/^\s+/, ''); }); });   // 印を外した後の頭の空白
+  const nat = new Array(nc).fill(1); vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { if (span[i][k] === 1) nat[k] = Math.max(nat[k], Math.ceil(meosStrWidth(t))); }); });
+  vis.forEach((r, i) => { if (i !== sep) r.forEach((t, k) => { const n = span[i][k]; if (n > 1) { const need = Math.ceil(meosStrWidth(t)); let have = 3 * (n - 1); for (let q = k; q < k + n; q++) have += nat[q]; if (need > have) nat[k + n - 1] += need - have; } }); });   // 結合のセルが収まらない分は最後の列へ
   const tot = (x) => x.reduce((p, q) => p + q, 0) + 3 * nc + 1;
   // ★v5.1.200(俊克 am00:31 バグ1「今あなたがここで書いた表は、なぜ整形しても、セル折り返しにならないのか?」): 字の幅の合計(46桁)は幅50に収まるので入らないと判断していた。
   //   ところが今までの整形では区切りの行がちょうど50桁(--- は3つ以上)になり、全角1.67の端数が積もって行が50桁をわずかに越えて折れていた(どの行も段2)。
@@ -39393,16 +39399,18 @@ function meosTcwLayout(lines, W, draw) {
   const al = rs[sep].map(x => { const t = String(x || '').replace(/\s/g, ''); const l = t.startsWith(':'), r = t.length > 1 && t.endsWith(':'); return (l && r) ? 'c' : (r ? 'r' : 'l'); });   // v5.1.207: 揃えの印
   const rows = vis.map((r, i) => {
     if (i === sep) return { vis: ['|' + c.map(x => '-'.repeat(x + 2)).join('|') + '|'], h: 1, sep: true };
-    const sg = c.map((x, k) => meosTcwSegs(r[k] || '', x)); const h = Math.max(...sg.map(q => q.length)); const v = [];
-    for (let j = 0; j < h; j++) v.push(meosTcwRowStr(c.map((x, k) => sg[k][j] || ''), c, al));
+    const sp = span[i], capOf = (k) => { let w = 3 * (sp[k] - 1); for (let q = k; q < k + sp[k]; q++) w += c[q]; return w; };   // v5.1.430: 結合のセルは N 列分の幅
+    const sg = c.map((x, k) => sp[k] === 0 ? [] : meosTcwSegs(r[k] || '', capOf(k))); const h = Math.max(...sg.map(q => q.length)); const v = [];
+    const gk = c.map((x, k) => k).filter(k => sp[k] > 0), gc = gk.map(capOf), ga = gk.map(k => al[k]);
+    for (let j = 0; j < h; j++) v.push(meosTcwRowStr(gk.map(k => sg[k][j] || ''), gc, ga));
     // ★v5.1.208: 描く駒= 縦線と、セルの字を飾りの同じ塊ごとに、桁の位置(半角=1)を決めて置く(1本の字で描くと飾りを部分に掛けられない)。
     //   縦線は目標の桁そのもの(端数を空白で丸めない)= 全角1.67の端数で縦線が揺れない
     const P = [0]; for (let k = 0; k < c.length; k++) P.push(P[k] + c[k] + 3);
     const stOf = c.map((x, k) => { const full = Array.from((r[k] || '')), fs = (sty[i][k] && sty[i][k].st) || []; let p = 0;
       return sg[k].map(seg => { const a = Array.from(seg); if (a.length && full.slice(p, p + a.length).join('') !== seg && full[p] === ' ') p++; const o = fs.slice(p, p + a.length); p += a.length; return o; }); });
     const pc = [];
-    for (let j = 0; j < h; j++) { const row = P.map(x => ({ x, t: '|', st: 'p' }));
-      c.forEach((cw, k) => { const seg = sg[k][j] || ''; if (!seg) return; const a = Array.from(seg), ss = stOf[k][j] || [], w0 = meosStrWidth(seg), free = Math.max(0, cw - w0);
+    for (let j = 0; j < h; j++) { const row = P.map((x, b) => ({ x, t: '|', st: 'p', b })).filter(o => !(o.b > 0 && o.b < nc && sp[o.b] === 0)).map(o => ({ x: o.x, t: o.t, st: o.st }));   // v5.1.430: 結合の中の縦線は描かない
+      c.forEach((cw0, k) => { if (sp[k] === 0) return; const cw = capOf(k); const seg = sg[k][j] || ''; if (!seg) return; const a = Array.from(seg), ss = stOf[k][j] || [], w0 = meosStrWidth(seg), free = Math.max(0, cw - w0);
         let x = P[k] + 2 + ((al[k] === 'r') ? free : (al[k] === 'c' ? Math.floor(free / 2 + 0.25) : 0)), run = '', rs0 = null;
         const flush = () => { if (run) { row.push({ x, t: run, st: rs0 || '' }); x += meosStrWidth(run); } run = ''; };
         a.forEach((u, q) => { const s0 = ss[q] || ''; if (rs0 !== null && s0 !== rs0) flush(); rs0 = s0; run += u; }); flush(); });
