@@ -14095,7 +14095,7 @@ async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種
     //   起こした直後は、起動の「最後の行へ戻す」と同じく ⊖の畳み直しが終わるのを待ってから着地する(最長12秒)。
     if (cold) for (let w = 0; w < 40 && !mstatsRestoreFinished.has(String(doc.uri)); w++) await new Promise(r => setTimeout(r, 300));
     if (f.line >= doc.lineCount) f = Object.assign({}, f, { line: Math.max(0, doc.lineCount - 1), ch: 0 });   // v5.1.348: 閉じている間に行が減っていても落ちない
-    const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
+    const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });   // ★v5.1.476(俊克 11.04 am08:33 バグ1「分身で付箋を押すとMe Dockの在った場所に出た・⏰やTAGは本体でワープするのに」): 列を言わないと焦点の在る列(=Me Dockの列)に開く→ ⏰/TAG(meosJumpToScope)と同じ meosEditorColumn で本体の列へ
     // ★v5.1.313(俊克 v5.1.312 バグ1「まだ Raw になってしまう」スクショ3= 紙の頭の行にカーソルが乗ると、その行だけ紙が今の行の色に覆われて生に見える):
     //   CB は紙の1つ上の行の末尾へ着地する(紙は丸ごと紙のまま見える)。IC は字の上へ(着地の一時抑止で板のまま)。
     const _ln = (f.k === 'c' && f.line > 0) ? f.line - 1 : f.line;
