@@ -310,7 +310,7 @@ function run(argv) {
     if (!_hc0) { try { dockOutHide(); } catch (e) {} }   // v5.1.412: メニューを開いたら出張所は閉じる
     try { const hc = _hc0; if (hc && hc.charAt(0) !== '\u0000') { hlog('[menu] 札の右端のピース ' + hc + (hc === pzl.ch ? '(最後)' : '(1つ前)') + ' を押した→ 閉じてワープ'); m.cancelTracking;
       if (hc !== pzl.ch) { pzl = { ch: hc, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} }   // v5.1.407: 1つ前を押した= 拡張の返事を待たずに入れ替えて描く(続けて押せる)
-      try { if (dockOut.pin) dockOutHide(); else dockOutPaint(); } catch (x) {}   // v5.1.438
+      try { if (dockOut.pin === 'arm') dockOutHide(); else { if (!dockOut.shown) dockOutShow(); dockOut.pin = 'piece'; dockOutPaint(); hlog('[dockOut] ピースで出しっぱなし'); } } catch (x) {}   // v5.1.438 / ★v5.1.440(俊克 pm01:04「マウスをエディターのほうに移動すると、mGATEが閉じてしまう」→「出しっぱなしにして」): ピースを押したら出しっぱなし(pin='piece')= ワープでも字が変わっても消さない・消すのはメニューバーの地とメニュー
       openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(hc)); return; } } catch (e) {}   // v5.1.402
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
   } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
@@ -759,7 +759,7 @@ function run(argv) {
     else { const u = edAppUrl(); if (u) { $.NSWorkspace.sharedWorkspace.openURL(u); hlog('[launch] 起こした'); } } } catch (e) { hlog('[launch] 失敗 ' + e); } edRunAt = 0; };
   const dockOutFire = (i) => { const ch = doOrd().charAt(i); if (!ch || i < 0) return; hlog('[dockOut] ' + ch + ' を押した→ ワープ');
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} dockOutPaint(); }
-    openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); if (dockOut.pin) dockOutHide(); };   // v5.1.417: 出しっぱなしはワープで消す
+    openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); if (dockOut.pin === 'arm') dockOutHide(); };   // v5.1.417: 出しっぱなし(構え)はワープで消す・v5.1.440: ピースで出した物は残す
   const dockOutAt = () => { try { if (!dockOut.win) return -1; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y;
     if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_X0 + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < doOrd().length ? i : -1; } catch (e) { return -1; } };
   // ★v5.1.414(俊克 pm01:56「押すタイミングで、認識したりしなかったりする」): 413 は「今押されているか」を0.02秒ごとに見た→ 札の描き直しやファイル読みで見張りが0.1秒以上遅れると、素早いクリック(押して放すまで0.1秒未満)は丸ごと間に落ちた。
@@ -1031,11 +1031,11 @@ function run(argv) {
   // v5.1.401: 札の右端のピース= 拡張が置く puzzle-last({ch,lv})。0.5秒に1回読み、変わったら描き直す
   let pzl = { ch: '', lv: 1, prev: '', ord: '' }, pzlN = 0;
   const pzlTick = () => { if (pzlN++ % 5) return; let o = null; try { const f = dir + '/puzzle-last'; if ($.NSFileManager.defaultManager.fileExistsAtPath(f)) o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null))); } catch (e) {}
-    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '', ord: o && o.ord ? String(o.ord).slice(0, 7) : '', dots: o && typeof o.dots === 'string' ? o.dots : undefined }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev && n.ord === pzl.ord && n.dots === pzl.dots) return; const chg = n.ch !== pzl.ch; pzl = n; try { step(); } catch (e) {} try { dockOutPaint(); } catch (e) {} if (chg && dockOut.pin) { hlog('[dockOut] 最後の字が変わった→ 消す'); dockOutHide(); } };
+    const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '', ord: o && o.ord ? String(o.ord).slice(0, 7) : '', dots: o && typeof o.dots === 'string' ? o.dots : undefined }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev && n.ord === pzl.ord && n.dots === pzl.dots) return; const chg = n.ch !== pzl.ch; pzl = n; try { step(); } catch (e) {} try { dockOutPaint(); } catch (e) {} if (chg && dockOut.pin === 'arm') { hlog('[dockOut] 最後の字が変わった→ 消す'); dockOutHide(); } };
   // ★v5.1.418(俊克 pm06:12 バグ1「shift長押しで、ぶら下がりツールが出てこない」): 拡張は Me Dock が出ている間 arm を書いていなかった(🧩専用だった)→ 常に書き、Me Dock が出ていれば末尾に ' d'。🧩は ' d' 無しの時だけ・出張所は構えなら常に
   let armAny = false;
   const armTick = () => { let on = false, dk = false; try { const ap = dir + '/arm'; if ($.NSFileManager.defaultManager.fileExistsAtPath(ap)) { const t = String(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(ap, $.NSUTF8StringEncoding, null))); on = Date.now() - parseFloat(t) < 25000; dk = / d/.test(t); } } catch (e) {}
-    if (on !== armAny) { armAny = on; if (on && pzl.ch && String(pzl.ord || '').length === 7) { try { dockOutShow(); dockOut.pin = true; hlog('[dockOut] 構えで出す(出しっぱなし)'); } catch (e) {} } }   // v5.1.417
+    if (on !== armAny) { armAny = on; if (on && pzl.ch && String(pzl.ord || '').length === 7) { try { dockOutShow(); dockOut.pin = 'arm'; hlog('[dockOut] 構えで出す(出しっぱなし)'); } catch (e) {} } }   // v5.1.417
     const bd = on && !dk; if (bd === armOn) return; armOn = bd; try { step(); } catch (e) {} };
   // ★v5.1.237(俊克 pm01:05「macユーザーに最大のメリットを。V-helperから操作できるというのを試してみる価値がある」):
   //   Me Dock の🔰に乗るとロゴごと右下へ2.2倍に膨らむ= ポインターの下の図形が逃げる。拡張が warp-ptr.json(実の画素での片道)を置いたら、
