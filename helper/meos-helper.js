@@ -303,8 +303,7 @@ function run(argv) {
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
-    try { const _q = pieceHit(); if (_q === '\u0000logo') { m.cancelTracking; const _cm = (fl & 0x100000) !== 0, _sh = (fl & 0x20000) !== 0;
-        if (_cm) { hlog('[menu] 札のロゴを Cmd クリック→ エディターを終える'); edQuit(); } else if (_sh) { hlog('[menu] 札のロゴを Shift クリック→ Barman を閉じる'); dockOutHide(); } else { hlog('[menu] 札のロゴをクリック→ 最前面/起動'); edLaunch(); } return; }   // v5.1.463
+    try { const _q = pieceHit(); if (_q === '\u0000logo') { m.cancelTracking; hlog('[menu] 札のロゴをクリック→ 最前面/起動'); edLaunch(); return; }   // v5.1.467(俊克 am02:39「メニューバーのそれは、最前面or再起動だけの機能」): 修飾キーは見ない   // v5.1.463
       if (_q === '\u0000quit') { hlog('[menu] 札の終了ボタンを押した→ 閉じてエディターを終える(Barman はそのまま)'); m.cancelTracking; edQuit(); return; }
       if (_q === '\u0000launch') { hlog('[menu] 札の自分のアイコンを押した→ 何もしない(名札)'); m.cancelTracking; return; }   // ★v5.1.446(俊克「VSCm/VSCodeロゴは自分自身が何者かだけを示す(何も起動しない)」)
       if (_q === '\u0000launch2') { hlog('[menu] 札のもう一方のエディターを押した→ 起こす'); m.cancelTracking; launchBid(otherBundle()); return; } } catch (e) {}   // v5.1.439   // v5.1.437
