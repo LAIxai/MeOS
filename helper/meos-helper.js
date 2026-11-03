@@ -799,6 +799,12 @@ function run(argv) {
       if (cm) { hlog('[dockOut] ロゴを ⌘ クリック→ エディターを終える(mGATE はそのまま)'); edQuit(); } else if (sh) { hlog('[dockOut] ロゴを Shift クリック→ 閉じる'); dockOutHide(); } else { hlog('[dockOut] ロゴを押した→ エディターを前へ/起こす'); edLaunch(); } } } };   // v5.1.446: メニューバーの地を押しても消さない
   ObjC.registerSubclass({ name: 'MeOSDockOutT', methods: { 'fast:': { types: ['void', ['id']], implementation: function (t) { try { dockOutFast(); } catch (e) {} } } } });
   const dockOutTgt = $.MeOSDockOutT.alloc.init;
+  // ★v5.1.472(俊克 am03:23 バグ1「メニューバーの小さいmGATEロゴだけ、cmdクリックの終了が動作しない」): 実測= Cmd を押して札を押すと macOS は札を動かす操作にし、メニューが開かない(menuWillOpen に来ない)。
+  //   → 押した数(CGEventSourceCounter)を見張り、増えた時に Cmd が押されていて当たりが札のロゴなら終える(Barman の有無に関係なく常に・Cmd が無ければ数を控えるだけ)
+  const logoCmd = { dn: dockOutCnt(1) };
+  ObjC.registerSubclass({ name: 'MeOSLogoCmdT', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { const dn = dockOutCnt(1); if (dn === logoCmd.dn) return; logoCmd.dn = dn;
+    if ((Number($.NSEvent.modifierFlags) & 0x100000) === 0) return; if (pieceHit() !== '\u0000logo') return; hlog('[menu] 札のロゴを Cmd クリック→ エディターを終える'); edQuit(); } catch (e) {} } } } });
+  try { logoCmd.tg = $.MeOSLogoCmdT.alloc.init; logoCmd.t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.03, logoCmd.tg, 'tick:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(logoCmd.t, $.NSRunLoopCommonModes); } catch (e) {}
   const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
     const w = $.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(rc, 128, 2, false);   // 128= 前に出ない窓(枠なし)
     w.level = 101; w.opaque = false; w.backgroundColor = $.NSColor.clearColor; w.hasShadow = true; w.hidesOnDeactivate = false; w.becomesKeyOnlyIfNeeded = true; w.floatingPanel = true; w.collectionBehavior = 1 | 16 | 256;
