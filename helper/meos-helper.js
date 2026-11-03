@@ -356,7 +356,7 @@ function run(argv) {
   const triCol = (a, f, o) => { try { const r0 = $.NSMakeRange(0, 1); a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.53, 0, 1) : (o ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(o[0], o[1], o[2], 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1)), r0);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize($.NSFont.systemFontSize * 2), r0); a.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(f ? -3 : -2), r0); } catch (e) {} };
   const pgTitle = (p, f) => { try { grpPaint(); kindPaint();
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((p.star ? '\u2b50\ufe0f ' : '') + (f ? '\u25b8 ' : '\u25be ') + p.name));   /* v5.1.477 */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r);   // v5.1.338(俊克 pm01:41「CB FUSEN・Yellow などの見出しも太字＋イタリックに。項目名と区別しやすいように」): 3= 太字|斜体
     a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
     p.hb.attributedTitle = a; } catch (e) {} };
@@ -364,7 +364,7 @@ function run(argv) {
   //   全体の見出し= 群と同じ「メニューの中のボタン」(押しても閉じない)。畳むと群の見出しも中身も、CB と IC の間の区切りも隠す。群ごとの畳みは覚えたまま
   const fusenAll = { hb: null, seps: [] };
   const allTitle = () => { try { grpPaint(); if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + 'FUSEN')); const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((fusenAll.star ? '\u2b50\ufe0f ' : '') + (f ? '\u25b8 ' : '\u25be ') + 'FUSEN'));   /* v5.1.477: ⭐️= 最後に着地した付箋を含む */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
     fusenAll.hb.attributedTitle = a; } catch (e) {} };
@@ -507,7 +507,7 @@ function run(argv) {
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
   function buildFusen(m, e) {
-    const its = e.items || [], p = { name: e.fusen, its: its, slots: [], off: fusenOff[e.fusen] || 0 };
+    const its = e.items || [], p = { name: e.fusen, star: !!e.star, its: its, slots: [], off: fusenOff[e.fusen] || 0 };
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
     try { const k0 = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'), cb = /^CB/.test(e.fusen), k = k0 + (cb ? 'S' : ''); if (!(k in fusenIcons)) { const h = parseInt(k0.slice(1), 16), tc = rgb((h >> 16) & 255, (h >> 8) & 255, h & 255); fusenIcons[k] = cb ? fusenIconSq(tc) : fusenIcon(tc); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
@@ -582,7 +582,7 @@ function run(argv) {
       if (nv && (e.clockAll || e.fusenAll || e.fusen || e.tagAll || e.tagPager)) { its.push(null); continue; }   // v5.1.331: 切り分け
       if (e.sep && e.dd && !nv) { try { const di = dashItem(e.dd === 2); m.addItem(di); clockAll.seps.push(di); di.hidden = clockFold && !!clockAll.hb; } catch (x) {} its.push(null); continue; }   // v5.1.398
       if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.cz) { clockAll.seps.push(sp); sp.hidden = clockFold && !!clockAll.hb; } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
-      if (e.fusenAll) { try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
+      if (e.fusenAll) { fusenAll.star = !!e.star; try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
       if (e.clockAll) { try { its.push(buildClockAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.356
       if (e.tagAll) { try { its.push(buildTagAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.325
       if (e.tagPager) { try { buildTagPager(m, e); } catch (x) {} its.push(null); continue; }   // v5.1.327
@@ -838,7 +838,7 @@ function run(argv) {
     // ★v5.1.328(俊克 10.30 am11:06 バグ1「メニューバーが開いて直ぐ閉じる・今もまだ」): 実測(sample)= 本体の時間の55%が「メニューを丸ごと作り直して item.menu を差し替える」に使われていた。
     //   ⏰の秒が変わるたびに JSON が変わり、閉じている間は毎回作り直していた。macOS 27 の札は別の係(MenuBarAgent)が開くので、開きかけた所で差し替えると開きかけのメニューが捨てられて閉じる。
     //   v5.1.327 の TAG の▲▼で作り直しが重くなり、重なる率が上がった。→ 並び(区切り・id・群の中身・TAG の並び)が同じなら、開いていても閉じていても字だけ差し替える。並びが変わった時だけ、閉じている間に作り直す
-    const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') + (e.cz ? 'c' : '') + (e.dd ? 'd' + e.dd : '') : e.clockAll ? 'CA' : e.fusenAll ? 'FA' : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || '') + (e.clk ? '\u23f0' : ''))).join('|');
+    const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') + (e.cz ? 'c' : '') + (e.dd ? 'd' + e.dd : '') : e.clockAll ? 'CA' : e.fusenAll ? 'FA' + (e.star ? '*' : '') : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.star, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || '') + (e.clk ? '\u23f0' : ''))).join('|');
     if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }
     if (freshMenu && !tracking()) { freshMenu = false; lastMenu = null; lastEntries = []; }   // v5.1.332: 閉じた後は新しいメニューに差し替える
     if (renewItem && !tracking()) { renewItem = false;   // ★v5.1.335(俊克 pm00:30「札が一瞬消えて出るのは見えたが改善しない・手で🛟をオフオンすると復旧・0.5〜1秒完全に消えてから」):
@@ -1012,9 +1012,9 @@ function run(argv) {
       fusenRows = [];
       try {
         const gs = Array.isArray(st && st.fusen) ? st.fusen : [];
-        if (gs.length) { menu.push({ fusenAll: true });
+        if (gs.length) { menu.push({ fusenAll: true, star: gs.some(g => g.star) });
           for (const g of gs) { if (g.ic1) menu.push({ sep: true, fz: 1 });
-            menu.push({ fusen: g.name, color: g.color, items: (g.items || []).map(it => { fusenRows.push(it); return { id: 'h:f' + (fusenRows.length - 1), title: it.title }; }) }); }
+            menu.push({ fusen: g.name, color: g.color, star: !!g.star, items: (g.items || []).map(it => { fusenRows.push(it); return { id: 'h:f' + (fusenRows.length - 1), title: it.title }; }) }); }
           menu.push({ sep: true }); }
       } catch (e) {}
       tagRows = [];

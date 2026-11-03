@@ -14076,6 +14076,21 @@ function meosFusenList() {
   return _meosFusen;
 }
 // v5.1.348: 色の群(CB 3色・IC 3色)の並び= メニューと、閉じている時の控え(state.json の fusen)で同じ1つから引く
+// ★v5.1.477(俊克 11.04 am08:41 改良1「Me Dockにリストがあるメリットを活かして、どれを最後に表示したかを印で示そう。⭐️ ▼FUSEN / ⭐️ ▼CB FUSEN・Yellow / ⭐️ 11/01…
+//   折り畳んであってもどこかが分かる。メニューバーで選んだ時も同様にして、どっちを見ても同じに」):
+//   最後に着地した付箋(meosFusenLand= 分身・メニューバー・閉じている時の V-helper のどれから押しても通る1つの口)を覚え、
+//   メニューの元(meosMenuBarTail)で その行の題に⭐️・その群と FUSEN の見出しに star を付ける= 分身もメニューバーも同じ1つの判定から引く。
+//   覚えは globalState(起こし直しても残る)。引き当て= 種類＋印の日時＋行 → 無ければ種類＋印の日時 → 無ければ uri＋行(閉じている時の着地)。
+const MEOS_FUSEN_STAR = '\u2b50\ufe0f ';
+let _meosFusenLast;
+function meosFusenLastGet() { if (_meosFusenLast === undefined) { _meosFusenLast = null; try { _meosFusenLast = (extensionContext && extensionContext.globalState.get('meosFusenLast')) || null; } catch (_) { } } return _meosFusenLast; }
+function meosFusenLastSet(f) { try { _meosFusenLast = { k: f.k || '', ts: f.ts || '', line: Number(f.line) || 0, uri: String(f.uri || '') }; if (extensionContext) extensionContext.globalState.update('meosFusenLast', _meosFusenLast); } catch (_) { } }
+function meosFusenStarOf(groups) {
+  const L = meosFusenLastGet(); if (!L) return null;
+  const all = []; for (const gr of groups || []) for (const f of gr.list || []) all.push(f);
+  if (L.ts) return all.find(f => f.k === L.k && f.ts === L.ts && f.line === L.line) || all.find(f => f.k === L.k && f.ts === L.ts) || null;
+  return all.find(f => String(f.uri) === L.uri && f.line === L.line) || null;
+}
 function meosFusenGroups() {
   const g = meosFusenList(), out = [];
   for (const [k, list] of [['CB', g.cb], ['IC', g.ic]]) MEOS_FUSEN_COLOR_ORDER.forEach((c, n) => out.push({ ic1: k === 'IC' && n === 0, name: k + ' FUSEN \u00b7 ' + ({ yellow: 'Yellow', pink: 'Red', blue: 'Blue' })[c], color: MEOS_FUSEN_COLORS[c].tab, list: list.filter(f => (f.color || 'yellow') === c).slice(0, MEOS_FUSEN_MAX) }));
@@ -14095,6 +14110,7 @@ async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種
     //   起こした直後は、起動の「最後の行へ戻す」と同じく ⊖の畳み直しが終わるのを待ってから着地する(最長12秒)。
     if (cold) for (let w = 0; w < 40 && !mstatsRestoreFinished.has(String(doc.uri)); w++) await new Promise(r => setTimeout(r, 300));
     if (f.line >= doc.lineCount) f = Object.assign({}, f, { line: Math.max(0, doc.lineCount - 1), ch: 0 });   // v5.1.348: 閉じている間に行が減っていても落ちない
+    meosFusenLastSet(f);   // v5.1.477: ⭐️= 最後に着地した付箋
     const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });   // ★v5.1.476(俊克 11.04 am08:33 バグ1「分身で付箋を押すとMe Dockの在った場所に出た・⏰やTAGは本体でワープするのに」): 列を言わないと焦点の在る列(=Me Dockの列)に開く→ ⏰/TAG(meosJumpToScope)と同じ meosEditorColumn で本体の列へ
     // ★v5.1.313(俊克 v5.1.312 バグ1「まだ Raw になってしまう」スクショ3= 紙の頭の行にカーソルが乗ると、その行だけ紙が今の行の色に覆われて生に見える):
     //   CB は紙の1つ上の行の末尾へ着地する(紙は丸ごと紙のまま見える)。IC は字の上へ(着地の一時抑止で板のまま)。
@@ -14162,7 +14178,7 @@ function meosMenuBarTail() {
   const _rp = raw ? { pre: 'Raw ', pill: 'on', post: '\u2009/off   (kakaka)' } : { pre: 'Raw on/\u2009', pill: 'off', post: '   (kakaka)' };
   return [
     { sep: true, cz: 1 }, { clk: 1, id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL },   // v5.1.356: ⏰の見出しで一緒に畳む   // v5.1.327(俊克 改良1/2): Tag&Go は TAG の中の一番上へ・FUSEN を TAG より上へ
-    ...(function () { const o = [], it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: f.title }); o.push({ sep: true }, { fusenAll: true });   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const gr of meosFusenGroups()) { if (gr.ic1) o.push({ sep: true, fz: 1 }); o.push({ fusen: gr.name, color: gr.color, items: gr.list.map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
+    ...(function () { const o = [], gs = meosFusenGroups(), st = meosFusenStarOf(gs), it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: (f === st ? MEOS_FUSEN_STAR : '') + f.title }); o.push({ sep: true }, { fusenAll: true, star: !!st });   /* v5.1.477: ⭐️ */   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const gr of gs) { if (gr.ic1) o.push({ sep: true, fz: 1 }); o.push({ fusen: gr.name, color: gr.color, star: !!st && gr.list.includes(st), items: gr.list.map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
     ...meosMenuBarTagRows(),   // v5.1.326〜327: TAG の見出し＋Tag&Go＋札ごとの一覧(▲▼で送る・初めは畳む)
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
     { sep: true }, { title: 'Spells', sub: [
@@ -14345,7 +14361,7 @@ function meosHelperWrite(text, menu, owner, anchor) {
     const st = { owner: (owner === undefined ? process.pid : owner), app: ai > 0 ? ep.slice(0, ai + 4) : '', appName: meosAppName(), scheme: vscode.env.uriScheme || 'vscodium',
       text: text || null, anchor: !!anchor, menu: menu || [], alarms: meosHelperAlarms(), sound: meosHelperSound(),
       tagGo: { view: _meosTagView, items: (_meosTagItemsLast.items || []).slice(0, 300) },   // v4.2.342: 閉じている間のTag&Go
-      fusen: (function () { try { return meosFusenGroups().map(gr => ({ name: gr.name, color: gr.color, ic1: gr.ic1, items: gr.list.map(f => ({ title: f.title, uri: f.uri.toString(), k: f.k, line: f.line, ch: f.ch || 0 })) })); } catch (_) { return []; } })(),   // ★v5.1.348(俊克 10.31 am00:06「VSCmを閉じたあとも、付箋をV-helperに残す」→「はい、作る」): 閉じている間の FUSEN
+      fusen: (function () { try { const gs = meosFusenGroups(), st = meosFusenStarOf(gs); return gs.map(gr => ({ name: gr.name, color: gr.color, ic1: gr.ic1, star: !!st && gr.list.includes(st), items: gr.list.map(f => ({ title: (f === st ? MEOS_FUSEN_STAR : '') + f.title, uri: f.uri.toString(), k: f.k, ts: f.ts, line: f.line, ch: f.ch || 0 })) })); } catch (_) { return []; } })(),   // ★v5.1.348(俊克 10.31 am00:06「VSCmを閉じたあとも、付箋をV-helperに残す」→「はい、作る」): 閉じている間の FUSEN
       folders: (extensionContext && extensionContext.globalState.get('meosLastFolders', [])) || [] };   // v5.1.63: 閉じている時の warp はフォルダごと開く
     const key = JSON.stringify(st);
     if (key === _meosHelper.last) return;
@@ -31062,7 +31078,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm-head{display:flex;align-items:center;gap:5px;height:18px}
 .mbm-fold{cursor:var(--meos-hand);color:#1e7fd6;font-size:22px;line-height:1;width:36px;height:18px;display:inline-flex;align-items:center;justify-content:center;user-select:none;flex:0 0 auto;border-radius:5px}.mbm-fold:hover{background:color-mix(in srgb,var(--vscode-foreground) 14%,transparent)}.mbm-chev{display:block;overflow:visible}.mbm-chev.mbm-down{transform:rotate(90deg)}/* v5.1.475(俊克 am08:10「本物のメニューバーの記号の形と太さに」): 字をやめ細い線(SVG)の山形=白1.7px＋黒縁 */   /* v5.1.456(俊克 pm09:01「縦サイズを倍にして押しやすく・連続して押せるようにポインターの位置を追従」): 当たりを縦28px(倍)・幅22px で固定、どの段でも頭の高さを28pxに揃える= ボタンが動かないので同じ所で押し続けられる */   /* v5.1.455(俊克 pm08:49「左のボタンだけで ▶ → ▶▶ → ▼ → ▶ の三段活用」): 右の▾は廃止 */
 .mbm-name{font-weight:800;font-size:11px;opacity:.8;display:none}
-.mbm.mbm-folded .mbm-name{display:inline}
+.mbm.mbm-folded .mbm-name{display:inline}.mbm-sv{margin-right:3px;font-size:11px}
 .mbm.mbm-folded .mbm-bar,.mbm.mbm-folded .mbm-list{display:none}
 .mbm-bar{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:calc(100% - 18px);cursor:default;padding:0 0 0 3px;line-height:18px;border-radius:7px;background:color-mix(in srgb,var(--vscode-foreground) 10%,transparent)}
 .mbm-logo{width:16px;height:16px;flex:0 0 auto}
@@ -32697,16 +32713,16 @@ function mbmLabel(t,anc){lab.textContent='';lab.classList.toggle('mbm-idle',!t);
 function el(c,t){const d=document.createElement('div');d.className=c;if(t!=null)d.textContent=t;return d;}
 function item(it,ind){const d=el('mbm-it'+(ind?' mbm-ind':'')+(it.id?'':' mbm-off'));if(it.pill){d.appendChild(document.createTextNode(it.pre||''));const p=document.createElement('span');p.className='mbm-pill';p.textContent=it.pill;d.appendChild(p);d.appendChild(document.createTextNode(it.post||''));}else d.textContent=it.title||'';
  if(it.id)d.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'mbPick',id:it.id});});return d;}
-function head(key,text,cls,sq,empty){const h=el('mbm-hd'+(cls?' '+cls:'')+(shut[key]?' mbm-shut':'')+(empty?' mbm-empty':''));const tr=document.createElement('span');tr.className='mbm-tri';tr.textContent=shut[key]?'▶':'▼';h.appendChild(tr);
+function head(key,text,cls,sq,empty){const h=el('mbm-hd'+(cls?' '+cls:'')+(shut[key]?' mbm-shut':'')+(empty?' mbm-empty':''));if(cls&&cls.indexOf('mbm-star')>=0){const sv=document.createElement('span');sv.className='mbm-sv';sv.textContent='\u2b50\ufe0f';h.appendChild(sv);}/* v5.1.477: ⭐️= 最後に着地した付箋を含む見出し(三角の前) */const tr=document.createElement('span');tr.className='mbm-tri';tr.textContent=shut[key]?'▶':'▼';h.appendChild(tr);
  if(sq){const q=document.createElement('span');q.className='mbm-sq';q.style.background=sq;h.appendChild(q);}h.appendChild(document.createTextNode(text));h.addEventListener('click',ev=>{ev.preventDefault();shut[key]=!shut[key];render();});return h;}
 function render(){if(!menu)return;const st=list.scrollTop;list.textContent='';let sec='';
  for(const it of menu){if(!it)continue;
   if(it.clockAll){sec='clk';list.appendChild(head('clk','⏰'));continue;}
-  if(it.fusenAll){sec='fusen';list.appendChild(head('fusen','FUSEN'));continue;}
+  if(it.fusenAll){sec='fusen';list.appendChild(head('fusen','FUSEN',it.star?'mbm-star':''));continue;}
   if(it.tagAll){sec='tag';if(!('tag' in shut))shut.tag=true;list.appendChild(head('tag','TAG'));continue;}
   if(it.sep){if(it.cz&&sec==='clk'&&shut.clk)continue;if(it.fz&&shut.fusen)continue;sec=(it.cz||it.fz)?sec:'';list.appendChild(el('mbm-sep'+(it.dd||it.cz?' mbm-dash':'')));continue;}
   if(it.clk){if(sec==='clk'&&shut.clk)continue;list.appendChild(item(it));continue;}
-  if(it.fusen){if(shut.fusen)continue;const k='f:'+it.fusen,n=(it.items||[]).length;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.fusen,'mbm-sub',it.color,!n));if(!shut[k])for(const x of it.items||[])list.appendChild(item(x,1));continue;}
+  if(it.fusen){if(shut.fusen)continue;const k='f:'+it.fusen,n=(it.items||[]).length;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.fusen,'mbm-sub'+(it.star?' mbm-star':''),it.color,!n));if(!shut[k])for(const x of it.items||[])list.appendChild(item(x,1));continue;}
   if(it.tagPager){if(shut.tag)continue;for(const r of it.rows||[])list.appendChild(item(r,r.indent));continue;}
   if(it.tg){if(shut.tag)continue;list.appendChild(item(it));continue;}
   if(it.sub){const k='s:'+it.title;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.title));if(!shut[k])for(const x of it.sub)list.appendChild(item(x,1));continue;}
