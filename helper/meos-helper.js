@@ -728,7 +728,8 @@ function run(argv) {
   const launchBid = (bid) => { try { const u = urlOf(bid); if (u) { $.NSWorkspace.sharedWorkspace.openURL(u); hlog('[launch] ' + bid + ' を起こした'); } } catch (e) { hlog('[launch] 失敗 ' + e); } runOf[bid] = null; };
   // ★v5.1.445(俊克 pm05:36 改良1「どっちがVSCmかが分からない…自分自身のロゴを表示…起動中は明るい色、閉じている時は暗い色…自分のことだけをする」): もう一方のエディターの起動(launch2)はやめ、
   //   いつも[自分のアイコン][⌘Q]= アイコンは動いていれば明るく(押す=前へ出す)・閉じていれば暗く(押す=起こす)。⌘Q は動いている時だけ
-  const ctlBuild = () => { const a = []; if (urlOf(edBundle())) a.push('launch'); if (edRunning()) a.push('quit'); return a; };
+  // ★v5.1.447(俊克 pm06:31「⌘Qボタンを廃止、mGATEをcmdクリックで終了にしよう」): 札は[自分のアイコン]だけ
+  const ctlBuild = () => { const a = []; if (urlOf(edBundle())) a.push('launch'); return a; };
   const pieceHit = () => { try { const b = item.button, w = b.window; if (!w || w.isNil() || !pieceImgW) return false; const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation;
     const pad = Math.max(0, (r.size.width - pieceImgW) / 2), xr = r.origin.x + r.size.width - pad; if (!(p.y >= r.origin.y && p.y <= r.origin.y + r.size.height)) return '';
     for (let j = 0; j < ctlItems.length; j++) { const rx = xr - j * 19; if (p.x >= rx - 16 - 1 && p.x <= rx + (j === 0 ? pad : 1)) return '\u0000' + ctlItems[ctlItems.length - 1 - j]; }   // v5.1.443: 右から ⌘Q/起動・もう一方   // v5.1.442: 右端= ⌘Q・その左= 起動
@@ -790,7 +791,8 @@ function run(argv) {
   const dockOutOnWin = () => { try { if (!dockOut.win) return false; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; return p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height; } catch (e) { return false; } };
   const dockOutFast = () => { if (!dockOut.shown) return; dockOutDrain(); const dn = dockOutCnt(1), up = dockOutCnt(2);
     if (dn !== dockOut.dnN) { dockOut.dnN = dn; dockOut.downAt = dockOutAt(); }
-    if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else if (dockOutOnLogo()) { let sh = false; try { sh = (Number($.NSEvent.modifierFlags) & 0x20000) !== 0; } catch (e) {} if (sh) { hlog('[dockOut] ロゴを Shift クリック→ 閉じる'); dockOutHide(); } else { hlog('[dockOut] ロゴを押した→ エディターを前へ/起こす'); edLaunch(); } } } };   // v5.1.446: メニューバーの地を押しても消さない
+    if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else if (dockOutOnLogo()) { let sh = false; try { sh = (Number($.NSEvent.modifierFlags) & 0x20000) !== 0; } catch (e) {} let cm = false; try { cm = (Number($.NSEvent.modifierFlags) & 0x100000) !== 0; } catch (e) {}   // v5.1.447: ⌘クリック= 終了
+      if (cm) { hlog('[dockOut] ロゴを ⌘ クリック→ エディターを終える(mGATE はそのまま)'); edQuit(); } else if (sh) { hlog('[dockOut] ロゴを Shift クリック→ 閉じる'); dockOutHide(); } else { hlog('[dockOut] ロゴを押した→ エディターを前へ/起こす'); edLaunch(); } } } };   // v5.1.446: メニューバーの地を押しても消さない
   ObjC.registerSubclass({ name: 'MeOSDockOutT', methods: { 'fast:': { types: ['void', ['id']], implementation: function (t) { try { dockOutFast(); } catch (e) {} } } } });
   const dockOutTgt = $.MeOSDockOutT.alloc.init;
   const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 7, W = DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
