@@ -18182,6 +18182,21 @@ async function openGithubPage() {
 // ★v5.1.251(俊克 pm03:42「一番良いのは、日記の昨日と今日の膜の例を最初から入れて置くこと。日記として直ぐに書き始められることが、敷居を低くする」):
 //   ①②= 昨日と今日の日記の膜(新しい日が上・今日は赤・昨日は茶= Ⓣ が作る日と同じ作り)。②は昨日に見出しと表の見本も。カーソルは今日の中
 //   ③= 今までの1つの膜(New note)
+// ★v5.1.491(俊克 pm06:05「New.mdのそれぞれのプリセットの最後に、⏰データベースのサンプルを入れておいた方が良い」):
+//   ⏰0y0d0h3m … を押した時と同じ膜(meosTimerDbText)を、同じ置き場(mMETA の手前・無ければ末尾)に作る。カーソルは動かさない。
+async function meosNewMdAddTimerDb(editor) {
+  try {
+    const doc = editor.document, all = doc.getText();
+    if (all.indexOf(MEOS_TIMER_DB_PREFIX) >= 0) return;
+    const eol = _vaultEol(all), db = meosTimerDbText(eol), sel = editor.selection;
+    let mmLine = -1;
+    for (let i = doc.lineCount - 1; i >= 0; i--) { if (isHtocMetaOpenAt(doc, i)) { mmLine = i; break; } }
+    if (mmLine >= 0) await editor.edit(eb => eb.insert(new vscode.Position(mmLine, 0), db.text + eol + eol));
+    else { const last = doc.lineCount - 1, t = doc.lineAt(last).text || ''; await editor.edit(eb => eb.insert(new vscode.Position(last, t.length), (t.trim() ? eol + eol : eol) + db.text + eol)); }
+    editor.selection = sel;
+    meosDbg('[newMd] ⏰DB ' + db.id + ' mMETA行=' + (mmLine + 1));
+  } catch (e) { meosDbg('[newMd] ⏰DB err ' + (e && e.message)); }
+}
 async function meosNewMdDiarySample(editor, lv) {
   const doc = editor.document, now = new Date(), y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   const day = (d, body, color) => {
@@ -18206,6 +18221,7 @@ async function meosNewMdDiarySample(editor, lv) {
   // v5.1.423: 見本は日記帳= 全体を包む膜のコメントに 🄳iary(Ⓣが明日からも今日の膜を作れるように)
   const dName = 'Diary_' + meosMembraneStamp(now), dOpen = buildMembraneOpenLine(doc, '', dName, '#' + MEOS_DIARY_MARK, ''), dClose = meosNewMembraneCloseBlock(doc, '', dName, '', '(📊⊕0+0D0B)');
   await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), dOpen + '\n' + today.join('\n') + '\n\n' + yesterday.join('\n') + '\n' + dClose + '\n'); });
+  await meosNewMdAddTimerDb(editor);   // v5.1.491
   const pos = new vscode.Position(2, 'Today: '.length);
   editor.selection = new vscode.Selection(pos, pos);
   try { refresh(editor); } catch (_) { }
@@ -18254,6 +18270,7 @@ async function createNewMdFile(lv) {
     // 開始膜行にカーソルを置き、手動の「Add to Hyper TOC」と同じ経路で目次へ登録。
     editor.selection = new vscode.Selection(0, 0, 0, 0);
     if (typeof addCurrentMembraneToWorkingToc === 'function') { await addCurrentMembraneToWorkingToc(); }
+    await meosNewMdAddTimerDb(editor);   // v5.1.491: mMETA が出来た後= その手前へ
     // v0.9.995: 登録された項目のコメントだけを別文言に上書き=「H-TOCの緑コメントは膜と独立に編集できる」と一目で伝える。
     try {
       const data = getHyperTocData(doc);
