@@ -18223,7 +18223,8 @@ async function createNewMdFile(lv) {
     let doc;
     try { doc = await vscode.workspace.openTextDocument(meosUntitledUri(lv === 9 ? 'New note' : 'My diary')); if (doc.languageId !== 'markdown') doc = await vscode.languages.setTextDocumentLanguage(doc, 'markdown'); }
     catch (_) { doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: '' }); }
-    const editor = await vscode.window.showTextDocument(doc, { preview: false });
+    // ★v5.1.489(俊克「New.mdを実行すると、Me Dockと同じ領域にタブができてしまう」): 列を言わないと押した側(Me Dockの列)に開く→付箋と同じく本体の列へ
+    const editor = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });
     if (lv !== 9) { await meosNewMdDiarySample(editor, lv); return; }
     // v0.9.994: 新規ファイルを「動くお手本」にする(俊克 6/23 pm02:49)。万人が最初に辿る動線
     //   New .md → 膜をCreate → Add to Hyper TOC を自動化: ①ファイル全体を包む膜を1つ自動生成
