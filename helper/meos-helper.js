@@ -53,7 +53,7 @@ function run(argv) {
       const r = $.NSMakeRange(0, x.length);
       x.addAttributeValueRange($.NSFontAttributeName, isA ? big : font, r);
       x.addAttributeValueRange($.NSForegroundColorAttributeName, isA ? (hideA ? $.NSColor.clearColor : $.NSColor.systemRedColor) : $.NSColor.whiteColor, r);
-      if (!isA && !secDone) { const sm = /\d:\d{2}(\.\d{2})/.exec(p); if (sm) { secDone = true; const rs = $.NSMakeRange(sm.index + sm[0].length - 3, 3); x.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.colorWithSRGBRedGreenBlueAlpha(1, 0.3, 0.26, 1), rs); x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.5), rs);   /* v5.1.487(俊克「少しどす黒く見える」= 縁3%が小さい字の赤を食っていた→1.5%・明るい赤) */ x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, rs); } }   // v5.1.486: 秒= 赤＋黒の縁
+      if (!isA && !secDone) { const sm = /\d(?::\d{2})?(\.\d{2})(?!\d)/.exec(p); if (sm) { secDone = true; const rs = $.NSMakeRange(sm.index + sm[0].length - 3, 3); x.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.colorWithSRGBRedGreenBlueAlpha(1, 0.3, 0.26, 1), rs); x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.5), rs);   /* v5.1.487(俊克「少しどす黒く見える」= 縁3%が小さい字の赤を食っていた→1.5%・明るい赤) */ x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, rs); } }   // v5.1.486: 秒= 赤＋黒の縁
       if (isA) {
         x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-2), r);   // v4.2.322(俊克「メニューバーだけ下げを3に戻して」)→ v4.2.323「下げ2に」
         if (!hideA) { x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.6), r); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, r); }
