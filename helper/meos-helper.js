@@ -449,6 +449,7 @@ function run(argv) {
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
   //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
   const tagFold = {};
+  const starSeen = {};   // ★v5.1.482(俊克 am10:01「基本的に、⭐️の付いたところを開くことにしようか」): ⭐️が新しく付いた群/札は開き、⭐️の頁へ送る(1度だけ= 後は手で畳める・送れる)
   const tagHead = (t, f, st) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((st ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + t));   /* v5.1.479: st= ⭐️(この札に最後の膜) */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.menuFontOfSize(0).pointSize), r); a.addAttributeValueRange($.NSObliquenessAttributeName, $(0.2), r);   // v5.1.340: 太字＋傾き(日本語にも効く)
     a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); const z = st ? STAR.length : 0; triCol(a, f, TRI_PURPLE, z); starSm(a, st); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, z + 1)); } catch (e) {} return a; };
@@ -462,7 +463,8 @@ function run(argv) {
       if (pg.length >= TAG_PAGE) { P.push(pg); pg = head ? [head] : []; }
       pg.push(it); }
     if (pg.length) P.push(pg);
-    tagAll.pages = P; if (tagAll.off >= P.length) tagAll.off = Math.max(0, P.length - 1);   // off= ページの番号(v5.1.342〜)
+    tagAll.pages = P; if (tagAll.off >= P.length) tagAll.off = Math.max(0, P.length - 1);
+    if (tagAll.pendStar) { tagAll.pendStar = false; const s0 = P.findIndex(pg => pg.some(it => it && !it.off && String(it.title || '').indexOf(STAR) === 0)); if (s0 >= 0) tagAll.off = s0; }   // v5.1.482: ⭐️の頁へ   // off= ページの番号(v5.1.342〜)
     const W = P[tagAll.off] || [];
     for (const mi of tagAll.rows) mi.hidden = F;
     if (!tagAll.hv) tagAll.hv = [];
@@ -513,6 +515,7 @@ function run(argv) {
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
   function buildFusen(m, e) {
     const its = e.items || [], p = { name: e.fusen, star: !!e.star, its: its, slots: [], off: fusenOff[e.fusen] || 0 };
+    { const sti = its.findIndex(x => x && String(x.title || '').indexOf(STAR) === 0); if (e.star && sti >= 0) { const sg = its[sti].title + '|' + (its[sti].id || ''); if (starSeen['f:' + e.fusen] !== sg) { starSeen['f:' + e.fusen] = sg; fusenFold[e.fusen] = false; if (sti > 0) fusenOff[e.fusen] = Math.floor((sti - 1) / 5) * 5; p.off = fusenOff[e.fusen] || 0; } } }   // v5.1.482
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
     try { const k0 = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'), cb = /^CB/.test(e.fusen), k = k0 + (cb ? 'S' : ''); if (!(k in fusenIcons)) { const h = parseInt(k0.slice(1), 16), tc = rgb((h >> 16) & 255, (h >> 8) & 255, h & 255); fusenIcons[k] = cb ? fusenIconSq(tc) : fusenIcon(tc); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
@@ -531,6 +534,7 @@ function run(argv) {
   }
   function buildTagPager(m, e) {   // v5.1.327: TAG の一覧= TAG_PAGE 枠＋▲▼
     tagAll.list = e.rows || [];
+    { const sr = tagAll.list.find(r => r && !r.off && String(r.title || '').indexOf(STAR) === 0), sg = sr ? sr.title : ''; if (sg && starSeen.tag !== sg) { starSeen.tag = sg; for (const r of tagAll.list) if (r && r.off && r.star) tagFold[r.title] = false; tagAll.pendStar = true; } }   // v5.1.482
     for (let k = 0; k < TAG_PAGE; k++) { const mi = m.addItemWithTitleActionKeyEquivalent($(' '), 'pick:', $('')); mi.target = tgt; tagAll.slots.push(mi); }
     const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 290, 26));
     tagAll.up = $.NSButton.buttonWithTitleTargetAction($('\u25b2'), pgt, 'pgTagUp:'); tagAll.up.frame = $.NSMakeRect(36, 2, 40, 22); v.addSubview(tagAll.up);
