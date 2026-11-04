@@ -18212,16 +18212,26 @@ async function meosNewMdDiarySample(editor, lv) {
   vscode.window.setStatusBarMessage('MeOS: a diary with yesterday and today — write today’s line, then Cmd+S to save', 5000);
 }
 // ★v5.1.255(俊克 pm07:08「New.md①なのに、ファイル名が -2 なのが分かり難い」): 名無し(Untitled-2)をやめ、名前の付いた未保存の文書にする(保存の時もこの名前が出る)。同じ名前が開いていれば 2, 3…
+// ★v5.1.490(俊克 バグ1「書き込もうとすると EROFS: read-only file system, open '/My diary.md'」):
+//   API で untitled: の URI を開くと、その path が「保存先」に結び付く(保存ダイアログは出ない)。'My diary.md' だけだと / 直下=書けない所。
+//   →保存先を書ける実在フォルダ(開いているフォルダ→今の文書のフォルダ→~/Documents→~)に置く。ディスクに在る名前・開いている名前は避けて 2, 3…
 function meosUntitledUri(base) {
-  const open = new Set((vscode.workspace.textDocuments || []).filter(d => d.uri.scheme === 'untitled').map(d => d.uri.path));
-  for (let n = 1; n < 100; n++) { const nm = base + (n > 1 ? ' ' + n : '') + '.md'; if (!open.has(nm)) return vscode.Uri.from({ scheme: 'untitled', path: nm }); }
-  return vscode.Uri.from({ scheme: 'untitled', path: base + ' ' + Date.now() + '.md' });
+  const fs = require('fs'), path = require('path'), os = require('os');
+  const open = new Set((vscode.workspace.textDocuments || []).filter(d => d.uri.scheme === 'untitled').map(d => d.uri.fsPath));
+  const dirs = [];
+  try { const wf = vscode.workspace.workspaceFolders; if (wf && wf[0] && wf[0].uri.scheme === 'file') dirs.push(wf[0].uri.fsPath); } catch (_) { }
+  try { const ae = vscode.window.activeTextEditor || getMeDockTargetEditor(); if (ae && ae.document.uri.scheme === 'file') dirs.push(path.dirname(ae.document.uri.fsPath)); } catch (_) { }
+  dirs.push(path.join(os.homedir(), 'Documents'), os.homedir());
+  let dir = dirs.find(d => { try { fs.accessSync(d, fs.constants.W_OK); return fs.statSync(d).isDirectory(); } catch (_) { return false; } });
+  if (!dir) return null;
+  for (let n = 1; n < 100; n++) { const fp = path.join(dir, base + (n > 1 ? ' ' + n : '') + '.md'); if (!open.has(fp) && !fs.existsSync(fp)) return vscode.Uri.file(fp).with({ scheme: 'untitled' }); }
+  return null;
 }
 async function createNewMdFile(lv) {
   try {
     lv = [1, 2, 3, 9].includes(Number(lv)) ? Number(lv) : meosNewMdLv();   // v5.1.262: ①②③= 日記の見本(③は練習が多い)・⑨= 1つの膜
     let doc;
-    try { doc = await vscode.workspace.openTextDocument(meosUntitledUri(lv === 9 ? 'New note' : 'My diary')); if (doc.languageId !== 'markdown') doc = await vscode.languages.setTextDocumentLanguage(doc, 'markdown'); }
+    try { const u = meosUntitledUri(lv === 9 ? 'New note' : 'My diary'); if (!u) throw 0; doc = await vscode.workspace.openTextDocument(u); if (doc.languageId !== 'markdown') doc = await vscode.languages.setTextDocumentLanguage(doc, 'markdown'); }
     catch (_) { doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: '' }); }
     // ★v5.1.489(俊克「New.mdを実行すると、Me Dockと同じ領域にタブができてしまう」): 列を言わないと押した側(Me Dockの列)に開く→付箋と同じく本体の列へ
     const editor = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });
