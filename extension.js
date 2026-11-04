@@ -12150,7 +12150,11 @@ const MEOS_TIMER_DB_CHAIN_EX = [
   '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(25m)×1 ⛓️⤵️2 // 🍅Pomodoro focus -->',
   '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(5m)×1 ⛓️⤴️2)×4 // ☕Pomodoro break -->'];
 function meosTimerDbChainExLines() { const E = MEOS_TIMER_DB_CHAIN_EX; return [E[0], E[1], MEOS_TIMER_DB_RULE, E[2], E[3]]; }   // v5.1.113: Tabata / --- / Pomodoro
-function meosTimerDbText(eol) {
+// ★v5.1.492(俊克 pm09:30「システム起動タイマーもデータベースの一部として…1ヶ所に書けばいい性質のもの」):
+//   🌅LaunchD の膜を⏰データベースの膜の中(説明の下)に入れる。効くのは TS が一番新しい🌅だけ= 既に🌅が在る時は入れない(今の🌅を古くしない)。
+function meosLaunchDWanted() { try { return process.platform === 'darwin' && !meosLaunchDNewest(); } catch (_) { return false; } }
+function meosLaunchDInnerLines() { return meosLaunchDSample('\ud83c\udf05LaunchD_' + meosMembraneStamp(new Date())).split('\n').filter((x, i, a) => !(i === a.length - 1 && x === '')); }
+function meosTimerDbText(eol, withLaunchD) {
   const d = new Date(), p = (x) => (x < 10 ? '0' : '') + x;
   const id = MEOS_TIMER_DB_PREFIX + meosMembraneStamp(d);
   const t = membraneCommentTemplateForLanguage('markdown', id, '', '', 0);
@@ -12163,7 +12167,7 @@ function meosTimerDbText(eol) {
     '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->',
     MEOS_TIMER_DB_RULE,
     '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->'].concat(meosTimerDbChainExLines());
-  return { id, text: [t.open, 'Timer database — press ▶️ on a line to use it, or copy a line into another membrane. ⛓️⤵️2 links this line and the next; ⛓️⤴️2)×8 goes 2 lines back, 8 times. Click ⛓️ to cut it (⛓️‍💥). MeOS makes this membrane again if it is deleted.', t.close].join(eol) + eol + rows.join(eol) };
+  return { id, text: [t.open, 'Timer database — press ▶️ on a line to use it, or copy a line into another membrane. ⛓️⤵️2 links this line and the next; ⛓️⤴️2)×8 goes 2 lines back, 8 times. Click ⛓️ to cut it (⛓️‍💥). MeOS makes this membrane again if it is deleted.'].concat(withLaunchD ? meosLaunchDInnerLines() : [], [t.close]).join(eol) + eol + rows.join(eol) };
 }
 // ★v5.1.96: 本文の鎖の絵(⛓️ / ⛓️‍💥)の位置= 押す所。押すと切る/つなぐ(本文の字を書き換えるだけ= ⚓ と同じ作り)
 function meosClockChainMarkAt(txt) {
@@ -12224,7 +12228,7 @@ async function meosOpenTimerDb() {
     let line = _dbLine();
     if (line < 0) {
       const eol = _vaultEol(all);
-      const db = meosTimerDbText(eol);
+      const db = meosTimerDbText(eol, meosLaunchDWanted());
       let mmLine = -1;
       for (let i = doc.lineCount - 1; i >= 0; i--) { if (isHtocMetaOpenAt(doc, i)) { mmLine = i; break; } }
       let pos;
@@ -14185,7 +14189,7 @@ function meosMenuBarTail() {
   //   内側に左右5pt、外側に細い空白(U+2009)。
   const _rp = raw ? { pre: 'Raw ', pill: 'on', post: '\u2009/off   (kakaka)' } : { pre: 'Raw on/\u2009', pill: 'off', post: '   (kakaka)' };
   return [
-    { sep: true, cz: 1 }, { clk: 1, id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL },   // v5.1.356: ⏰の見出しで一緒に畳む   // v5.1.327(俊克 改良1/2): Tag&Go は TAG の中の一番上へ・FUSEN を TAG より上へ
+    { sep: true, cz: 1 }, { clk: 1, id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL + ' (Database)' },   // v5.1.356: ⏰の見出しで一緒に畳む   // v5.1.327(俊克 改良1/2): Tag&Go は TAG の中の一番上へ・FUSEN を TAG より上へ
     ...(function () { const o = [], gs = meosFusenGroups(), st = meosFusenStarOf(gs), it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: (f === st ? MEOS_FUSEN_STAR : '') + f.title }); o.push({ sep: true }, { fusenAll: true });   /* v5.1.480(俊克 am09:46「全部に出すなら、一番上の親には⭐️を付けなくても良い」): FUSEN/⏰/TAG の見出しには付けない */   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const gr of gs) { if (gr.ic1) o.push({ sep: true, fz: 1 }); o.push({ fusen: gr.name, color: gr.color, star: !!st && gr.list.includes(st), items: gr.list.map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
     ...meosMenuBarTagRows(),   // v5.1.326〜327: TAG の見出し＋Tag&Go＋札ごとの一覧(▲▼で送る・初めは畳む)
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
@@ -18188,7 +18192,7 @@ async function meosNewMdAddTimerDb(editor) {
   try {
     const doc = editor.document, all = doc.getText();
     if (all.indexOf(MEOS_TIMER_DB_PREFIX) >= 0) return;
-    const eol = _vaultEol(all), db = meosTimerDbText(eol), sel = editor.selection;
+    const eol = _vaultEol(all), db = meosTimerDbText(eol, meosLaunchDWanted()), sel = editor.selection;
     let mmLine = -1;
     for (let i = doc.lineCount - 1; i >= 0; i--) { if (isHtocMetaOpenAt(doc, i)) { mmLine = i; break; } }
     if (mmLine >= 0) await editor.edit(eb => eb.insert(new vscode.Position(mmLine, 0), db.text + eol + eol));
@@ -23838,11 +23842,14 @@ async function meosLaunchDOpen() {
     if (nw) { await meosJumpToScope({ uri: nw.doc.uri.toString(), key: nw.id }); return; }
     const ed = vscode.window.activeTextEditor;
     if (!ed || !isMarkdownDocument(ed.document)) { vscode.window.showInformationMessage('\ud83c\udf05 Open a Markdown file (your diary) first \u2014 the \ud83c\udf05LaunchD membrane is placed there.'); return; }
-    const doc = ed.document, id = '\ud83c\udf05LaunchD_' + meosMembraneStamp(new Date());
-    let at = 0;
-    try { const mp = collectPairs(doc, { excludeIndex: false }).find(p => isMetaMembraneId(p.id));
-      if (mp) { at = mp.end + 1; while (at < doc.lineCount && meosIsSpecLine(doc.lineAt(at).text || '')) at++; } } catch (_) { }
-    await ed.edit(b => b.insert(new vscode.Position(at, 0), (at > 0 ? '\n' : '') + meosLaunchDSample(id)));
+    // ★v5.1.492: 置き場= ⏰データベースの膜の中(閉じ膜の手前)。データベースが無ければ🌅入りで作る(mMETA の手前)。
+    const doc = ed.document;
+    const _db = () => { for (let i = 0; i < doc.lineCount; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf(MEOS_TIMER_DB_PREFIX) < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsTimerDbKey(o.id)) return i; } catch (_) { } } return -1; };
+    let dbl = _db();
+    if (dbl < 0) { await meosOpenTimerDb(); }
+    else { const cl = meosTimerDbCloseLine(doc, dbl); if (cl >= 0) { const eol = _vaultEol(doc.getText()); await ed.edit(b => b.insert(new vscode.Position(cl, 0), meosLaunchDInnerLines().join(eol) + eol)); } }
+    const nw2 = meosLaunchDNewest(); if (!nw2) return;
+    const id = nw2.id;
     await meosJumpToScope({ uri: doc.uri.toString(), key: id });
   } catch (e) { meosDbg('[launchd] open ' + e); }
 }
