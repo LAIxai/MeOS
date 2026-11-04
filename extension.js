@@ -11543,9 +11543,9 @@ function meosParseCycleExpr(src, base) {
 //   ★`⛓️⤴️N` だけ(`)×M` 無し)= 戻り続ける(輪)。⤵️ に `)×M` は付かない。
 //   ★書く形は1つ= `⛓️⤵️N` / `⛓️⤴️N)×M`(異体字セレクタ付き)。読むのは ⛓/⤵/⤴ の素の字も。
 // ★v5.1.96(俊克 10.20 am10:25 改良2「⛓️ボタンをクリックすると、⛓️‍💥になって、切れたことを示せばいい」): `⛓️‍💥` = 切れた鎖= 印は残るがつながない。
-const MEOS_CHAIN_RE = /\u26d3\ufe0f?(\u200d\ud83d\udca5)?[ \t]*([\u2934\u2935])\ufe0f?[ \t]*(\d{1,3})(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(\d{1,4}))?/u;
-const MEOS_CHAIN_BAD_RE = /\u26d3\ufe0f?(?:\u200d\ud83d\udca5)?(?:[ \t]*[\u2934\u2935]\ufe0f?)?(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*\d{1,4})?/u;   // v5.1.105: 数字の無い鎖(⛓️ だけ・⛓️⤴️ など)
-function meosChainTokenText(dir, n, reps, off) { return '\u26d3\ufe0f' + (off ? '\u200d\ud83d\udca5' : '') + (dir === 'up' ? '\u2934\ufe0f' : '\u2935\ufe0f') + n + ((dir === 'up' && reps) ? (')\u00d7' + reps) : ''); }
+const MEOS_CHAIN_RE = /\u26d3\ufe0f?(\u200d\ud83d\udca5)?[ \t]*([\u2934\u2935])\ufe0f?[ \t]*(\d{1,3})(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(\d{1,4}|\u221e))?/u;   // v5.1.496: ×∞= 止めるまで回る(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
+const MEOS_CHAIN_BAD_RE = /\u26d3\ufe0f?(?:\u200d\ud83d\udca5)?(?:[ \t]*[\u2934\u2935]\ufe0f?)?(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(?:\d{1,4}|\u221e))?/u;   // v5.1.105: 数字の無い鎖(⛓️ だけ・⛓️⤴️ など)
+function meosChainTokenText(dir, n, reps, off) { return '\u26d3\ufe0f' + (off ? '\u200d\ud83d\udca5' : '') + (dir === 'up' ? '\u2934\ufe0f' : '\u2935\ufe0f') + n + ((dir === 'up' && reps) ? (')\u00d7' + (reps === Infinity ? '\u221e' : reps)) : ''); }
 function meosChainTokenSplit(text) {
   const s = String(text == null ? '' : text), m = MEOS_CHAIN_RE.exec(s);
   if (!m) {
@@ -11555,7 +11555,7 @@ function meosChainTokenSplit(text) {
     if (bad) return { text: (s.slice(0, bad.index) + ' ' + s.slice(bad.index + bad[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: bad[0].trim(), chainDir: '', chainN: 0, chainReps: 0, chainOff: false, chainBad: true };
     return { text: s, chainSrc: '', chainDir: '', chainN: 0, chainReps: 0, chainOff: false };
   }
-  const off = !!m[1], dir = (m[2] === '\u2934') ? 'up' : 'down', n = Math.max(1, parseInt(m[3], 10) || 1), reps = (dir === 'up' && m[4]) ? Math.max(1, parseInt(m[4], 10) || 1) : 0;
+  const off = !!m[1], dir = (m[2] === '\u2934') ? 'up' : 'down', n = Math.max(1, parseInt(m[3], 10) || 1), reps = (dir === 'up' && m[4]) ? (m[4] === '\u221e' ? Infinity : Math.max(1, parseInt(m[4], 10) || 1)) : 0;
   return { text: (s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: meosChainTokenText(dir, n, reps, off), chainDir: dir, chainN: n, chainReps: reps, chainOff: off };
 }
 function meosClockFcParse(text) {
@@ -15657,7 +15657,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           try {
             if (_rndOut && !(Number(c.rounds) > 1)) {
               const _li = meosChainLoopInfo(doc, owner ? owner.id : '', i);
-              if (_li.n > 0) _rndOut = '\u00d7' + _li.n + (_li.reps > 0 ? ('/' + _li.reps) : '');
+              if (_li.n > 0) _rndOut = '\u00d7' + _li.n + (_li.reps > 0 ? ('/' + (_li.reps === Infinity ? '\u221e' : _li.reps)) : '');
             }
           } catch (_) { }
           let _rndIn = '';
