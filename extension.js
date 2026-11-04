@@ -12953,6 +12953,17 @@ function meosChainNextRow(doc, key, line, consume) {
     if (i < 0) i = rows.findIndex(c => c.ufc && !c.done);
     if (i < 0) return null;
     const L = meosChainLinks(rows), b = L.back[i];
+    // ★v5.1.497: 🌅の組= 鎖の順でなく「組の中で次に一番早く来る行」へ渡す(平日の鐘の後は火曜の平日・金曜の後は土曜の週末)。自分が一番早ければ渡さない(↺のまま回る)
+    if (meosIsLaunchDKey(key) && (b || L.nx[i] >= 0 || L.nx.indexOf(i) >= 0 || L.back.some(x => x && x.to <= i))) {
+      const adj = rows.map(() => new Set());
+      rows.forEach((r, k) => { if (L.nx[k] >= 0) { adj[k].add(L.nx[k]); adj[L.nx[k]].add(k); } const bk = L.back[k]; if (bk) for (let j = bk.to; j < k; j++) { adj[k].add(j); adj[j].add(k); } });
+      const seen = new Set([i]), q = [i]; while (q.length) { const k = q.shift(); for (const j of adj[k]) if (!seen.has(j)) { seen.add(j); q.push(j); } }
+      if (seen.size > 1) {
+        let best = -1, bt = Infinity;
+        for (const k of seen) { const sp = meosLaunchDSpec(rows[k]); if (sp.err) continue; const d = meosLaunchDNextDates([sp], new Date(), 8)[0]; if (d && d.getTime() < bt) { bt = d.getTime(); best = k; } }
+        return (best >= 0 && best !== i) ? rows[best] : null;
+      }
+    }
     if (b) {
       const lk = doc.uri.toString() + ' ' + key + ' #' + i;
       const n = _meosChainLoops.get(lk) || 1;
@@ -23830,13 +23841,13 @@ function meosLaunchDReadMac() {
 }
 function meosLaunchDSample(id) {
   return ['<!-- {* \u25bcmCN=' + id + ' // Mac start-up \u2014 press \u25b6\ufe0f on one line below (macOS asks for your password) *} -->',
-    'Only one line runs at a time. Edit the days and the time, then press \u25b6\ufe0f again.',
+    'Only one line (or one \u26d3\ufe0f chain) runs at a time. Edit the days and the time, then press \u25b6\ufe0f again. Lines on a \u26d3\ufe0f chain work together.',
     'Days: S M T W t F s = Sun Mon Tue Wed Thu Fri Sat.',
     '<!-- {* \u25b2mCN=' + id + ' *} -->',
     meosPairBadgeLineText(id, '', '(📊⊕0+0D1O)'),   // v5.1.495(俊克「灰色は地味過ぎるので橙色に。朝に起動するのが普通だから」): O= 橙
       // ★v5.1.493(俊克 バグ1「New.md①で、システム起動用の膜にバッジFCが付いてない→残り時間が出ない」): ⏰の残り時間はバッジ行に出る
-    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 // weekdays -->',
-    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 // weekends -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 \u26d3\ufe0f\u2935\ufe0f2 // weekdays -->',   // v5.1.497: 平日と週末を ⛓️ で1組(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
+    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 \u26d3\ufe0f\u2934\ufe0f2)\u00d7\u221e // weekends -->',
     '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // every day -->', ''].join('\n');
 }
 function meosLaunchDNewest() {
@@ -23884,10 +23895,18 @@ async function meosLaunchDSyncMarks(doc, key, cur) {
   try {
     const rows = meosClockFcScan(doc).filter(x => x.key === key && x.ufc);
     const run = rows.filter(x => !x.off && !x.done)[0] || null;
-    const sp = run ? meosLaunchDSpec(run) : null;
-    const target = (run && sp && !sp.err && cur && cur.hm === sp.hm && cur.days === sp.days) ? run.line : -1;
+    let sp = run ? meosLaunchDSpec(run) : null;
+    const tg = new Set();
+    // v5.1.497: ⛓️ の組= 保険の繰り返し(曜日の一番多い行)が macOS と同じで、MeOS の名の起動が入っていれば、組の行すべてに🍏
+    const grp = (cur && run) ? meosLaunchDGroupOf(doc, key) : null;
+    if (grp && grp.rows.length > 1) {
+      const sps = grp.rows.map(r => meosLaunchDSpec(r));
+      if (!sps.some(x => x.err)) { const pr = sps.slice().sort((a, b) => b.days.length - a.days.length)[0]; const sch = await meosLaunchDReadSched();
+        if (cur.hm === pr.hm && cur.days === pr.days && sch && sch.length) grp.rows.forEach(r => tg.add(r.line)); }
+    } else if (run && sp && !sp.err && cur && cur.hm === sp.hm && cur.days === sp.days) tg.add(run.line);
+    const target = tg.size ? Math.min.apply(null, Array.from(tg)) : -1;
     const we = new vscode.WorkspaceEdit(); let n = 0;
-    for (const x of rows) { const t = doc.lineAt(x.line).text, nt = meosLaunchDMarkText(t, x.line === target); if (nt !== t) { we.replace(doc.uri, doc.lineAt(x.line).range, nt); n++; } }
+    for (const x of rows) { const t = doc.lineAt(x.line).text, nt = meosLaunchDMarkText(t, tg.has(x.line)); if (nt !== t) { we.replace(doc.uri, doc.lineAt(x.line).range, nt); n++; } }
     if (n) { await vscode.workspace.applyEdit(we); meosDbg('[launchd] 🍎 ' + (target >= 0 ? '行=' + (target + 1) : 'なし')); }
   } catch (e) { meosDbg('[launchd] marks ' + e); }
 }
@@ -23899,31 +23918,116 @@ async function meosLaunchDMarksAtStart() {
     for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
       let ps = []; try { ps = collectPairs(d, { excludeIndex: false }).filter(p => meosIsLaunchDKey(p.id)); } catch (_) { }
       for (const p of ps) await meosLaunchDSyncMarks(d, p.id, (nw && nw.doc === d && nw.id === p.id) ? cur : null); }
+    // v5.1.497: 許可が在れば、組の14日の窓を起動のたびに先へ送る(パスワードは訊かない)
+    if (nw && await meosLaunchDCanSudo()) meosLaunchDReconcile(nw.doc, nw.id, true);
   } catch (_) { }
 }
 let _meosLaunchDT = null, _meosLaunchDBusy = false, _meosLaunchDAgain = null;
 // ▶️/⏸ を人が押した後だけ呼ぶ(時刻が来て時計が回る時には呼ばない= 勝手にパスワード欄を出さない)
 let _meosLaunchDLoud = false;
 function meosLaunchDKick(doc, key, quiet) { if (!meosIsLaunchDKey(key)) return; if (!quiet) _meosLaunchDLoud = true; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(() => { const loud = _meosLaunchDLoud; _meosLaunchDLoud = false; meosLaunchDReconcile(doc, key, !loud); }, 2000); }   // v5.0.0-61: ⏸→▶️ の続け押しは2秒まとめて1回で比べる(同じなら何もしない)
+// ★★v5.1.497(俊克 11.04 pm10:48〜11:07「weekendsになる度に暗証番号を入れて設定し直すのは面倒…連動があるはず」「⛓️⤴️2も必要」「×∞と書いておけば1でも3でも良いと分かる」):
+//   ⛓️ でつないだ🌅の行= 1つの組(⛓️⤵️2 + ⛓️⤴️2)×∞ = 平日→週末→平日…)。▶️ はどの行で押しても、組ごと走る(膜で走るのは1つ= 組を1つと数える)。
+//   ★macOS の繰り返し(pmset repeat)は1つしか持てない→ 組では「次の14日分の起動」を1回ずつ(pmset schedule … MeOS)入れる。
+//     繰り返しには組で一番曜日の多い行を残す(保険= MeOS が14日開かれなくても、その行は起動し続ける)。
+//   ★14日の窓は VSCodium の起動と🌅の鐘のたびに突き合わせ直す(覚えでなく pmset -g sched を読む= MeOS の名の予定だけ動かす)。
+//   ★パスワード: 1回だけ許可(/etc/sudoers.d/meos-pmset= pmset repeat/schedule だけ・パスワード無し)を入れれば、以後は黙って書き換える。
+//     許可が無ければ、▶️/⏸ を押した時だけ今までどおり macOS のパスワード欄(勝手に出さない)。
+const MEOS_LAUNCHD_OWNER = 'MeOS', MEOS_LAUNCHD_SUDOERS = '/etc/sudoers.d/meos-pmset', MEOS_LAUNCHD_AHEAD = 14;
+function meosLaunchDGroupOf(doc, key) {
+  try {
+    const rows = meosClockFcScan(doc).filter(c => c.key === key);
+    const ri = rows.findIndex(x => x.ufc && !x.off && !x.done);
+    if (ri < 0) return null;
+    const L = meosChainLinks(rows), adj = rows.map(() => new Set());
+    rows.forEach((r, i) => { if (L.nx[i] >= 0) { adj[i].add(L.nx[i]); adj[L.nx[i]].add(i); } const bk = L.back[i]; if (bk) for (let k = bk.to; k < i; k++) { adj[i].add(k); adj[k].add(i); } });
+    const seen = new Set([ri]), q = [ri];
+    while (q.length) { const i = q.shift(); for (const j of adj[i]) if (!seen.has(j)) { seen.add(j); q.push(j); } }
+    return { run: rows[ri], rows: Array.from(seen).sort((a, b) => a - b).map(i => rows[i]) };
+  } catch (_) { return null; }
+}
+// 組の行の {days,hm} 達 → これから days 日の起動の時刻(1分より先・同じ時刻は1つ)
+function meosLaunchDNextDates(specs, from, days) {
+  const out = [], seen = new Set(), WD = 'UMTWRFS';
+  for (let d = 0; d <= days; d++) for (const sp of specs) {
+    const base = new Date(from.getFullYear(), from.getMonth(), from.getDate() + d);
+    if (String(sp.days).indexOf(WD[base.getDay()]) < 0) continue;
+    const hm = String(sp.hm).split(':').map(Number), t = new Date(base.getFullYear(), base.getMonth(), base.getDate(), hm[0], hm[1], 0, 0);
+    if (t.getTime() <= from.getTime() + 60000 || seen.has(t.getTime())) continue;
+    seen.add(t.getTime()); out.push(t);
+  }
+  return out.sort((a, b) => a - b);
+}
+function meosLaunchDPmDate(t) { const p = (x) => String(x).padStart(2, '0'); return p(t.getMonth() + 1) + '/' + p(t.getDate()) + '/' + p(t.getFullYear() % 100) + ' ' + p(t.getHours()) + ':' + p(t.getMinutes()) + ':' + p(t.getSeconds()); }
+// pmset -g sched の「Scheduled power events」で MeOS の名の起動 → [{t, s}](s= cancel に渡す日時の字)
+function meosLaunchDReadSched() {
+  return new Promise(res => { try { require('child_process').execFile('/usr/bin/pmset', ['-g', 'sched'], { timeout: 5000 }, (e, out) => {
+    if (e) return res(undefined);
+    const got = [];
+    for (const ln of String(out || '').split(/[\r\n]+/)) {
+      if (ln.indexOf("'" + MEOS_LAUNCHD_OWNER + "'") < 0) continue;
+      const m = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(ln); if (!m) continue;
+      let y = +m[3]; if (y < 100) y += 2000;
+      const t = new Date(y, +m[1] - 1, +m[2], +m[4], +m[5], +(m[6] || 0), 0);
+      got.push({ t: t.getTime(), s: meosLaunchDPmDate(t) });
+    }
+    res(got);
+  }); } catch (_) { res(undefined); } });
+}
+function meosLaunchDCanSudo() {
+  return new Promise(res => { try { require('child_process').execFile('/usr/bin/sudo', ['-n', '-l', '/usr/bin/pmset', 'repeat', 'cancel'], { timeout: 5000 }, (e) => res(!e)); } catch (_) { res(false); } });
+}
+// 許可を入れる/外す(入れる時と外す時だけ macOS のパスワード欄)。中身は visudo で確かめてから置く(壊れた許可で sudo を止めない)
+function meosLaunchDPermission(on) {
+  return new Promise(res => {
+    try {
+      const os = require('os'), fs = require('fs'), path = require('path');
+      const user = String(os.userInfo().username || '');
+      if (!/^[A-Za-z0-9._-]+$/.test(user)) { res(false); return; }
+      const sh = path.join(os.tmpdir(), 'meos-pmset-' + process.pid + '.sh'), T = '/etc/sudoers.d/.meos-pmset.tmp';
+      const body = on
+        ? ['#!/bin/sh', 'set -e', "printf '%s\\n' '" + user + " ALL=(root) NOPASSWD: /usr/bin/pmset repeat *, /usr/bin/pmset schedule *' > " + T,
+           '/usr/sbin/visudo -cf ' + T + ' >/dev/null', '/usr/sbin/chown root:wheel ' + T, '/bin/chmod 440 ' + T, '/bin/mv -f ' + T + ' ' + MEOS_LAUNCHD_SUDOERS, '']
+        : ['#!/bin/sh', '/bin/rm -f ' + MEOS_LAUNCHD_SUDOERS + ' ' + T, ''];
+      fs.writeFileSync(sh, body.join('\n'), { mode: 0o600 });
+      const prompt = on ? 'MeOS will be allowed to change the start-up schedule of your Mac (pmset repeat / schedule only) without asking for the password again.' : 'MeOS will remove its permission to change the start-up schedule of your Mac.';
+      require('child_process').execFile('/usr/bin/osascript', ['-e', 'do shell script "/bin/sh ' + sh + '" with administrator privileges with prompt "' + prompt.replace(/["\\]/g, '') + '"'], (e) => {
+        try { fs.unlinkSync(sh); } catch (_) { }
+        meosDbg('[launchd] permission ' + (on ? 'on' : 'off') + ' ' + (e ? 'NG ' + e.message : 'ok'));
+        res(!e);
+      });
+    } catch (e) { meosDbg('[launchd] permission err ' + e); res(false); }
+  });
+}
 async function meosLaunchDReconcile(doc, key, quiet) {
   const say = (t) => { try { if (!quiet) vscode.window.showInformationMessage(t); } catch (_) { } meosDbg('[launchd] ' + t); };   // quiet= 人が押していない書き換え(知らせは出さず、違う時だけパスワード)
   if (process.platform !== 'darwin') { say('\ud83c\udf05 LaunchD sets the start-up of a Mac \u2014 it does nothing here.'); return; }
   if (_meosLaunchDBusy) { _meosLaunchDAgain = { doc, key, quiet }; return; }   // v5.0.0-61(俊克「▶️/⏸を押すとパスワードを訊かれ、設定したのに OFF した」): 捨てずに、終わった後でもう一度突き合わせる
   // 一番新しい 🌅LaunchD(開いている md の中で)
-  let newest = null;
-  newest = meosLaunchDNewest();
+  const newest = meosLaunchDNewest();
   if (newest && (newest.id !== key || newest.doc !== doc)) { await meosLaunchDSyncMarks(doc, key, null); say('\ud83c\udf05 This LaunchD is not the newest one (' + newest.id + ' is) \u2014 press \u21bb on its name in Me Dock to make it current.'); return; }
-  const run = meosClockFcScan(doc).filter(x => x.key === key && x.ufc && !x.off && !x.done)[0] || null;
-  const want = run ? meosLaunchDSpec(run) : null;
-  const cur = await meosLaunchDReadMac();
-  if (cur === undefined) { say('\ud83c\udf05 Could not read the start-up schedule of this Mac (pmset).'); return; }
+  const grp = meosLaunchDGroupOf(doc, key), run = grp ? grp.run : null;
+  let want = run ? meosLaunchDSpec(run) : null;
+  const cur = await meosLaunchDReadMac(), sch = await meosLaunchDReadSched();
+  if (cur === undefined || sch === undefined) { say('\ud83c\udf05 Could not read the start-up schedule of this Mac (pmset).'); return; }
   if (want && want.err) { await meosLaunchDSyncMarks(doc, key, cur); say(want.err); return; }
-  if (want && cur && cur.hm === want.hm && cur.days === want.days) { await meosLaunchDSyncMarks(doc, key, cur); meosDbg('[launchd] 既に同じ ' + want.days + ' ' + want.hm); return; }
-  if (!want && !cur) { await meosLaunchDSyncMarks(doc, key, cur); return; }
-  const sh = want ? ('/usr/bin/pmset repeat wakeorpoweron ' + want.days + ' ' + want.hm + ':00') : '/usr/bin/pmset repeat cancel';
-  const prompt = want ? ('MeOS will start up (or wake) your Mac at ' + want.hm + ', ' + meosLaunchDDaysLabel(want.days) + '.') : 'MeOS will turn off the daily start-up of your Mac.';
-  _meosLaunchDBusy = true;
-  require('child_process').execFile('/usr/bin/osascript', ['-e', 'do shell script "' + sh + '" with administrator privileges with prompt "' + prompt.replace(/["\\]/g, '') + '"'], (e) => {
+  let dates = [], nLines = 1;
+  if (grp && grp.rows.length > 1) {   // v5.1.497: ⛓️ の組
+    const specs = [];
+    for (const r of grp.rows) { const sp = meosLaunchDSpec(r); if (sp.err) { await meosLaunchDSyncMarks(doc, key, cur); say(sp.err); return; } specs.push(sp); }
+    want = specs.slice().sort((a, b) => b.days.length - a.days.length)[0];   // 保険の繰り返し= 曜日の一番多い行
+    dates = meosLaunchDNextDates(specs, new Date(), MEOS_LAUNCHD_AHEAD); nLines = specs.length;
+  }
+  // 望む姿と今の姿を突き合わせ、違う所だけ打つ
+  const cmds = [], wantK = new Set(dates.map(t => t.getTime())), haveK = new Set(sch.map(x => x.t));
+  for (const x of sch) if (!wantK.has(x.t)) cmds.push(['schedule', 'cancel', 'wakeorpoweron', x.s, MEOS_LAUNCHD_OWNER]);
+  for (const t of dates) if (!haveK.has(t.getTime())) cmds.push(['schedule', 'wakeorpoweron', meosLaunchDPmDate(t), MEOS_LAUNCHD_OWNER]);
+  if (want && !(cur && cur.hm === want.hm && cur.days === want.days)) cmds.push(['repeat', 'wakeorpoweron', want.days, want.hm + ':00']);
+  if (!want && cur) cmds.push(['repeat', 'cancel']);
+  if (!cmds.length) { await meosLaunchDSyncMarks(doc, key, cur); meosDbg('[launchd] 既に同じ ' + (want ? want.days + ' ' + want.hm : 'off') + (dates.length ? ' +' + dates.length : '')); return; }
+  const can = await meosLaunchDCanSudo();
+  if (!can && quiet && (dates.length || sch.length)) { await meosLaunchDSyncMarks(doc, key, cur); meosDbg('[launchd] 許可なし= 組の窓は押した時だけ'); return; }   // 毎日パスワード欄を出さない
+  const done = (e) => {
     _meosLaunchDBusy = false;
     const _ag = _meosLaunchDAgain; _meosLaunchDAgain = null;
     if (_ag) setTimeout(() => meosLaunchDReconcile(_ag.doc, _ag.key, _ag.quiet), 300);   // 待っている間に押された分(⏸の直後の▶️など)= 今の本文で、もう一度
@@ -23931,8 +24035,28 @@ async function meosLaunchDReconcile(doc, key, quiet) {
     meosLaunchDReadMac().then(c2 => { if (c2 !== undefined) meosLaunchDSyncMarks(doc, key, c2); });   // v5.0.0-63: 入った/入らなかったを🍎で
     if (e) { say('\ud83c\udf05 Not changed \u2014 the start-up of your Mac stays as it was.'); return; }
     if (_ag) return;   // 続きがある= 途中の知らせは出さない
+    if (dates.length) {
+      const d0 = dates[0], WDN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], p = (x) => String(x).padStart(2, '0');
+      say('\ud83c\udf05 ' + nLines + ' lines on a chain \u2014 your Mac will start up next on ' + WDN[d0.getDay()] + ' ' + p(d0.getHours()) + ':' + p(d0.getMinutes()) + ' (' + dates.length + ' start-ups in the next ' + MEOS_LAUNCHD_AHEAD + ' days).');
+      if (!can && !quiet) vscode.window.showInformationMessage('\ud83c\udf05 Let MeOS keep the chain going without your password? (once \u2014 pmset repeat / schedule only)', 'Allow', 'Not now').then(async (b) => {
+        if (b !== 'Allow') return;
+        const ok = await meosLaunchDPermission(true);
+        vscode.window.showInformationMessage(ok ? '\ud83c\udf05 Done \u2014 MeOS will roll the start-ups forward by itself.' : '\ud83c\udf05 Not changed.');
+      });
+      return;
+    }
     say(want ? ('\ud83c\udf05 Your Mac will start up at ' + want.hm + ', ' + meosLaunchDDaysLabel(want.days) + '.') : '\ud83c\udf05 The daily start-up of your Mac is off.');
-  });
+  };
+  _meosLaunchDBusy = true;
+  if (can) {
+    (async () => { let err = null; for (const c of cmds) { const r = await new Promise(rs => require('child_process').execFile('/usr/bin/sudo', ['-n', '/usr/bin/pmset'].concat(c), { timeout: 10000 }, (e) => rs(e))); if (r) { err = r; meosDbg('[launchd] sudo pmset ' + c.join(' ') + ' NG ' + r.message); break; } } done(err); })();
+  } else {
+    const q = (a) => /^[A-Za-z0-9:._-]+$/.test(a) ? a : ("'" + String(a).replace(/'/g, '') + "'");
+    const sh = cmds.map(c => '/usr/bin/pmset ' + c.map(q).join(' ')).join(' && ');
+    const prompt = dates.length ? ('MeOS will start up (or wake) your Mac ' + dates.length + ' times in the next ' + MEOS_LAUNCHD_AHEAD + ' days, from ' + nLines + ' lines on a chain.')
+      : want ? ('MeOS will start up (or wake) your Mac at ' + want.hm + ', ' + meosLaunchDDaysLabel(want.days) + '.') : 'MeOS will turn off the daily start-up of your Mac.';
+    require('child_process').execFile('/usr/bin/osascript', ['-e', 'do shell script "' + sh + '" with administrator privileges with prompt "' + prompt.replace(/["\\]/g, '') + '"'], (e) => done(e));
+  }
 }
 function meosClockAnchoredNow(scope) {
   try {
@@ -45984,6 +46108,8 @@ function activate(context) {
   const meosNthType = (d) => { try { if (vscode.window.activeTextEditor) vscode.commands.executeCommand('type', { text: String(d) }); } catch (_) { } };
   // ★v4.2.777-1: Shift の構えの見張りは Me Dock を開かなくても置く。窓に焦点が戻るたびに置き直す(別の窓・別の版が消していても戻る)
   try { meosModsWant(true, 'puzzle'); context.subscriptions.push(vscode.window.onDidChangeWindowState(st => { if (st.focused) meosModsWant(true, 'puzzle'); else meosPuzzleArmSet(false); })); } catch (_) { }
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.launchdAllow', async () => { const ok = await meosLaunchDPermission(true); vscode.window.showInformationMessage(ok ? '\ud83c\udf05 Done \u2014 MeOS can change the start-up schedule without your password.' : '\ud83c\udf05 Not changed.'); }));   // v5.1.497
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.launchdDisallow', async () => { const ok = await meosLaunchDPermission(false); vscode.window.showInformationMessage(ok ? '\ud83c\udf05 Removed \u2014 MeOS will ask for your password again.' : '\ud83c\udf05 Not changed.'); }));   // v5.1.497
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.diaryTplRegister', () => meosDiaryTplMenu(vscode.window.activeTextEditor)));   // v4.2.777-2 / -3: ▾ と同じ口
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpNth', async (arg) => {   // v4.2.776-26: 構えている間の Cmd+1〜7= 今の並びの左から n 番目
     try {
