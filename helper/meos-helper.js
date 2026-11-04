@@ -45,6 +45,7 @@ function run(argv) {
   const styled = (t, font, hideA) => {
     const s = $.NSMutableAttributedString.alloc.init;
     const big = $.NSFont.boldSystemFontOfSize(20);   // v4.2.320: 太字(26ptは札からはみ出した・実測)
+    let secDone = false;   // ★v5.1.486(俊克 11.04 am10:57「メニューバーの秒を赤文字に・.18 の . も含めて・⚓と同じく黒の縁」): 最初の時刻の .SS だけ
     for (const p of String(t).split(/(\u2693\ufe0f?)/)) {
       if (!p) continue;
       const isA = p.charAt(0) === '\u2693';
@@ -52,6 +53,7 @@ function run(argv) {
       const r = $.NSMakeRange(0, x.length);
       x.addAttributeValueRange($.NSFontAttributeName, isA ? big : font, r);
       x.addAttributeValueRange($.NSForegroundColorAttributeName, isA ? (hideA ? $.NSColor.clearColor : $.NSColor.systemRedColor) : $.NSColor.whiteColor, r);
+      if (!isA && !secDone) { const sm = /\d:\d{2}(\.\d{2})/.exec(p); if (sm) { secDone = true; const rs = $.NSMakeRange(sm.index + sm[0].length - 3, 3); x.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemRedColor, rs); x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-3), rs); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, rs); } }   // v5.1.486: 秒= 赤＋黒の縁
       if (isA) {
         x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-2), r);   // v4.2.322(俊克「メニューバーだけ下げを3に戻して」)→ v4.2.323「下げ2に」
         if (!hideA) { x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.6), r); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, r); }
