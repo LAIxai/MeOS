@@ -12161,7 +12161,8 @@ function meosLaunchDRunningAny() {
   return false;
 }
 function meosLaunchDWanted() { try { return process.platform === 'darwin' && !meosLaunchDRunningAny(); } catch (_) { return false; } }
-function meosLaunchDInnerLines() { return meosLaunchDSample('\ud83c\udf05LaunchD_' + meosMembraneStamp(new Date())).split('\n').filter((x, i, a) => !(i === a.length - 1 && x === '')); }
+// v5.1.495(俊克「システム起動膜の前後に1行空白を入れよう。どこまでが範囲か分かり難い」): 前後に空行
+function meosLaunchDInnerLines() { return [''].concat(meosLaunchDSample('\ud83c\udf05LaunchD_' + meosMembraneStamp(new Date())).split('\n').filter((x, i, a) => !(i === a.length - 1 && x === '')), ['']); }
 function meosTimerDbText(eol, withLaunchD) {
   const d = new Date(), p = (x) => (x < 10 ? '0' : '') + x;
   const id = MEOS_TIMER_DB_PREFIX + meosMembraneStamp(d);
@@ -23832,7 +23833,8 @@ function meosLaunchDSample(id) {
     'Only one line runs at a time. Edit the days and the time, then press \u25b6\ufe0f again.',
     'Days: S M T W t F s = Sun Mon Tue Wed Thu Fri Sat.',
     '<!-- {* \u25b2mCN=' + id + ' *} -->',
-    meosPairBadgeLineText(id, '', '(📊⊕0+0)'),   // ★v5.1.493(俊克 バグ1「New.md①で、システム起動用の膜にバッジFCが付いてない→残り時間が出ない」): ⏰の残り時間はバッジ行に出る
+    meosPairBadgeLineText(id, '', '(📊⊕0+0D1O)'),   // v5.1.495(俊克「灰色は地味過ぎるので橙色に。朝に起動するのが普通だから」): O= 橙
+      // ★v5.1.493(俊克 バグ1「New.md①で、システム起動用の膜にバッジFCが付いてない→残り時間が出ない」): ⏰の残り時間はバッジ行に出る
     '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 // weekdays -->',
     '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 // weekends -->',
     '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // every day -->', ''].join('\n');
