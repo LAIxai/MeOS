@@ -1007,7 +1007,7 @@ function run(argv) {
       const _p2 = (d) => (d < 10 ? '0' : '') + d, _lab = (t) => { const d = new Date(t); return _p2(d.getMonth() + 1) + '-' + _p2(d.getDate()) + '(' + 'SMTWtFs'[d.getDay()] + ') ' + _p2(d.getHours()) + ':' + _p2(d.getMinutes()); };   // 拡張の meosClockLastLabel と同じ形(年は省く)
       if (next.length) menu.push({ id: 'h:pass', title: '\u23ed\ufe0f Pass the next   ' + (next[0].name || next[0].key || '') + '   ' + _lab(next[0].at) }, { sep: true });   // v4.2.459
       const LS = (st && st.listStar) || {}, lsIs = (k, a) => !!(LS[k] && LS[k].key && a && LS[k].uri === String(a.uri || '') && LS[k].key === String(a.key || ''));   // v5.1.479: ⭐️
-      if (next.length) menu.push({ clockAll: true, star: next.some(a => lsIs('clk', a)) });   // v5.1.356: 閉じている時も ⏰の見出し(畳む・⊟)
+      if (next.length) menu.push({ clockAll: true });   // v5.1.480: 一番上の親には⭐️なし   // v5.1.356: 閉じている時も ⏰の見出し(畳む・⊟)
       next.forEach((a, i) => { if (i && clockZone(a.at, now) !== clockZone(next[i - 1].at, now)) menu.push({ sep: true, cz: 1, dd: clockZone(next[i - 1].at, now) <= 1 ? 2 : 1 });   // v5.1.406: 最初の2本(今日|1週間・1週間|1ヶ月)は太い(2)   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線
         menu.push({ clk: 1, id: 'h:' + alarms.indexOf(a), title: (lsIs('clk', a) ? STAR : '') + (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
       if (next.length) menu.push({ sep: true });
@@ -1017,7 +1017,7 @@ function run(argv) {
       fusenRows = [];
       try {
         const gs = Array.isArray(st && st.fusen) ? st.fusen : [];
-        if (gs.length) { menu.push({ fusenAll: true, star: gs.some(g => g.star) });
+        if (gs.length) { menu.push({ fusenAll: true });
           for (const g of gs) { if (g.ic1) menu.push({ sep: true, fz: 1 });
             menu.push({ fusen: g.name, color: g.color, star: !!g.star, items: (g.items || []).map(it => { fusenRows.push(it); return { id: 'h:f' + (fusenRows.length - 1), title: it.title }; }) }); }
           menu.push({ sep: true }); }
@@ -1036,7 +1036,7 @@ function run(argv) {
           const hs = mem.some(it => lsIs('tag', it)); tl.push(hs ? { title: '#' + x, off: true, star: true } : { title: '#' + x, off: true });   // v5.1.479
           for (const it of mem) { tl.push({ id: 'h:t' + tagRows.length, title: (lsIs('tag', it) ? STAR : '') + (it.name || it.key), indent: 1 }); tagRows.push(it); }
         }
-        if (tl.length) { menu.push({ tagAll: true, star: tl.some(r => r.star) }, { tagPager: true, rows: tl }); menu.push({ sep: true }); }
+        if (tl.length) { menu.push({ tagAll: true }, { tagPager: true, rows: tl }); menu.push({ sep: true }); }
       } catch (e) {}
       if (lastPass && lastPass.at > now) menu.push({ id: 'h:unpass', title: '\u21a9\ufe0e ' + lastPass.name + '   ' + _lab(lastPass.at) + '   \u2014 last passed' }, { sep: true });   // v4.2.459
       menu.push({ id: 'h:open', title: 'Start ' + appName });   // v4.2.363: Dock の代わり

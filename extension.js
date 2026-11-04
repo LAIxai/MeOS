@@ -14173,7 +14173,6 @@ function meosMenuBarTagRows() {
       tl.push(_hs ? { title: '#' + x, off: true, star: true } : { title: '#' + x, off: true });
       for (const it of mem) { tl.push({ id: 'tagw:' + _meosMbTagRows.length, title: (meosListStarIs('tag', it) ? MEOS_FUSEN_STAR : '') + (it.name || it.key), indent: 1 }); _meosMbTagRows.push(it); }
     }
-    if (tl.some(r => r.star)) o[1] = { tagAll: true, star: true };
     o.push({ tagPager: true, rows: tl });   // v5.1.327: 15行で切らず、▲▼で送る
     return o;
   } catch (_) { return []; }
@@ -14187,7 +14186,7 @@ function meosMenuBarTail() {
   const _rp = raw ? { pre: 'Raw ', pill: 'on', post: '\u2009/off   (kakaka)' } : { pre: 'Raw on/\u2009', pill: 'off', post: '   (kakaka)' };
   return [
     { sep: true, cz: 1 }, { clk: 1, id: 'timers', title: '\u23f0' + MEOS_TIMER_DB_LABEL },   // v5.1.356: ⏰の見出しで一緒に畳む   // v5.1.327(俊克 改良1/2): Tag&Go は TAG の中の一番上へ・FUSEN を TAG より上へ
-    ...(function () { const o = [], gs = meosFusenGroups(), st = meosFusenStarOf(gs), it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: (f === st ? MEOS_FUSEN_STAR : '') + f.title }); o.push({ sep: true }, { fusenAll: true, star: !!st });   /* v5.1.477: ⭐️ */   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const gr of gs) { if (gr.ic1) o.push({ sep: true, fz: 1 }); o.push({ fusen: gr.name, color: gr.color, star: !!st && gr.list.includes(st), items: gr.list.map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
+    ...(function () { const o = [], gs = meosFusenGroups(), st = meosFusenStarOf(gs), it = (f) => ({ id: 'fusen:' + f.k + f.ts + '@' + f.line, title: (f === st ? MEOS_FUSEN_STAR : '') + f.title }); o.push({ sep: true }, { fusenAll: true });   /* v5.1.480(俊克 am09:46「全部に出すなら、一番上の親には⭐️を付けなくても良い」): FUSEN/⏰/TAG の見出しには付けない */   /* v5.1.321: 全体の見出し FUSEN(押すと付箋すべてを畳む) */ for (const gr of gs) { if (gr.ic1) o.push({ sep: true, fz: 1 }); o.push({ fusen: gr.name, color: gr.color, star: !!st && gr.list.includes(st), items: gr.list.map(it) }); } return o; })(),   // v5.1.315: 色ごとの群(CB 3色・区切り・IC 3色)   // v5.1.314: 1枚も無くても見出しは出す(薄い字)   // v5.1.308: CB式と IC式の付箋の群(常駐1＋▲▼で5つずつ)   // ★v5.1.92: ⏰のデータベースへワープ(無ければ作る) / v5.1.93(俊克 改良2「具体的に書いて、パネルがあることを示す『...』を」)
     ...meosMenuBarTagRows(),   // v5.1.326〜327: TAG の見出し＋Tag&Go＋札ごとの一覧(▲▼で送る・初めは畳む)
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
     { sep: true }, { title: 'Spells', sub: [
@@ -14282,7 +14281,7 @@ function meosMenuBarClockItems() {
     }
   } catch (_) { }
   _meosMbGo = go;
-  if (out.length) out.unshift({ clockAll: true, star: go.some(sc => meosListStarIs('clk', sc)) });   // v5.1.479: ⭐️   // ★v5.1.356(俊克 10.31「通常の⏰も折り畳めるように・タイトル ▼ ⏰」): ⏰の見出し(右端の⊟で4つの姿を巡る)
+  if (out.length) out.unshift({ clockAll: true });   // v5.1.480: 一番上の親(⏰)には⭐️を付けない   // ★v5.1.356(俊克 10.31「通常の⏰も折り畳めるように・タイトル ▼ ⏰」): ⏰の見出し(右端の⊟で4つの姿を巡る)
   try { const _p = meosPassNextItem(); if (_p && out.length) out.unshift(_p, { sep: true }); } catch (_) { }   // v4.2.459: 次をpass
   return out;
 }
