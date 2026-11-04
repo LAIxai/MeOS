@@ -31078,7 +31078,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm-head{display:flex;align-items:center;gap:5px;height:18px}
 .mbm-fold{cursor:var(--meos-hand);color:#1e7fd6;font-size:22px;line-height:1;width:36px;height:18px;display:inline-flex;align-items:center;justify-content:center;user-select:none;flex:0 0 auto;border-radius:5px}.mbm-fold:hover{background:color-mix(in srgb,var(--vscode-foreground) 14%,transparent)}.mbm-chev{display:block;overflow:visible}.mbm-chev.mbm-down{transform:rotate(90deg)}/* v5.1.475(俊克 am08:10「本物のメニューバーの記号の形と太さに」): 字をやめ細い線(SVG)の山形=白1.7px＋黒縁 */   /* v5.1.456(俊克 pm09:01「縦サイズを倍にして押しやすく・連続して押せるようにポインターの位置を追従」): 当たりを縦28px(倍)・幅22px で固定、どの段でも頭の高さを28pxに揃える= ボタンが動かないので同じ所で押し続けられる */   /* v5.1.455(俊克 pm08:49「左のボタンだけで ▶ → ▶▶ → ▼ → ▶ の三段活用」): 右の▾は廃止 */
 .mbm-name{font-weight:800;font-size:11px;opacity:.8;display:none}
-.mbm.mbm-folded .mbm-name{display:inline}.mbm-sv{margin-right:3px;font-size:11px}
+.mbm.mbm-folded .mbm-name{display:inline}.mbm-sv{margin-right:3px;font-size:9px;vertical-align:1px}
 .mbm.mbm-folded .mbm-bar,.mbm.mbm-folded .mbm-list{display:none}
 .mbm-bar{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:calc(100% - 18px);cursor:default;padding:0 0 0 3px;line-height:18px;border-radius:7px;background:color-mix(in srgb,var(--vscode-foreground) 10%,transparent)}
 .mbm-logo{width:16px;height:16px;flex:0 0 auto}
@@ -31100,7 +31100,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm-sep.mbm-dash{border-top-style:dashed}
 .mbm-hd{padding:2px 10px;font-weight:800;font-size:12px;cursor:var(--meos-hand);user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mbm-hd .mbm-tri{display:inline-block;width:12px;color:#1e7fd6}.mbm-hd.mbm-shut .mbm-tri{color:#2e9d3a}
-.mbm-hd .mbm-sq{display:inline-block;width:11px;height:9px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+.mbm-hd .mbm-sq{display:inline-block;box-sizing:border-box;margin-right:5px;border:1px solid #7a6a48}.mbm-sq-cb{width:13px;height:12px;border-radius:2px;vertical-align:-1px;background:linear-gradient(var(--c) 0 3px,#f6eccb 3px);clip-path:polygon(0 0,100% 0,100% 68%,68% 100%,0 100%)}.mbm-sq-ic{width:16px;height:7px;border-radius:1px;vertical-align:1px;background:linear-gradient(90deg,var(--c) 0 5px,#f6eccb 5px)}   /* v5.1.478(俊克 am08:57「ここにも四角い付箋マークと細長い付箋マークが」): メニューバーと同じ= CB は四角(上に色の帯・右下を折る)・IC は細長(左に色)。並びもメニューバーと同じく一番左 */
 .mbm-hd.mbm-sub{font-style:italic;padding-left:18px}
 .mbm-hd.mbm-empty{opacity:.45}
 .mbm-pill{background:#d93a3a;color:#fff;border-radius:5px;padding:0 5px}
@@ -32713,8 +32713,8 @@ function mbmLabel(t,anc){lab.textContent='';lab.classList.toggle('mbm-idle',!t);
 function el(c,t){const d=document.createElement('div');d.className=c;if(t!=null)d.textContent=t;return d;}
 function item(it,ind){const d=el('mbm-it'+(ind?' mbm-ind':'')+(it.id?'':' mbm-off'));if(it.pill){d.appendChild(document.createTextNode(it.pre||''));const p=document.createElement('span');p.className='mbm-pill';p.textContent=it.pill;d.appendChild(p);d.appendChild(document.createTextNode(it.post||''));}else d.textContent=it.title||'';
  if(it.id)d.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'mbPick',id:it.id});});return d;}
-function head(key,text,cls,sq,empty){const h=el('mbm-hd'+(cls?' '+cls:'')+(shut[key]?' mbm-shut':'')+(empty?' mbm-empty':''));if(cls&&cls.indexOf('mbm-star')>=0){const sv=document.createElement('span');sv.className='mbm-sv';sv.textContent='\u2b50\ufe0f';h.appendChild(sv);}/* v5.1.477: ⭐️= 最後に着地した付箋を含む見出し(三角の前) */const tr=document.createElement('span');tr.className='mbm-tri';tr.textContent=shut[key]?'▶':'▼';h.appendChild(tr);
- if(sq){const q=document.createElement('span');q.className='mbm-sq';q.style.background=sq;h.appendChild(q);}h.appendChild(document.createTextNode(text));h.addEventListener('click',ev=>{ev.preventDefault();shut[key]=!shut[key];render();});return h;}
+function head(key,text,cls,sq,empty){const h=el('mbm-hd'+(cls?' '+cls:'')+(shut[key]?' mbm-shut':'')+(empty?' mbm-empty':''));if(sq){const q=document.createElement('span');q.className='mbm-sq '+(/^IC/.test(text)?'mbm-sq-ic':'mbm-sq-cb');q.style.setProperty('--c',sq);h.appendChild(q);}if(cls&&cls.indexOf('mbm-star')>=0){const sv=document.createElement('span');sv.className='mbm-sv';sv.textContent='\u2b50\ufe0f';h.appendChild(sv);}/* v5.1.477: ⭐️= 最後に着地した付箋を含む見出し(三角の前) */const tr=document.createElement('span');tr.className='mbm-tri';tr.textContent=shut[key]?'▶':'▼';h.appendChild(tr);
+ h.appendChild(document.createTextNode(text));h.addEventListener('click',ev=>{ev.preventDefault();shut[key]=!shut[key];render();});return h;}
 function render(){if(!menu)return;const st=list.scrollTop;list.textContent='';let sec='';
  for(const it of menu){if(!it)continue;
   if(it.clockAll){sec='clk';list.appendChild(head('clk','⏰'));continue;}

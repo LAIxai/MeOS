@@ -353,20 +353,24 @@ function run(argv) {
   // v5.1.337(俊克 pm01:26「▼/▶の大きさを2倍に」): 三角だけ字の2倍・下げて字の真ん中にそろえる(▸ -3pt / ▾ -2pt= 絵に描いて合わせた)
   // ★v5.1.359(俊克 am10:46 改良1「緑(全て折り畳まれている)⇄赤(⏰の色)⇄青(付箋)⇄紫(タグ)…▼の色もそれに合わせる」): 開いた▾の色を群ごとに(o)。畳んだ▸は緑のまま
   const TRI_RED = [0.85, 0.1, 0.1], TRI_PURPLE = [0.55, 0.2, 0.85];
-  const triCol = (a, f, o) => { try { const r0 = $.NSMakeRange(0, 1); a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.53, 0, 1) : (o ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(o[0], o[1], o[2], 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1)), r0);
+  const triCol = (a, f, o, at) => { try { const r0 = $.NSMakeRange(at || 0, 1);   /* v5.1.478: at= 三角の位置(前に⭐️が付くと 0 でない) */ a.addAttributeValueRange($.NSForegroundColorAttributeName, f ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.53, 0, 1) : (o ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(o[0], o[1], o[2], 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0, 0.25, 1, 1)), r0);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize($.NSFont.systemFontSize * 2), r0); a.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(f ? -3 : -2), r0); } catch (e) {} };
+  // ★v5.1.478(俊克 am08:57 バグ1「メニューバーで⭐️の大きさと位置がおかしい」= triCol が「先頭の1字」を三角とみなして2倍にしていた→⭐️が2倍に・三角は素の字に)
+  //   改良1「最終的なところがやや大きめ、親やその親の⭐️はもう少し小さく」= 見出しの⭐️は字の0.8倍・少し持ち上げる。三角は⭐️の後ろの位置で triCol。
+  const STAR = '\u2b50\ufe0f ';
+  const starSm = (a, on) => { try { if (!on) return; const r = $.NSMakeRange(0, 2); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize($.NSFont.systemFontSize * 0.8), r); a.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(1), r); } catch (e) {} };
   const pgTitle = (p, f) => { try { grpPaint(); kindPaint();
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((p.star ? '\u2b50\ufe0f ' : '') + (f ? '\u25b8 ' : '\u25be ') + p.name));   /* v5.1.477 */ const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((p.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + p.name));   /* v5.1.477 */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r);   // v5.1.338(俊克 pm01:41「CB FUSEN・Yellow などの見出しも太字＋イタリックに。項目名と区別しやすいように」): 3= 太字|斜体
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f, null, p.star ? STAR.length : 0); starSm(a, p.star);
     p.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.321(俊克 am02:47 改良1「FUSEN という全体ラベルを ⏰0y… の下に入れ、間に罫線。FUSEN をクリックすると付箋すべてを折り畳める」):
   //   全体の見出し= 群と同じ「メニューの中のボタン」(押しても閉じない)。畳むと群の見出しも中身も、CB と IC の間の区切りも隠す。群ごとの畳みは覚えたまま
   const fusenAll = { hb: null, seps: [] };
   const allTitle = () => { try { grpPaint(); if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((fusenAll.star ? '\u2b50\ufe0f ' : '') + (f ? '\u25b8 ' : '\u25be ') + 'FUSEN'));   /* v5.1.477: ⭐️= 最後に着地した付箋を含む */ const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((fusenAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + 'FUSEN'));   /* v5.1.477: ⭐️= 最後に着地した付箋を含む */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f, null, fusenAll.star ? STAR.length : 0); starSm(a, fusenAll.star);
     fusenAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.356(俊克 10.31 am10:03 改良1「メニューバーを1クリックで全て折り畳んだ状態にするボタン…通常の⏰も折り畳めるように」・タイトル「▼ ⏰」/
   //   am10:08「⊟を押す度に、全部折り畳む、⏰だけ開く、付箋だけ開く、タグだけ開くの4つを巡回…全て展開はあえて入れない」):
