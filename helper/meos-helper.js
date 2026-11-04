@@ -79,8 +79,8 @@ function run(argv) {
   let alarms = [], fired = {}, ringing = null, ringNext = 0, sound = { file: '', vol: 2, every: 1 };
   let adv = {};   // v4.2.332: 周期の時計をここで進めた分(id → {at, si})。state.json は拡張が居ない間は変わらないので、上に重ねて持つ
   const openApp = () => { try { if (appPath) $.NSWorkspace.sharedWorkspace.openURL($.NSURL.fileURLWithPath(appPath)); } catch (e) {} };
-  const warpUrl = (a, bell) => scheme + '://' + ext + '/warp?uri=' + encodeURIComponent(a.uri || '') + '&key=' + encodeURIComponent(a.key || '')
-    + '&name=' + encodeURIComponent(a.name || '') + (bell ? '&bell=1' : '');
+  const warpUrl = (a, bell, from) => scheme + '://' + ext + '/warp?uri=' + encodeURIComponent(a.uri || '') + '&key=' + encodeURIComponent(a.key || '')
+    + '&name=' + encodeURIComponent(a.name || '') + (bell ? '&bell=1' : '') + (from ? '&from=' + from : '');   // v5.1.479: from= c(⏰の行)/t(TAG の行)= 拡張が⭐️を覚える
   const openUrl = (u) => { try { $.NSWorkspace.sharedWorkspace.openURL($.NSURL.URLWithString($(u))); } catch (e) {} };
   let bellTimer = null;
   const stopBell = () => { ringing = null; ringNext = 0; if (bellTimer) { bellTimer.invalidate; bellTimer = null; } };
@@ -281,8 +281,8 @@ function run(argv) {
         try { $.NSFileManager.defaultManager.removeItemAtPathError($(dir + '/passed.json'), null); } catch (e) {}
         lastPass = null; return; }
       if (id.indexOf('h:f') === 0) { const it = fusenRows[parseInt(id.slice(3), 10)]; if (it) openWarp(scheme + '://' + ext + '/fusen?uri=' + encodeURIComponent(it.uri || '') + '&k=' + encodeURIComponent(it.k || 'c') + '&line=' + (it.line || 0) + '&ch=' + (it.ch || 0)); return; }   // v5.1.348: 付箋の行= 起こしてその付箋へ
-      if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openWarp(warpUrl(it, false)); return; }   // v4.2.342: Tag&Go の行   // v5.1.62: 閉じていればアプリを先に
-      const a = alarms[parseInt(id.slice(2), 10)]; if (a) { stopBell(); openWarp(warpUrl(a, false)); }
+      if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openWarp(warpUrl(it, false, 't')); return; }   // v4.2.342: Tag&Go の行   // v5.1.62: 閉じていればアプリを先に
+      const a = alarms[parseInt(id.slice(2), 10)]; if (a) { stopBell(); openWarp(warpUrl(a, false, 'c')); }
       return;
     }
     try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}
@@ -378,9 +378,9 @@ function run(argv) {
   let clockFold = false, foldMode = -1;
   const clockAll = { hb: null, cyc: null, rows: [], seps: [] };
   const clockTitle = () => { try { if (!clockAll.hb) return; const f = clockFold;
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((clockAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_RED);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_RED, clockAll.star ? STAR.length : 0); starSm(a, clockAll.star);   /* v5.1.479 */
     clockAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.357(俊克 am10:19 改良1「⊟の代わりに、↻を45°ずつ回転…↻を赤色に…Me Dockのボタンのように円で囲む。角度ごとに色を変えても」):
   //   押すたびに45°ずつ回る↻を円で囲んだ絵。色は姿ごと= はじめ/全部畳む=赤・⏰だけ=橙・付箋だけ=緑・タグだけ=青
@@ -418,9 +418,9 @@ function run(argv) {
   // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
   const tagAll = { hb: null, rows: [], fold: true, slots: [], list: [], off: 0, up: null, dn: null, lab: null, pi: null };
   const tagTitle = () => { try { if (!tagAll.hb) return;
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.fold ? '\u25b8 ' : '\u25be ') + 'TAG')); const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.star ? STAR : '') + (tagAll.fold ? '\u25b8 ' : '\u25be ') + 'TAG')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, (tagAll.list.length || tagAll.rows.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold, TRI_PURPLE);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, (tagAll.list.length || tagAll.rows.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold, TRI_PURPLE, tagAll.star ? STAR.length : 0); starSm(a, tagAll.star);   /* v5.1.479 */
     tagAll.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.327(俊克 10.30 am10:40 改良4「TAG の … 14 more も、FUSEN の ▲ ▼ 1/2 のようにスライドできるように」): 札の見出しと膜の行を1本の並びにして TAG_PAGE 行ずつ・▲▼で送る(FUSEN の群と同じ、押しても閉じない)
   const TAG_PAGE = 10;
@@ -449,9 +449,9 @@ function run(argv) {
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
   //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
   const tagFold = {};
-  const tagHead = (t, f) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + t)); const r = $.NSMakeRange(0, a.length);
+  const tagHead = (t, f, st) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((st ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + t));   /* v5.1.479: st= ⭐️(この札に最後の膜) */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.menuFontOfSize(0).pointSize), r); a.addAttributeValueRange($.NSObliquenessAttributeName, $(0.2), r);   // v5.1.340: 太字＋傾き(日本語にも効く)
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_PURPLE); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, 1)); } catch (e) {} return a; };
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); const z = st ? STAR.length : 0; triCol(a, f, TRI_PURPLE, z); starSm(a, st); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, z + 1)); } catch (e) {} return a; };
   const tagPaint = () => { try { const F = tagAll.fold, V = []; let cur = '';
     for (const it of tagAll.list) { if (it.off) { cur = it.title; V.push(it); } else if (!tagFold[cur]) V.push(it); }
     // ★v5.1.342(俊克 pm02:12 改良1「1/4 頁の一番下に ▾#テストHIIT の見出しだけが出て、送ると見出し無しで始まる」): ページを先に組む=
@@ -469,7 +469,7 @@ function run(argv) {
     for (let k = 0; k < tagAll.slots.length; k++) { const it = W[k], mi = tagAll.slots[k];
       if (it && it.off) {
         if (!tagAll.hv[k]) { const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22)); const b = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgTagFold:'); b.bordered = false; b.alignment = 0; b.frame = $.NSMakeRect(14, 1, 220, 20); b.tag = k; hv.addSubview(b); tagAll.hv[k] = { v: hv, b: b }; }
-        tagAll.hv[k].b.attributedTitle = tagHead(it.title, !!tagFold[it.title]); mi.view = tagAll.hv[k].v;
+        tagAll.hv[k].b.attributedTitle = tagHead(it.title, !!tagFold[it.title], !!it.star); mi.view = tagAll.hv[k].v;
       } else if (it) { mi.view = $(); mi.attributedTitle = $(); mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = true; mi.indentationLevel = it.indent || 0; }
       mi.hidden = F || !it; }
     if (tagAll.pi) { tagAll.pi.hidden = F || P.length <= 1;
@@ -587,8 +587,8 @@ function run(argv) {
       if (e.sep && e.dd && !nv) { try { const di = dashItem(e.dd === 2); m.addItem(di); clockAll.seps.push(di); di.hidden = clockFold && !!clockAll.hb; } catch (x) {} its.push(null); continue; }   // v5.1.398
       if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.cz) { clockAll.seps.push(sp); sp.hidden = clockFold && !!clockAll.hb; } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
       if (e.fusenAll) { fusenAll.star = !!e.star; try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
-      if (e.clockAll) { try { its.push(buildClockAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.356
-      if (e.tagAll) { try { its.push(buildTagAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.325
+      if (e.clockAll) { clockAll.star = !!e.star; try { its.push(buildClockAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.356
+      if (e.tagAll) { tagAll.star = !!e.star; try { its.push(buildTagAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.325
       if (e.tagPager) { try { buildTagPager(m, e); } catch (x) {} its.push(null); continue; }   // v5.1.327
       if (e.fusen) { try { its.push(buildFusen(m, e)); } catch (x) { its.push(null); } continue; }   // v5.1.310
       if (e.title == null) { its.push(null); continue; }   // v5.1.310: 知らない形の項目でメニューごと落とさない
@@ -842,7 +842,7 @@ function run(argv) {
     // ★v5.1.328(俊克 10.30 am11:06 バグ1「メニューバーが開いて直ぐ閉じる・今もまだ」): 実測(sample)= 本体の時間の55%が「メニューを丸ごと作り直して item.menu を差し替える」に使われていた。
     //   ⏰の秒が変わるたびに JSON が変わり、閉じている間は毎回作り直していた。macOS 27 の札は別の係(MenuBarAgent)が開くので、開きかけた所で差し替えると開きかけのメニューが捨てられて閉じる。
     //   v5.1.327 の TAG の▲▼で作り直しが重くなり、重なる率が上がった。→ 並び(区切り・id・群の中身・TAG の並び)が同じなら、開いていても閉じていても字だけ差し替える。並びが変わった時だけ、閉じている間に作り直す
-    const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') + (e.cz ? 'c' : '') + (e.dd ? 'd' + e.dd : '') : e.clockAll ? 'CA' : e.fusenAll ? 'FA' + (e.star ? '*' : '') : e.tagAll ? 'TA' : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.star, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || '') + (e.clk ? '\u23f0' : ''))).join('|');
+    const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') + (e.cz ? 'c' : '') + (e.dd ? 'd' + e.dd : '') : e.clockAll ? 'CA' + (e.star ? '*' : '') : e.fusenAll ? 'FA' + (e.star ? '*' : '') : e.tagAll ? 'TA' + (e.star ? '*' : '') : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.star, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || '') + (e.clk ? '\u23f0' : ''))).join('|');
     if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }
     if (freshMenu && !tracking()) { freshMenu = false; lastMenu = null; lastEntries = []; }   // v5.1.332: 閉じた後は新しいメニューに差し替える
     if (renewItem && !tracking()) { renewItem = false;   // ★v5.1.335(俊克 pm00:30「札が一瞬消えて出るのは見えたが改善しない・手で🛟をオフオンすると復旧・0.5〜1秒完全に消えてから」):
@@ -1006,9 +1006,10 @@ function run(argv) {
       if (ringing) menu.push({ id: 'h:stop', title: 'Stop the bell' }, { sep: true });
       const _p2 = (d) => (d < 10 ? '0' : '') + d, _lab = (t) => { const d = new Date(t); return _p2(d.getMonth() + 1) + '-' + _p2(d.getDate()) + '(' + 'SMTWtFs'[d.getDay()] + ') ' + _p2(d.getHours()) + ':' + _p2(d.getMinutes()); };   // 拡張の meosClockLastLabel と同じ形(年は省く)
       if (next.length) menu.push({ id: 'h:pass', title: '\u23ed\ufe0f Pass the next   ' + (next[0].name || next[0].key || '') + '   ' + _lab(next[0].at) }, { sep: true });   // v4.2.459
-      if (next.length) menu.push({ clockAll: true });   // v5.1.356: 閉じている時も ⏰の見出し(畳む・⊟)
+      const LS = (st && st.listStar) || {}, lsIs = (k, a) => !!(LS[k] && LS[k].key && a && LS[k].uri === String(a.uri || '') && LS[k].key === String(a.key || ''));   // v5.1.479: ⭐️
+      if (next.length) menu.push({ clockAll: true, star: next.some(a => lsIs('clk', a)) });   // v5.1.356: 閉じている時も ⏰の見出し(畳む・⊟)
       next.forEach((a, i) => { if (i && clockZone(a.at, now) !== clockZone(next[i - 1].at, now)) menu.push({ sep: true, cz: 1, dd: clockZone(next[i - 1].at, now) <= 1 ? 2 : 1 });   // v5.1.406: 最初の2本(今日|1週間・1週間|1ヶ月)は太い(2)   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線
-        menu.push({ clk: 1, id: 'h:' + alarms.indexOf(a), title: (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
+        menu.push({ clk: 1, id: 'h:' + alarms.indexOf(a), title: (lsIs('clk', a) ? STAR : '') + (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
       if (next.length) menu.push({ sep: true });
       // ★v4.2.342(俊克「VSCmが閉じている時は、その時のリストをメニューバーのメニューのTag&Goの下に表示する」):
       //   最後に見ていた部屋の姿(選んだ札・打った字・札の並び)で、札ごとに並べる(v4.2.309の形)。押せば VSCodium を起こして膜へ
@@ -1032,10 +1033,10 @@ function run(argv) {
         const tl = [];   // v5.1.327: 15行で切らず、全部を ▲▼ で送る並びに
         for (const x of tags) {
           const mem = items.filter(it => (it.tags || []).indexOf(x) >= 0 && pass(it)); if (!mem.length) continue;
-          tl.push({ title: '#' + x, off: true });
-          for (const it of mem) { tl.push({ id: 'h:t' + tagRows.length, title: it.name || it.key, indent: 1 }); tagRows.push(it); }
+          const hs = mem.some(it => lsIs('tag', it)); tl.push(hs ? { title: '#' + x, off: true, star: true } : { title: '#' + x, off: true });   // v5.1.479
+          for (const it of mem) { tl.push({ id: 'h:t' + tagRows.length, title: (lsIs('tag', it) ? STAR : '') + (it.name || it.key), indent: 1 }); tagRows.push(it); }
         }
-        if (tl.length) { menu.push({ tagAll: true }, { tagPager: true, rows: tl }); menu.push({ sep: true }); }
+        if (tl.length) { menu.push({ tagAll: true, star: tl.some(r => r.star) }, { tagPager: true, rows: tl }); menu.push({ sep: true }); }
       } catch (e) {}
       if (lastPass && lastPass.at > now) menu.push({ id: 'h:unpass', title: '\u21a9\ufe0e ' + lastPass.name + '   ' + _lab(lastPass.at) + '   \u2014 last passed' }, { sep: true });   // v4.2.459
       menu.push({ id: 'h:open', title: 'Start ' + appName });   // v4.2.363: Dock の代わり

@@ -13969,11 +13969,11 @@ let _meosMbGo = [];   // v4.2.207: メニューの go:N → 飛び先
 function meosMenuBarPick(id) {
   try {
     id = String(id || '');
-    if (id.startsWith('go:')) { const sc = _meosMbGo[parseInt(id.slice(3), 10)]; if (sc) meosJumpToScope(sc); return; }
+    if (id.startsWith('go:')) { const sc = _meosMbGo[parseInt(id.slice(3), 10)]; if (sc) { meosListStarSet('clk', sc); meosJumpToScope(sc); } return; }   // v5.1.479: ⭐️
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
     if (id === 'helper') { const c = vscode.workspace.getConfiguration('laiMembrane'); c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); return; }   // v4.2.311 改良2
     if (id === 'tags') { meosOpenTagGo(); return; }
-    if (id.startsWith('tagw:')) { const it = _meosMbTagRows[parseInt(id.slice(5), 10)]; if (it && it.uri && it.key) meosJumpToScope({ uri: it.uri, key: it.key, name: '' }); return; }   // v5.1.326: TAG の行= その膜へ(V-helper の warp と同じ行き先)
+    if (id.startsWith('tagw:')) { const it = _meosMbTagRows[parseInt(id.slice(5), 10)]; if (it && it.uri && it.key) { meosListStarSet('tag', it); meosJumpToScope({ uri: it.uri, key: it.key, name: '' }); } return; }   // v5.1.479: ⭐️   // v5.1.326: TAG の行= その膜へ(V-helper の warp と同じ行き先)
     if (id === 'timers') { meosOpenTimerDb(); return; }   // v5.1.92
     if (id.startsWith('fusen:')) { meosFusenGo(id.slice(6)); return; }   // v5.1.305
     if (id === 'launchd') { meosLaunchDOpen(); return; }   // v5.0.0-59: メニューバーの 🌅 Wake
@@ -14091,6 +14091,13 @@ function meosFusenStarOf(groups) {
   if (L.ts) return all.find(f => f.k === L.k && f.ts === L.ts && f.line === L.line) || all.find(f => f.k === L.k && f.ts === L.ts) || null;
   return all.find(f => String(f.uri) === L.uri && f.line === L.line) || null;
 }
+// ★v5.1.479(俊克 11.04 am09:28 改良1「TAGや⏰の方も同様にするとすれば、1ヶ所か、それぞれの最終選択か」→ 俊克「Yes, per list」):
+//   ⭐️はリストごとに1つ(引き出しごとの栞)。⏰= メニューの⏰の行(go:)、TAG= TAG の膜の行(tagw:)で最後に押した膜を uri＋膜名(key)で覚える
+//   (⏰は鳴る/鎖で行が入れ替わるので行番号でなく膜で引く)。閉じている時の V-helper から押した分も /warp の from で受ける。
+let _meosListStar;
+function meosListStarGet() { if (_meosListStar === undefined) { _meosListStar = {}; try { _meosListStar = (extensionContext && extensionContext.globalState.get('meosListStar')) || {}; } catch (_) { } } return _meosListStar; }
+function meosListStarSet(kind, sc) { try { if (!sc) return; const st = Object.assign({}, meosListStarGet()); st[kind] = { uri: String(sc.uri || ''), key: String(sc.key || '') }; _meosListStar = st; if (extensionContext) extensionContext.globalState.update('meosListStar', st); } catch (_) { } }
+function meosListStarIs(kind, sc) { const s = meosListStarGet()[kind]; return !!(s && sc && s.key && s.uri === String(sc.uri || '') && s.key === String(sc.key || '')); }
 function meosFusenGroups() {
   const g = meosFusenList(), out = [];
   for (const [k, list] of [['CB', g.cb], ['IC', g.ic]]) MEOS_FUSEN_COLOR_ORDER.forEach((c, n) => out.push({ ic1: k === 'IC' && n === 0, name: k + ' FUSEN \u00b7 ' + ({ yellow: 'Yellow', pink: 'Red', blue: 'Blue' })[c], color: MEOS_FUSEN_COLORS[c].tab, list: list.filter(f => (f.color || 'yellow') === c).slice(0, MEOS_FUSEN_MAX) }));
@@ -14162,9 +14169,11 @@ function meosMenuBarTagRows() {
     const o = [{ sep: true }, { tagAll: true }, { id: 'tags', title: 'Tag&Go', tg: 1 }], tl = [];   // v5.1.327: Tag&Go= TAG の中の一番上(押すと部屋を今の姿で開く)
     for (const x of tags) {
       const mem = items.filter(it => (it.tags || []).indexOf(x) >= 0 && pass(it)); if (!mem.length) continue;
-      tl.push({ title: '#' + x, off: true });
-      for (const it of mem) { tl.push({ id: 'tagw:' + _meosMbTagRows.length, title: it.name || it.key, indent: 1 }); _meosMbTagRows.push(it); }
+      const _hs = mem.some(it => meosListStarIs('tag', it));   // v5.1.479: ⭐️= 札の見出しは star(小さい⭐️を描き手が付ける・題は畳みの鍵なので変えない)
+      tl.push(_hs ? { title: '#' + x, off: true, star: true } : { title: '#' + x, off: true });
+      for (const it of mem) { tl.push({ id: 'tagw:' + _meosMbTagRows.length, title: (meosListStarIs('tag', it) ? MEOS_FUSEN_STAR : '') + (it.name || it.key), indent: 1 }); _meosMbTagRows.push(it); }
     }
+    if (tl.some(r => r.star)) o[1] = { tagAll: true, star: true };
     o.push({ tagPager: true, rows: tl });   // v5.1.327: 15行で切らず、▲▼で送る
     return o;
   } catch (_) { return []; }
@@ -14268,12 +14277,12 @@ function meosMenuBarClockItems() {
       const nm = meosClockSayName(r.sc) || '(outside every membrane)';
       const _face = meosMmSs(meosClockFaceMs(r.until, r.sc)), _f2 = go.length ? _face.replace(/\.\d{2}$/, '') : _face;
       const _ld = meosIsLaunchDKey(r.sc.key);   // v5.0.0-62(俊克「Wakeタイマーも、通常のタイマーと同じようにメニューバーの中に順番通りに・残り時間も」): 頭は🌅・名前は Wake
-      out.push({ clk: 1, id: 'go:' + go.length, title: (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (r.sc.title ? '  ' + meosLaunchDRipeTitle(meosChainFillSlot(r.sc.title, 0, r.sc), r.sc) : '') : nm) });   // v4.2.316: ⚓も一覧に
+      out.push({ clk: 1, id: 'go:' + go.length, title: (meosListStarIs('clk', r.sc) ? MEOS_FUSEN_STAR : '') + (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (r.sc.title ? '  ' + meosLaunchDRipeTitle(meosChainFillSlot(r.sc.title, 0, r.sc), r.sc) : '') : nm) });   // v4.2.316: ⚓も一覧に
       go.push(r.sc);
     }
   } catch (_) { }
   _meosMbGo = go;
-  if (out.length) out.unshift({ clockAll: true });   // ★v5.1.356(俊克 10.31「通常の⏰も折り畳めるように・タイトル ▼ ⏰」): ⏰の見出し(右端の⊟で4つの姿を巡る)
+  if (out.length) out.unshift({ clockAll: true, star: go.some(sc => meosListStarIs('clk', sc)) });   // v5.1.479: ⭐️   // ★v5.1.356(俊克 10.31「通常の⏰も折り畳めるように・タイトル ▼ ⏰」): ⏰の見出し(右端の⊟で4つの姿を巡る)
   try { const _p = meosPassNextItem(); if (_p && out.length) out.unshift(_p, { sep: true }); } catch (_) { }   // v4.2.459: 次をpass
   return out;
 }
@@ -14360,7 +14369,7 @@ function meosHelperWrite(text, menu, owner, anchor) {
     const ep = String(process.execPath || ''), ai = ep.indexOf('.app/');
     const st = { owner: (owner === undefined ? process.pid : owner), app: ai > 0 ? ep.slice(0, ai + 4) : '', appName: meosAppName(), scheme: vscode.env.uriScheme || 'vscodium',
       text: text || null, anchor: !!anchor, menu: menu || [], alarms: meosHelperAlarms(), sound: meosHelperSound(),
-      tagGo: { view: _meosTagView, items: (_meosTagItemsLast.items || []).slice(0, 300) },   // v4.2.342: 閉じている間のTag&Go
+      tagGo: { view: _meosTagView, items: (_meosTagItemsLast.items || []).slice(0, 300) }, listStar: meosListStarGet(),   // v5.1.479: 閉じている時も⏰/TAG の⭐️   // v4.2.342: 閉じている間のTag&Go
       fusen: (function () { try { const gs = meosFusenGroups(), st = meosFusenStarOf(gs); return gs.map(gr => ({ name: gr.name, color: gr.color, ic1: gr.ic1, star: !!st && gr.list.includes(st), items: gr.list.map(f => ({ title: (f === st ? MEOS_FUSEN_STAR : '') + f.title, uri: f.uri.toString(), k: f.k, ts: f.ts, line: f.line, ch: f.ch || 0 })) })); } catch (_) { return []; } })(),   // ★v5.1.348(俊克 10.31 am00:06「VSCmを閉じたあとも、付箋をV-helperに残す」→「はい、作る」): 閉じている間の FUSEN
       folders: (extensionContext && extensionContext.globalState.get('meosLastFolders', [])) || [] };   // v5.1.63: 閉じている時の warp はフォルダごと開く
     const key = JSON.stringify(st);
@@ -32712,14 +32721,15 @@ function mbmLabel(t,anc){lab.textContent='';lab.classList.toggle('mbm-idle',!t);
  if(seat){const b=document.createElement('span');b.className='mbm-seat';b.style.background=seat.c;b.textContent=seat.s;lab.appendChild(b);}}
 function el(c,t){const d=document.createElement('div');d.className=c;if(t!=null)d.textContent=t;return d;}
 function item(it,ind){const d=el('mbm-it'+(ind?' mbm-ind':'')+(it.id?'':' mbm-off'));if(it.pill){d.appendChild(document.createTextNode(it.pre||''));const p=document.createElement('span');p.className='mbm-pill';p.textContent=it.pill;d.appendChild(p);d.appendChild(document.createTextNode(it.post||''));}else d.textContent=it.title||'';
+ if(it.star&&it.off){const sv=document.createElement('span');sv.className='mbm-sv';sv.textContent='\u2b50\ufe0f';d.insertBefore(sv,d.firstChild);}/* v5.1.479: 札の見出し(#…)の小さい⭐️ */
  if(it.id)d.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'mbPick',id:it.id});});return d;}
 function head(key,text,cls,sq,empty){const h=el('mbm-hd'+(cls?' '+cls:'')+(shut[key]?' mbm-shut':'')+(empty?' mbm-empty':''));if(sq){const q=document.createElement('span');q.className='mbm-sq '+(/^IC/.test(text)?'mbm-sq-ic':'mbm-sq-cb');q.style.setProperty('--c',sq);h.appendChild(q);}if(cls&&cls.indexOf('mbm-star')>=0){const sv=document.createElement('span');sv.className='mbm-sv';sv.textContent='\u2b50\ufe0f';h.appendChild(sv);}/* v5.1.477: ⭐️= 最後に着地した付箋を含む見出し(三角の前) */const tr=document.createElement('span');tr.className='mbm-tri';tr.textContent=shut[key]?'▶':'▼';h.appendChild(tr);
  h.appendChild(document.createTextNode(text));h.addEventListener('click',ev=>{ev.preventDefault();shut[key]=!shut[key];render();});return h;}
 function render(){if(!menu)return;const st=list.scrollTop;list.textContent='';let sec='';
  for(const it of menu){if(!it)continue;
-  if(it.clockAll){sec='clk';list.appendChild(head('clk','⏰'));continue;}
+  if(it.clockAll){sec='clk';list.appendChild(head('clk','⏰',it.star?'mbm-star':''));continue;}
   if(it.fusenAll){sec='fusen';list.appendChild(head('fusen','FUSEN',it.star?'mbm-star':''));continue;}
-  if(it.tagAll){sec='tag';if(!('tag' in shut))shut.tag=true;list.appendChild(head('tag','TAG'));continue;}
+  if(it.tagAll){sec='tag';if(!('tag' in shut))shut.tag=true;list.appendChild(head('tag','TAG',it.star?'mbm-star':''));continue;}
   if(it.sep){if(it.cz&&sec==='clk'&&shut.clk)continue;if(it.fz&&shut.fusen)continue;sec=(it.cz||it.fz)?sec:'';list.appendChild(el('mbm-sep'+(it.dd||it.cz?' mbm-dash':'')));continue;}
   if(it.clk){if(sec==='clk'&&shut.clk)continue;list.appendChild(item(it));continue;}
   if(it.fusen){if(shut.fusen)continue;const k='f:'+it.fusen,n=(it.items||[]).length;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.fusen,'mbm-sub'+(it.star?' mbm-star':''),it.color,!n));if(!shut[k])for(const x of it.items||[])list.appendChild(item(x,1));continue;}
@@ -46381,6 +46391,7 @@ function activate(context) {
         //   warp が先に飛び、その1.6秒後に起動の「最後に居た行へ戻す」が上書きしていた(ログ: warp 15:55:35.32 → 行221344へ戻した 35.95)。
         //   行き先を決めたのは warp なので、まだ戻していなければ戻すのを取りやめる。
         if (!_meosLastLineDone) meosLastLineFinish('warp が先 → 戻さない (' + sc.key + ')');
+        { const fr = q.get('from'); if (fr === 'c') meosListStarSet('clk', sc); else if (fr === 't') meosListStarSet('tag', sc); }   // v5.1.479: 閉じている時の V-helper の⏰/TAG の行から
         await meosJumpToScope(sc, q.get('bell') === '1');
         if (q.get('bell') === '1' && !meosIsRinging()) meosStartRinging(sc.name);
       } catch (_) { }
