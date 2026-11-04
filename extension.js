@@ -14598,7 +14598,7 @@ function meosHelperHandOff() { if (meosHelperOn()) { meosHelperWrite(null, [], 0
 // ★v5.1.449(俊克 pm07:44): メニューバーの分身= Me Dock の Format Me と Current Me の間。札の字と同じリスト(メニューバーへ渡す物と同じ menu＋常の段)を Me Dock へ写す。
 //   Mac でなくても(メニューバーが無くても)写す= Windows/Linux も同じ体験。リストは開いている時だけ渡す(⏰の残りで毎秒変わる)
 const _meosMbMirror = { rawText: null, rawMenu: null, menuKey: '', want: false };
-function meosMbMirrorUi() { let u = null; try { u = extensionContext && extensionContext.globalState.get('meosMbMirrorUi'); } catch (_) { } return { fold: u ? !!u.fold : process.platform === 'darwin', open: !!(u && u.open) }; }
+function meosMbMirrorUi() { let u = null; try { u = extensionContext && extensionContext.globalState.get('meosMbMirrorUi'); } catch (_) { } return { fold: u ? !!u.fold : false, open: !!(u && u.open) }; }   // ★v5.1.488(俊克 11.04 am11:12 考察1「macOSでも分身は2段目(>>)の方が、本家を見てもどっちを見ても良いのでお勧め」): 初めての既定= どの OS も >>(札だけ)。押した人は覚えた姿のまま
 // ★v5.1.462(俊克 11.04 am01:42 改良1「メニューバーと同様に、直近2つのパズルとロゴマークを離席ボタンの右に・直近2ボタンは操作可能に」): 札の右端と同じ [1つ前][最後]＋自分のエディターの絵
 function meosMbmPzPost() {
   try { if (!meDockPanel) return; const gs = extensionContext.globalState;
