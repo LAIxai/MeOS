@@ -359,10 +359,19 @@ function run(argv) {
   //   改良1「最終的なところがやや大きめ、親やその親の⭐️はもう少し小さく」= 見出しの⭐️は字の0.8倍・少し持ち上げる。三角は⭐️の後ろの位置で triCol。
   const STAR = '\u2b50\ufe0f ';
   const starSm = (a, on) => { try { if (!on) return; const r = $.NSMakeRange(0, 2); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize($.NSFont.systemFontSize * 0.8), r); a.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(1), r); } catch (e) {} };
+  // ★v5.1.483(俊克 am10:06 改良1「⭐️が入ると▶のインデント位置が他とズレて読み難い→文字列とは別に、左端に⭐️を」):
+  //   行= 題から⭐️を外し、✓の欄(onStateImage・state=1)に⭐️の絵(題の字の位置は他の行と同じ)。見出し(付箋の群・#札)= 見出しの絵の左の余白(x=0〜14)に小さい⭐️の字。
+  const starImgs = {};
+  const starImg = (pt) => { if (starImgs[pt]) return starImgs[pt]; try { const S = Math.ceil(pt * 1.3), img = $.NSImage.alloc.initWithSize($.NSMakeSize(S, S)); img.lockFocus;
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u2b50\ufe0f')); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize(pt), $.NSMakeRange(0, a.length));
+    const sz = a.size; a.drawAtPoint($.NSMakePoint((S - sz.width) / 2, (S - sz.height) / 2)); img.unlockFocus; starImgs[pt] = img; return img; } catch (e) { return null; } };
+  const starStrip = (t) => { t = String(t || ''); return t.indexOf(STAR) === 0 ? t.slice(STAR.length) : t; };
+  const starRow = (mi, t, reset) => { try { const on = String(t || '').indexOf(STAR) === 0; mi.title = $(starStrip(t)); if (on) { const im = starImg(12); if (im) mi.onStateImage = im; mi.state = 1; } else if (reset) mi.state = 0; } catch (e) {} };
+  const starLbl = (o, view, on) => { try { if (!o.sl) { const l = $.NSTextField.labelWithString($('\u2b50\ufe0f')); l.font = $.NSFont.systemFontOfSize(9); l.frame = $.NSMakeRect(1, 3, 14, 14); view.addSubview(l); o.sl = l; } o.sl.hidden = !on; } catch (e) {} };
   const pgTitle = (p, f) => { try { grpPaint(); kindPaint();
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((p.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + p.name));   /* v5.1.477 */ const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); starLbl(p, p.hb.superview, p.star);   /* v5.1.483: ⭐️は題の外(左の余白) */   /* v5.1.477 */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r);   // v5.1.338(俊克 pm01:41「CB FUSEN・Yellow などの見出しも太字＋イタリックに。項目名と区別しやすいように」): 3= 太字|斜体
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f, null, p.star ? STAR.length : 0); starSm(a, p.star);
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
     p.hb.attributedTitle = a; } catch (e) {} };
   // ★v5.1.321(俊克 am02:47 改良1「FUSEN という全体ラベルを ⏰0y… の下に入れ、間に罫線。FUSEN をクリックすると付箋すべてを折り畳める」):
   //   全体の見出し= 群と同じ「メニューの中のボタン」(押しても閉じない)。畳むと群の見出しも中身も、CB と IC の間の区切りも隠す。群ごとの畳みは覚えたまま
@@ -450,9 +459,9 @@ function run(argv) {
   //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
   const tagFold = {};
   const starSeen = {};   // ★v5.1.482(俊克 am10:01「基本的に、⭐️の付いたところを開くことにしようか」): ⭐️が新しく付いた群/札は開き、⭐️の頁へ送る(1度だけ= 後は手で畳める・送れる)
-  const tagHead = (t, f, st) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((st ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + t));   /* v5.1.479: st= ⭐️(この札に最後の膜) */ const r = $.NSMakeRange(0, a.length);
+  const tagHead = (t, f, st) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + t));   /* v5.1.483: ⭐️は題の外(tagAll.hv[k] の左の余白) */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.menuFontOfSize(0).pointSize), r); a.addAttributeValueRange($.NSObliquenessAttributeName, $(0.2), r);   // v5.1.340: 太字＋傾き(日本語にも効く)
-    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); const z = st ? STAR.length : 0; triCol(a, f, TRI_PURPLE, z); starSm(a, st); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, z + 1)); } catch (e) {} return a; };
+    a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_PURPLE); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, 1)); } catch (e) {} return a; };
   const tagPaint = () => { try { const F = tagAll.fold, V = []; let cur = '';
     for (const it of tagAll.list) { if (it.off) { cur = it.title; V.push(it); } else if (!tagFold[cur]) V.push(it); }
     // ★v5.1.342(俊克 pm02:12 改良1「1/4 頁の一番下に ▾#テストHIIT の見出しだけが出て、送ると見出し無しで始まる」): ページを先に組む=
@@ -471,8 +480,8 @@ function run(argv) {
     for (let k = 0; k < tagAll.slots.length; k++) { const it = W[k], mi = tagAll.slots[k];
       if (it && it.off) {
         if (!tagAll.hv[k]) { const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22)); const b = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgTagFold:'); b.bordered = false; b.alignment = 0; b.frame = $.NSMakeRect(14, 1, 220, 20); b.tag = k; hv.addSubview(b); tagAll.hv[k] = { v: hv, b: b }; }
-        tagAll.hv[k].b.attributedTitle = tagHead(it.title, !!tagFold[it.title], !!it.star); mi.view = tagAll.hv[k].v;
-      } else if (it) { mi.view = $(); mi.attributedTitle = $(); mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = true; mi.indentationLevel = it.indent || 0; }
+        tagAll.hv[k].b.attributedTitle = tagHead(it.title, !!tagFold[it.title]); starLbl(tagAll.hv[k], tagAll.hv[k].v, !!it.star); mi.state = 0; mi.view = tagAll.hv[k].v;
+      } else if (it) { mi.view = $(); mi.attributedTitle = $(); starRow(mi, it.title, true); mi.representedObject = $(it.id || ''); mi.enabled = true; mi.indentationLevel = it.indent || 0; }
       mi.hidden = F || !it; }
     if (tagAll.pi) { tagAll.pi.hidden = F || P.length <= 1;
       tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + 1 < P.length; const sp = P.findIndex(pg => pg.some(it => it && (it.star || String(it.title || '').indexOf(STAR) === 0)));   // ★v5.1.481(俊克 am09:49 改良2「スライドボタンの右側に(⭐️2/5)のように」): ⭐️の膜が居る頁
@@ -486,7 +495,7 @@ function run(argv) {
     pgTitle(p, !!fusenFold[p.name] || pgCover(p));
     p.pin.hidden = f || !p.its[0];
     for (let k = 0; k < p.slots.length; k++) { const it = rest[p.off + k], mi = p.slots[k];
-      if (it) { mi.title = $(it.title); mi.representedObject = $(it.id); } mi.hidden = f || !it; }
+      if (it) { starRow(mi, it.title, true); mi.representedObject = $(it.id); } mi.hidden = f || !it; }
     p.pi.hidden = f || !p.its.length;   // v5.1.314: 1枚も無い群は見出しだけ
     const pages = Math.max(1, Math.ceil(rest.length / 5)), cur = Math.floor(p.off / 5) + 1;
     try { p.up.enabled = p.off > 0; p.dn.enabled = p.off + 5 < rest.length; p.lab.stringValue = $(cur + ' / ' + pages); } catch (e) {}
@@ -521,7 +530,7 @@ function run(argv) {
     try { const k0 = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'), cb = /^CB/.test(e.fusen), k = k0 + (cb ? 'S' : ''); if (!(k in fusenIcons)) { const h = parseInt(k0.slice(1), 16), tc = rgb((h >> 16) & 255, (h >> 8) & 255, h & 255); fusenIcons[k] = cb ? fusenIconSq(tc) : fusenIcon(tc); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
     p.hb.frame = $.NSMakeRect(14, 1, 220, 20); p.hb.tag = pagers.length; hv.addSubview(p.hb); if (/^(CB|IC)/.test(e.fusen) && !pagers.some(q => String(q.name).slice(0, 2) === String(e.fusen).slice(0, 2))) { p.hb.frame = $.NSMakeRect(14, 1, 140, 20); p.hb.autoresizingMask = 2; p.kb = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgKind:'); p.kb.bordered = false; p.kb.alignment = 1; p.kb.frame = $.NSMakeRect(150, 1, 84, 20); p.kb.autoresizingMask = 1; p.kb.tag = pagers.length; hv.addSubview(p.kb); hv.autoresizingMask = 2; }
     const hd = $.NSMenuItem.alloc.init; hd.view = hv; m.addItem(hd); p.hd = hd;
-    const add = (it) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? it.title : ' '), 'pick:', $('')); mi.target = tgt; if (it) mi.representedObject = $(it.id); mi.indentationLevel = 1; return mi; };
+    const add = (it) => { const mi = m.addItemWithTitleActionKeyEquivalent($(it ? starStrip(it.title) : ' '), 'pick:', $('')); if (it) starRow(mi, it.title); mi.target = tgt; if (it) mi.representedObject = $(it.id); mi.indentationLevel = 1; return mi; };
     p.pin = add(its[0]);
     for (let k = 0; k < 5; k++) p.slots.push(add(its[1 + k]));
     const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 220, 26));
@@ -587,7 +596,7 @@ function run(argv) {
     const m = $.NSMenu.alloc.init; m.autoenablesItems = false;
     const its = [];
     const nv = lastNoViews = noViews();
-    for (const e of entries) {
+    for (let e of entries) {   // v5.1.483: let= ⭐️を外した写しに差し替える
       if (nv && (e.clockAll || e.fusenAll || e.fusen || e.tagAll || e.tagPager)) { its.push(null); continue; }   // v5.1.331: 切り分け
       if (e.sep && e.dd && !nv) { try { const di = dashItem(e.dd === 2); m.addItem(di); clockAll.seps.push(di); di.hidden = clockFold && !!clockAll.hb; } catch (x) {} its.push(null); continue; }   // v5.1.398
       if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.cz) { clockAll.seps.push(sp); sp.hidden = clockFold && !!clockAll.hb; } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
@@ -597,7 +606,9 @@ function run(argv) {
       if (e.tagPager) { try { buildTagPager(m, e); } catch (x) {} its.push(null); continue; }   // v5.1.327
       if (e.fusen) { try { its.push(buildFusen(m, e)); } catch (x) { its.push(null); } continue; }   // v5.1.310
       if (e.title == null) { its.push(null); continue; }   // v5.1.310: 知らない形の項目でメニューごと落とさない
+      const _st = !e.sub && String(e.title).indexOf(STAR) === 0; if (_st) e = Object.assign({}, e, { title: starStrip(e.title) });   // v5.1.483: ⭐️は✓の欄へ
       const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));
+      if (_st) { try { const im = starImg(12); if (im) mi.onStateImage = im; mi.state = 1; } catch (x) {} }
       if (e.sub) mi.submenu = build(e.sub); else { mi.target = tgt; mi.representedObject = $(e.id || ''); }
       if (e.indent) mi.indentationLevel = e.indent;
       if (e.off) mi.enabled = false;
@@ -865,7 +876,7 @@ function run(argv) {
       if (lastEntries.length && nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {   // v4.2.499: 並びが同じ= 字だけ差し替える
         for (let i = 0; i < nw.length; i++) { const e = nw[i], o = lastEntries[i], mi = lastItems[i];
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
-          try { mi.title = $(e.title); styleItem(mi, e); } catch (x) {} }
+          try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
       } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
