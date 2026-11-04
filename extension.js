@@ -23824,6 +23824,7 @@ function meosLaunchDSample(id) {
     'Only one line runs at a time. Edit the days and the time, then press \u25b6\ufe0f again.',
     'Days: S M T W t F s = Sun Mon Tue Wed Thu Fri Sat.',
     '<!-- {* \u25b2mCN=' + id + ' *} -->',
+    meosPairBadgeLineText(id, '', '(📊⊕0+0)'),   // ★v5.1.493(俊克 バグ1「New.md①で、システム起動用の膜にバッジFCが付いてない→残り時間が出ない」): ⏰の残り時間はバッジ行に出る
     '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 // weekdays -->',
     '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 // weekends -->',
     '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // every day -->', ''].join('\n');
