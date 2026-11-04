@@ -473,7 +473,8 @@ function run(argv) {
       } else if (it) { mi.view = $(); mi.attributedTitle = $(); mi.title = $(it.title); mi.representedObject = $(it.id || ''); mi.enabled = true; mi.indentationLevel = it.indent || 0; }
       mi.hidden = F || !it; }
     if (tagAll.pi) { tagAll.pi.hidden = F || P.length <= 1;
-      tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + 1 < P.length; tagAll.lab.stringValue = $((tagAll.off + 1) + ' / ' + Math.max(1, P.length)); } } catch (e) {} };
+      tagAll.up.enabled = tagAll.off > 0; tagAll.dn.enabled = tagAll.off + 1 < P.length; const sp = P.findIndex(pg => pg.some(it => it && (it.star || String(it.title || '').indexOf(STAR) === 0)));   // ★v5.1.481(俊克 am09:49 改良2「スライドボタンの右側に(⭐️2/5)のように」): ⭐️の膜が居る頁
+      tagAll.lab.stringValue = $((tagAll.off + 1) + ' / ' + Math.max(1, P.length) + (sp >= 0 ? '   (\u2b50\ufe0f' + (sp + 1) + '/' + Math.max(1, P.length) + ')' : '')); } } catch (e) {} };
   const pgPaint = (p) => {
     const A = !!fusenFold['\u0000all'];
     try { p.hd.hidden = A; } catch (e) {}
@@ -531,10 +532,10 @@ function run(argv) {
   function buildTagPager(m, e) {   // v5.1.327: TAG の一覧= TAG_PAGE 枠＋▲▼
     tagAll.list = e.rows || [];
     for (let k = 0; k < TAG_PAGE; k++) { const mi = m.addItemWithTitleActionKeyEquivalent($(' '), 'pick:', $('')); mi.target = tgt; tagAll.slots.push(mi); }
-    const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 220, 26));
+    const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 290, 26));
     tagAll.up = $.NSButton.buttonWithTitleTargetAction($('\u25b2'), pgt, 'pgTagUp:'); tagAll.up.frame = $.NSMakeRect(36, 2, 40, 22); v.addSubview(tagAll.up);
     tagAll.dn = $.NSButton.buttonWithTitleTargetAction($('\u25bc'), pgt, 'pgTagDn:'); tagAll.dn.frame = $.NSMakeRect(80, 2, 40, 22); v.addSubview(tagAll.dn);
-    tagAll.lab = $.NSTextField.labelWithString($('')); tagAll.lab.frame = $.NSMakeRect(128, 5, 80, 16); v.addSubview(tagAll.lab);
+    tagAll.lab = $.NSTextField.labelWithString($('')); tagAll.lab.frame = $.NSMakeRect(128, 5, 150, 16);   /* v5.1.481: (⭐️N/M) の分だけ広く */ v.addSubview(tagAll.lab);
     tagAll.pi = $.NSMenuItem.alloc.init; tagAll.pi.view = v; m.addItem(tagAll.pi);
     tagPaint(); tagTitle();
   }

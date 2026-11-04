@@ -31086,7 +31086,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm-head{display:flex;align-items:center;gap:5px;height:18px}
 .mbm-fold{cursor:var(--meos-hand);color:#1e7fd6;font-size:22px;line-height:1;width:36px;height:18px;display:inline-flex;align-items:center;justify-content:center;user-select:none;flex:0 0 auto;border-radius:5px}.mbm-fold:hover{background:color-mix(in srgb,var(--vscode-foreground) 14%,transparent)}.mbm-chev{display:block;overflow:visible}.mbm-chev.mbm-down{transform:rotate(90deg)}/* v5.1.475(俊克 am08:10「本物のメニューバーの記号の形と太さに」): 字をやめ細い線(SVG)の山形=白1.7px＋黒縁 */   /* v5.1.456(俊克 pm09:01「縦サイズを倍にして押しやすく・連続して押せるようにポインターの位置を追従」): 当たりを縦28px(倍)・幅22px で固定、どの段でも頭の高さを28pxに揃える= ボタンが動かないので同じ所で押し続けられる */   /* v5.1.455(俊克 pm08:49「左のボタンだけで ▶ → ▶▶ → ▼ → ▶ の三段活用」): 右の▾は廃止 */
 .mbm-name{font-weight:800;font-size:11px;opacity:.8;display:none}
-.mbm.mbm-folded .mbm-name{display:inline}.mbm-sv{margin-right:3px;font-size:9px;vertical-align:1px}
+.mbm.mbm-folded .mbm-name{display:inline}.mbm-sv{margin-right:3px;font-size:9px;vertical-align:1px}.mbm-tagh:not(.mbm-shut) .mbm-tri{color:#8a4fe0}
 .mbm.mbm-folded .mbm-bar,.mbm.mbm-folded .mbm-list{display:none}
 .mbm-bar{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:calc(100% - 18px);cursor:default;padding:0 0 0 3px;line-height:18px;border-radius:7px;background:color-mix(in srgb,var(--vscode-foreground) 10%,transparent)}
 .mbm-logo{width:16px;height:16px;flex:0 0 auto}
@@ -32720,7 +32720,6 @@ function mbmLabel(t,anc){lab.textContent='';lab.classList.toggle('mbm-idle',!t);
  if(seat){const b=document.createElement('span');b.className='mbm-seat';b.style.background=seat.c;b.textContent=seat.s;lab.appendChild(b);}}
 function el(c,t){const d=document.createElement('div');d.className=c;if(t!=null)d.textContent=t;return d;}
 function item(it,ind){const d=el('mbm-it'+(ind?' mbm-ind':'')+(it.id?'':' mbm-off'));if(it.pill){d.appendChild(document.createTextNode(it.pre||''));const p=document.createElement('span');p.className='mbm-pill';p.textContent=it.pill;d.appendChild(p);d.appendChild(document.createTextNode(it.post||''));}else d.textContent=it.title||'';
- if(it.star&&it.off){const sv=document.createElement('span');sv.className='mbm-sv';sv.textContent='\u2b50\ufe0f';d.insertBefore(sv,d.firstChild);}/* v5.1.479: 札の見出し(#…)の小さい⭐️ */
  if(it.id)d.addEventListener('click',ev=>{ev.preventDefault();vscode.postMessage({type:'mbPick',id:it.id});});return d;}
 function head(key,text,cls,sq,empty){const h=el('mbm-hd'+(cls?' '+cls:'')+(shut[key]?' mbm-shut':'')+(empty?' mbm-empty':''));if(sq){const q=document.createElement('span');q.className='mbm-sq '+(/^IC/.test(text)?'mbm-sq-ic':'mbm-sq-cb');q.style.setProperty('--c',sq);h.appendChild(q);}if(cls&&cls.indexOf('mbm-star')>=0){const sv=document.createElement('span');sv.className='mbm-sv';sv.textContent='\u2b50\ufe0f';h.appendChild(sv);}/* v5.1.477: ⭐️= 最後に着地した付箋を含む見出し(三角の前) */const tr=document.createElement('span');tr.className='mbm-tri';tr.textContent=shut[key]?'▶':'▼';h.appendChild(tr);
  h.appendChild(document.createTextNode(text));h.addEventListener('click',ev=>{ev.preventDefault();shut[key]=!shut[key];render();});return h;}
@@ -32732,7 +32731,7 @@ function render(){if(!menu)return;const st=list.scrollTop;list.textContent='';le
   if(it.sep){if(it.cz&&sec==='clk'&&shut.clk)continue;if(it.fz&&shut.fusen)continue;sec=(it.cz||it.fz)?sec:'';list.appendChild(el('mbm-sep'+(it.dd||it.cz?' mbm-dash':'')));continue;}
   if(it.clk){if(sec==='clk'&&shut.clk)continue;list.appendChild(item(it));continue;}
   if(it.fusen){if(shut.fusen)continue;const k='f:'+it.fusen,n=(it.items||[]).length;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.fusen,'mbm-sub'+(it.star?' mbm-star':''),it.color,!n));if(!shut[k])for(const x of it.items||[])list.appendChild(item(x,1));continue;}
-  if(it.tagPager){if(shut.tag)continue;for(const r of it.rows||[])list.appendChild(item(r,r.indent));continue;}
+  if(it.tagPager){if(shut.tag)continue;let tk='';for(const r of it.rows||[]){if(r.off){tk='t:'+r.title;list.appendChild(head(tk,r.title,'mbm-sub mbm-tagh'+(r.star?' mbm-star':'')));continue;}if(!shut[tk])list.appendChild(item(r,r.indent));}continue;}/* v5.1.481(俊克 am09:49 改良1「タグのそれぞれの項目も折り畳めるように」): #札= 見出し(▼/▶で畳む)・メニューバーと同じく初めは開く */
   if(it.tg){if(shut.tag)continue;list.appendChild(item(it));continue;}
   if(it.sub){const k='s:'+it.title;if(!(k in shut))shut[k]=true;list.appendChild(head(k,it.title));if(!shut[k])for(const x of it.sub)list.appendChild(item(x,1));continue;}
   list.appendChild(item(it));}
