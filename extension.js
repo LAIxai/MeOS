@@ -12152,7 +12152,15 @@ const MEOS_TIMER_DB_CHAIN_EX = [
 function meosTimerDbChainExLines() { const E = MEOS_TIMER_DB_CHAIN_EX; return [E[0], E[1], MEOS_TIMER_DB_RULE, E[2], E[3]]; }   // v5.1.113: Tabata / --- / Pomodoro
 // ★v5.1.492(俊克 pm09:30「システム起動タイマーもデータベースの一部として…1ヶ所に書けばいい性質のもの」):
 //   🌅LaunchD の膜を⏰データベースの膜の中(説明の下)に入れる。効くのは TS が一番新しい🌅だけ= 既に🌅が在る時は入れない(今の🌅を古くしない)。
-function meosLaunchDWanted() { try { return process.platform === 'darwin' && !meosLaunchDNewest(); } catch (_) { return false; } }
+// ★v5.1.494(俊克「システムタイマーを停止しても、新しいのが出てこないのは使い難い」): 入れないのは「走っている🌅」が在る時だけ。
+//   止まった(⏸だけの)🌅は古くなっても困らない= 新しい🌅を入れる(新しい方が TS で効く)。
+function meosLaunchDRunningAny() {
+  for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
+    try { const ids = collectPairs(d, { excludeIndex: false }).filter(p => meosIsLaunchDKey(p.id)).map(p => p.id); if (!ids.length) continue;
+      if (meosClockFcScan(d).some(x => ids.indexOf(x.key) >= 0 && x.ufc && !x.off && !x.done)) return true; } catch (_) { } }
+  return false;
+}
+function meosLaunchDWanted() { try { return process.platform === 'darwin' && !meosLaunchDRunningAny(); } catch (_) { return false; } }
 function meosLaunchDInnerLines() { return meosLaunchDSample('\ud83c\udf05LaunchD_' + meosMembraneStamp(new Date())).split('\n').filter((x, i, a) => !(i === a.length - 1 && x === '')); }
 function meosTimerDbText(eol, withLaunchD) {
   const d = new Date(), p = (x) => (x < 10 ? '0' : '') + x;
