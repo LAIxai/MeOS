@@ -23893,8 +23893,8 @@ function meosLaunchDMarkText(t, on) {
 }
 async function meosLaunchDSyncMarks(doc, key, cur) {
   try {
-    const rows = meosClockFcScan(doc).filter(x => x.key === key && x.ufc);
-    const run = rows.filter(x => !x.off && !x.done)[0] || null;
+    const rows = meosClockFcScan(doc).filter(x => x.key === key);   // v5.1.500: 待ちの行(FC)に残った🍏も見る(渡された後の行に印が残っていた)
+    const run = rows.filter(x => x.ufc && !x.off && !x.done)[0] || null;
     let sp = run ? meosLaunchDSpec(run) : null;
     const tg = new Set();
     // v5.1.497: ⛓️ の組= 保険の繰り返し(曜日の一番多い行)が macOS と同じで、MeOS の名の起動が入っていれば、組の行すべてに🍏
@@ -23902,7 +23902,7 @@ async function meosLaunchDSyncMarks(doc, key, cur) {
     if (grp && grp.rows.length > 1) {
       const sps = grp.rows.map(r => meosLaunchDSpec(r));
       if (!sps.some(x => x.err)) { const pr = sps.slice().sort((a, b) => b.days.length - a.days.length)[0]; const sch = await meosLaunchDReadSched();
-        if (cur.hm === pr.hm && cur.days === pr.days && sch && sch.length) grp.rows.forEach(r => tg.add(r.line)); }
+        if (cur.hm === pr.hm && cur.days === pr.days && sch && sch.length) tg.add(run.line); }   // v5.1.500: 🍏は次に起動する1行だけ(俊克の画面のとおり)
     } else if (run && sp && !sp.err && cur && cur.hm === sp.hm && cur.days === sp.days) tg.add(run.line);
     const target = tg.size ? Math.min.apply(null, Array.from(tg)) : -1;
     const we = new vscode.WorkspaceEdit(); let n = 0;
@@ -23999,6 +23999,21 @@ function meosLaunchDPermission(on) {
       });
     } catch (e) { meosDbg('[launchd] permission err ' + e); res(false); }
   });
+}
+// ★v5.1.500(俊克 am09:48 バグ1「今回も駄目だった」): 起動の8秒後の時点では、🌅の在る md がまだ開かれていなかった(開くのはタブを押した時)= 見に行く口が無かった。
+//   → md が開かれた時にも、走っている🌅の組を次の行へ送り、窓を突き合わせる。
+let _meosLaunchDOpenT = null;
+function meosLaunchDOnOpen(d) {
+  try {
+    if (process.platform !== 'darwin' || !d || !isMarkdownDocument(d) || !(d.uri.scheme === 'file' || d.uri.scheme === 'untitled')) return;
+    if (d.getText().indexOf('\ud83c\udf05LaunchD_') < 0) return;
+    clearTimeout(_meosLaunchDOpenT);
+    _meosLaunchDOpenT = setTimeout(async () => { try {
+      const nw = meosLaunchDNewest(); if (!nw || nw.doc !== d) return;
+      await meosLaunchDFollow(d, nw.id);
+      if (await meosLaunchDCanSudo()) meosLaunchDReconcile(d, nw.id, true);
+    } catch (_) { } }, 1500);
+  } catch (_) { }
 }
 async function meosLaunchDFollow(doc, key, grp) {
   try {
@@ -46984,7 +46999,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
         return undefined;
       }
     }),
-    vscode.workspace.onDidOpenTextDocument(d => { try { meosLoadClocksFor(d); } catch (_) { } }),   // v4.0.460: 書いてある予定を仕掛け直す
+    vscode.workspace.onDidOpenTextDocument(d => { try { meosLoadClocksFor(d); } catch (_) { } try { meosLaunchDOnOpen(d); } catch (_) { } }),   // v4.0.460: 書いてある予定を仕掛け直す
     vscode.window.onDidChangeActiveTextEditor(e => { composingLine = -1; if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
       try { if (e && e.document) meosLoadClocksFor(e.document); } catch (_) { }   // v4.0.460: 既に開いていたファイルもここで拾う
       // v4.0.351: 別のタブへ移る時も、控えていた膜名の直しを閉じ膜へ届けてから移る。
