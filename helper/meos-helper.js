@@ -159,7 +159,7 @@ function run(argv) {
   const kindOf = (d) => !d ? '' : (d === 'MTWRFSU' ? 'MTWRFSU' : (/^[SU]+$/.test(d) ? 'SU' : (/^[MTWRF]+$/.test(d) ? 'MTWRF' : '')));   // v5.0.0-55: 週末の席も土/日の片方を持てる
   const dayLabel = (d) => WAKE_DAYS[d] || d.split('').map(c => DAY_NAME[c]).join(' ');
   const wakeLabel = () => { if (!wake) return 'off';
-    if (wake.next) { const d = new Date(wake.next), p = (x) => (x < 10 ? '0' : '') + x; return p(d.getHours()) + ':' + p(d.getMinutes()) + ' ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' \u2014 next on the chain'; }   // v5.1.501
+    if (wake.next) { const d = new Date(wake.next), p = (x) => (x < 10 ? '0' : '') + x; return p(d.getHours()) + ':' + p(d.getMinutes()) + ' ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' (chaining)'; }   // v5.1.501
     return (wake.hm || '?') + ' ' + (wake.days ? dayLabel(wake.days) : wake.raw); };
   const asq = (x) => String(x).replace(/["\\]/g, '');   // AppleScript の "…" に入れる字(決まった字しか来ないが念のため)
   const setWake = (kind, hm) => {
@@ -864,7 +864,7 @@ function run(argv) {
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
-    try { menu = (menu || []).slice(); if (menu.some(e => e && !e.sep && /^\ud83c\udf05 /.test(e.title || ''))) throw 0;   // v5.0.0-62: 🌅 の時計が一覧に居れば、別の行は出さない
+    try { menu = (menu || []).slice(); if (menu.some(e => e && !e.sep && /^(?:\u2b50\ufe0f )?\ud83c\udf05 /.test(e.title || ''))) throw 0;   /* v5.1.503(俊克「一番下にも重複して表示されて紛らわしい」): 真因= v5.1.479 の⭐️が頭に付くと🌅の時計と読めなかった */   // v5.0.0-62: 🌅 の時計が一覧に居れば、別の行は出さない
       let qi = menu.findIndex(e => e && (e.id === 'quitapp' || e.id === 'h:open')); if (qi < 0) qi = menu.length; else if (qi > 0 && menu[qi - 1] && menu[qi - 1].sep) qi--; menu.splice(qi, 0, ...(qi > 0 ? [{ sep: true }] : []), ...wakeEntries().slice(0, 1)); } catch (e) {}
     if (idle) text = '\u23f0';
     if (armOn) text = '\ud83e\udde9 ' + text;   // ★v5.1.398(俊克 11.02 am09:12 改良2「Me Dockを呪文で消してあっても、shift長押しのあとのccなどのワープができる…このときに、メニューバーにパズルのピースを表示すると分かりやすい」): 拡張が arm を置いている間(Me Dock が見えない時の構え)だけ札の頭に🧩

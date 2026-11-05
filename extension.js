@@ -14300,7 +14300,7 @@ function meosMenuBarClockItems() {
       const nm = meosClockSayName(r.sc) || '(outside every membrane)';
       const _face = meosMmSs(meosClockFaceMs(r.until, r.sc)), _f2 = go.length ? _face.replace(/\.\d{2}$/, '') : _face;
       const _ld = meosIsLaunchDKey(r.sc.key);   // v5.0.0-62(俊克「Wakeタイマーも、通常のタイマーと同じようにメニューバーの中に順番通りに・残り時間も」): 頭は🌅・名前は Wake
-      out.push({ clk: 1, id: 'go:' + go.length, title: (meosListStarIs('clk', r.sc) ? MEOS_FUSEN_STAR : '') + (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (r.sc.title ? '  ' + meosLaunchDRipeTitle(meosChainFillSlot(r.sc.title, 0, r.sc), r.sc) : '') : nm) });   // v4.2.316: ⚓も一覧に
+      out.push({ clk: 1, id: 'go:' + go.length, title: (meosListStarIs('clk', r.sc) ? MEOS_FUSEN_STAR : '') + (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (meosLaunchDChaining(r.sc) ? ' (chaining)' : '') + (r.sc.title ? '  ' + meosLaunchDRipeTitle(meosChainFillSlot(r.sc.title, 0, r.sc), r.sc) : '') : nm) });   // v4.2.316: ⚓も一覧に
       go.push(r.sc);
     }
   } catch (_) { }
@@ -24015,6 +24015,8 @@ function meosLaunchDOnOpen(d) {
     } catch (_) { } }, 1500);
   } catch (_) { }
 }
+// v5.1.503(俊克「上の予定のところに、chainingと書いた方が良い」): ⛓️ の組で走っている🌅か
+function meosLaunchDChaining(sc) { try { const d = sc.doc || vscode.workspace.textDocuments.find(x => x.uri.toString() === sc.uri); const g = d ? meosLaunchDGroupOf(d, sc.key) : null; return !!(g && g.rows.length > 1); } catch (_) { return false; } }
 async function meosLaunchDFollow(doc, key, grp) {
   try {
     const g = grp || meosLaunchDGroupOf(doc, key); if (!g || g.rows.length < 2) return false;
