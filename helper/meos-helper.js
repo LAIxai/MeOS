@@ -445,7 +445,7 @@ function run(argv) {
   // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
   const tagAll = { hb: null, rows: [], fold: true, slots: [], list: [], off: 0, up: null, dn: null, lab: null, pi: null };
   const tagTitle = () => { try { if (!tagAll.hb) return;
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.star ? STAR : '') + (tagAll.fold ? '\u25b8 ' : '\u25be ') + 'TAG')); const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.star ? STAR : '') + (tagAll.fold ? '\u25b8 ' : '\u25be ') + '\ud83c\udff7\ufe0f')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, (tagAll.list.length || tagAll.rows.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold, TRI_PURPLE, tagAll.star ? STAR.length : 0); starSm(a, tagAll.star);   /* v5.1.479 */
     tagAll.hb.attributedTitle = a; } catch (e) {} };
