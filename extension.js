@@ -14588,7 +14588,7 @@ function meosRealHost() { try { return !!(process.versions && process.versions.e
 function meosGateLogoCopy(dir) {
   try { const fs = require('fs'), path = require('path'); fs.mkdirSync(dir, { recursive: true });
     try { fs.writeFileSync(path.join(dir, 'hand-name'), meosHandName()); } catch (_) { }   // v5.1.520: Me Dock のポインター設定を wGATE へ
-    for (const n of ['mgate-l.png', 'mgate-d.png', 'mgate-big.png', 'mgate-hand.png', 'mgate-hand22.png']) { const a = path.join(extensionContext.extensionPath, 'media', 'logo', n), b = path.join(dir, n); const x = fs.readFileSync(a); let y = null; try { y = fs.readFileSync(b); } catch (_) { } if (!y || !x.equals(y)) fs.writeFileSync(b, x); } } catch (_) { }
+    for (const n of ['mgate-l.png', 'mgate-d.png', 'mgate-big.png', 'mgate-hand.png', 'mgate-hand22.png', 'mgate-arrow45.png']) { const a = path.join(extensionContext.extensionPath, 'media', 'logo', n), b = path.join(dir, n); const x = fs.readFileSync(a); let y = null; try { y = fs.readFileSync(b); } catch (_) { } if (!y || !x.equals(y)) fs.writeFileSync(b, x); } } catch (_) { }
 }
 // ★v5.1.473(俊克 11.04 am03:43「macOS上では、VSCmを起動直後に、デフォルトとして、自動で、メニューバーの下にmGATEを起動しよう」):
 //   V-helper が入っている= 起動のたびに Barman を出す(出しっぱなし・Shift クリックで閉じる)。入っていない= 初めての時に1度だけ訊く(黙ってログイン項目を足さない)→ はいなら入れて出す
