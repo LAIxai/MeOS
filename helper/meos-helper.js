@@ -349,7 +349,7 @@ function run(argv) {
   //   → 同じ作りをこちらにも。群= 見出し＋常駐1＋5枠＋▲▼(メニューの中のボタン= 押しても閉じない)。
   const pagers = [];
   const fusenOff = {};   // v5.1.347(俊克 改良1「スライダーで3/3を表示したとき、その移動を記憶…閉じて再度開くと1/3になる」): 群の名前→送った位置(閉じて作り直しても覚えている)
-  const fusenFold = {};   // v5.1.312(俊克 改良2「CB FUSEN、IC FUSEN という部分をクリックすることで折り畳めるように」): 群の名前→畳んだか(作り直しても覚えている)
+  const fusenFold = { '\u0000all': true, '\u0000ovCB': true, '\u0000ovIC': true };   // v5.1.312(俊克 改良2「CB FUSEN、IC FUSEN という部分をクリックすることで折り畳めるように」): 群の名前→畳んだか(作り直しても覚えている)
   // ★v5.1.314(俊克 改良1「CB/IC FUSEN の文字を濃く。未登録なら薄くても良い」・改良2「付箋らしい絵を作ってみる?」):
   //   見出しの字= 付箋が在れば濃い(labelColor)・無ければ薄い。絵= 日本の付箋(細長い紙の端だけ色)を描く。CB は橙の端・IC は青の端。
   const rgb = (r, g, b) => $.NSColor.colorWithSRGBRedGreenBlueAlpha(r / 255, g / 255, b / 255, 1);
@@ -405,7 +405,8 @@ function run(argv) {
   // ★v5.1.356(俊克 10.31 am10:03 改良1「メニューバーを1クリックで全て折り畳んだ状態にするボタン…通常の⏰も折り畳めるように」・タイトル「▼ ⏰」/
   //   am10:08「⊟を押す度に、全部折り畳む、⏰だけ開く、付箋だけ開く、タグだけ開くの4つを巡回…全て展開はあえて入れない」):
   //   ⏰の見出し= FUSEN/TAG と同じ「メニューの中のボタン」(押しても閉じない)。右端の⊟で4つの姿を巡る。畳んだ姿は作り直しても覚えている
-  let clockFold = false, foldMode = -1;
+  // ★v5.1.515(俊克 11.05 pm05:45 改良1「デフォルトでは、すべて折り畳んだ状態で。ただし⏰だけは例外でデフォルトで展開」): 起動時の姿= ⏰だけ開く(↻も⏰だけの姿・赤)。付箋= 全体と CB-ALL/IC-ALL の蓋を閉じ、群も畳む。🏷️= 全体も札も畳む。押して変えた姿は動いている間は覚えている
+  let clockFold = false, foldMode = 1;
   const clockAll = { hb: null, cyc: null, rows: [], seps: [] };
   const clockTitle = () => { try { headPaint(); if (!clockAll.hb) return; const f = clockFold;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((clockAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
@@ -484,7 +485,7 @@ function run(argv) {
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.menuFontOfSize(0).pointSize), r); a.addAttributeValueRange($.NSObliquenessAttributeName, $(0.2), r);   // v5.1.340: 太字＋傾き(日本語にも効く)
     a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_PURPLE); try { a.addAttributeValueRange($.NSObliquenessAttributeName, $(0), $.NSMakeRange(0, 1)); } catch (e) {} return a; };
   const tagPaint = () => { try { const F = tagAll.fold, V = []; let cur = '';
-    for (const it of tagAll.list) { if (it.off) { cur = it.title; V.push(it); } else if (!tagFold[cur]) V.push(it); }
+    for (const it of tagAll.list) { if (it.off) { if (!(it.title in tagFold)) tagFold[it.title] = true; cur = it.title; V.push(it); } else if (!tagFold[cur]) V.push(it); }
     // ★v5.1.342(俊克 pm02:12 改良1「1/4 頁の一番下に ▾#テストHIIT の見出しだけが出て、送ると見出し無しで始まる」): ページを先に組む=
     //   開いた見出しはページの最後の行に置かない(次のページへ送る)・膜の行で始まるページは、その札の見出しを頭にもう一度置く
     const P = []; let pg = [], head = null;
@@ -538,14 +539,14 @@ function run(argv) {
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 8; ptrTo(s);   /* v5.1.374(改良1「ポインターの先が円のギリギリ外…少しだけ円の中に」): 10→8(半径14の内側 11.3) */   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
     'cycHov:': { types: ['void', ['id']], implementation: function (t) { cycHoverStep(); } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
-    'pgKind:': { types: ['void', ['id']], implementation: function (s) { try { const p0 = pagers[Number(s.tag)]; if (!p0) return; const kd = String(p0.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), k = pgCovK(kd); fusenFold[k] = !fusenFold[k]; for (const p of g) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
-    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const k = pgCovK('All'); fusenFold[k] = !fusenFold[k]; for (const p of pagers) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
+    'pgKind:': { types: ['void', ['id']], implementation: function (s) { try { const p0 = pagers[Number(s.tag)]; if (!p0) return; const kd = String(p0.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), k = pgCovK(kd); fusenFold[k] = !fusenFold[k]; if (!fusenFold[k]) lidOpen(g); for (const p of g) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
+    'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const k = pgCovK('All'); fusenFold[k] = !fusenFold[k]; if (!fusenFold[k]) lidOpen(pagers.filter(q => !pgCover(q))); for (const p of pagers) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
   const pgt = $.MeOSPagerH.alloc.init;
   // 群= 見出し(押すと畳む/開く・メニューの中のボタン= 閉じない)＋常駐1＋5枠＋▲▼
   function buildFusen(m, e) {
-    const its = e.items || [], p = { name: e.fusen, star: !!e.star, its: its, slots: [], off: fusenOff[e.fusen] || 0 };
-    { const sti = its.findIndex(x => x && String(x.title || '').indexOf(STAR) === 0); if (e.star && sti >= 0) { const sg = its[sti].title + '|' + (its[sti].id || ''); if (starSeen['f:' + e.fusen] !== sg) { starSeen['f:' + e.fusen] = sg; fusenFold[e.fusen] = false; if (sti > 0) fusenOff[e.fusen] = Math.floor((sti - 1) / 5) * 5; p.off = fusenOff[e.fusen] || 0; } } }   // v5.1.482
+    if (!(e.fusen in fusenFold)) fusenFold[e.fusen] = true; const its = e.items || [], p = { name: e.fusen, star: !!e.star, its: its, slots: [], off: fusenOff[e.fusen] || 0 };
+    { const sti = its.findIndex(x => x && String(x.title || '').indexOf(STAR) === 0); if (e.star && sti >= 0) { const sg = its[sti].title + '|' + (its[sti].id || ''); if (starSeen['f:' + e.fusen] !== sg) { starSeen['f:' + e.fusen] = sg; if (!pgCover(p)) fusenFold[e.fusen] = false; if (sti > 0) fusenOff[e.fusen] = Math.floor((sti - 1) / 5) * 5; p.off = fusenOff[e.fusen] || 0; } } }   // v5.1.482
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22));
     p.hb = $.NSButton.buttonWithTitleTargetAction($(e.fusen), pgt, 'pgFold:'); p.hb.bordered = false; p.hb.alignment = 0; p.hb.font = $.NSFont.menuFontOfSize(0);
     try { const k0 = e.color || (/^IC/.test(e.fusen) ? '#2f6fb3' : '#e0803a'), cb = /^CB/.test(e.fusen), k = k0 + (cb ? 'S' : ''); if (!(k in fusenIcons)) { const h = parseInt(k0.slice(1), 16), tc = rgb((h >> 16) & 255, (h >> 8) & 255, h & 255); fusenIcons[k] = cb ? fusenIconSq(tc) : fusenIcon(tc); } if (fusenIcons[k]) { p.hb.image = fusenIcons[k]; p.hb.imagePosition = 2; } } catch (x) {}   // v5.1.315: 絵の端= その群の付箋の色(e.color)
@@ -564,7 +565,7 @@ function run(argv) {
   }
   function buildTagPager(m, e) {   // v5.1.327: TAG の一覧= TAG_PAGE 枠＋▲▼
     tagAll.list = e.rows || [];
-    { const sr = tagAll.list.find(r => r && !r.off && String(r.title || '').indexOf(STAR) === 0), sg = sr ? sr.title : ''; if (sg && starSeen.tag !== sg) { starSeen.tag = sg; for (const r of tagAll.list) if (r && r.off && r.star) tagFold[r.title] = false; tagAll.pendStar = true; } }   // v5.1.482
+    { const sr = tagAll.list.find(r => r && !r.off && String(r.title || '').indexOf(STAR) === 0), sg = sr ? sr.title : ''; if (starSeen.tag === undefined) starSeen.tag = sg; else if (sg && starSeen.tag !== sg) { starSeen.tag = sg; for (const r of tagAll.list) if (r && r.off && r.star) tagFold[r.title] = false; tagAll.pendStar = true; } }   // v5.1.482
     for (let k = 0; k < TAG_PAGE; k++) { const mi = m.addItemWithTitleActionKeyEquivalent($(' '), 'pick:', $('')); mi.target = tgt; tagAll.slots.push(mi); }
     const v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 290, 26));
     tagAll.up = $.NSButton.buttonWithTitleTargetAction($('\u25b2'), pgt, 'pgTagUp:'); tagAll.up.frame = $.NSMakeRect(36, 2, 40, 22); v.addSubview(tagAll.up);
@@ -592,6 +593,7 @@ function run(argv) {
   }
   // ★v5.1.401(俊克 11.02 am10:02 改良3「メニューバーのFUSENのなかの6つの項目を全て折り畳めるように。▼ FUSENの右端にそのためのボタン・▼という同じマークは紛らわしい」): 右端に ⊟(群を全部畳む)/⊞(全部畳まれていれば全部開く)。色は FUSEN の▾と同じ青。FUSEN 全体を畳んでいる間は隠す→ v5.1.402(俊克 am10:27 改良3「緑色の▶で「▶ALL」、押すとすべてが展開し、青色の「▼ALL」に変える」): 全部開いていれば青の▾ALL(押すと全部畳む)・1つでも畳んでいれば緑の▸ALL(押すと全部開く)。三角は見出しと同じ triCol(2倍・色)
   // ★v5.1.410(俊克 11.02 pm01:02 改良1「ALLは、子や孫まですべてを畳むのではなく、再度開き直しても、閉じていたものは閉じたまま、開いたままのものは開いたままに。外枠だけを畳む」): ALL / CB-ALL / IC-ALL= 群の開閉の覚え(fusenFold[群名])には触らない「外枠の蓋」(fusenFold[\0ovAll]/[\0ovCB]/[\0ovIC])。蓋が在る間は群の中身を隠し、外すと各群が覚えた姿に戻る。蓋の中の群を押したら= その蓋を外してその群を開く
+  const lidOpen = (g) => { if (g.length && g.every(q => fusenFold[q.name])) for (const q of g) fusenFold[q.name] = false; };   // v5.1.515: 群が全部畳まれたまま蓋を開けると何も出ないので、その時は群も開く
   const pgCovK = (kd) => String.fromCharCode(0) + 'ov' + kd; const pgCover = (p) => !!fusenFold[pgCovK('All')] || !!fusenFold[pgCovK(String(p.name).slice(0, 2))];
   const grpPaint = () => { try { const b = fusenAll.grp; if (!b) return; const allO = !fusenFold[pgCovK('All')]; const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((allO ? '\u25be' : '\u25b8') + 'ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, !allO); b.attributedTitle = a; b.toolTip = $(allO ? 'Fold all the FUSEN groups' : 'Open all the FUSEN groups'); b.hidden = !!fusenFold['\u0000all'] || !pagers.length; } catch (e) {} };
   // ★v5.1.409(俊克 11.02 pm00:46 改良1「CB FUSEN・Yellowの右端に▼CB-ALL/▶CB-ALLボタンを付けよう。ICのほうにもね」): 種類(CB/IC)の最初の群の見出しの右端に、その種類の群だけを全部開く/畳む(▾ALL と同じ作り・同じ色の決まり)。v5.1.411: 見出しの字が「CB FUSEN · Y…」と切れた(140ptに縮めたまま)→ 見出しもメニューの幅に合わせて伸ばす(autoresizingMask 2)
