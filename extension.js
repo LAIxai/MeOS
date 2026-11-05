@@ -23919,6 +23919,7 @@ async function meosLaunchDMarksAtStart() {
       let ps = []; try { ps = collectPairs(d, { excludeIndex: false }).filter(p => meosIsLaunchDKey(p.id)); } catch (_) { }
       for (const p of ps) await meosLaunchDSyncMarks(d, p.id, (nw && nw.doc === d && nw.id === p.id) ? cur : null); }
     // v5.1.497: 許可が在れば、組の14日の窓を起動のたびに先へ送る(パスワードは訊かない)
+    if (nw) await meosLaunchDFollow(nw.doc, nw.id);   // v5.1.499: 切れている間に過ぎた行から、次の行へ
     if (nw && await meosLaunchDCanSudo()) meosLaunchDReconcile(nw.doc, nw.id, true);
   } catch (_) { }
 }
@@ -23999,6 +24000,15 @@ function meosLaunchDPermission(on) {
     } catch (e) { meosDbg('[launchd] permission err ' + e); res(false); }
   });
 }
+async function meosLaunchDFollow(doc, key, grp) {
+  try {
+    const g = grp || meosLaunchDGroupOf(doc, key); if (!g || g.rows.length < 2) return false;
+    if (!meosChainNextRow(doc, key, g.run.line, false)) return false;   // 走っている行が一番早い
+    const r = await meosChainAdvance(doc, key, g.run.line);
+    meosDbg('[launchd] 組の次の行へ ' + (g.run.line + 1) + ' \u2192 ' + r);
+    return r !== -1;
+  } catch (e) { meosDbg('[launchd] follow ' + e); return false; }
+}
 async function meosLaunchDReconcile(doc, key, quiet) {
   const say = (t) => { try { if (!quiet) vscode.window.showInformationMessage(t); } catch (_) { } meosDbg('[launchd] ' + t); };   // quiet= 人が押していない書き換え(知らせは出さず、違う時だけパスワード)
   if (process.platform !== 'darwin') { say('\ud83c\udf05 LaunchD sets the start-up of a Mac \u2014 it does nothing here.'); return; }
@@ -24006,7 +24016,12 @@ async function meosLaunchDReconcile(doc, key, quiet) {
   // 一番新しい 🌅LaunchD(開いている md の中で)
   const newest = meosLaunchDNewest();
   if (newest && (newest.id !== key || newest.doc !== doc)) { await meosLaunchDSyncMarks(doc, key, null); say('\ud83c\udf05 This LaunchD is not the newest one (' + newest.id + ' is) \u2014 press \u21bb on its name in Me Dock to make it current.'); return; }
-  const grp = meosLaunchDGroupOf(doc, key), run = grp ? grp.run : null;
+  let grp = meosLaunchDGroupOf(doc, key);
+  // ★v5.1.499(俊克 11.05 am09:20 改良1「木曜の設定が繰り返されてしまう。なぜ明日金曜の設定を実行しなかったのか?」):
+  //   真因= 渡すのは鐘の時だけ。🌅の時刻は Mac が切れている/起動の途中= 鐘が鳴らず、⏰は自分の ↺ で来週の木曜へ回った。
+  //   → 鐘を待たず、組の中で次に一番早い行を本文の「走り」にする(突き合わせの度・VSCodium の起動の度)。macOS の予定は最初から組で入っている。
+  if (grp && grp.rows.length > 1 && await meosLaunchDFollow(doc, key, grp)) grp = meosLaunchDGroupOf(doc, key);
+  const run = grp ? grp.run : null;
   let want = run ? meosLaunchDSpec(run) : null;
   const cur = await meosLaunchDReadMac(), sch = await meosLaunchDReadSched();
   if (cur === undefined || sch === undefined) { say('\ud83c\udf05 Could not read the start-up schedule of this Mac (pmset).'); return; }
