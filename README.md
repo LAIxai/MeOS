@@ -22,9 +22,6 @@ Markdown Warpup: Cell Merge &amp; Wrap, Sticky Notes Anywhere, ⏰DB</p>
   <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v5.1-2196f3" alt="Latest Release (v5.1)"></a>
 </p>
 
-<p align="center"><b>MeOS — Membrane OS</b>, a.k.a. <b>iWarpShip</b><br>
-<sub><i>i</i> for information — a ship that warps through the space of what you wrote.</sub></p>
-
 ### **M↓Ⓦ↗ — Markdown Warpup** — *down to lighten, up to warp.*
 
 MeOS speaks **Markdown Warpup (M↓Ⓦ↗)**: plain Markdown, extended with **membranes**. Mark*down* made markup lighter — less to write, less complexity. Warp*up* goes the other way: it speeds up the warp, and takes you *up to the stars*. The Ⓦ is a double-u — *double*, and *Warp*. A membrane is just a comment — so a Markdown Warpup document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **Markdown Warpup doubles it with structure, navigation, and bookmarks — and warps you back to them** — without touching your data.
