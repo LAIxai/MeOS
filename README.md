@@ -8,6 +8,12 @@
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-6.png" alt="Three faces of MeOS: MeW - Membrane Warpspace / M↓Ⓦ↗ - Markdown Warpup / MW-GATE - the Warpgate on the macOS menu bar" width="776">
 </p>
 
+<p align="center"><b>MeOS : 100-Year Diary, One File, One Stop</b><br>
+Markdown Warpup: Cell Merge &amp; Wrap, Sticky Notes Anywhere, ⏰DB</p>
+
+<p align="center"><sub>MeOS : 1ファイル100年日記、ワンストップ操作<br>
+シン・Markdown セル結合/折返、どこでも付箋、⏰DB</sub></p>
+
 <p align="center">
   <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点の記録。DL数=1014 と release=v2.0 の**2つとも**意図的に固定。
        実数や最新版と合わなくても更新しないこと(v4.0.108で一度間違えて release を v4.0 にしてしまった)。 -->
