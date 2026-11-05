@@ -139,6 +139,17 @@ function run(argv) {
       }
       w = { days, hm, raw }; break;
     }
+    // ★v5.1.501(俊克 11.05 am10:05「エディター上は後5分なのに、mGATE上は月曜のam7:54を指している。なぜ?」):
+    //   読んでいたのは繰り返し(組の保険)だけ。⛓️ の組の本当の次は「MeOS の名の1回の予定」= その中で一番早い未来を出す。
+    let next = 0;
+    for (const ln of String(txt).split(/[\r\n]+/)) {
+      if (ln.indexOf("'MeOS'") < 0) continue;
+      const m = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})/.exec(ln); if (!m) continue;
+      let y = +m[3]; if (y < 100) y += 2000;
+      const t = new Date(y, +m[1] - 1, +m[2], +m[4], +m[5], 0, 0).getTime();
+      if (t > Date.now() && (!next || t < next)) next = t;
+    }
+    if (next) { w = w || { days: '', hm: '', raw: '' }; w.next = next; }
     return w;
   };
   const readWake = () => { if (wakeRead) return; wakeReadAt = Date.now(); try { loadPresets(); } catch (e) {} try { wakeRead = task(['pmset', '-g', 'sched']); } catch (e) { wakeRead = null; } };
@@ -147,7 +158,9 @@ function run(argv) {
   const DAY_NAME = { M: 'Mon', T: 'Tue', W: 'Wed', R: 'Thu', F: 'Fri', S: 'Sat', U: 'Sun' };
   const kindOf = (d) => !d ? '' : (d === 'MTWRFSU' ? 'MTWRFSU' : (/^[SU]+$/.test(d) ? 'SU' : (/^[MTWRF]+$/.test(d) ? 'MTWRF' : '')));   // v5.0.0-55: 週末の席も土/日の片方を持てる
   const dayLabel = (d) => WAKE_DAYS[d] || d.split('').map(c => DAY_NAME[c]).join(' ');
-  const wakeLabel = () => !wake ? 'off' : ((wake.hm || '?') + ' ' + (wake.days ? dayLabel(wake.days) : wake.raw));
+  const wakeLabel = () => { if (!wake) return 'off';
+    if (wake.next) { const d = new Date(wake.next), p = (x) => (x < 10 ? '0' : '') + x; return p(d.getHours()) + ':' + p(d.getMinutes()) + ' ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' \u2014 next on the chain'; }   // v5.1.501
+    return (wake.hm || '?') + ' ' + (wake.days ? dayLabel(wake.days) : wake.raw); };
   const asq = (x) => String(x).replace(/["\\]/g, '');   // AppleScript の "…" に入れる字(決まった字しか来ないが念のため)
   const setWake = (kind, hm) => {
     const days = kind === 'MTWRF' ? presets.wd : (kind === 'SU' ? presets.we : kind);   // v5.0.0-51: 平日の席は選んだ曜日 / v5.0.0-55: 週末の席も
