@@ -394,7 +394,10 @@ function run(argv) {
   // ★v5.1.510(俊克 11.05 pm05:13「▼ FUSEN を ▼ [四角い付箋(黄)]&[細長い付箋(赤)] に・一番上の▼ ⏰ と絵文字として対照的に」): 字の FUSEN をやめ、群の見出しと同じ絵(CB=四角・Yellow / IC=細長い・Red)を字の中に置く。絵が出せない時は最初のボタンの字 FUSEN のまま
   const fusenHead = (a) => { const fh = $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), put = (k, mk, w, h) => { const im = fusenIcons[k] || (fusenIcons[k] = mk()), t = $.NSTextAttachment.alloc.init; t.image = im; t.bounds = $.NSMakeRect(0, Math.round((fh.capHeight - h) / 2), w, h); a.appendAttributedString($.NSAttributedString.attributedStringWithAttachment(t)); };
     put('hdY', () => fusenIconSq(rgb(0xe0, 0xb1, 0x3a)), 20, 16); a.mutableString.appendString($(' & ')); put('hdR', () => fusenIcon(rgb(0xe0, 0x78, 0x9a)), 20, 12); };
-  const allTitle = () => { try { grpPaint(); if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
+  // ★v5.1.512(俊克 11.05 pm05:21 改良1「全部畳んだ状態のとき、もっと高さを縮めて、できるだけコンパクトに」): ⏰・付箋・🏷️の3つが全部畳まれている間だけ、付箋と🏷️の見出しの上の区切りを隠して3行を詰める。1つでも開けば区切りは戻る
+  const headSeps = [];
+  const headPaint = () => { try { const all = !!clockAll.hb && !!fusenAll.hb && !!tagAll.hb && clockFold && !!fusenFold['\u0000all'] && !!tagAll.fold; for (const sp of headSeps) sp.hidden = all; } catch (e) {} };
+  const allTitle = () => { try { grpPaint(); headPaint(); if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((fusenAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ')));   /* v5.1.477: ⭐️= 最後に着地した付箋を含む */ fusenHead(a); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f, null, fusenAll.star ? STAR.length : 0); starSm(a, fusenAll.star);
@@ -404,7 +407,7 @@ function run(argv) {
   //   ⏰の見出し= FUSEN/TAG と同じ「メニューの中のボタン」(押しても閉じない)。右端の⊟で4つの姿を巡る。畳んだ姿は作り直しても覚えている
   let clockFold = false, foldMode = -1;
   const clockAll = { hb: null, cyc: null, rows: [], seps: [] };
-  const clockTitle = () => { try { if (!clockAll.hb) return; const f = clockFold;
+  const clockTitle = () => { try { headPaint(); if (!clockAll.hb) return; const f = clockFold;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((clockAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_RED, clockAll.star ? STAR.length : 0); starSm(a, clockAll.star);   /* v5.1.479 */
@@ -444,7 +447,7 @@ function run(argv) {
   const clockPaint = () => { try { for (const mi of clockAll.rows) mi.hidden = clockFold; for (const sp of clockAll.seps) sp.hidden = clockFold; clockTitle(); } catch (e) {} };
   // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
   const tagAll = { hb: null, rows: [], fold: true, slots: [], list: [], off: 0, up: null, dn: null, lab: null, pi: null };
-  const tagTitle = () => { try { if (!tagAll.hb) return;
+  const tagTitle = () => { try { headPaint(); if (!tagAll.hb) return;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.star ? STAR : '') + (tagAll.fold ? '\u25b8 ' : '\u25be ') + '\ud83c\udff7\ufe0f')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, (tagAll.list.length || tagAll.rows.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold, TRI_PURPLE, tagAll.star ? STAR.length : 0); starSm(a, tagAll.star);   /* v5.1.479 */
@@ -614,10 +617,11 @@ function run(argv) {
     const m = $.NSMenu.alloc.init; m.autoenablesItems = false;
     const its = [];
     const nv = lastNoViews = noViews();
-    for (let e of entries) {   // v5.1.483: let= ⭐️を外した写しに差し替える
+    let headPrev = null;
+    for (let e of entries) { if ((e.fusenAll || e.tagAll) && headPrev) headSeps.push(headPrev); headPrev = null;   // v5.1.483: let= ⭐️を外した写しに差し替える
       if (nv && (e.clockAll || e.fusenAll || e.fusen || e.tagAll || e.tagPager)) { its.push(null); continue; }   // v5.1.331: 切り分け
       if (e.sep && e.dd && !nv) { try { const di = dashItem(e.dd === 2); m.addItem(di); clockAll.seps.push(di); di.hidden = clockFold && !!clockAll.hb; } catch (x) {} its.push(null); continue; }   // v5.1.398
-      if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); if (e.cz) { clockAll.seps.push(sp); sp.hidden = clockFold && !!clockAll.hb; } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
+      if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); headPrev = sp; if (e.cz) { clockAll.seps.push(sp); sp.hidden = clockFold && !!clockAll.hb; } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
       if (e.fusenAll) { fusenAll.star = !!e.star; try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
       if (e.clockAll) { clockAll.star = !!e.star; try { its.push(buildClockAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.356
       if (e.tagAll) { tagAll.star = !!e.star; try { its.push(buildTagAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.325
@@ -896,7 +900,7 @@ function run(argv) {
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
           try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
-      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
+      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; headSeps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
     const pk = pzl.ch + pzl.lv + pzl.prev + (edRunning() ? 'Q' : '');   // v5.1.445: もう一方は見ない
