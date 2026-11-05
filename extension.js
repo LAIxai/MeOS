@@ -37804,7 +37804,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'mbMirrorReq') { meosMbmPzPost(); meosMbmEdIconPost(); meosOtherEdIconPost(); _meosMbMirror.menuKey = ''; meosMbMirrorPost(_meosMbMirror.rawText, _meosMbMirror.rawMenu); return; }
     if (message && message.type === 'meosMgate') { const how = message.how;   // v5.1.448: Me Dock の mGATE(本家= メニューバーの下の mGATE と同じ扱い)
       if (how === 'quit') { try { await vscode.commands.executeCommand('workbench.action.quit'); } catch (_) { } }
-      else if (how === 'other') { try { if (meosRealHost() && process.platform === 'darwin') require('child_process').execFile('/usr/bin/open', ['-b', meosOtherEdBundle()], () => { }); } catch (_) { } }   // v5.1.524: 動いていれば前へ・閉じていれば起こす
+      else if (how === 'other') { try { if (meosRealHost() && process.platform === 'darwin') { const env = Object.assign({}, process.env); delete env.ELECTRON_RUN_AS_NODE; require('child_process').execFile('/usr/bin/open', ['-b', meosOtherEdBundle()], { env }, () => { }); } } catch (_) { } }   // v5.1.524: 動いていれば前へ・閉じていれば起こす / v5.1.525(俊克 pm10:56 バグ1「Dockアイコンが1回上下して終り」): 拡張の ELECTRON_RUN_AS_NODE が open 越しに渡ると、起こした側は Node として即終了する(実測)= 外して渡す
       else if (how === 'close') { try { if (meosRealHost()) { const fs = require('fs'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(require('path').join(meosHelperDir(), 'dockout-hide'), String(Date.now())); } } catch (_) { } }
       else { try { await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); } catch (_) { } }
       return; }
