@@ -391,8 +391,11 @@ function run(argv) {
   // ★v5.1.321(俊克 am02:47 改良1「FUSEN という全体ラベルを ⏰0y… の下に入れ、間に罫線。FUSEN をクリックすると付箋すべてを折り畳める」):
   //   全体の見出し= 群と同じ「メニューの中のボタン」(押しても閉じない)。畳むと群の見出しも中身も、CB と IC の間の区切りも隠す。群ごとの畳みは覚えたまま
   const fusenAll = { hb: null, seps: [] };
+  // ★v5.1.510(俊克 11.05 pm05:13「▼ FUSEN を ▼ [四角い付箋(黄)]&[細長い付箋(赤)] に・一番上の▼ ⏰ と絵文字として対照的に」): 字の FUSEN をやめ、群の見出しと同じ絵(CB=四角・Yellow / IC=細長い・Red)を字の中に置く。絵が出せない時は最初のボタンの字 FUSEN のまま
+  const fusenHead = (a) => { const fh = $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), put = (k, mk, w, h) => { const im = fusenIcons[k] || (fusenIcons[k] = mk()), t = $.NSTextAttachment.alloc.init; t.image = im; t.bounds = $.NSMakeRect(0, Math.round((fh.capHeight - h) / 2), w, h); a.appendAttributedString($.NSAttributedString.attributedStringWithAttachment(t)); };
+    put('hdY', () => fusenIconSq(rgb(0xe0, 0xb1, 0x3a)), 20, 16); a.mutableString.appendString($(' & ')); put('hdR', () => fusenIcon(rgb(0xe0, 0x78, 0x9a)), 20, 12); };
   const allTitle = () => { try { grpPaint(); if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((fusenAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + 'FUSEN'));   /* v5.1.477: ⭐️= 最後に着地した付箋を含む */ const r = $.NSMakeRange(0, a.length);
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((fusenAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ')));   /* v5.1.477: ⭐️= 最後に着地した付箋を含む */ fusenHead(a); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f, null, fusenAll.star ? STAR.length : 0); starSm(a, fusenAll.star);
     fusenAll.hb.attributedTitle = a; } catch (e) {} };
