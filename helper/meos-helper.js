@@ -12,6 +12,7 @@ ObjC.import('Cocoa');
 ObjC.import('CoreGraphics');
 ObjC.import('stdlib');   // v5.1.335: $.exit(起こし直す)   // v5.1.237: ポインターを運ぶ(CGWarpMouseCursorPosition)
 ObjC.bindFunction('kill', ['int', ['int', 'int']]);
+try { ObjC.bindFunction('_CGSDefaultConnection', ['int', []]); ObjC.bindFunction('CGSSetConnectionProperty', ['int', ['int', 'int', 'id', 'id']]); const c = $._CGSDefaultConnection(); $.CGSSetConnectionProperty(c, c, $('SetsCursorInBackground'), $.NSNumber.numberWithBool(true)); } catch (e) {}   // v5.1.516: 裏にいてもポインターの形を変えられる(Apple の非公開の命令・効かなくなっても矢印のままで害はない)
 ObjC.bindFunction('CGEventSourceSecondsSinceLastEventType', ['double', ['int', 'unsigned int']]);   // v5.1.366: Mac 全体の無操作の秒数
 ObjC.bindFunction('CGEventSourceFlagsState', ['unsigned long long', ['int']]);   // v4.2.742: 左右の区別まで入った修飾キーの状態(機械の状態= 1)
 ObjC.bindFunction('CGEventSourceCounterForEventType', ['unsigned int', ['int', 'unsigned int']]);   // v5.1.414: マウスを押した/放した回数(Mac が数える)= 見張りが遅れても取りこぼさない
@@ -460,6 +461,11 @@ function run(argv) {
   // ★v5.1.374(俊克 pm10:27 バグ1「拡大しない。なぜ?」): 373 の NSTrackingArea はメニューの中では mouseEntered が届かなかった(events.log に兆し無し)。
   //   → メニューを開いている間も回る 0.05秒の見張りで、ポインター(NSEvent.mouseLocation)が↻の枠の中か を見て描き替える。閉じている間は窓が見えないので素通り
   let cycHovTimer = null;
+  // ★v5.1.516(俊克 11.05 pm06:06「↻ボタンの上とか、クリックできるところで、ミッキーの選択指にする。ドラッグは無いしね」): メニューの中で押せる物(ボタン・選べる行)の上だけ OS の指差しに。0.05秒の見張りの中で判定する
+  let handOn = false;
+  const menuHandStep = () => { try { const b = clockAll.cyc, w = b ? b.window : null; let on = false;
+    if (w && !w.isNil() && w.isVisible) { const v = w.contentView, h = v.hitTest(v.superview.convertPointFromView(w.convertPointFromScreen($.NSEvent.mouseLocation), $())); on = !!h && !h.isNil() && h.isKindOfClass($.NSButton) && h.isEnabled; if (!on) { const hi = b.superview.enclosingMenuItem.menu.highlightedItem; on = !!hi && !hi.isNil(); } }
+    if (on) { $.NSCursor.pointingHandCursor.set; handOn = true; } else if (handOn) { handOn = false; $.NSCursor.arrowCursor.set; } } catch (e) {} };
   const cycHoverStep = () => { try { const b = clockAll.cyc; if (!b) return; const w = b.window; let on = false;
     if (w && !w.isNil() && w.isVisible) { const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation; on = p.x >= r.origin.x && p.x <= r.origin.x + r.size.width && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; }
     if (on !== cycHover) { cycHover = on; cycPaint(); }
@@ -538,7 +544,7 @@ function run(argv) {
       clockFold = foldMode !== 1; fusenFold['\u0000all'] = foldMode !== 2; tagAll.fold = foldMode !== 3;
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 8; ptrTo(s);   /* v5.1.374(改良1「ポインターの先が円のギリギリ外…少しだけ円の中に」): 10→8(半径14の内側 11.3) */   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
-    'cycHov:': { types: ['void', ['id']], implementation: function (t) { cycHoverStep(); } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
+    'cycHov:': { types: ['void', ['id']], implementation: function (t) { cycHoverStep(); menuHandStep(); } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
     'pgKind:': { types: ['void', ['id']], implementation: function (s) { try { const p0 = pagers[Number(s.tag)]; if (!p0) return; const kd = String(p0.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), k = pgCovK(kd); fusenFold[k] = !fusenFold[k]; if (!fusenFold[k]) lidOpen(g); for (const p of g) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
     'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const k = pgCovK('All'); fusenFold[k] = !fusenFold[k]; if (!fusenFold[k]) lidOpen(pagers.filter(q => !pgCover(q))); for (const p of pagers) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
     'pgAll:': { types: ['void', ['id']], implementation: function (s) { try { fusenFold['\u0000all'] = !fusenFold['\u0000all']; allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; } catch (e) {} } } } });
