@@ -11543,9 +11543,9 @@ function meosParseCycleExpr(src, base) {
 //   ★`⛓️⤴️N` だけ(`)×M` 無し)= 戻り続ける(輪)。⤵️ に `)×M` は付かない。
 //   ★書く形は1つ= `⛓️⤵️N` / `⛓️⤴️N)×M`(異体字セレクタ付き)。読むのは ⛓/⤵/⤴ の素の字も。
 // ★v5.1.96(俊克 10.20 am10:25 改良2「⛓️ボタンをクリックすると、⛓️‍💥になって、切れたことを示せばいい」): `⛓️‍💥` = 切れた鎖= 印は残るがつながない。
-const MEOS_CHAIN_RE = /\u26d3\ufe0f?(\u200d\ud83d\udca5)?[ \t]*([\u2934\u2935])\ufe0f?[ \t]*(\d{1,3})(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(\d{1,4}|\u221e))?/u;   // v5.1.496: ×∞= 止めるまで回る(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
+const MEOS_CHAIN_RE = /\u26d3\ufe0f?(\u200d\ud83d\udca5)?[ \t]*([\u2934\u2935])\ufe0f?[ \t]*(\d{1,3})?(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(\d{1,4}|\u221e))?/u;   // v5.1.496: ×∞= 止めるまで回る(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
 const MEOS_CHAIN_BAD_RE = /\u26d3\ufe0f?(?:\u200d\ud83d\udca5)?(?:[ \t]*[\u2934\u2935]\ufe0f?)?(?:[ \t]*\)[ \t]*[\u00d7x][ \t]*(?:\d{1,4}|\u221e))?/u;   // v5.1.105: 数字の無い鎖(⛓️ だけ・⛓️⤴️ など)
-function meosChainTokenText(dir, n, reps, off) { return '\u26d3\ufe0f' + (off ? '\u200d\ud83d\udca5' : '') + (dir === 'up' ? '\u2934\ufe0f' : '\u2935\ufe0f') + n + ((dir === 'up' && reps) ? (')\u00d7' + (reps === Infinity ? '\u221e' : reps)) : ''); }
+function meosChainTokenText(dir, n, reps, off) { return '\u26d3\ufe0f' + (off ? '\u200d\ud83d\udca5' : '') + (dir === 'up' ? '\u2934\ufe0f' : '\u2935\ufe0f') + (n || '') + ((dir === 'up' && reps) ? (')\u00d7' + (reps === Infinity ? '\u221e' : reps)) : ''); }
 function meosChainTokenSplit(text) {
   const s = String(text == null ? '' : text), m = MEOS_CHAIN_RE.exec(s);
   if (!m) {
@@ -11555,7 +11555,7 @@ function meosChainTokenSplit(text) {
     if (bad) return { text: (s.slice(0, bad.index) + ' ' + s.slice(bad.index + bad[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: bad[0].trim(), chainDir: '', chainN: 0, chainReps: 0, chainOff: false, chainBad: true };
     return { text: s, chainSrc: '', chainDir: '', chainN: 0, chainReps: 0, chainOff: false };
   }
-  const off = !!m[1], dir = (m[2] === '\u2934') ? 'up' : 'down', n = Math.max(1, parseInt(m[3], 10) || 1), reps = (dir === 'up' && m[4]) ? (m[4] === '\u221e' ? Infinity : Math.max(1, parseInt(m[4], 10) || 1)) : 0;
+  const off = !!m[1], dir = (m[2] === '\u2934') ? 'up' : 'down', n = m[3] ? Math.max(1, parseInt(m[3], 10) || 1) : 0 /* v5.1.505: 0= 数字なし(⛓️⤵️ と ⛓️⤴️ の対で範囲が決まる) */, reps = (dir === 'up' && m[4]) ? (m[4] === '\u221e' ? Infinity : Math.max(1, parseInt(m[4], 10) || 1)) : 0;
   return { text: (s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length)).replace(/[ \t]{2,}/g, ' ').trim(), chainSrc: meosChainTokenText(dir, n, reps, off), chainDir: dir, chainN: n, chainReps: reps, chainOff: off };
 }
 function meosClockFcParse(text) {
@@ -11850,6 +11850,7 @@ function meosClockWtTitle(c) {
     return d + ap + String(c.title).replace(/^WT/, '');
   } catch (_) { return c.title; }
 }
+function meosClockWtOf(c) { return /^WT(?:\s|$)/.test((c && c.title) || '') ? meosClockWtTitle(c) : (c && c.title); }   // v5.1.505: バッジの札も同じ1つから
 function meosClockFcScan(doc) {
   const out = [];
   const _lines = new Set();
@@ -12940,11 +12941,37 @@ let _meosChainBlink = null, _meosChainBlinkOn = false;   // ★v4.2.54: 待っ�
 //   ★consume= 本当に渡す時だけ ⤴️ の回数を進める(覗くだけの口は数えない)。回数は覚えの中(▶️ で押し直すと 1 回目から)。
 const _meosChainLoops = new Map();   // 'uri 膜 #並びの番号' → 今終えたのは何回目か
 const _meosChainGo = new Set();      // 'uri 膜 行' → ▶️ か鎖で渡された= 起点の無い行でも走ってよい(下の席の決まり)
+// ★v5.1.505(俊克 11.05 am11:11「⛓️⤵️ だけで良い。これは一種の開始膜で、次の ⛓️⤴️)×∞ が閉じ膜という関係…中の項目の増減を自由にできる」):
+//   数字の無い ⛓️⤵️ は、下の最初の数字の無い ⛓️⤴️ と対= 間の行が1つの輪。数字を書けば今までどおり。相手の無い片方はつながない(⚠️)。
+function meosChainPairs(rows) {
+  const N = rows.map(r => (r && r.chainDir && Number(r.chainN)) || 0), used = rows.map(() => false);
+  rows.forEach((r, i) => {
+    if (!r || r.chainDir !== 'down' || N[i]) return;
+    for (let j = i + 1; j < rows.length; j++) {
+      const q = rows[j]; if (!q || !q.chainDir || Number(q.chainN)) continue;
+      if (q.chainDir === 'down') break;              // 次の開始が先に来た= この ⛓️⤵️ の相手は無い
+      N[i] = N[j] = j - i + 1; used[i] = used[j] = true; break;
+    }
+  });
+  return N;
+}
+const _meosChainUnpairedCache = new WeakMap();
+function meosChainUnpaired(doc) {   // 相手の無い ⛓️⤵️ / ⛓️⤴️ の行= 直す場所に ⚠️
+  try {
+    const c0 = _meosChainUnpairedCache.get(doc); if (c0 && c0.v === doc.version) return c0.s;
+    const by = new Map(), s = new Set();
+    for (const r of meosClockFcScan(doc)) { if (!by.has(r.key)) by.set(r.key, []); by.get(r.key).push(r); }
+    for (const rs of by.values()) { const N = meosChainPairs(rs); rs.forEach((r, i) => { if (r.chainDir && !N[i]) s.add(r.line); }); }
+    _meosChainUnpairedCache.set(doc, { v: doc.version, s });
+    return s;
+  } catch (_) { return new Set(); }
+}
 function meosChainLinks(rows) {
-  const nx = rows.map(() => -1), back = rows.map(() => null);
+  const nx = rows.map(() => -1), back = rows.map(() => null), _N = meosChainPairs(rows);
   rows.forEach((r, i) => {
     if (!r || !r.chainDir || r.chainOff) return;   // v5.1.96: ⛓️‍💥= 切れている= つながない
-    const n = Math.max(1, Number(r.chainN) || 1);
+    if (!_N[i]) return;                            // v5.1.505: 相手の無い片方
+    const n = Math.max(1, _N[i]);
     if (r.chainDir === 'down') { for (let k = i; k < Math.min(rows.length - 1, i + n - 1); k++) nx[k] = k + 1; }
     // ★v5.1.101(俊克 10.20 am11:29 バグ1「⛓️‍💥 に設定したタイマーを起動すると、次の rest との間を繰返し、連動してしまう。なぜ?」):
     //   真因= ⤴️ が「戻る」だけでなく、戻り先から自分までを前へもつないでいた= work の ⤵️ を切っても rest の ⤴️ がつなぎ直した。
@@ -15298,12 +15325,12 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           // ★★v5.1.97(俊克 10.20 am10:36 改良2「⛓️の上で選択指にならない。クリックしても⛓️‍💥に切り替わらない」):
           //   真因= 本文の字のまま押させていた= 行の前の方の飾りで見た目と桁がずれ、押した所より2〜4桁左にカーソルが落ちた([clkClick] caretCh=28 at="1 ⛓️⤴️")。
           //   → 家の作り(🔔と同じ)= 本文の ⛓️ は隠し、その直後の桁に札(インレイヒント・全角空白で一定)を立てて絵を重ねる。押した判定は「カーソルの桁 == 札の桁」。
-          if (c.chainBad && c.chainSrc && !_rawHere) {   // ★v5.1.105: 数字の無い鎖= 直す場所に ⚠️(つながっていない)
+          if ((c.chainBad || meosChainUnpaired(doc).has(i)) && c.chainSrc && !_rawHere) {   // ★v5.1.105: 数字の無い鎖= 直す場所に ⚠️(つながっていない)
             const _ba = txt.indexOf(c.chainSrc);
-            if (_ba >= 0) items.push({ range: new vscode.Range(i, _ba, i, _ba + c.chainSrc.length), hoverMessage: '⚠️ This ⛓️ has no number, so it links nothing. Write ⛓️⤵️2 (this line and the next) or ⛓️⤴️2 (go back 2 lines, counting this one).',
+            if (_ba >= 0) items.push({ range: new vscode.Range(i, _ba, i, _ba + c.chainSrc.length), hoverMessage: '⚠️ This ⛓️ has no number or no partner (⛓️⤵️ … ⛓️⤴️), so it links nothing. Write ⛓️⤵️2 (this line and the next) or ⛓️⤴️2 (go back 2 lines, counting this one).',
               renderOptions: { after: { contentText: '⚠️', margin: '0 0 0 2px' } } });
           }
-          if (c.chainSrc && !c.chainBad && !_rawHere) {
+          if (c.chainSrc && !c.chainBad && !meosChainUnpaired(doc).has(i) && !_rawHere) {
             const _cm96 = meosClockChainMarkAt(txt);
             if (_cm96) {
               // v5.1.111: 隠す範囲を札の桁で切る= 絵(before)をいつも隠す範囲の頭に立たせる(内側に置いた before は一緒に消える= v4.2.479)
@@ -15700,7 +15727,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
             }
             if (_ta73 != null && c.title) titles.push({
               range: new vscode.Range(i, _ta73, i, _ta73),
-              renderOptions: { after: { contentText: '\u00a0' + meosLaunchDRipeTitle(meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
+              renderOptions: { after: { contentText: '\u00a0' + meosLaunchDRipeTitle(meosChainFillSlot(meosClockWtOf(c), (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
             });
           } catch (_) { }
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
@@ -15830,7 +15857,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _nu = (_s2 > 0) ? _rnd.slice(0, _s2) : _rnd;
               const _de = (_s2 > 0) ? _rnd.slice(_s2) : '';
               // ★v4.2.477: 回数はメッセージの札で出す= [R2]/12(俊克「⏰⚓︎ 2.53 0.07 | [R2]/12」)。メッセージが無ければ今までどおり ×2
-              let _lb30 = ''; try { if (c.title) _lb30 = meosLaunchDRipeTitle(meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7); } catch (_) { }   // v5.0.0-66(俊克 バグ1「バッジ部分はまだ青いリンゴ」): バッジ行の札も同じ口から
+              let _lb30 = ''; try { if (c.title) _lb30 = meosLaunchDRipeTitle(meosChainFillSlot(meosClockWtOf(c), (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7); } catch (_) { }   // v5.0.0-66(俊克 バグ1「バッジ部分はまだ青いリンゴ」): バッジ行の札も同じ口から
               if (_lb30) return { before: { contentText: (_rndAfter ? '  ' : '') + '\u00a0' + _lb30 + '\u00a0', color: new vscode.ThemeColor('editor.foreground') /* ★v5.1.125(俊克 10.21 pm06:22「ライトモードで文字を黒くした時は、バッジに表示した1 hourも黒く」)= 走っている値と同じ字の色 */, backgroundColor: '#e0803a', fontWeight: '800', textDecoration: 'none; border-radius: 3px' },
                 after: { contentText: _de + (_rndAfter ? '' : ' '), color: '#e0803a', fontWeight: '800' } };
               return { before: { contentText: (_rndAfter ? '  ' : '') + _nu, color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' },
@@ -23857,9 +23884,9 @@ function meosLaunchDSample(id) {
     '<!-- {* \u25b2mCN=' + id + ' *} -->',
     meosPairBadgeLineText(id, '', '(📊⊕0+0D1O)'),   // v5.1.495(俊克「灰色は地味過ぎるので橙色に。朝に起動するのが普通だから」): O= 橙
       // ★v5.1.493(俊克 バグ1「New.md①で、システム起動用の膜にバッジFCが付いてない→残り時間が出ない」): ⏰の残り時間はバッジ行に出る
-    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 \u26d3\ufe0f\u2935\ufe0f2 // weekdays -->',   // v5.1.497: 平日と週末を ⛓️ で1組(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
-    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 \u26d3\ufe0f\u2934\ufe0f2)\u00d7\u221e // weekends -->',
-    '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // every day -->', ''].join('\n');
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 \u26d3\ufe0f\u2935\ufe0f // WT -->',   // v5.1.497: 平日と週末を ⛓️ で1組(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
+    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 \u26d3\ufe0f\u2934\ufe0f)\u00d7\u221e // WT -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // WT -->', ''].join('\n');
 }
 function meosLaunchDNewest() {
   let newest = null;
@@ -23925,6 +23952,9 @@ async function meosLaunchDSyncMarks(doc, key, cur) {
 async function meosLaunchDMarksAtStart() {
   try {
     if (process.platform !== 'darwin') return;
+    // ★v5.1.505(俊克 質問1「表示が固まるのは、設定したファイルを表示することが必要なのかな?」): そう= タブが裏のファイルは VS Code が読んでいない。
+    //   → 🌅の居るファイルを覚えておき、起動の時に裏で読む(タブは増えない)。macOS の予定はファイルを開かなくても元から効いている。
+    try { const u = extensionContext.globalState.get('meosLaunchDUri'); if (u && !vscode.workspace.textDocuments.some(d => d.uri.toString() === u)) await vscode.workspace.openTextDocument(vscode.Uri.parse(u)); } catch (_) { }
     const nw = meosLaunchDNewest(); const cur = await meosLaunchDReadMac(); if (cur === undefined) return;
     for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
       let ps = []; try { ps = collectPairs(d, { excludeIndex: false }).filter(p => meosIsLaunchDKey(p.id)); } catch (_) { }
@@ -24056,6 +24086,7 @@ async function meosLaunchDReconcile(doc, key, quiet) {
   if (_meosLaunchDBusy) { _meosLaunchDAgain = { doc, key, quiet }; return; }   // v5.0.0-61(俊克「▶️/⏸を押すとパスワードを訊かれ、設定したのに OFF した」): 捨てずに、終わった後でもう一度突き合わせる
   // 一番新しい 🌅LaunchD(開いている md の中で)
   const newest = meosLaunchDNewest();
+  try { if (newest && newest.doc.uri.scheme === 'file') extensionContext.globalState.update('meosLaunchDUri', newest.doc.uri.toString()); } catch (_) { }   // v5.1.505: 起動の時に開く
   if (newest && (newest.id !== key || newest.doc !== doc)) { await meosLaunchDSyncMarks(doc, key, null); say('\ud83c\udf05 This LaunchD is not the newest one (' + newest.id + ' is) \u2014 press \u21bb on its name in Me Dock to make it current.'); return; }
   let grp = meosLaunchDGroupOf(doc, key);
   // ★v5.1.499(俊克 11.05 am09:20 改良1「木曜の設定が繰り返されてしまう。なぜ明日金曜の設定を実行しなかったのか?」):
