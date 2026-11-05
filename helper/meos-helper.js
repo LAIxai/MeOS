@@ -466,6 +466,7 @@ function run(argv) {
   const menuHandStep = () => { try { const b = clockAll.cyc, w = b ? b.window : null, s = item.button.window, mp = $.NSEvent.mouseLocation; let on = false;
     if (s && !s.isNil() && s.isVisible) { const f = s.frame; on = mp.x >= f.origin.x && mp.x <= f.origin.x + f.size.width && mp.y >= f.origin.y && mp.y <= f.origin.y + f.size.height; }   // v5.1.517(俊克 pm06:13 改良2「メニューバーの中のクリックできるところでも」): メニューバーの札の上は、メニューを開いていても閉じていても指
     if (!on && w && !w.isNil() && w.isVisible) { const v = w.contentView, h = v.hitTest(v.superview.convertPointFromView(w.convertPointFromScreen(mp), $())); on = !!h && !h.isNil() && h.isKindOfClass($.NSButton) && h.isEnabled; if (!on) { const hi = b.superview.enclosingMenuItem.menu.highlightedItem; on = !!hi && !hi.isNil() && (!hi.view || hi.view.isNil()); } }   // v5.1.517(改良1「ボタンの範囲外の所では↖に」): ボタンを載せた見出しの行(絵の部品の行)も選ばれた扱いになるので除く
+    if (!on && dockOut.shown) on = dockOutAt() >= 0 || dockOutOnLogo();   // v5.1.518(俊克 pm06:27「mGATEのパズルとMW-GATEロゴでも選択指を出そうね」)
     if (on) { $.NSCursor.pointingHandCursor.set; handOn = true; } else if (handOn) { handOn = false; $.NSCursor.arrowCursor.set; } } catch (e) {} };
   const cycHoverStep = () => { try { const b = clockAll.cyc; if (!b) return; const w = b.window; let on = false;
     if (w && !w.isNil() && w.isVisible) { const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation; on = p.x >= r.origin.x && p.x <= r.origin.x + r.size.width && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; }
