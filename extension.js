@@ -11915,7 +11915,7 @@ function meosClockFcScan(doc) {
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
     out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, chainBad: !!c.chainBad, /* v5.1.94 / v5.1.96 / v5.1.105 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
-    { const _o = out[out.length - 1]; if (_o && /^WT(?:\s|$)/.test(_o.title || '')) _o.title = meosClockWtTitle(_o); }   // v5.1.504: // WT
+    { const _o = out[out.length - 1]; if (_o && /^WT(?:\s|$)/.test(_o.title || '')) { _o.titleRaw = _o.title; _o.title = meosClockWtTitle(_o); } }   // v5.1.504: // WT
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -12757,6 +12757,11 @@ function meosParseStampLoose(txt) {
 async function meosClockFcSet(doc, key, spec, atLine) {
   try {
     if (!doc || !doc.uri) return false;
+    // ★v5.1.506(俊克 am11:23 質問1「一番上の WT が自動で書き変わる」= バグ): 見せる形に広げた題が、▶️ などの書き直しで本文へ焼き付いていた(時刻を変えても題が古いまま残る)。
+    //   → 広げた題が来たら、本文の字(WT)へ戻してから書く。🍏 は別の口が付け外しする。
+    try { if (spec && spec.title) { const _st = (t) => String(t || '').replace(/\s*(?:\ud83c\udf4e|\ud83c\udf4f)/gu, '').trim(), _a = _st(spec.title);
+      const _r = meosClockFcScan(doc).find(x => x.key === key && x.titleRaw && _st(x.title) === _a && (typeof atLine !== 'number' || x.line === atLine));
+      if (_r) spec = Object.assign({}, spec, { title: _r.titleRaw }); } } catch (_) { }
     // ★v5.1.92: ⏰のデータベース(特例膜)は、鳴り終えても ✓(済み)にせず「待ち」に戻す= 次も使える。起点も消して元の姿へ(暦の規則は起点が要るので残す)
     try { if (meosIsTimerDbKey(key) && spec && spec.done) { spec = Object.assign({}, spec, { done: false, wait: true });
       const _cal = Array.isArray(spec.cycle) && spec.cycle.some(t => /^[SMTWtFs]/.test(String(t)));
