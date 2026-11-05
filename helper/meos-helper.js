@@ -463,11 +463,12 @@ function run(argv) {
   let cycHovTimer = null;
   // ★v5.1.516(俊克 11.05 pm06:06「↻ボタンの上とか、クリックできるところで、ミッキーの選択指にする。ドラッグは無いしね」): メニューの中で押せる物(ボタン・選べる行)の上だけ OS の指差しに。0.05秒の見張りの中で判定する
   let handOn = false;
+  const handCur = () => { if (handCur.c) return handCur.c; try { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), im = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-hand.png')); if (im && !im.isNil()) { im.size = $.NSMakeSize(24, 26); handCur.c = $.NSCursor.alloc.initWithImageHotSpot(im, $.NSMakePoint(0, 5)); return handCur.c; } } catch (e) {} return $.NSCursor.pointingHandCursor; };   // v5.1.519(俊克 pm06:33 改良1「22.5°ミッキーの手に。いっそのこと、BTRONの手にしようか」): Me Dock と同じ BTRON の手(24x26・当たり 0,5)。絵が読めない時は OS の手
   const menuHandStep = () => { try { const b = clockAll.cyc, w = b ? b.window : null, s = item.button.window, mp = $.NSEvent.mouseLocation; let on = false;
-    if (s && !s.isNil() && s.isVisible) { const f = s.frame; on = mp.x >= f.origin.x && mp.x <= f.origin.x + f.size.width && mp.y >= f.origin.y && mp.y <= f.origin.y + f.size.height; }   // v5.1.517(俊克 pm06:13 改良2「メニューバーの中のクリックできるところでも」): メニューバーの札の上は、メニューを開いていても閉じていても指
+    if (s && !s.isNil() && s.isVisible) { const f = s.frame; on = mp.x >= f.origin.x && mp.x <= f.origin.x + f.size.width && mp.y >= f.origin.y && mp.y <= f.origin.y + f.size.height && pieceHit() !== '\u0000launch'; }   // v5.1.517(俊克 pm06:13 改良2「メニューバーの中のクリックできるところでも」): メニューバーの札の上は、メニューを開いていても閉じていても指
     if (!on && w && !w.isNil() && w.isVisible) { const v = w.contentView, h = v.hitTest(v.superview.convertPointFromView(w.convertPointFromScreen(mp), $())); on = !!h && !h.isNil() && h.isKindOfClass($.NSButton) && h.isEnabled; if (!on) { const hi = b.superview.enclosingMenuItem.menu.highlightedItem; on = !!hi && !hi.isNil() && (!hi.view || hi.view.isNil()); } }   // v5.1.517(改良1「ボタンの範囲外の所では↖に」): ボタンを載せた見出しの行(絵の部品の行)も選ばれた扱いになるので除く
-    if (!on && dockOut.shown) on = dockOutAt() >= 0 || dockOutOnLogo();   // v5.1.518(俊克 pm06:27「mGATEのパズルとMW-GATEロゴでも選択指を出そうね」)
-    if (on) { $.NSCursor.pointingHandCursor.set; handOn = true; } else if (handOn) { handOn = false; $.NSCursor.arrowCursor.set; } } catch (e) {} };
+    if (!on && dockOut.shown) on = dockOutOnTile() || dockOutOnLogoArt();   // v5.1.518(俊克 pm06:27「mGATEのパズルとMW-GATEロゴでも選択指を出そうね」)
+    if (on) { handCur().set; handOn = true; } else if (handOn) { handOn = false; $.NSCursor.arrowCursor.set; } } catch (e) {} };
   const cycHoverStep = () => { try { const b = clockAll.cyc; if (!b) return; const w = b.window; let on = false;
     if (w && !w.isNil() && w.isVisible) { const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), p = $.NSEvent.mouseLocation; on = p.x >= r.origin.x && p.x <= r.origin.x + r.size.width && p.y >= r.origin.y && p.y <= r.origin.y + r.size.height; }
     if (on !== cycHover) { cycHover = on; cycPaint(); }
@@ -845,6 +846,8 @@ function run(argv) {
   // ★v5.1.446(俊克 pm06:27「mGATEロゴを起動ボタンにする…Shiftクリックで閉じる(Shift長押しで出るので Shift キー連合)」): ロゴ= 押す→ edLaunch・Shift+押す→ 閉じる。タイルの外の地は何もしない
   const dockOutOnLogo = () => { try { if (!dockOut.win) return false; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x; return x >= 0 && x < DO_X0 - 4 && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height; } catch (e) { return false; } };
   const dockOutOnWin = () => { try { if (!dockOut.win) return false; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation; return p.x >= f.origin.x && p.x <= f.origin.x + f.size.width && p.y >= f.origin.y && p.y <= f.origin.y + f.size.height; } catch (e) { return false; } };
+  const dockOutOnTile = () => { try { const i = dockOutAt(); if (i < 0) return false; const x = $.NSEvent.mouseLocation.x - dockOut.win.frame.origin.x, t0 = DO_X0 + i * (DO_TW + DO_GAP); return x >= t0 && x <= t0 + DO_TW; } catch (e) { return false; } };   // v5.1.519(バグ1「ボタンの範囲外では↖」): 押す判定 dockOutAt は隙間も隣の字に数える(取りこぼさない)。指は字の上だけ
+  const dockOutOnLogoArt = () => { try { if (!dockOutOnLogo()) return false; const x = $.NSEvent.mouseLocation.x - dockOut.win.frame.origin.x; return x >= DO_LX && x <= DO_LX + DO_LG; } catch (e) { return false; } };
   const dockOutFast = () => { if (!dockOut.shown) return; dockOutDrain(); const dn = dockOutCnt(1), up = dockOutCnt(2);
     if (dn !== dockOut.dnN) { dockOut.dnN = dn; dockOut.downAt = dockOutAt(); }
     if (up !== dockOut.upN) { dockOut.upN = up; let i = dockOutAt(); if (i < 0) i = dockOut.downAt; dockOut.downAt = -1; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else if (dockOutOnLogo()) { let sh = false; try { sh = (Number($.NSEvent.modifierFlags) & 0x20000) !== 0; } catch (e) {} let cm = false; try { cm = (Number($.NSEvent.modifierFlags) & 0x100000) !== 0; } catch (e) {}   // v5.1.447: ⌘クリック= 終了
