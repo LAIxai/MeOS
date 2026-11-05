@@ -11840,6 +11840,16 @@ const _meosClockLinesMem = new Map();   // uri -> { version, lines:Set }
 //   ★返すのは同じ配列so、受け取った側thatが中身を書き換えてはいけない(今の呼び出しは
 //     filter / find / map / for-of の読むだけ・2026.09.09 全16箇所を確認)。
 const _meosClockScanCache = new WeakMap();
+// ★v5.1.504(俊克 am10:48 改良1「`// F at am07:30` と一々手書きするのもかったるい。`// WT` と書くだけで am/pm 表示に」):
+//   本文は `// WT` のまま・見せる時だけ 曜日 + am/pm(時刻を直せばタイトルも付いて来る)。🍏 など後ろの字は残す。
+function meosClockWtTitle(c) {
+  try {
+    const m = /(\d{1,2}):(\d{2})(?!.*\d{1,2}:\d{2})/.exec(String(c.whenSrc || c.when || '')); if (!m) return c.title;
+    const h = Number(m[1]), ap = (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + m[2];
+    const d = (Array.isArray(c.cycle) && c.cycle.length === 1 && /^[SMTWtFs]+$/.test(String(c.cycle[0]))) ? String(c.cycle[0]) + ' at ' : '';
+    return d + ap + String(c.title).replace(/^WT/, '');
+  } catch (_) { return c.title; }
+}
 function meosClockFcScan(doc) {
   const out = [];
   const _lines = new Set();
@@ -11904,6 +11914,7 @@ function meosClockFcScan(doc) {
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
     out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, chainBad: !!c.chainBad, /* v5.1.94 / v5.1.96 / v5.1.105 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    { const _o = out[out.length - 1]; if (_o && /^WT(?:\s|$)/.test(_o.title || '')) _o.title = meosClockWtTitle(_o); }   // v5.1.504: // WT
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -24017,6 +24028,19 @@ function meosLaunchDOnOpen(d) {
 }
 // v5.1.503(俊克「上の予定のところに、chainingと書いた方が良い」): ⛓️ の組で走っている🌅か
 function meosLaunchDChaining(sc) { try { const d = sc.doc || vscode.workspace.textDocuments.find(x => x.uri.toString() === sc.uri); const g = d ? meosLaunchDGroupOf(d, sc.key) : null; return !!(g && g.rows.length > 1); } catch (_) { return false; } }
+// ★v5.1.504(実機 11.05 am10:50 で判明): 🌅の行を手で書き換えても macOS の予定は変わらなかった(▶️/⏸ の時だけ突き合わせていた)。
+//   画面は 07:30 なのに macOS は 10:15 のまま= 許可が在れば、⏰の行を書き換えた2秒後に突き合わせる。許可が無ければ今までどおり ▶️ の時。
+let _meosLaunchDEditT = null;
+function meosLaunchDOnEdit(e) {
+  if (process.platform !== 'darwin' || !e || !e.contentChanges || !e.contentChanges.length || !isMarkdownDocument(e.document)) return;
+  const doc = e.document;
+  if (!e.contentChanges.some(c => { const n = c.range.start.line; return n < doc.lineCount && /\u23f0.*\u21ba/u.test(doc.lineAt(n).text || ''); })) return;
+  clearTimeout(_meosLaunchDEditT);
+  _meosLaunchDEditT = setTimeout(async () => { try {
+    const nw = meosLaunchDNewest(); if (!nw || nw.doc !== doc) return;
+    if (await meosLaunchDCanSudo()) meosLaunchDReconcile(doc, nw.id, true);
+  } catch (_) { } }, 2000);
+}
 async function meosLaunchDFollow(doc, key, grp) {
   try {
     const g = grp || meosLaunchDGroupOf(doc, key); if (!g || g.rows.length < 2) return false;
@@ -47142,7 +47166,8 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
         }, MOUSE_SELECTION_REFRESH_DEBOUNCE_MS);
       }
     }),
-    vscode.workspace.onDidChangeTextDocument(e => { try { meosSyncHeadHashes(e); } catch (_) { } }),   // v5.1.380
+    vscode.workspace.onDidChangeTextDocument(e => { try { meosSyncHeadHashes(e); } catch (_) { } }),
+    vscode.workspace.onDidChangeTextDocument(e => { try { meosLaunchDOnEdit(e); } catch (_) { } }),   // v5.1.504   // v5.1.380
     vscode.window.onDidChangeTextEditorSelection(e => { try { meosHeadLeave(e); } catch (_) { } }),   // v5.1.383: 組の外へ出た時に揃える
     vscode.workspace.onDidChangeTextDocument(e => {
       // ★★★v4.0.446(俊克 8/27 pm00:45 改良1「今回のRaw設定などでメタ膜が変更したのに、Me Dockの
