@@ -394,7 +394,7 @@ function run(argv) {
   // ★v5.1.510(俊克 11.05 pm05:13「▼ FUSEN を ▼ [四角い付箋(黄)]&[細長い付箋(赤)] に・一番上の▼ ⏰ と絵文字として対照的に」): 字の FUSEN をやめ、群の見出しと同じ絵(CB=四角・Yellow / IC=細長い・Red)を字の中に置く。絵が出せない時は最初のボタンの字 FUSEN のまま
   const fusenHead = (a) => { const fh = $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), put = (k, mk, w, h) => { const im = fusenIcons[k] || (fusenIcons[k] = mk()), t = $.NSTextAttachment.alloc.init; t.image = im; t.bounds = $.NSMakeRect(0, Math.round((fh.capHeight - h) / 2), w, h); a.appendAttributedString($.NSAttributedString.attributedStringWithAttachment(t)); };
     put('hdY', () => fusenIconSq(rgb(0xe0, 0xb1, 0x3a)), 20, 16); a.mutableString.appendString($(' & ')); put('hdR', () => fusenIcon(rgb(0xe0, 0x78, 0x9a)), 20, 12); };
-  // ★v5.1.512(俊克 11.05 pm05:21 改良1「全部畳んだ状態のとき、もっと高さを縮めて、できるだけコンパクトに」): ⏰・付箋・🏷️の3つが全部畳まれている間だけ、付箋と🏷️の見出しの上の区切りを隠して3行を詰める。1つでも開けば区切りは戻る
+  // ★v5.1.512(俊克 11.05 pm05:21 改良1「全部畳んだ状態のとき、もっと高さを縮めて、できるだけコンパクトに」): ⏰・付箋・🏷️の3つが全部畳まれている間だけ、付箋と🏷️の見出しの上の区切りを隠して3行を詰める。1つでも開けば区切りは戻る。v5.1.513(pm05:32 改良1「折り畳んだ下の区切り線は隠せば良い」): 🏷️の下(Spells の上)の区切りも同じ扱い
   const headSeps = [];
   const headPaint = () => { try { const all = !!clockAll.hb && !!fusenAll.hb && !!tagAll.hb && clockFold && !!fusenFold['\u0000all'] && !!tagAll.fold; for (const sp of headSeps) sp.hidden = all; } catch (e) {} };
   const allTitle = () => { try { grpPaint(); headPaint(); if (!fusenAll.hb) return; const f = !!fusenFold['\u0000all'];
@@ -618,7 +618,7 @@ function run(argv) {
     const its = [];
     const nv = lastNoViews = noViews();
     let headPrev = null;
-    for (let e of entries) { if ((e.fusenAll || e.tagAll) && headPrev) headSeps.push(headPrev); headPrev = null;   // v5.1.483: let= ⭐️を外した写しに差し替える
+    for (let e of entries) { if ((e.fusenAll || e.tagAll || e.title === 'Spells') && headPrev) headSeps.push(headPrev); headPrev = null;   // v5.1.483: let= ⭐️を外した写しに差し替える
       if (nv && (e.clockAll || e.fusenAll || e.fusen || e.tagAll || e.tagPager)) { its.push(null); continue; }   // v5.1.331: 切り分け
       if (e.sep && e.dd && !nv) { try { const di = dashItem(e.dd === 2); m.addItem(di); clockAll.seps.push(di); di.hidden = clockFold && !!clockAll.hb; } catch (x) {} its.push(null); continue; }   // v5.1.398
       if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); headPrev = sp; if (e.cz) { clockAll.seps.push(sp); sp.hidden = clockFold && !!clockAll.hb; } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
