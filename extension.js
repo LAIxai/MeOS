@@ -31352,7 +31352,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .mbm.mbm-folded .mbm-name{display:inline}.mbm-hd,.mbm-it{position:relative}.mbm-sv{position:absolute;left:1px;top:50%;transform:translateY(-50%);font-size:9px;line-height:1;font-style:normal}.mbm-sv.mbm-sv-big{font-size:11px;left:0}.mbm-ind>.mbm-sv.mbm-sv-big{left:10px}/* v5.1.484(俊克 am10:22「Payeasyの⭐️は左端でなく少しインデントした位置に=本家のように」): 字下げした行の⭐️は字のすぐ左(本家の✓の欄と同じ)・見出しの⭐️は左端のまま */   /* v5.1.483(俊克 am10:06「⭐️が入ると▶のインデントがズレる→文字列とは別に左端に」): ⭐️は字の流れの外(左端の余白)= 三角・題の位置は⭐️の有る無しで動かない */.mbm-tagh:not(.mbm-shut) .mbm-tri{color:#8a4fe0}
 .mbm.mbm-folded .mbm-bar,.mbm.mbm-folded .mbm-list{display:none}
 .mbm-bar{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:calc(100% - 18px);cursor:default;padding:0 0 0 3px;line-height:18px;border-radius:7px;background:color-mix(in srgb,var(--vscode-foreground) 10%,transparent)}
-.mbm-logo{width:16px;height:16px;flex:0 0 auto}
+.mbm-logo{width:16px;height:16px;flex:0 0 auto;cursor:var(--meos-hand)}   /* v5.1.523(俊克 pm08:12 バグ1「Me Dockの小さいmGATEロゴの上で手のポインターに変わらない」) */
 .mbm-label{cursor:var(--meos-hand);display:flex;align-items:stretch;background:#e0803a;color:#fff;font-weight:700;font-size:12px;border-radius:5px;white-space:nowrap;overflow:hidden;min-width:0}
 .mbm-label.mbm-vsc{background:#7c3aed}
 .mbm-label.mbm-anc{background:#2f80b8}
