@@ -897,6 +897,8 @@ function run(argv) {
     else { const u = edAppUrl(); if (u) { $.NSWorkspace.sharedWorkspace.openURL(u); hlog('[launch] 起こした'); } } } catch (e) { hlog('[launch] 失敗 ' + e); } edRunAt = 0; };
   const dockOutFire = (i) => { const ch = doOrd().charAt(i); if (!ch || i < 0) return;
     let alt = ''; try { if ((Number($.NSEvent.modifierFlags) & 0x80000) !== 0) alt = 'alt=1'; } catch (e) {}   // ★v5.1.541: Opt+クリック= 印を巡る
+    let cmd = false; try { cmd = (Number($.NSEvent.modifierFlags) & 0x100000) !== 0; } catch (e) {}   // ★v5.1.546: Cmd+クリック= 一括で消す(🔴は動かさない)
+    if (cmd && ch !== 'T') { hlog('[dockOut] ' + ch + ' を Cmd クリック→ 一括で消す'); openWarp(scheme + '://' + ext + (ch === FOF ? '/fof?sweep=1' : '/puzzle?sweep=1&ch=' + encodeURIComponent(ch))); return; }
     if (ch === FOF) { hlog('[dockOut] ♡ を押した'); openWarp(scheme + '://' + ext + '/fof' + (alt ? '?' + alt : '')); return; }
     hlog('[dockOut] ' + ch + ' を押した→ ワープ');
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} dockOutPaint(); }
