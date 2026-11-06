@@ -8281,7 +8281,7 @@ function applyPrettyLabels(editor) {
         const _pzd = (/\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(mPz[0]) || [])[1] || '';   // v4.2.607: 説明もホバーに
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index, line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
-          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? 'rgba(229, 57, 53, 0.14)' : 'rgba(124, 58, 237, 0.14)', margin: '0 2px 0 2px', fontWeight: '600' } } });
+          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: mPz[1] === '7' ? 'none; font-size: 140%' : undefined, margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
     }
     if (lineHasRefMark(text)) {
