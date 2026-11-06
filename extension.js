@@ -14178,6 +14178,11 @@ async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっ�
     await meosFusenLand(f);
   } catch (_) { }
 }
+// ★v5.1.536(俊克 11.06 am11:31「mGATEに、お気に入りボタンを追加…どんなときでも、それを押せば、ワープする先を登録…今の最前線」/ am11:39「♡マークにFoF」(Front of Front= 最前線の中の最前線・Friend of Friends= 大親友)): 飛び先は1か所= ファイルの中の場所(📌はファイルなので別物)。
+//   置き場は globalState(meosFoF)= uri・行・桁・その行の字。行は本文の編集でずれるので、字が変わっていたら元の行から近い順に同じ字の行を探す。着地は付箋と同じ口(畳みの中でも着く)
+function meosFofSet() { try { const ed = vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0]; if (!ed) return false; const a = ed.selection.active; extensionContext.globalState.update('meosFoF', { uri: String(ed.document.uri), line: a.line, ch: a.character, text: ed.document.lineAt(a.line).text }).then(() => meosPuzzleBadgeFile()); meosDbg('[FoF] 登録 ' + ed.document.uri.fsPath + ' L' + (a.line + 1)); return true; } catch (_) { return false; } }
+function meosFofFindLine(doc, f) { const n = doc.lineCount, at = Math.max(0, Math.min(n - 1, Number(f.line) || 0)), t = String(f.text || ''); if (!t.trim() || doc.lineAt(at).text === t) return at; for (let d = 1; d < n; d++) { const up = at - d, dn = at + d; if (up >= 0 && doc.lineAt(up).text === t) return up; if (dn < n && doc.lineAt(dn).text === t) return dn; if (up < 0 && dn >= n) break; } return at; }
+async function meosFofLand() { const gs = extensionContext.globalState, f = gs.get('meosFoF'); if (!f || !f.uri) return meosFofSet(); const uri = vscode.Uri.parse(f.uri), doc = await vscode.workspace.openTextDocument(uri), line = meosFofFindLine(doc, f); if (line !== f.line) await gs.update('meosFoF', Object.assign({}, f, { line })); await meosFusenLand({ uri, k: 'f', line, ch: line === f.line ? (f.ch || 0) : 0, noStar: true }, true); return true; }
 async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種類・行・桁)へ着地する= メニューの行からも、閉じている時の V-helper の URL からも
   try {
     const doc = await vscode.workspace.openTextDocument(f.uri);
@@ -14185,7 +14190,7 @@ async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種
     //   起こした直後は、起動の「最後の行へ戻す」と同じく ⊖の畳み直しが終わるのを待ってから着地する(最長12秒)。
     if (cold) for (let w = 0; w < 40 && !mstatsRestoreFinished.has(String(doc.uri)); w++) await new Promise(r => setTimeout(r, 300));
     if (f.line >= doc.lineCount) f = Object.assign({}, f, { line: Math.max(0, doc.lineCount - 1), ch: 0 });   // v5.1.348: 閉じている間に行が減っていても落ちない
-    meosFusenLastSet(f);   // v5.1.477: ⭐️= 最後に着地した付箋
+    if (!f.noStar) meosFusenLastSet(f);   // v5.1.477: ⭐️= 最後に着地した付箋(♡FoF は付箋でないので印を動かさない)
     const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });   // ★v5.1.476(俊克 11.04 am08:33 バグ1「分身で付箋を押すとMe Dockの在った場所に出た・⏰やTAGは本体でワープするのに」): 列を言わないと焦点の在る列(=Me Dockの列)に開く→ ⏰/TAG(meosJumpToScope)と同じ meosEditorColumn で本体の列へ
     // ★v5.1.313(俊克 v5.1.312 バグ1「まだ Raw になってしまう」スクショ3= 紙の頭の行にカーソルが乗ると、その行だけ紙が今の行の色に覆われて生に見える):
     //   CB は紙の1つ上の行の末尾へ着地する(紙は丸ごと紙のまま見える)。IC は字の上へ(着地の一時抑止で板のまま)。
@@ -14532,7 +14537,7 @@ let _meosPuzzleBadgeLast = '';
 function meosPuzzleBadgeFile() {
   meosMbmPzPost();   // v5.1.462: Me Dock の分身の2枚も
   if (!meosRealHost()) return;
-  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters });   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
+  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters, fof: !!gs.get('meosFoF') });   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
     if (j === _meosPuzzleBadgeLast) return; _meosPuzzleBadgeLast = j;
     const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(path.join(meosHelperDir(), 'puzzle-last'), j); } catch (_) { }
 }
@@ -46666,6 +46671,11 @@ function activate(context) {
           if (!_meosLastLineDone) meosLastLineFinish('ピースが先 → 戻さない');
           if (ch) { try { meosPuzzleLastSet(ch); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { } }
           await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed'); return;
+        }
+        if (u && u.path === '/fof') {   // ★v5.1.536: mGATE の♡= 押す→ 登録した場所へ・Shift+押す(未登録の時も)→ 今のカーソルの場所を登録
+          const set = new URLSearchParams(u.query || '').get('set') === '1'; meosDbg('[helper] FoF ' + (set ? '登録' : 'ワープ'));
+          if (!_meosLastLineDone) meosLastLineFinish('FoF が先 → 戻さない');
+          if (set) meosFofSet(); else await meosFofLand(); return;
         }
         if (u && u.path === '/fusen') {   // v5.1.348: 閉じている時に V-helper の付箋を押した= 起きてその付箋へ
           const q = new URLSearchParams(u.query || ''), f = { uri: vscode.Uri.parse(q.get('uri') || ''), k: q.get('k') || 'c', line: Number(q.get('line')) || 0, ch: Number(q.get('ch')) || 0 };
