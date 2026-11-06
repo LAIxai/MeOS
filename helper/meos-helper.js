@@ -14,10 +14,10 @@
 // ⇄ 1200_TAG_COLORS // 札の色
 // ⇄ 1250_TAG_SEATS // 札の🪑の席の絵
 // ⇄ 1300_TAG_PIECES // 札のパズルのピース / ⌘Q・名札 / 当たり pieceHit / 絵 drawPiece
-// ⇄ 1400_MGATE_TILES // ぶら下がりのmGATE= 寸法 DO_* / dockOut の状態 / タイルの絵 / 押した時 dockOutFire(♡FoF も) / edLaunch
+// ⇄ 1400_MGATE_TILES // ぶら下がりのmGATE= 寸法 DO_* / dockOut の状態 / タイルの絵 / 押した時 dockOutFire(♡も) / edLaunch
 // ⇄ 1410_MGATE_HIT // mGATE の当たり= dockOutAt / ロゴの台形 / 札と点 / 掴む所 dockOutOnGrip / dockOutHandAt
 // ⇄ 1420_MGATE_SEATS // mGATE の4つの席 / ドラッグ / 吸い付き / クリックの見張り dockOutFast
-// ⇄ 1430_MGATE_WINDOW // mGATE の窓を作る・描く・出す・閉じる・Shift クリック / dockOutTick / 札のロゴの Cmd
+// ⇄ 1430_MGATE_WINDOW // mGATE の窓を作る・描く・出す・閉じる・Shift クリック / tip dockOutTipStep / dockOutTick / 札のロゴの Cmd
 // ⇄ 1500_SHOW // 札を描く show()
 // ⇄ 1600_CLOCK_STEP // ⏰の帯 / 鳴らす判定 / 1回分の見張り step()
 // ⇄ 1700_TICKERS // タイマー / puzzle-last の読み取り / 構え armTick / ポインターを運ぶ warpPtr / 修飾キー
@@ -862,10 +862,10 @@ function run(argv) {
   //   → ピースを 14×11.5 に縮めて上へ寄せ(下に6pt空ける)、🔴は 3/4.5/6pt(Me Dock の 4/6/8 と同じ 2:3:4)・下端は札の下0.5ptで揃える= 段1は2.5ptの隙間・段3だけ上へ育ってピースに少し被る(Me Dock と同じ)
   // ★v5.1.404(俊克 am11:06 改良1「メニューバーは小さいので、🔴はさっきの大きさの方が見やすい・今回は明らかに小さい」「🔴の表示位置が微妙に異なる」): 🔴は 4/6/8pt に戻す。
   //   位置は Me Dock の .md-tile.md-dot::after と同じ数= 🔴の下端はピースの下端の6pt下(bottom:-6px)・段1は真ん中・段2は左端・段3は右端 → 段1は2ptの隙間・段2は接する・段3は2pt被る(Me Dock と同じ)。ピースは14×12・下端を札の下から6pt
-  const drawPiece = (x0, H, chArg, white) => { const ch = chArg || pzl.ch, isT = ch === 'T', isF = ch === '\u2661', fl = isF && dockOut.flash > 0, TW = 14, TH = 12, ty = 6;
-    (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : fl ? pzRgb([0xe5, 0x39, 0x35]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
-    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(isT ? '\u24c9' : isF ? (dockOut.fof ? '\u2665\ufe0e' : '\u2661\ufe0e') : ch)); const r = $.NSMakeRange(0, a.length);   // v5.1.407: Ⓣは Me Dock と同じ丸囲みの字
-    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(isT || isF ? 11 : 10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT || fl ? $.NSColor.whiteColor : isF ? pzRgb([0xe5, 0x39, 0x35]) : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
+  const drawPiece = (x0, H, chArg, white) => { const ch = chArg || pzl.ch, isT = ch === 'T', isF = ch === '\u2661', TW = 14, TH = 12, ty = 6;
+    (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
+    const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(isT ? '\u24c9' : isF ? (typeof pzl.dots === 'string' && pzl.dots.indexOf('f') >= 0 ? '\u2665\ufe0e' : '\u2661\ufe0e') : ch)); const r = $.NSMakeRange(0, a.length);   // v5.1.407: Ⓣは Me Dock と同じ丸囲みの字
+    a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(isT || isF ? 11 : 10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : isF ? pzRgb([0xe5, 0x39, 0x35]) : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
     const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2));
     if (isF) return; if (typeof pzl.dots === 'string' && pzl.dots.indexOf(ch) < 0 && (white || isT)) return;   // v5.1.428: Ⓣ も dots に在る時(日記帳)だけ点(白も赤も)   // ★v5.1.421(俊克 11.03 am04:06 バグ1「MW-GATEに表示されるMeDockⓉが、Me Dockの白い点と赤い点の通りに表示されない」): 白い点= 印の在る字だけ(Me Dock の md-dot と同じ letters)・Ⓣは常に
     const lv = white ? 1 : pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
@@ -880,8 +880,8 @@ function run(argv) {
   const DO_S = 2, DO_TW = 16 * DO_S, DO_TH = 18 * DO_S, DO_GAP = 4, DO_PAD = 8;
   // ★v5.1.415(俊克 pm03:53「このツールボタンの左端にwGATEのロゴマークをでかでかと付けて、高らかに、The GATEを布告しよう」): 左端に MW-GATE ロゴ(札の左と同じ絵)を 44pt で。タイルはその右から
   const DO_LG = 44, DO_LX = 6, DO_X0 = DO_LX + DO_LG + 8;
-  const dockOut = { win: null, ivs: [], shown: false, pin: false, leaveAt: 0, ft: null, dnN: 0, upN: 0, downAt: -1, seat: '', drag: null, glide: null, fof: false, fofAt: 0, flash: 0 };
-  const FOF = '\u2661';   // ★v5.1.536(俊克 11.06 am11:39「♡マークにFoF」): mGATE の右端の札= 押す→ 登録した場所へ・Shift+押す→ 今の場所を登録(未登録なら押すだけで登録)。 空の♡= 未登録・塗った♥= 登録済み
+  const dockOut = { win: null, ivs: [], shown: false, pin: false, leaveAt: 0, ft: null, dnN: 0, upN: 0, downAt: -1, seat: '', drag: null, glide: null, tips: {} };
+  const FOF = '\u2661';   // ★v5.1.537(俊克 11.06 pm03:05 改良1「♥️ボタンは、他のパズルと基本は同じに」): mGATE の右端の札= 字 f(本文の印 mP7)。押す= 無ければ書く・在れば飛ぶ(/fof)。空の♡= 今のファイルに印が無い・塗った♥= 在る(dots の f)。🔴は動かさない
   const dockOutTile = (ch) => { const im = $.NSImage.alloc.initWithSize($.NSMakeSize(DO_TW, DO_TH)); im.lockFocus;
     const tf = $.NSAffineTransform.transform; tf.scaleXByYBy(DO_S, DO_S); tf.concat; drawPiece(1, 18, ch, ch !== pzl.ch); im.unlockFocus; return im; };
   // ★v5.1.413(俊克 pm01:47「表示したよ。でも、クリックしてもワープはしない」): 実測= events.log に「開いた」は在るが「押した」が1つも無い= 押した事が wGATE に届いていない。
@@ -896,7 +896,7 @@ function run(argv) {
   const edLaunch = () => { try { const a = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(edBundle()); if (Number(a.count) > 0) { a.objectAtIndex(0).activateWithOptions(2); hlog('[launch] 前へ出した'); }
     else { const u = edAppUrl(); if (u) { $.NSWorkspace.sharedWorkspace.openURL(u); hlog('[launch] 起こした'); } } } catch (e) { hlog('[launch] 失敗 ' + e); } edRunAt = 0; };
   const dockOutFire = (i) => { const ch = doOrd().charAt(i); if (!ch || i < 0) return;
-    if (ch === FOF) { let sh = false; try { sh = (Number($.NSEvent.modifierFlags) & 0x20000) !== 0; } catch (e) {} const set = sh || !dockOut.fof; hlog('[dockOut] ♡ を押した→ ' + (set ? '登録' : 'ワープ')); if (set) { dockOut.fof = true; dockOut.fofAt = Date.now(); dockOut.flash = dockOut.fofAt; dockOutPaint(); } openWarp(scheme + '://' + ext + '/fof' + (set ? '?set=1' : '')); return; }
+    if (ch === FOF) { hlog('[dockOut] ♡ を押した'); openWarp(scheme + '://' + ext + '/fof'); return; }
     hlog('[dockOut] ' + ch + ' を押した→ ワープ');
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} dockOutPaint(); }
     openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); };   // ★v5.1.446(俊克 pm06:27「mGATEのパズルをクリックしてワープしても、mGATEは閉じない…Me Dockと同じように」): 閉じるのはロゴの Shift クリックだけ   // ★v5.1.441(俊克 pm01:24「消したいと思うmGATEを操作すると消えるので、このほうが自然」): Barman のタイルでワープしたら、どの出し方でも消す
@@ -937,7 +937,7 @@ function run(argv) {
   const dockOutDragEnd = () => { const g = dockOut.drag; dockOut.drag = null; if (!g.moved) return; const f = dockOut.win.frame; let best = 'tag', bd = Infinity; for (const k of ['tag', 'left', 'center', 'right']) { const d = Math.abs(dockOutSeatX(k, f.size.width) - f.origin.x); if (d < bd) { bd = d; best = k; } }
     dockOut.seat = best; try { $(best).writeToFileAtomicallyEncodingError(dir + '/dockout-seat', true, $.NSUTF8StringEncoding, null); } catch (e) {} hlog('[dockOut] 席= ' + best); dockOut.glide = { from: f.origin.x, to: dockOutSeatX(best, f.size.width), at: Date.now() }; };
   const dockOutGlideStep = () => { const g = dockOut.glide, t = Math.min(1, (Date.now() - g.at) / 160), e = 1 - (1 - t) * (1 - t), f = dockOut.win.frame; dockOut.win.setFrameOrigin($.NSMakePoint(g.from + (g.to - g.from) * e, f.origin.y)); if (t >= 1) dockOut.glide = null; };
-  const dockOutFast = () => { if (!dockOut.shown) return; dockOutDrain(); const dn = dockOutCnt(1), up = dockOutCnt(2); if (dockOut.flash && Date.now() - dockOut.flash > 600) { dockOut.flash = 0; dockOutPaint(); }   // v5.1.536: 登録した印= ♡の札が0.6秒だけ赤地に白
+  const dockOutFast = () => { if (!dockOut.shown) return; dockOutDrain(); const dn = dockOutCnt(1), up = dockOutCnt(2); dockOutTipStep();
     if (dn !== dockOut.dnN) { dockOut.dnN = dn; dockOut.downAt = dockOutHandAt(); if (dockOut.downAt === -1 && dockOutOnGrip()) { dockOut.glide = null; if (!dockOut.pin) dockOut.pin = 'seat'; dockOut.drag = { mx: $.NSEvent.mouseLocation.x, ox: dockOut.win.frame.origin.x, moved: false }; } }
     if (dockOut.drag) { dockOutDragMove(); if (up !== dockOut.upN) { dockOut.upN = up; dockOutDragEnd(); } return; } if (dockOut.glide) dockOutGlideStep();
     if (up !== dockOut.upN) { dockOut.upN = up; const d = dockOut.downAt; dockOut.downAt = -1; if (d === -1) return; let i = dockOutHandAt(); if (i === -1) i = d; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else { let sh = false; try { sh = (Number($.NSEvent.modifierFlags) & 0x20000) !== 0; } catch (e) {} let cm = false; try { cm = (Number($.NSEvent.modifierFlags) & 0x100000) !== 0; } catch (e) {}   // v5.1.447: ⌘クリック= 終了
@@ -962,7 +962,19 @@ function run(argv) {
   // v5.1.416(俊克「44ピクセルにすると、ロゴの絵が汚くなる」): 54px の札用を44ptへ引き伸ばしていた→ ver2 の原寸から作った 176px(mgate-big.png)
   const dockOutPaint = () => { try { if (!dockOut.win) return; try { if (!dockOut.big) { const d = String(cycRevPath()).replace(/[^\/]*$/, ''), b = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-big.png')); if (b && !b.isNil()) dockOut.big = b; } const gi = gateLoad(), im = dockOut.big || (gi && (gateDark() ? gi.d : gi.l)); if (im && dockOut.lg) dockOut.lg.image = im; } catch (e) {} const o = doOrd(); for (let i = 0; i < dockOut.ivs.length; i++) { const ch = o.charAt(i); dockOut.ivs[i].image = ch ? dockOutTile(ch) : $(); } try { const f = dockOut.win.frame, w = doW(o.length); if (Math.abs(f.size.width - w) > 0.5) { const r = f.origin.x + f.size.width; dockOut.win.setFrameDisplay($.NSMakeRect(dockOut.shown ? (dockOutSeat() === 'tag' ? r - w : dockOutSeatX(dockOutSeat(), w)) : f.origin.x, f.origin.y, w, f.size.height), true); } } catch (e) {} } catch (e) {} };   // 右端(ピースの側)は動かさず幅だけ
   const dockOutToggle = (why) => { try { if (dockOut.shown) { hlog('[dockOut] ' + why + '→ 閉じる'); dockOutHide(); } else if (pzl.ch && String(pzl.ord || '').length === 7) { dockOutShow(); dockOut.pin = 'arm'; hlog('[dockOut] ' + why + '→ 出す(出しっぱなし)'); } } catch (e) {} };   // v5.1.468: Shift クリック= Barman のオン/オフ
-  const dockOutHide = () => { try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.pin = false; dockOut.leaveAt = 0; dockOut.downAt = -1; dockOut.drag = null; dockOut.glide = null; };
+  // ★v5.1.537(俊克 11.06 pm03:05 改良2「Me Dockのパズルと同様に､メニューバーにぶら下がっている方のパズルもtipを出そうよ」): 札の上に指が乗ったら tip= 中身は印の // の後ろ(Me Dock と同じ物)・Ⓣは Today。
+  //   置き方は tip の決まり(project_tip_at_the_pointer)= 左端はポインターの x・上端はポインターの12下。右に入らなければ左へ伸ばして右端を x+16。色は Me Dock の .toc-tooltip と同じ(地が文字色寄り)。小窓は押せない
+  const doTip = { win: null, bg: null, tf: null, ch: '', t: '' };
+  const dockOutTipBuild = () => { if (doTip.win) return; const rc = $.NSMakeRect(0, 0, 80, 22), w = $.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(rc, 128, 2, false);
+    w.level = 102; w.opaque = false; w.backgroundColor = $.NSColor.clearColor; w.hasShadow = true; w.ignoresMouseEvents = true; w.hidesOnDeactivate = false; w.collectionBehavior = 1 | 16 | 256;
+    const bg = $.NSBox.alloc.initWithFrame(rc); bg.boxType = 4; bg.titlePosition = 0; bg.borderWidth = 0; bg.cornerRadius = 3; bg.contentViewMargins = $.NSMakeSize(0, 0); bg.autoresizingMask = 18; w.contentView = bg; doTip.bg = bg;   // 色は NSBox で塗る(JXA で layer.backgroundColor へ CGColor を入れると osascript ごと落ちる・実測)
+    const tf = $.NSTextField.wrappingLabelWithString($('')); tf.font = $.NSFont.systemFontOfSize(12); tf.frame = $.NSMakeRect(7, 4, 66, 14); tf.autoresizingMask = 18; bg.contentView.addSubview(tf); doTip.win = w; doTip.tf = tf; };
+  const dockOutTipHide = () => { doTip.ch = ''; doTip.t = ''; try { if (doTip.win) doTip.win.orderOut($()); } catch (e) {} };
+  const dockOutTipShow = (t) => { dockOutTipBuild(); const dk = gateDark(), tf = doTip.tf; tf.stringValue = $(t); tf.textColor = dk ? $.NSColor.blackColor : $.NSColor.whiteColor; doTip.bg.fillColor = dk ? $.NSColor.colorWithWhiteAlpha(0.84, 1) : $.NSColor.colorWithWhiteAlpha(0.27, 1);
+    const sz = tf.cell.cellSizeForBounds($.NSMakeRect(0, 0, 320, 2000)), W = Math.ceil(sz.width) + 16, H = Math.ceil(sz.height) + 8, p = $.NSEvent.mouseLocation, sf = dockOut.win.screen.visibleFrame; let x = p.x; if (x + W > sf.origin.x + sf.size.width - 4) x = p.x + 16 - W; x = Math.max(sf.origin.x + 4, x);
+    doTip.win.setFrameDisplay($.NSMakeRect(x, p.y - 12 - H, W, H), true); doTip.win.orderFrontRegardless; };
+  const dockOutTipStep = () => { try { const i = !dockOut.drag && !dockOut.glide && dockOutOnTile() ? dockOutAt() : -1, ch = i >= 0 ? doOrd().charAt(i) : '', t = !ch ? '' : ch === 'T' ? 'Today' : String(dockOut.tips[ch === FOF ? 'f' : ch] || ''); if (ch === doTip.ch && t === doTip.t) return; if (!t) { dockOutTipHide(); doTip.ch = ch; return; } doTip.ch = ch; doTip.t = t; dockOutTipShow(t); } catch (e) { hlog('[dockOut] tip 例外 ' + e); } };
+  const dockOutHide = () => { dockOutTipHide(); try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.pin = false; dockOut.leaveAt = 0; dockOut.downAt = -1; dockOut.drag = null; dockOut.glide = null; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
     const w = dockOutBuild(); try { w.setContentSize($.NSMakeSize(doW(doOrd().length), DO_TH + DO_PAD * 2)); } catch (e) {} const f = w.frame, seat = dockOutSeat(); if (seat !== 'tag' && !dockOut.pin) dockOut.pin = 'seat';
     let x = r.origin.x; try { x = dockOutSeatX(seat, f.size.width); } catch (e) {}
@@ -1214,7 +1226,7 @@ function run(argv) {
   // v5.1.401: 札の右端のピース= 拡張が置く puzzle-last({ch,lv})。0.5秒に1回読み、変わったら描き直す
   let pzl = { ch: '', lv: 1, prev: '', ord: '' }, pzlN = 0;
   const pzlTick = () => { if (pzlN++ % 5) return; let o = null; try { const f = dir + '/puzzle-last'; if ($.NSFileManager.defaultManager.fileExistsAtPath(f)) o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null))); } catch (e) {}
-    { const ff = !!(o && o.fof); if (ff !== dockOut.fof && Date.now() - dockOut.fofAt > 3000) { dockOut.fof = ff; try { dockOutPaint(); } catch (e) {} } }   // v5.1.536: 押した直後(3秒)は押した側の姿を保つ
+    dockOut.tips = (o && o.tips) || {};   // v5.1.537: 字ごとの tip(Me Dock と同じ= 印の // の後ろ)
     const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '', ord: o && o.ord ? String(o.ord).slice(0, 7) : '', dots: o && typeof o.dots === 'string' ? o.dots : undefined }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev && n.ord === pzl.ord && n.dots === pzl.dots) return; const chg = n.ch !== pzl.ch; pzl = n; try { step(); } catch (e) {} try { dockOutPaint(); } catch (e) {} /* v5.1.441: Me Dock やキーでワープしても(字が変わっても)消さない */ };
   // ★v5.1.418(俊克 pm06:12 バグ1「shift長押しで、ぶら下がりツールが出てこない」): 拡張は Me Dock が出ている間 arm を書いていなかった(🧩専用だった)→ 常に書き、Me Dock が出ていれば末尾に ' d'。🧩は ' d' 無しの時だけ・出張所は構えなら常に
   let armAny = false;
