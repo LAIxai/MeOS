@@ -7310,6 +7310,22 @@ async function meosDiaryTplMenu(ed) {
   meosPostDiaryMode();
   vscode.window.setStatusBarMessage('MeOS: template ' + G.charAt(pk.i) + (pk.act === 'reg' ? ' = ' + pair.id : ' cleared'), 4000);
 }
+// ★v5.1.542(俊克 11.06 pm06:26「この栞♥自体をボタン化する。F付き以外の栞♥をクリックすると、そこがF付きに変身。F付きは必ず1つに限定される」):
+//   本文の♥(印を隠した行の頭の飾り)を押すと、カーソルは印の頭の桁に落ちる(飾りの左半分は1字前)。F でない♥なら F を移し、次の行へ下りる= 生データに戻さず♥と F を見せる。
+//   行の右の空き地を押すと行末の桁= 印の中へ入れる(tip を書く口)ので、頭の桁だけを見る。F の♥は何もしない
+function meosFofChipClick(e) {
+  try {
+    if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return; const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return;
+    const doc = ed.document, ln = sel.active.line, col = sel.active.character; if (ln >= doc.lineCount) return; const raw = doc.lineAt(ln).text; if (raw.indexOf('mP7') < 0) return;
+    const m = meosPuzzleTagLine(doc, ln, raw); if (!m || +m[1] !== 7) return;
+    MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; const fm = MEOS_PUZZLE_TAG_FULL_RE.exec(meosRefScanText(raw)); if (!fm) return;
+    if (col !== fm.index && col !== fm.index - 1) return;
+    const hits = meosPuzzleTagsOf(doc, 7); if (meosPuzzleFGet(doc, 7) === fm[2] || (hits.length < 2)) return;
+    meosPuzzleFSet(doc, 7, fm[2]); meosDbg('[puzzleTag] 本文の♥で F を移した 行=' + (ln + 1));
+    const land = Math.min(ln + 1, doc.lineCount - 1), pos = new vscode.Position(land, 0); ed.selection = new vscode.Selection(pos, pos);
+    meosPostPuzzleDots(true); refresh(ed);
+  } catch (_) { }
+}
 // ★v5.1.539(俊克 11.06 pm05:02 改良1「①クリックしてワープ ②同じパズルをもう一度クリックすると削除 ただしtipを影に記憶 ③別の場所で同じパズルをクリックすると、記憶していたtipで書き込む」「一度入力したものは捨てずに再利用」):
 //   影= 字ごとに1つ(全ファイル共通・この Mac の覚え)。F の説明を読むたびに控えるので、手で消した印の tip も残る。空は控えない= 捨てない
 const MEOS_PUZZLE_WELCOME = 'Welcome to Puzzle Dock!!';
@@ -8281,7 +8297,7 @@ function applyPrettyLabels(editor) {
         const _pzd = (/\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(mPz[0]) || [])[1] || '';   // v4.2.607: 説明もホバーに
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index, line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
-          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: mPz[1] === '7' ? 'none; font-size: 140%' : undefined, margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
+          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: mPz[1] === '7' ? 'none; font-size: 140%; cursor: ' + meosHandCursor() + ';' : undefined, margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
     }
     if (lineHasRefMark(text)) {
@@ -14203,7 +14219,7 @@ async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっ�
 //   置き場は globalState(meosFoF)= uri・行・桁・その行の字。行は本文の編集でずれるので、字が変わっていたら元の行から近い順に同じ字の行を探す。着地は付箋と同じ口(畳みの中でも着く)
 // ★v5.1.537(俊克 11.06 pm03:05 改良1「♥️ボタンは、他のパズルと基本は同じに。shift長押しのあと、ffと連打することでコメント行を書き込む。削除は直接消す」): 536 の裏の控え(globalState)をやめ、本文の印 mP7 にした= 無ければ書く・在れば飛ぶ・消すのは行を消す。
 //   ★他の字との違いは1つ= 🔴(meosPuzzleLast)を動かさない(俊克 考察1「cパズルで飛んだ先で、今書き進めている箇所に♥️を入れておけば、🔴を見れば、そこを編集していて、その中の♥️で作業している」)
-async function meosFofWarp(opt) { try { meosPuzzleArmSet(false); const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (meosCycRevGet()) meosCycRevSet(false); if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag('f', Object.assign({ toggle: true }, opt)); } catch (_) { } }
+async function meosFofWarp(opt) { try { meosPuzzleArmSet(false); const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (meosCycRevGet()) meosCycRevSet(false); if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag('f', { cycle: !!(opt && opt.cycle) }); } catch (_) { } }   // ★v5.1.542(俊克 11.06 pm06:26「もっとシンプルに」): ♥は押し直しで消さない= 無ければ書く・在れば F へ・Opt で巡る・削除は本文で直接。F の付け替えは本文の♥を押す(meosFofChipClick)
 async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種類・行・桁)へ着地する= メニューの行からも、閉じている時の V-helper の URL からも
   try {
     const doc = await vscode.workspace.openTextDocument(f.uri);
@@ -46256,6 +46272,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.launchdAllow', async () => { const ok = await meosLaunchDPermission(true); vscode.window.showInformationMessage(ok ? '\ud83c\udf05 Done \u2014 MeOS can change the start-up schedule without your password.' : '\ud83c\udf05 Not changed.'); }));   // v5.1.497
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.launchdDisallow', async () => { const ok = await meosLaunchDPermission(false); vscode.window.showInformationMessage(ok ? '\ud83c\udf05 Removed \u2014 MeOS will ask for your password again.' : '\ud83c\udf05 Not changed.'); }));   // v5.1.497
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.diaryTplRegister', () => meosDiaryTplMenu(vscode.window.activeTextEditor)));   // v4.2.777-2 / -3: ▾ と同じ口
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosFofChipClick));   // ★v5.1.542: 本文の♥= ボタン
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpNth', async (arg) => {   // v4.2.776-26: 構えている間の Cmd+1〜7= 今の並びの左から n 番目
     try {
       // ★v4.2.776-32(俊克 改良2「数字だけでなく、アルファベットキーを連打してもいいことに。ホームポジションでも打てる」):
