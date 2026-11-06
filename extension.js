@@ -8145,6 +8145,8 @@ function applyPrettyLabels(editor) {
   const refPointCounts = {};
   const refPtAll = []; // v0.9.99969: F参照符ガター判定用(カーソル行の符も含む全収集)
   const puzzlePtAll = []; // v4.2.565: パズルタグ(カーソル行も含む全部)= F のガター用
+  // ★v5.1.545(俊克 11.06 pm07:04 改良1「F付きの♥ボタンは押しても変化しないので、ポインターを文字カーソルに」): 押して変わる札だけ手・F(1本だけの札も F)は文字カーソル
+  const _pzCnt = {}, _pzIsF = (n, name) => { if (_pzCnt[n] === undefined) _pzCnt[n] = meosPuzzleTagsOf(editor.document, n).length; return _pzCnt[n] < 2 || meosPuzzleFGet(editor.document, n) === name; };
   // v1.0.10(俊克 バグ1): グループごとの注釈(desc符=参照膜)の個数を先に計算=符ホバーに「Jump to note」リンクを出す判定用。
   const refNoteCount = new Map(); try { for (const _p of collectRefPoints(editor.document)) { if (_p.desc && !_p.disabled) refNoteCount.set(_p.name, (refNoteCount.get(_p.name) || 0) + 1); } } catch (_) {}
   // v0.9.658: 取消線 ~~text~~(日時) の本体範囲（赤線）とマーカー範囲（~~・(日時)を隠す）。
@@ -8277,7 +8279,7 @@ function applyPrettyLabels(editor) {
         const _pzd = (/\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(mPz[0]) || [])[1] || '';   // v4.2.607: 説明もホバーに
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index, line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
-          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + meosHandCursor() + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
+          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()) + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
     }
     if (lineHasRefMark(text)) {
