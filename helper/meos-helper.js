@@ -1,3 +1,28 @@
+// {* ▼mCN=hT_helper // H-TOC for AI — source index for meos-helper.js (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// ⇄ 0100_BOOT // Mac の命令の読み込み / run の入口 / 置き場 dir / hlog / メニューバーの item
+// ⇄ 0200_STYLED_TEXT // 札の字の飾り(⚓の傾き・縁・drawStyled)
+// ⇄ 0300_OPEN_WARP // エディターを起こす / 膜へワープ / 持ち主の生死 / 開けないワープの持ち越し
+// ⇄ 0400_WAKE // 🌅 pmset の読み書き / 起動の予定 / 見本 presets
+// ⇄ 0500_WAKE_ROWS // 🌅 メニューの行(曜日の□・押した時)
+// ⇄ 0600_MENU_CLICK // メニュー項目を押した時(pick:) / 最後の予定 / optWarp
+// ⇄ 0650_MENU_OPEN // メニューが開く時(menuWillOpen)= 札のどこを押したかの振り分け(ロゴ・ピース・Opt)
+// ⇄ 0700_MENU_PARTS // 付箋の絵 / 🔴▶ / ⭐️ / 見出しの部品
+// ⇄ 0800_HEAD_CYCLE // 見出しの畳み / ↻ の4姿 / 待ちの姿 / 🏷️の見出し
+// ⇄ 0900_POINTER // ポインター(手・白い45°↖・手の平/握り)の切り替え= menuHandStep / ↻のホーバー / ポインターを運ぶ
+// ⇄ 1000_MENU_BUILD // メニューを組み立てる(付箋・TAG・⏰の群・build) / 残り時間の書き方
+// ⇄ 1100_BELL_SOUNDS // 鐘の音(GROWL・神獣・ミャウ・ロケット) playBell
+// ⇄ 1200_TAG_COLORS // 札の色
+// ⇄ 1250_TAG_SEATS // 札の🪑の席の絵
+// ⇄ 1300_TAG_PIECES // 札のパズルのピース / ⌘Q・名札 / 当たり pieceHit / 絵 drawPiece
+// ⇄ 1400_MGATE_TILES // ぶら下がりのmGATE= 寸法 DO_* / dockOut の状態 / タイルの絵 / 押した時 dockOutFire / edLaunch
+// ⇄ 1410_MGATE_HIT // mGATE の当たり= dockOutAt / ロゴの台形 / 札と点 / 掴む所 dockOutOnGrip / dockOutHandAt
+// ⇄ 1420_MGATE_SEATS // mGATE の4つの席 / ドラッグ / 吸い付き / クリックの見張り dockOutFast
+// ⇄ 1430_MGATE_WINDOW // mGATE の窓を作る・描く・出す・閉じる・Shift クリック / dockOutTick / 札のロゴの Cmd
+// ⇄ 1500_SHOW // 札を描く show()
+// ⇄ 1600_CLOCK_STEP // ⏰の帯 / 鳴らす判定 / 1回分の見張り step()
+// ⇄ 1700_TICKERS // タイマー / puzzle-last の読み取り / 構え armTick / ポインターを運ぶ warpPtr / 修飾キー
+// {* ▲mCN=hT_helper // end [cGJF=h] *}
+// {* ▼mCN=0100_BOOT // Mac の命令の読み込み / run の入口 / 置き場 dir / hlog / メニューバーの item (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // MeOS menu-bar helper (v5.1.255) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
@@ -37,6 +62,8 @@ function run(argv) {
     try { if (!$.NSFileManager.defaultManager.fileExistsAtPath($(dir + '/nopark'))) it.autosaveName = $('meos.clock.' + (myScheme || 'vscodium')); } catch (e) {}
     return it; };
   let item = newItem();
+// {* ▲mCN=0100_BOOT // end [cGJF=h] *}
+// {* ▼mCN=0200_STYLED_TEXT // 札の字の飾り(⚓の傾き・縁・drawStyled) (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.163(俊克 pm11:09「🛟をオフ→オンすると、メニューバーが混んでいると << が出るだけで気づき難い」): 名前の無い項目は作るたびに左端(先に隠れる所)へ置かれる。
   //   名前を付けて macOS に置き場所を覚えさせる= Cmd+ドラッグで右へ動かせば、入れ直しても起き直してもそこへ戻る。拡張側の係(MEOS_MENUBAR_JXA)も同じ名前
   //   ★v5.1.164(俊克 pm11:21「名前を与える、与えないを切り替えるボタンを…こういう仕組みがあることをユーザに教育する」): Me Dock の🅿️が切なら nopark の印= 名前を付けない(毎回左端)
@@ -77,6 +104,8 @@ function run(argv) {
     styled(m[0], font, false).drawAtPoint($.NSMakePoint(x + pw, y + (ah - styled(m[0], font, false).size.height)));
     ctx.restoreGraphicsState;
   };
+// {* ▲mCN=0200_STYLED_TEXT // end [cGJF=h] *}
+// {* ▼mCN=0300_OPEN_WARP // エディターを起こす / 膜へワープ / 持ち主の生死 / 開けないワープの持ち越し (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   let appPath = '', appName = 'VSCodium', scheme = 'vscodium', ext = 'lai.lai-membrane';
   // ★拡張が居ない時の口(ここで決める物)= 'h:' で始まる
   let alarms = [], fired = {}, ringing = null, ringNext = 0, sound = { file: '', vol: 2, every: 1 };
@@ -107,6 +136,8 @@ function run(argv) {
   const pendingWarpStep = (now) => { if (!pendingWarp) return;
     if (ownerAlive(owner)) { if (!pendingWarp.seen) pendingWarp.seen = now; if (now - pendingWarp.seen >= 2500) { const u = pendingWarp.url; pendingWarp = null; openUrl(u); } }
     else if (now - pendingWarp.at > 90000) { const u = pendingWarp.url; pendingWarp = null; openUrl(u); } };
+// {* ▲mCN=0300_OPEN_WARP // end [cGJF=h] *}
+// {* ▼mCN=0400_WAKE // 🌅 pmset の読み書き / 起動の予定 / 見本 presets (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.0.0-47(俊克 2026.10.14 pm01:55「システムの自動起動タイマーを組み込もう。何世代前から設定できなくなった。今は毎朝手で電源ボタンを押している」
   //   → pm02:09 iMac M3 で `pmset schedule wakeorpoweron` によりシステム終了から自動起動できた(実測)):
   //   ★🌅 Wake = Mac の毎日の起動(または起こす)時刻。住まいは macOS(pmset)= ここは覚えず、毎回 `pmset -g sched` を読んで出す(突き合わせ)。
@@ -207,6 +238,8 @@ function run(argv) {
     presets[days] = hm; savePresets(); lastMenu = null;
     if (wake && kindOf(wake.days) === days && wake.hm !== hm) setWake(days, hm);
   };
+// {* ▲mCN=0400_WAKE // end [cGJF=h] *}
+// {* ▼mCN=0500_WAKE_ROWS // 🌅 メニューの行(曜日の□・押した時) (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.0.0-55(俊克 -54テスト 改良1「週末も2つから選択できるようにしようか?」): □の行を平日/週末の2つに一般化。
   //   席ごとに: 曜日の字(pmset)・見せる字(MeOS の S-M-T-W-t-F-s= 土は s・日は S)・覚え場所(presets.wd / presets.we)
   const ROWS = { MTWRF: { name: 'Weekdays', letters: 'MTWRF', shown: 'MTWtF', key: 'wd' }, SU: { name: 'Weekends', letters: 'SU', shown: 'sS', key: 'we' } };
@@ -262,6 +295,8 @@ function run(argv) {
     v.setFrameSize($.NSMakeSize(TX + LW + 4 + 5 * STEP + 16, H));   // 右に余白 16pt(週末も平日と同じ幅= 札の位置が揃う)
     return v;
   };
+// {* ▲mCN=0500_WAKE_ROWS // end [cGJF=h] *}
+// {* ▼mCN=0600_MENU_CLICK // メニュー項目を押した時(pick:) / 最後の予定 / optWarp (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.0.0-58(俊克 pm07:23〜08:00「これもテキストデータにしよう… 膜名 🌅LaunchD_TS」): 起動の予定を決めるのは本文の 🌅LaunchD の膜(▶️で入る)。
   //   メニューは今の姿を見せるだけ(ここでも決められると、本文と macOS の2つの道が食い違う)。-50〜57 の □/時刻の仕掛けは使わない。
   const wakeEntries = () => [{ id: 'launchd', title: '\ud83c\udf05 Wake   ' + wakeLabel() }, { sep: true }];   // v5.0.0-59: 押すと 🌅LaunchD の膜へ(他の時計の行と同じ)
@@ -310,6 +345,8 @@ function run(argv) {
     if (ownerAlive(owner)) { try { $(JSON.stringify({ id: 'optwarp', t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} openApp(); return; }
     if (optTarget) { stopBell(); openWarp(warpUrl(optTarget, false)); } else openApp();
   };
+// {* ▲mCN=0600_MENU_CLICK // end [cGJF=h] *}
+// {* ▼mCN=0650_MENU_OPEN // メニューが開く時(menuWillOpen)= 札のどこを押したかの振り分け(ロゴ・ピース・Opt) (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v4.2.337(俊克「Optクリックでメニューバーをクリックすると、VSCmを起動する。あるいは、今表示している膜にワープする」):
   //   メニューが開く直前に Opt を見て、押されていればメニューを畳み、札に出ている膜へワープする。
   // ★v5.1.330(俊克 10.30 am11:23 バグ1「スクショを macOS のプレビューの『削除』で捨てた後、メニューバーが開かなくなった・前の版も同じ所で」): 測る口= 開く/閉じる/Optで取り消した/作り直した を events.log へ([menu])
@@ -335,6 +372,8 @@ function run(argv) {
   } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
     try { hlog('[menu] close' + (quick ? ' (' + (now - menuOpenAt) + 'ms= 指を放した所で閉じた)' : '')); } catch (e) {} freshMenu = true;
     if (quick && now > noRestartUntil) { renewItem = true; reopenAt = now + 60; } } } } });   // v5.1.334〜335: すぐ閉じた= V-helper ごと起こし直す(起こし直した直後30秒はしない= 回り続けない)
+// {* ▲mCN=0650_MENU_OPEN // end [cGJF=h] *}
+// {* ▼mCN=0700_MENU_PARTS // 付箋の絵 / 🔴▶ / ⭐️ / 見出しの部品 (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.333(俊克 pm00:05 v5.1.332「改善なし」): 実測= 作り直しても、V-helper を起こし直しても、開いて約0.04秒(= クリックの指を放すまで)で閉じる。MeOS は閉じていない(Opt も押されていない)。
   //   macOS の中の事なので、手当て= 指を放した所で閉じたら(150ms 未満・何も選んでいない)、指が離れた後に V-helper が自分でもう一度開く(2回まで)
   // ★v5.1.332(俊克 10.30 am11:50「VSCm の V-helper を何度か押した後に本家を押すと、本家は1回だけ出て直ぐ閉じる・その後は開く」): 実測の筋=
@@ -403,6 +442,8 @@ function run(argv) {
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f, null, fusenAll.star ? STAR.length : 0); starSm(a, fusenAll.star);
     fusenAll.hb.attributedTitle = a; } catch (e) {} };
+// {* ▲mCN=0700_MENU_PARTS // end [cGJF=h] *}
+// {* ▼mCN=0800_HEAD_CYCLE // 見出しの畳み / ↻ の4姿 / 待ちの姿 / 🏷️の見出し (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.356(俊克 10.31 am10:03 改良1「メニューバーを1クリックで全て折り畳んだ状態にするボタン…通常の⏰も折り畳めるように」・タイトル「▼ ⏰」/
   //   am10:08「⊟を押す度に、全部折り畳む、⏰だけ開く、付箋だけ開く、タグだけ開くの4つを巡回…全て展開はあえて入れない」):
   //   ⏰の見出し= FUSEN/TAG と同じ「メニューの中のボタン」(押しても閉じない)。右端の⊟で4つの姿を巡る。畳んだ姿は作り直しても覚えている
@@ -458,6 +499,8 @@ function run(argv) {
   const TAG_PAGE = 10;
   // ★v5.1.343(俊克 pm02:25「スライドボタンを連続で押せるように、ポインター位置を移動しよう」): 送るとページの行数が変わり▲▼が上下にずれる→ 描き直した後(0.05秒・メニューの中でも鳴る)、押したボタンの真ん中へポインターを運ぶ(TAG と FUSEN の群)
   let ptrDiag = 0;   // ★v5.1.372(俊克 pm10:14 改良1「中心にいると↻の回転が見えない…ボタンを拡大し、右下45°方向の位置にポイント」): 0以外= 真ん中から右下45°へ d pt ずらす(1回きり)
+// {* ▲mCN=0800_HEAD_CYCLE // end [cGJF=h] *}
+// {* ▼mCN=0900_POINTER // ポインター(手・白い45°↖・手の平/握り)の切り替え= menuHandStep / ↻のホーバー / ポインターを運ぶ (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.374(俊克 pm10:27 バグ1「拡大しない。なぜ?」): 373 の NSTrackingArea はメニューの中では mouseEntered が届かなかった(events.log に兆し無し)。
   //   → メニューを開いている間も回る 0.05秒の見張りで、ポインター(NSEvent.mouseLocation)が↻の枠の中か を見て描き替える。閉じている間は窓が見えないので素通り
   let cycHovTimer = null;
@@ -498,6 +541,8 @@ function run(argv) {
     cycRev = !cycShRev; if (cycRev) $('1').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else fm.removeItemAtPathError(fp, null);
     cycPaint(); hlog('[menu] 開いている間の Shift 長押しで ' + (cycRev ? '↻→↺' : '↺→↻')); } catch (e) {} };
   const ptrTo = (b) => { try { const t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'ptr:', b, false); $.NSRunLoop.currentRunLoop.addTimerForMode(t, $.NSRunLoopCommonModes); } catch (e) {} };
+// {* ▲mCN=0900_POINTER // end [cGJF=h] *}
+// {* ▼mCN=1000_MENU_BUILD // メニューを組み立てる(付箋・TAG・⏰の群・build) / 残り時間の書き方 (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.341(俊克 pm02:07「#テスト2 なども折畳みボタンにすればいい」→ pm02:08「仰せのままに」): 札の見出し= 付箋の群と同じ「メニューの中のボタン」(濃い字・▸緑/▾青・押しても閉じない)。
   //   押すとその札の膜を並びから抜き、ページを数え直す。畳んだかは札の名前ごとに覚える(作り直しても保つ)・最初は開いた姿。枠は送るたびに中身が替わるので、見出しが来た枠だけボタンにする
   const tagFold = {};
@@ -721,6 +766,8 @@ function run(argv) {
     const p = (n) => (n < 10 ? '0' : '') + n;
     return (d ? d + 'd ' + p(h) : String(h)) + ':' + p(m) + '.' + p(ss);
   };
+// {* ▲mCN=1000_MENU_BUILD // end [cGJF=h] *}
+// {* ▼mCN=1100_BELL_SOUNDS // 鐘の音(GROWL・神獣・ミャウ・ロケット) playBell (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // v4.2.628: 🍙GROWL は 1秒の音＋1/f ゆらぎの間(0.5〜1.5秒)= 一回ごとに次の時刻を決め直す(繰り返しのタイマーを使わない)
   let gapRows = [0.5, 0.5, 0.5, 0.5], gapN = 0;
   const growlGap = () => { gapN++; let k = 0, n = gapN; while (k < 3 && !(n & 1)) { n >>= 1; k++; } gapRows[k] = Math.random(); return 0.5 + gapRows.reduce((a, b) => a + b, 0) / gapRows.length; };
@@ -753,6 +800,8 @@ function run(argv) {
       $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(Math.round((sound.vol || 2) * g * 100) / 100), isGrowl() ? growlFile() : (isGk() ? gkFile() : rocketFile())]));
     } catch (e) {}
   };
+// {* ▲mCN=1100_BELL_SOUNDS // end [cGJF=h] *}
+// {* ▼mCN=1200_TAG_COLORS // 札の色 (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   let lastMenu = null, lastText = null;
   const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);
   const blue = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x2f / 255, 0x80 / 255, 0xb8 / 255, 1);   // v4.2.316: ⚓停泊中
@@ -761,12 +810,16 @@ function run(argv) {
   let lastAnchor = null, lastIdle = null, lastPk = null;
   // ★v4.2.363: 常駐の係は、⏰が無い時も消えない= 灰色の ⏰ で居る(そこからアプリの起動/終了ができる)。
   const gray = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x6b / 255, 0x72 / 255, 0x80 / 255, 1);
+// {* ▲mCN=1200_TAG_COLORS // end [cGJF=h] *}
+// {* ▼mCN=1250_TAG_SEATS // 札の🪑の席の絵 (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // v5.1.60(俊克「⚓の青い札の時は、椅子の部分との境目に細い白い線を」)→ v5.1.61(「一律で白い境界線を入れよう」): 境目には札の色によらず1ptの白
   // v5.1.57(俊克「メニューバーの背景色を椅子の部分だけ色を変えよう」): 末尾の離席の残り(🪑3m / 🪑0:42)だけ席の色の地に(Me Dock の↻の丸と同じ色)
   const SEATS = [[String.fromCodePoint(0x1FA91), 0x2f, 0x9c, 0xcc], [String.fromCodePoint(0x1F6CB) + String.fromCharCode(0xFE0F), 0xc2, 0x4a, 0x3e], [String.fromCodePoint(0x1F4BA), 0xc4, 0x95, 0x1a]];
   const seatPart = (t) => { t = String(t); for (const s of SEATS) { const i = t.lastIndexOf(s[0]); if (i < 0) continue; const tail = t.slice(i + s[0].length); if (/^([0-9]+m|<1m|0:[0-9][0-9])$/.test(tail)) return { at: i, rgb: s }; } return null; };
   const fillSeat = (t, font, PX, W, H) => { try { const sp = seatPart(t); if (!sp) return; const pre = String(t).slice(0, sp.at); const x0 = pre.replace(/ +$/, '') ? Math.max(0, PX + styled(pre, font, true).size.width - 4) : 0;
     $.NSColor.colorWithSRGBRedGreenBlueAlpha(sp.rgb[1] / 255, sp.rgb[2] / 255, sp.rgb[3] / 255, 1).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, 0, W - x0, H), 5, 5).fill; if (x0 > 0) $.NSBezierPath.fillRect($.NSMakeRect(x0, 0, 6, H)); if (x0 > 0) { $.NSColor.whiteColor.setFill; $.NSBezierPath.fillRect($.NSMakeRect(x0, 0, 1, H)); } } catch (e) {} };   // v5.1.58(俊克「色の境界線をラウンドではなく、直線に」): 境目は直線・右の端だけ札と同じ丸み
+// {* ▲mCN=1250_TAG_SEATS // end [cGJF=h] *}
+// {* ▼mCN=1300_TAG_PIECES // 札のパズルのピース / ⌘Q・名札 / 当たり pieceHit / 絵 drawPiece (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.401(俊克 11.02 am10:02 改良2「Me Dockが表示/非表示にかかわらず、🔴マークが付いたパズルのピース、例えば[c]をメニューバーの離席表示の右側に」):
   //   Me Dock の .md-tile と同じ= 白い角丸の地に字の色(M赤 e橙 D緑 o青 c紫 k紅)・Ⓣは緑の地に白。下に🔴= 段1は真ん中4px・段2は左端6px・段3は右端8px(下端は揃え、上へ育ってピースに被る)
   const PZ_COL = { M: [0xe5, 0x39, 0x35], e: [0xf5, 0x7c, 0x00], D: [0x2e, 0x9d, 0x3a], o: [0x1e, 0x7f, 0xd6], c: [0x8e, 0x24, 0xaa], k: [0xc2, 0x18, 0x5b] };
@@ -818,6 +871,8 @@ function run(argv) {
     const lv = white ? 1 : pzl.lv, d = lv === 3 ? 8 : lv === 2 ? 6 : 4, dx = lv === 3 ? x0 + TW - d : lv === 2 ? x0 : x0 + (TW - d) / 2;
     (white ? $.NSColor.whiteColor : pzRgb([0xe5, 0x39, 0x35])).setFill; $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)).fill;
     $.NSColor.colorWithWhiteAlpha(0, 0.5).setStroke; const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(dx, ty - 6, d, d)); ov.lineWidth = 0.5; ov.stroke; };
+// {* ▲mCN=1300_TAG_PIECES // end [cGJF=h] *}
+// {* ▼mCN=1400_MGATE_TILES // ぶら下がりのmGATE= 寸法 DO_* / dockOut の状態 / タイルの絵 / 押した時 dockOutFire / edLaunch (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.412(俊克 11.02 pm01:41「小さいのはそのまま操作できるようにして、その上で、MeDockⓉすべてをメニューバーの直ぐ下に並べる。これで、Me Dockを非表示にしてあっても、Me Dockの出張所が開設した感じに」):
   //   札の右端のピースに乗ったら、メニューバーの直ぐ下(ピースの右端に揃える)に、Me Dock のタイル7枚(M e D o c k Ⓣ・Me Dock と同じ並び ord・点は白・最後だけ🔴の段)を2倍で並べた小窓。
   //   小窓は前に出ない窓(押してもアプリが前へ出ない・焦点を取らない)。小窓の上に居る間は保ち、ピースからも小窓からも離れて0.5秒で閉じる(斜めに移る間の猶予)。メニューを開いたら閉じる。
@@ -842,6 +897,8 @@ function run(argv) {
   const dockOutFire = (i) => { const ch = doOrd().charAt(i); if (!ch || i < 0) return; hlog('[dockOut] ' + ch + ' を押した→ ワープ');
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} dockOutPaint(); }
     openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(ch)); };   // ★v5.1.446(俊克 pm06:27「mGATEのパズルをクリックしてワープしても、mGATEは閉じない…Me Dockと同じように」): 閉じるのはロゴの Shift クリックだけ   // ★v5.1.441(俊克 pm01:24「消したいと思うmGATEを操作すると消えるので、このほうが自然」): Barman のタイルでワープしたら、どの出し方でも消す
+// {* ▲mCN=1400_MGATE_TILES // end [cGJF=h] *}
+// {* ▼mCN=1410_MGATE_HIT // mGATE の当たり= dockOutAt / ロゴの台形 / 札と点 / 掴む所 dockOutOnGrip / dockOutHandAt (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   const dockOutAt = () => { try { if (!dockOut.win) return -1; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y;
     if (y < DO_PAD - 2 || y > DO_PAD + DO_TH + 2) return -1; const i = Math.floor((x - DO_X0 + DO_GAP / 2) / (DO_TW + DO_GAP)); return i >= 0 && i < doOrd().length ? i : -1; } catch (e) { return -1; } };
   // ★v5.1.414(俊克 pm01:56「押すタイミングで、認識したりしなかったりする」): 413 は「今押されているか」を0.02秒ごとに見た→ 札の描き直しやファイル読みで見張りが0.1秒以上遅れると、素早いクリック(押して放すまで0.1秒未満)は丸ごと間に落ちた。
@@ -864,6 +921,8 @@ function run(argv) {
   const dockOutOnTile = () => { try { const i = dockOutAt(); if (i < 0) return false; const mp = $.NSEvent.mouseLocation, f = dockOut.win.frame, x = mp.x - f.origin.x, y = mp.y - f.origin.y, t0 = DO_X0 + i * (DO_TW + DO_GAP); if (x >= t0 + 2 && x <= t0 + 30 && y >= 19 && y <= 44) return true; const c = dockOutDot(i); return !!c && Math.hypot(x - (t0 + c.x), y - c.y) <= c.r + 1.5; } catch (e) { return false; } };   /* v5.1.521(俊克 pm06:45 改良1「🔴ボタンの横では↖」): 指は白い札と丸い点の上だけ(スクショの実寸・窓の下からの座標) */   // v5.1.519: dockOutAt は「どの字の列か」だけ。指も押す判定もこの dockOutOnTile(v5.1.531)
   const dockOutOnGrip = () => { try { return dockOutInPanel() && $.NSEvent.mouseLocation.x - dockOut.win.frame.origin.x < DO_LX + DO_LG / 2 && !dockOutOnLogo(); } catch (e) { return false; } };   // ★v5.1.534(俊克 am10:04「掴めるのは、mGATEロゴの左側の隙間だけに限定しよう。🔴と白マークの間で移動手が現れたら、うざいでしょ?」): 窓の左端〜ロゴの斜めの線まで。他の地は従来の↖= 何も起きない
   const dockOutHandAt = () => dockOutOnTile() ? dockOutAt() : dockOutOnLogo() ? -2 : -1;   // ★v5.1.531: 指が出る所だけ押せる(字の番号 / -2= ロゴ / -1= ↖の所= 何も起きない)。押した時に↖なら放す位置に関係なく何もしない
+// {* ▲mCN=1410_MGATE_HIT // end [cGJF=h] *}
+// {* ▼mCN=1420_MGATE_SEATS // mGATE の4つの席 / ドラッグ / 吸い付き / クリックの見張り dockOutFast (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.532(俊克 11.06 am09:42「メニューバーの左端と右端にも移動できるようにしよう。Picture-in-picture のようにね…左右の端、自分のメニューバーの真下(現状)、画面の中央、この4種類」/ am09:47「ウィンドウを左上目一杯広げて使っていることを想定して、ウィンドウ左上の3つのボタンを避ける位置まで」):
   //   席は4つ= tag(札の真下・従来) / left / center / right。↖の地を横へドラッグし、放すと近い席へ吸い付く。高さはメニューバーの真下のまま。tag 以外の席は出しっぱなし(閉じるのはロゴの Shift クリック)
   const DO_LEFT_SAFE = 84;   // 左端の席= 画面の左から窓の3つのボタンの分だけ空ける
@@ -880,6 +939,8 @@ function run(argv) {
     if (dockOut.drag) { dockOutDragMove(); if (up !== dockOut.upN) { dockOut.upN = up; dockOutDragEnd(); } return; } if (dockOut.glide) dockOutGlideStep();
     if (up !== dockOut.upN) { dockOut.upN = up; const d = dockOut.downAt; dockOut.downAt = -1; if (d === -1) return; let i = dockOutHandAt(); if (i === -1) i = d; if (i >= 0) { try { dockOutFire(i); } catch (e) { hlog('[dockOut] 例外 ' + e); } } else { let sh = false; try { sh = (Number($.NSEvent.modifierFlags) & 0x20000) !== 0; } catch (e) {} let cm = false; try { cm = (Number($.NSEvent.modifierFlags) & 0x100000) !== 0; } catch (e) {}   // v5.1.447: ⌘クリック= 終了
       if (cm) { hlog('[dockOut] ロゴを ⌘ クリック→ エディターを終える(mGATE はそのまま)'); edQuit(); } else if (sh) { hlog('[dockOut] ロゴを Shift クリック→ 閉じる'); dockOutHide(); } else { hlog('[dockOut] ロゴを押した→ エディターを前へ/起こす'); edLaunch(); } } } };   // v5.1.446: メニューバーの地を押しても消さない
+// {* ▲mCN=1420_MGATE_SEATS // end [cGJF=h] *}
+// {* ▼mCN=1430_MGATE_WINDOW // mGATE の窓を作る・描く・出す・閉じる・Shift クリック / dockOutTick / 札のロゴの Cmd (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   ObjC.registerSubclass({ name: 'MeOSDockOutT', methods: { 'fast:': { types: ['void', ['id']], implementation: function (t) { try { dockOutFast(); } catch (e) {} } } } });
   const dockOutTgt = $.MeOSDockOutT.alloc.init;
   // ★v5.1.472(俊克 am03:23 バグ1「メニューバーの小さいmGATEロゴだけ、cmdクリックの終了が動作しない」): 実測= Cmd を押して札を押すと macOS は札を動かす操作にし、メニューが開かない(menuWillOpen に来ない)。
@@ -909,6 +970,8 @@ function run(argv) {
     if (onPiece) { if (!dockOut.shown) dockOutShow(); dockOut.leaveAt = 0; return; }
     if (!dockOut.shown) return; if (onWin || dockOut.pin) { dockOut.leaveAt = 0; return; }
     const now = Date.now(); if (!dockOut.leaveAt) dockOut.leaveAt = now; else if (now - dockOut.leaveAt > 500) { hlog('[dockOut] 離れて0.5秒→ 消す'); dockOutHide(); } };
+// {* ▲mCN=1430_MGATE_WINDOW // end [cGJF=h] *}
+// {* ▼mCN=1500_SHOW // 札を描く show() (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
@@ -976,6 +1039,8 @@ function run(argv) {
       item.button.image = img; item.button.title = '';
     }
   }
+// {* ▲mCN=1500_SHOW // end [cGJF=h] *}
+// {* ▼mCN=1600_CLOCK_STEP // ⏰の帯 / 鳴らす判定 / 1回分の見張り step() (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v4.2.340: 連動の次の1歩(鳴った a から、次に鳴る行・回・時刻)。過ぎた分は同じ規則で飛ばす(眠っていた間など)
   // ★v4.2.341(俊克 バグ1「VSCmを閉じていると、目薬2本目のときに、メニューバーは、1本目と誤表示される」):
   //   名前の器(タイトルの `1.`)に回数を入れるのは拡張(meosChainFillSlot)だけだった→ 同じ規則をここにも1つ
@@ -1129,6 +1194,8 @@ function run(argv) {
       show(text, menu, ringing ? !!ringing.anchor : (next.length > 0 && !!next[0].anchor));
     }
   }
+// {* ▲mCN=1600_CLOCK_STEP // end [cGJF=h] *}
+// {* ▼mCN=1700_TICKERS // タイマー / puzzle-last の読み取り / 構え armTick / ポインターを運ぶ warpPtr / 修飾キー (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v4.2.333(俊克 改良2「メニューを出しているとき、メニューバーの残時間が止まってしまう」): メニューを開いている間は macOS が
   //   runUntilDate を返さない(メニューの追跡の間は別の走り方)。→ 描く仕事を『どの走り方でも鳴る』タイマー(CommonModes)に載せる。
   ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { step(); } catch (e) {} try { cycIdle(); } catch (e) {} } },
@@ -1206,3 +1273,4 @@ function run(argv) {
   bar.removeStatusItem(item);
   return 'bye';
 }
+// {* ▲mCN=1700_TICKERS // end [cGJF=h] *}

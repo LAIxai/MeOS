@@ -2565,6 +2565,7 @@
 // ⇄ 0869_LINE_HISTORY // Real/REinc histories persist across Warp/Submarine
 // ⇄ 0870_ME_DOCK // 🚧(1) v0.9.421 Warp/Submarine opens Time Machine Me
 // ⇄ 0900_PROVIDER_ACTIVATE // folding provider / activate / deactivate
+// ⇄ helper/meos-helper.js // メニューバーの係(札・mGATE・🌅)は別ファイル= 先頭の mCN=hT_helper が目次
 // {* ▲mCN=hT_122105.511 // end [cGJF=h] *}
 // {* ▼mCN=0100_CORE_STATE // require / VERSION / shared state (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 const vscode = require('vscode');
