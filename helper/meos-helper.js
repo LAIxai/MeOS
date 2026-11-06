@@ -990,7 +990,9 @@ function run(argv) {
     im.unlockFocus; doX.img[k] = im; return im; };
   const dockOutXBuild = () => { if (doX.win) return; const rc = $.NSMakeRect(0, 0, 20, 20), w = $.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(rc, 128, 2, false); w.setOpaque(false); w.backgroundColor = $.NSColor.clearColor; w.hasShadow = false; w.ignoresMouseEvents = true; w.level = 103; try { w.collectionBehavior = 1 | 16 | 256; } catch (e) {} const iv = $.NSImageView.alloc.initWithFrame(rc); w.contentView = iv; doX.win = w; doX.iv = iv; };
   const dockOutXHide = () => { doX.k = ''; try { if (doX.win) doX.win.orderOut($()); } catch (e) {} };
-  const dockOutXStep = () => { try { const i = !dockOut.drag && !dockOut.glide && dockOutOnTile() ? dockOutAt() : -1, ch = i >= 0 ? doOrd().charAt(i) : ''; let k = ''; if (ch && ch !== 'T') { const f = Number($.NSEvent.modifierFlags) || 0; k = (f & 0x100000) ? 'c' : (f & 0x80000) ? 'o' : ''; }
+  // ★v5.1.548(俊克 pm07:56 バグ1「MW-GATEロゴはCmdクリックで終了なので、ここも黄色×を。メニューバーの小さいロゴでも」): 2つのロゴも Cmd だけ黄。札のロゴは mGATE が閉じている間も見るので modsTick(0.1秒)からも呼ぶ
+  const dockOutXStep = () => { try { const f = Number($.NSEvent.modifierFlags) || 0, cm = (f & 0x100000) !== 0, op = (f & 0x80000) !== 0; let k = '';
+    if (cm || op) { const on = dockOut.shown && !dockOut.drag && !dockOut.glide, i = on && dockOutOnTile() ? dockOutAt() : -1, ch = i >= 0 ? doOrd().charAt(i) : ''; if (ch && ch !== 'T') k = cm ? 'c' : 'o'; else if (cm && !ch && ((on && dockOutOnLogo()) || pieceHit() === '\u0000logo')) k = 'c'; }
     if (!k) { if (doX.k) dockOutXHide(); return; } dockOutXBuild(); if (k !== doX.k) { doX.k = k; doX.iv.image = dockOutXImg(k); doX.win.orderFrontRegardless; } const p = $.NSEvent.mouseLocation; doX.win.setFrameOrigin($.NSMakePoint(p.x - 10, p.y - 10)); } catch (e) { hlog('[dockOut] × 例外 ' + e); } };
   const dockOutHide = () => { dockOutTipHide(); dockOutXHide(); try { if (dockOut.shown && dockOut.win) dockOut.win.orderOut($()); } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} dockOut.shown = false; dockOut.pin = false; dockOut.leaveAt = 0; dockOut.downAt = -1; dockOut.drag = null; dockOut.glide = null; };
   const dockOutShow = () => { try { const b = item.button, bw = b.window; if (!bw || bw.isNil()) return; const r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $()));
@@ -1287,6 +1289,7 @@ function run(argv) {
     try { armTick(); } catch (e) {}
     try { pzlTick(); } catch (e) {}
     try { dockOutTick(); } catch (e) {}
+    try { dockOutXStep(); } catch (e) {}   // ★v5.1.548: 札のロゴの×
     if (!$.NSFileManager.defaultManager.fileExistsAtPath(dir + '/mods-want')) { modsLast = -1; return; }
     let f = 0; try { f = Number($.CGEventSourceFlagsState(1)) || 0; } catch (e) {} if (!f) f = Number($.NSEvent.modifierFlags) || 0;   // v4.2.742(俊克「エディタから入ると左右どちらも濃紺」): NSEvent は左右を返さない→ CG の機械の状態を先に
     const k = (f & 0x20000 ? 1 : 0) | (f & 0x40000 ? 2 : 0) | (f & 0x80000 ? 4 : 0) | (f & 0x100000 ? 8 : 0) | (f & 0x2 ? 16 : 0) | (f & 0x4 ? 32 : 0);   // v4.2.741: 左右の Shift(機械の左=0x2・右=0x4)
