@@ -7310,7 +7310,23 @@ async function meosDiaryTplMenu(ed) {
   meosPostDiaryMode();
   vscode.window.setStatusBarMessage('MeOS: template ' + G.charAt(pk.i) + (pk.act === 'reg' ? ' = ' + pair.id : ' cleared'), 4000);
 }
-async function meosPuzzleTag(ch) {
+// ★v5.1.539(俊克 11.06 pm05:02 改良1「①クリックしてワープ ②同じパズルをもう一度クリックすると削除 ただしtipを影に記憶 ③別の場所で同じパズルをクリックすると、記憶していたtipで書き込む」「一度入力したものは捨てずに再利用」):
+//   影= 字ごとに1つ(全ファイル共通・この Mac の覚え)。F の説明を読むたびに控えるので、手で消した印の tip も残る。空は控えない= 捨てない
+const MEOS_PUZZLE_WELCOME = 'Welcome to Puzzle Dock!!';
+function meosPuzzleShadowGet(ch) { try { return String((extensionContext.globalState.get('meosPuzzleShadow', {}) || {})[ch] || ''); } catch (_) { return ''; } }
+function meosPuzzleShadowSet(ch, tip) { try { tip = String(tip || '').trim(); if (!tip || tip === MEOS_PUZZLE_WELCOME || tip === meosPuzzleShadowGet(ch)) return; const m = Object.assign({}, extensionContext.globalState.get('meosPuzzleShadow', {}) || {}); m[ch] = tip; extensionContext.globalState.update('meosPuzzleShadow', m); } catch (_) { } }
+// 印を1本消す= 印だけの行は行ごと、本文と同居なら印だけ。カーソルはそのままなので、もう一度押せば同じ所へ tip ごと戻る
+async function meosPuzzleRemove(ed, h, ch) {
+  const doc = ed.document, raw = doc.lineAt(h.line).text, scan = meosRefScanText(raw); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0;
+  let m, hit = null; while ((m = MEOS_PUZZLE_TAG_FULL_RE.exec(scan)) !== null) { if (m[2] === h.name) { hit = m; break; } }
+  if (!hit) return false;
+  meosPuzzleShadowSet(ch, h.desc);
+  const a = hit.index, b = a + hit[0].length, alone = !(raw.slice(0, a) + raw.slice(b)).trim();
+  let r = new vscode.Range(h.line, a, h.line, b);
+  if (alone) r = h.line + 1 < doc.lineCount ? new vscode.Range(h.line, 0, h.line + 1, 0) : (h.line > 0 ? new vscode.Range(h.line - 1, doc.lineAt(h.line - 1).text.length, h.line, raw.length) : new vscode.Range(h.line, 0, h.line, raw.length));
+  return await ed.edit(eb => eb.delete(r));
+}
+async function meosPuzzleTag(ch, opt) {
   try {
     const n = MEOS_PUZZLE_LETTERS.indexOf(String(ch || '')) + 1; if (n < 1) return;
     _meosPuzzleLastCh = String(ch);   // v4.2.594
@@ -7321,8 +7337,9 @@ async function meosPuzzleTag(ch) {
       const ln = ed.selection.active.line, ind = (doc.lineAt(ln).text.match(/^[ \t]*/) || [''])[0];
       // ★v4.2.631(俊克「初めてクリックしたパズルボタンには、tipとして「Welcome to Puzzle Dock!!」と入れよう。これで tip の使い方を理解できるはず」):
       //   生涯で最初に書く1本だけ、説明(// の後ろ)に入れておく= 字に白い点が付き、触れると tip に出る→ ここに書けば tip になると分かる
-      let _welcome = false; try { _welcome = !extensionContext.globalState.get('meosPuzzleWelcomed', false); } catch (_) { }
-      const tag = ind + wrapRefMark(doc, '{* \u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_welcome ? 'Welcome to Puzzle Dock!! ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
+      const _shadow = meosPuzzleShadowGet(String(ch));   // ★v5.1.539: 影の tip で書く
+      let _welcome = false; try { _welcome = !_shadow && !extensionContext.globalState.get('meosPuzzleWelcomed', false); } catch (_) { }
+      const tag = ind + wrapRefMark(doc, '{* \u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_shadow ? _shadow + ' ' : _welcome ? MEOS_PUZZLE_WELCOME + ' ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag));
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
       if (_welcome) { try { extensionContext.globalState.update('meosPuzzleWelcomed', true); } catch (_) { } }
@@ -7337,6 +7354,9 @@ async function meosPuzzleTag(ch) {
     //   ★F が消えて候補が2本以上= F は無い→ 押すたびに次の候補へ巡り、**カーソルを動かした所**(掴んだ1本)が F になる(meosPuzzleCrownAtCaret)
     let f = hits.find(h => h.name === meosPuzzleFGet(doc, n));
     if (!f && hits.length === 1) { f = hits[0]; meosPuzzleFSet(doc, n, f.name); }
+    // ★v5.1.539: 押し直し= もう F の所に居る(印の行か、着地した次の行)→ 消す。F 無し・2本以上は従来どおり巡る(候補を掴む操作なので消さない)
+    if (f && opt && opt.toggle) { const _c = ed.selection.active.line;
+      if (_c === f.line || _c === f.line + 1) { const _ok = await meosPuzzleRemove(ed, f, String(ch)); if (_ok) { try { await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false }); } catch (_) { } meosPostPuzzleDots(true); meosDbg('[puzzleTag] ' + ch + '=P' + n + ' を消した 行=' + (f.line + 1)); vscode.window.setStatusBarMessage('MeOS: ' + ch + ' removed (tip kept)', 3000); } return; } }
     let line;
     if (f) line = f.line;
     else { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur); line = (nx || hits[0]).line; _meosPuzzleJumpAt = { uri: doc.uri.toString(), line };
@@ -7376,7 +7396,7 @@ function meosPostPuzzleDots(soon) {
       const letters = MEOS_PUZZLE_LETTERS.split('').filter((c, i) => ns.has(i + 1)).join('');   // v4.2.595(俊克「もとい。設定済みの所に白い点に戻そう」): 印の在る字ぜんぶ
       // ★v4.2.607(俊克「コメント文にtipを書き込めるように。パズルボタンでそれをtipとして表示。ワープ前に分かるので誤爆がなくなる」): 字ごとに F の印の説明
       const _all = meosPuzzleTagsOf(ed.document, 0), tips = {};
-      for (let n = 1; n <= 7; n++) { const g = _all.filter(h => h.n === n); if (!g.length) continue; const fn = meosPuzzleFGet(ed.document, n); const f = g.find(h => h.name === fn) || g[0]; if (f.desc) tips[MEOS_PUZZLE_LETTERS.charAt(n - 1)] = f.desc; }
+      for (let n = 1; n <= 7; n++) { const g = _all.filter(h => h.n === n); if (!g.length) continue; const fn = meosPuzzleFGet(ed.document, n); const f = g.find(h => h.name === fn) || g[0]; if (f.desc) { tips[MEOS_PUZZLE_LETTERS.charAt(n - 1)] = f.desc; meosPuzzleShadowSet(MEOS_PUZZLE_LETTERS.charAt(n - 1), f.desc); } }
       const diary = meosIsDiaryFile(ed.document);   // ★v5.1.428(俊克 am05:50「日記ではないファイルでは、MeDockⓉのⓉをクリックしても、Ⓣの下に🔴も白い円も出ないように」)
       const key = ed.document.uri.toString() + '|' + letters + '|' + JSON.stringify(tips) + '|' + diary;
       if (key === _meosPuzzleDotsLast && !soon) return; _meosPuzzleDotsLast = key;
@@ -14183,7 +14203,7 @@ async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっ�
 //   置き場は globalState(meosFoF)= uri・行・桁・その行の字。行は本文の編集でずれるので、字が変わっていたら元の行から近い順に同じ字の行を探す。着地は付箋と同じ口(畳みの中でも着く)
 // ★v5.1.537(俊克 11.06 pm03:05 改良1「♥️ボタンは、他のパズルと基本は同じに。shift長押しのあと、ffと連打することでコメント行を書き込む。削除は直接消す」): 536 の裏の控え(globalState)をやめ、本文の印 mP7 にした= 無ければ書く・在れば飛ぶ・消すのは行を消す。
 //   ★他の字との違いは1つ= 🔴(meosPuzzleLast)を動かさない(俊克 考察1「cパズルで飛んだ先で、今書き進めている箇所に♥️を入れておけば、🔴を見れば、そこを編集していて、その中の♥️で作業している」)
-async function meosFofWarp() { try { meosPuzzleArmSet(false); const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (meosCycRevGet()) meosCycRevSet(false); if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag('f'); } catch (_) { } }
+async function meosFofWarp() { try { meosPuzzleArmSet(false); const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (meosCycRevGet()) meosCycRevSet(false); if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag('f', { toggle: true }); } catch (_) { } }
 async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種類・行・桁)へ着地する= メニューの行からも、閉じている時の V-helper の URL からも
   try {
     const doc = await vscode.workspace.openTextDocument(f.uri);
@@ -37802,7 +37822,7 @@ function toggleMeDock(editorOverride) {
             await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: T - bpx }, { size: bpx }] });
             try { extensionContext.globalState.update('meDockWidthRatio', bpx / T); } catch (_) { }
             meosDbg('[dockWidth] 枠が最小 ' + Math.round(b) + 'px → ' + bpx + 'px'); } } } } catch (_) { } return; }
-    if (message && message.type === 'mdTileJump') { await meosPuzzleTag(message.ch); return; }   // v4.2.562
+    if (message && message.type === 'mdTileJump') { await meosPuzzleTag(message.ch, { toggle: true }); return; }   // v4.2.562
     if (message && message.type === 'mbPick') { meosMenuBarPick(message.id); return; }   // v5.1.449: 分身のリストを押した= メニューバーと同じ口
     if (message && message.type === 'mbMirrorUi') { try { await extensionContext.globalState.update('meosMbMirrorUi', { fold: !!message.fold, open: !!message.open }); } catch (_) { } return; }
     if (message && message.type === 'mbMirrorWant') { _meosMbMirror.want = !!message.open; if (_meosMbMirror.want) { _meosMbMirror.menuKey = ''; meosMbMirrorPost(_meosMbMirror.rawText, _meosMbMirror.rawMenu); } return; }
@@ -46262,10 +46282,10 @@ function activate(context) {
       meosPuzzleLastSet(ch);
       try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { }
       meosPuzzleBadgeFile();   // v5.1.401
-      await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed');
+      await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed', { toggle: true });   // ★v5.1.539: cc もクリックと同じ押し直し
     } catch (_) { }
   }));
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpRed', async () => {
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpRed', async (arg) => {   // ★v5.1.539: toggle 無し(Shift+Esc・札のピース・分身のピース)= 「🔴へ戻る」口なので消さない
     try {
       const ch = String(extensionContext.globalState.get('meosPuzzleLast') || '');
       meosPuzzleArmSet(false);   // v4.2.776-26: 飛んだら構えを解く
@@ -46275,7 +46295,7 @@ function activate(context) {
       if (meosCycRevGet()) meosCycRevSet(false);   // ★v5.1.376(俊克 11.01 pm02:58「ttは0.2秒で↺が裏返るのに、ccは3秒かかる。なぜ?」): Ⓣだけが warpToDate(v5.1.375で↻へ戻す)を通り、他の字は3秒の無操作待ちだった→ キーボードのワープは字を問わず直ぐ↻へ
       if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor);   // v4.2.777-1: Me Dock が無い時は、打っている編集画面へ
       if (ch === 'T') { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdTodayClick' }); else { const n = new Date(); meosWarpToDate({ mode: 'abs', y: n.getFullYear(), mo: n.getMonth() + 1, d: n.getDate(), orBefore: true }); } return; }   // v4.2.777-1: Me Dock が無くても Ⓣ
-      await meosPuzzleTag(ch);
+      await meosPuzzleTag(ch, { toggle: !!(arg && arg.toggle) });
     } catch (_) { }
   }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.saveUnchanged', async () => {
@@ -46672,7 +46692,7 @@ function activate(context) {
           const ch = String(new URLSearchParams(u.query || '').get('ch') || '').slice(0, 1); meosDbg('[helper] puzzle ' + ch);
           if (!_meosLastLineDone) meosLastLineFinish('ピースが先 → 戻さない');
           if (ch) { try { meosPuzzleLastSet(ch); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { } }
-          await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed'); return;
+          await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed', { toggle: new URLSearchParams(u.query || '').get('tap') === '1' }); return;   // ★v5.1.539: tap=1= mGATE のタイル(札のピースは付けない)
         }
         if (u && u.path === '/fof') {   // ★v5.1.537: mGATE の♡= 他のパズルと同じ(無ければ書く・在れば飛ぶ)。🔴は動かさない
           meosDbg('[helper] FoF');
