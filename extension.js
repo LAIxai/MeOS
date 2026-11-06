@@ -7316,12 +7316,12 @@ async function meosDiaryTplMenu(ed) {
 function meosFofChipClick(e) {
   try {
     if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return; const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return;
-    const doc = ed.document, ln = sel.active.line, col = sel.active.character; if (ln >= doc.lineCount) return; const raw = doc.lineAt(ln).text; if (raw.indexOf('mP7') < 0) return;
-    const m = meosPuzzleTagLine(doc, ln, raw); if (!m || +m[1] !== 7) return;
-    MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; const fm = MEOS_PUZZLE_TAG_FULL_RE.exec(meosRefScanText(raw)); if (!fm) return;
-    if (col !== fm.index && col !== fm.index - 1) return;
-    const hits = meosPuzzleTagsOf(doc, 7); if (meosPuzzleFGet(doc, 7) === fm[2] || (hits.length < 2)) return;
-    meosPuzzleFSet(doc, 7, fm[2]); meosDbg('[puzzleTag] 本文の♥で F を移した 行=' + (ln + 1));
+    const doc = ed.document, ln = sel.active.line, col = sel.active.character; if (ln >= doc.lineCount) return; const raw = doc.lineAt(ln).text; if (raw.indexOf('mP') < 0 || !meosPuzzleTagLine(doc, ln, raw)) return;
+    // ★v5.1.543(俊克 pm06:48 改良1「P1〜P6のラベルもボタン化した方が分かりやすい」): ♥と同じ。1行に2つあっても押した桁の札を選ぶ
+    const scan = meosRefScanText(raw); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; let fm = null, x; while ((x = MEOS_PUZZLE_TAG_FULL_RE.exec(scan)) !== null) { if (col === x.index || col === x.index - 1) { fm = x; if (col === x.index) break; } }
+    if (!fm) return;
+    const n = +fm[1], hits = meosPuzzleTagsOf(doc, n); if (meosPuzzleFGet(doc, n) === fm[2] || hits.length < 2) return;
+    meosPuzzleFSet(doc, n, fm[2]); meosDbg('[puzzleTag] 本文の札で F を移した P' + n + ' 行=' + (ln + 1));
     const land = Math.min(ln + 1, doc.lineCount - 1), pos = new vscode.Position(land, 0); ed.selection = new vscode.Selection(pos, pos);
     meosPostPuzzleDots(true); refresh(ed);
   } catch (_) { }
@@ -8297,7 +8297,7 @@ function applyPrettyLabels(editor) {
         const _pzd = (/\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(mPz[0]) || [])[1] || '';   // v4.2.607: 説明もホバーに
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index, line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
-          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: mPz[1] === '7' ? 'none; font-size: 140%; cursor: ' + meosHandCursor() + ';' : undefined, margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
+          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + meosHandCursor() + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
     }
     if (lineHasRefMark(text)) {
