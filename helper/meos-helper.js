@@ -896,10 +896,11 @@ function run(argv) {
   const edLaunch = () => { try { const a = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(edBundle()); if (Number(a.count) > 0) { a.objectAtIndex(0).activateWithOptions(2); hlog('[launch] 前へ出した'); }
     else { const u = edAppUrl(); if (u) { $.NSWorkspace.sharedWorkspace.openURL(u); hlog('[launch] 起こした'); } } } catch (e) { hlog('[launch] 失敗 ' + e); } edRunAt = 0; };
   const dockOutFire = (i) => { const ch = doOrd().charAt(i); if (!ch || i < 0) return;
-    if (ch === FOF) { hlog('[dockOut] ♡ を押した'); openWarp(scheme + '://' + ext + '/fof'); return; }
+    let alt = ''; try { if ((Number($.NSEvent.modifierFlags) & 0x80000) !== 0) alt = 'alt=1'; } catch (e) {}   // ★v5.1.541: Opt+クリック= 印を巡る
+    if (ch === FOF) { hlog('[dockOut] ♡ を押した'); openWarp(scheme + '://' + ext + '/fof' + (alt ? '?' + alt : '')); return; }
     hlog('[dockOut] ' + ch + ' を押した→ ワープ');
     if (ch !== pzl.ch) { pzl = { ch: ch, lv: pzl.lv, prev: pzl.ch, ord: pzl.ord, dots: pzl.dots }; try { step(); } catch (x) {} dockOutPaint(); }
-    openWarp(scheme + '://' + ext + '/puzzle?tap=1&ch=' + encodeURIComponent(ch)); };   // ★v5.1.446(俊克 pm06:27「mGATEのパズルをクリックしてワープしても、mGATEは閉じない…Me Dockと同じように」): 閉じるのはロゴの Shift クリックだけ   // ★v5.1.441(俊克 pm01:24「消したいと思うmGATEを操作すると消えるので、このほうが自然」): Barman のタイルでワープしたら、どの出し方でも消す
+    openWarp(scheme + '://' + ext + '/puzzle?tap=1&' + (alt ? alt + '&' : '') + 'ch=' + encodeURIComponent(ch)); };   // ★v5.1.446(俊克 pm06:27「mGATEのパズルをクリックしてワープしても、mGATEは閉じない…Me Dockと同じように」): 閉じるのはロゴの Shift クリックだけ   // ★v5.1.441(俊克 pm01:24「消したいと思うmGATEを操作すると消えるので、このほうが自然」): Barman のタイルでワープしたら、どの出し方でも消す
 // {* ▲mCN=1400_MGATE_TILES // end [cGJF=h] *}
 // {* ▼mCN=1410_MGATE_HIT // mGATE の当たり= dockOutAt / ロゴの台形 / 札と点 / 掴む所 dockOutOnGrip / dockOutHandAt (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   const dockOutAt = () => { try { if (!dockOut.win) return -1; const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y;
