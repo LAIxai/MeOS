@@ -7313,14 +7313,32 @@ async function meosDiaryTplMenu(ed) {
 // ★v5.1.542(俊克 11.06 pm06:26「この栞♥自体をボタン化する。F付き以外の栞♥をクリックすると、そこがF付きに変身。F付きは必ず1つに限定される」):
 //   本文の♥(印を隠した行の頭の飾り)を押すと、カーソルは印の頭の桁に落ちる(飾りの左半分は1字前)。F でない♥なら F を移し、次の行へ下りる= 生データに戻さず♥と F を見せる。
 //   行の右の空き地を押すと行末の桁= 印の中へ入れる(tip を書く口)ので、頭の桁だけを見る。F の♥は何もしない
+// ★v5.1.559(俊克 11.07 pm00:25「本文中の♥に上下逆さの♥を…反対側にワープ…双方向ジャンプの決定版」・pm00:30「Fは必ず逆さ♥付き、もう一つは最後に設定したものにする」・pm00:32「2個目以降を作ったときに、それが相方」):
+//   ♥の組は1ファイルに1つ= F の♥ ＋ 相方。ふつうの♥は今まで通り何個でも。相方= 最後に作った♥(複製した時に控える)・F を移した時は元の F。控えが無い/消えた時は名前(日時)が一番新しい♥
+//   覚えは F と同じ globalState。本文に新しい記法は増やさない。逆さ♥は札(押す物= 印の2桁目)＋上に重ねた絵
+function meosFofMateGet(doc) { try { return (extensionContext.globalState.get('meosFofMate', {}) || {})[doc.uri.toString()] || ''; } catch (_) { return ''; } }
+function meosFofMateSet(doc, name) { try { const m = Object.assign({}, extensionContext.globalState.get('meosFofMate', {}) || {}); m[doc.uri.toString()] = name; extensionContext.globalState.update('meosFofMate', m); } catch (_) { } }
+function meosFofPair(doc) {
+  try {
+    const hits = meosPuzzleTagsOf(doc, 7); if (hits.length < 2) return null;
+    const fn = meosPuzzleFGet(doc, 7), f = hits.find(h => h.name === fn); if (!f) return null;
+    const rest = hits.filter(h => h !== f), mn = meosFofMateGet(doc);
+    return { f, m: rest.find(h => h.name === mn) || rest.slice().sort((a, b) => (a.name < b.name ? 1 : -1))[0] };
+  } catch (_) { return null; }
+}
+const _meosFofHints = new Map(), _meosFofHintSig = new Map(); let meosFofSkinDeco = null, _meosFofCaret = '';
 function meosFofChipClick(e) {
   try {
-    if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return; const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return;
+    if (!e) return; const _prev = _meosFofCaret; try { const _s0 = e.selections && e.selections[0]; if (_s0 && e.textEditor) _meosFofCaret = e.textEditor.document.uri.toString() + '#' + _s0.active.line; } catch (_) { }   // v5.1.559: 押す前にその行に居た= 生の字を直している時は飛ばない
+    if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return; const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return;
     const doc = ed.document, ln = sel.active.line, col = sel.active.character; if (ln >= doc.lineCount) return; const raw = doc.lineAt(ln).text; if (raw.indexOf('mP') < 0 || !meosPuzzleTagLine(doc, ln, raw)) return;
     // ★v5.1.543(俊克 pm06:48 改良1「P1〜P6のラベルもボタン化した方が分かりやすい」): ♥と同じ。1行に2つあっても押した桁の札を選ぶ
-    const scan = meosRefScanText(raw); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; let fm = null, x; while ((x = MEOS_PUZZLE_TAG_FULL_RE.exec(scan)) !== null) { if (col === x.index || col === x.index - 1) { fm = x; if (col === x.index) break; } }
+    const scan = meosRefScanText(raw); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; let fm = null, x; while ((x = MEOS_PUZZLE_TAG_FULL_RE.exec(scan)) !== null) {
+      if (col === x.index + 1 && x[1] === '7' && _prev !== doc.uri.toString() + '#' + ln) { const pr = meosFofPair(doc), me = pr && (pr.f.name === x[2] ? pr.f : (pr.m.name === x[2] ? pr.m : null)); if (me) { const to = me === pr.f ? pr.m : pr.f; meosDbg('[puzzleTag] 逆さ♥ ' + (ln + 1) + '→' + (to.line + 1)); meosPuzzleLand(ed, to.line); return; } }   // v5.1.559
+      if (col === x.index || col === x.index - 1) { fm = x; if (col === x.index) break; } }
     if (!fm) return;
     const n = +fm[1], hits = meosPuzzleTagsOf(doc, n); if (meosPuzzleFGet(doc, n) === fm[2] || hits.length < 2) return;
+    if (n === 7) meosFofMateSet(doc, meosPuzzleFGet(doc, 7));   // v5.1.559: 元の F が相方になる= 組の2か所は変わらない
     meosPuzzleFSet(doc, n, fm[2]); meosDbg('[puzzleTag] 本文の札で F を移した P' + n + ' 行=' + (ln + 1));
     const land = Math.min(ln + 1, doc.lineCount - 1), pos = new vscode.Position(land, 0); ed.selection = new vscode.Selection(pos, pos);
     meosPostPuzzleDots(true); refresh(ed);
@@ -7469,6 +7487,7 @@ function meosPuzzleDupFollow(e) {
         for (const h of fix) {
           const t = doc.lineAt(h.line).text, i = t.indexOf(h.name); if (i < 0) continue;
           let nm; do { nm = h.name.replace(/_[^_]*$/, '') + '_' + meosMembraneStamp(new Date(Date.now() + 1000 * k++)); } while (used.has(nm)); used.add(nm);
+          if (h.n === 7) meosFofMateSet(doc, nm);   // v5.1.559: 2個目以降の♥= 相方
           eb.replace(new vscode.Range(h.line, i, h.line, i + h.name.length), nm);
         }
       }, { undoStopBefore: false, undoStopAfter: false });
@@ -8169,6 +8188,7 @@ function applyPrettyLabels(editor) {
   const refPointCounts = {};
   const refPtAll = []; // v0.9.99969: F参照符ガター判定用(カーソル行の符も含む全収集)
   const puzzlePtAll = []; // v4.2.565: パズルタグ(カーソル行も含む全部)= F のガター用
+  const fofHints = [], fofSkin = []; let _pzPair; const _pzPairGet = () => { if (_pzPair === undefined) _pzPair = meosFofPair(editor.document); return _pzPair; };   // v5.1.559: 逆さ♥
   // ★v5.1.545(俊克 11.06 pm07:04 改良1「F付きの♥ボタンは押しても変化しないので、ポインターを文字カーソルに」): 押して変わる札だけ手・F(1本だけの札も F)は文字カーソル
   const _pzCnt = {}, _pzIsF = (n, name) => { if (_pzCnt[n] === undefined) _pzCnt[n] = meosPuzzleTagsOf(editor.document, n).length; return _pzCnt[n] < 2 || meosPuzzleFGet(editor.document, n) === name; };
   // v1.0.10(俊克 バグ1): グループごとの注釈(desc符=参照膜)の個数を先に計算=符ホバーに「Jump to note」リンクを出す判定用。
@@ -8301,7 +8321,11 @@ function applyPrettyLabels(editor) {
         if (_isRawLine(line)) continue;
         const _letter = MEOS_PUZZLE_LETTERS.charAt(+mPz[1] - 1);
         const _pzd = (/\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(mPz[0]) || [])[1] || '';   // v4.2.607: 説明もホバーに
-        refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index, line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
+        const _pr = mPz[1] === '7' ? _pzPairGet() : null, _rev = !!_pr && (_pr.f.name === mPz[2] || _pr.m.name === mPz[2]);   // v5.1.559: 組の♥= 隠す範囲を2桁目で割り、そこに札と逆さ♥を立てる(隠す範囲の中に立てると一緒に隠れる)
+        if (_rev) refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + 1) });
+        refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
+        if (_rev) { fofHints.push({ line, col: mPz.index + 1 }); fofSkin.push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });
+          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + 1, line, mPz.index + 1), renderOptions: { before: { contentText: '\u2665', color: '#e53935', textDecoration: 'none; opacity: 1; display: inline-block; position: relative; top: -0.14em; width: 1em; margin-left: -1em; text-align: center; transform: rotate(180deg); pointer-events: none;' } } }); }
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
           renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()) + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
@@ -9283,6 +9307,8 @@ function applyPrettyLabels(editor) {
       }
     } catch (_) {}
     setDecoCached(editor, refFrontGutterDecoration, 'refFront', refFrontItems);
+    // v5.1.559: 逆さ♥の札(押す物)と手の形
+    try { const _u = editor.document.uri.toString(), _sg = fofHints.map(h => h.line + ':' + h.col).join(','); _meosFofHints.set(_u, fofHints); if (fofSkin.length && !meosFofSkinDeco) meosFofSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); if (meosFofSkinDeco) editor.setDecorations(meosFofSkinDeco, fofSkin); if ((_meosFofHintSig.get(_u) || '') !== _sg) { _meosFofHintSig.set(_u, _sg); _meosNudgeHintsEv.fire(); } } catch (_) { }
     // v4.2.565: パズルタグの F= 覚えた名前の1本(覚えが無く1本だけならそれ)
     if (puzzleFrontGutterDecoration) { const _pf = [];
       try { for (let n = 1; n <= 7; n++) { const g = puzzlePtAll.filter(q => q.n === n); if (!g.length) continue;
@@ -47127,6 +47153,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
               const _vb = meosVeilBtnSpot(document, ln, _ed89); if (_vb) out.push(new vscode.InlayHint(new vscode.Position(ln, _vb.col), '\u3000')); } }   // v5.1.175: 小さい🙈の札   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
             { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
           }
+          for (const _fh of _meosFofHints.get(_u89) || []) if (_fh.line >= range.start.line && _fh.line <= range.end.line && _fh.line < document.lineCount && document.lineAt(_fh.line).text.indexOf('mP7') >= 0) { const _ih = new vscode.InlayHint(new vscode.Position(_fh.line, _fh.col), '\u3000'); _ih.tooltip = 'Warp to the other \u2665'; out.push(_ih); }   // v5.1.559: 逆さ♥の札
 
         } catch (_) { }
         return out;
