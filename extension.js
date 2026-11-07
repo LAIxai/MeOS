@@ -24027,6 +24027,14 @@ async function meosLaunchDMarksAtStart() {
     // ★v5.1.505(俊克 質問1「表示が固まるのは、設定したファイルを表示することが必要なのかな?」): そう= タブが裏のファイルは VS Code が読んでいない。
     //   → 🌅の居るファイルを覚えておき、起動の時に裏で読む(タブは増えない)。macOS の予定はファイルを開かなくても元から効いている。
     try { const u = extensionContext.globalState.get('meosLaunchDUri'); if (u && !vscode.workspace.textDocuments.some(d => d.uri.toString() === u)) await vscode.workspace.openTextDocument(vscode.Uri.parse(u)); } catch (_) { }
+    // ★v5.1.552(俊克 11.07 am09:55 改良1「My diary.md もタブとして在るのに Wake off のまま・タブをクリックすると入った」): 付箋の v5.1.346 と同じ穴= 再起動で戻したタブは、開くまで読まれない。覚えの1本だけでなく、タブの .md もディスクで確かめて、🌅の本物の膜が在れば裏で読む
+    try { const fs = require('fs'), have = new Set(vscode.workspace.textDocuments.map(d => d.uri.toString()));
+      for (const g of vscode.window.tabGroups.all) for (const t of g.tabs) {
+        const tu = t.input && t.input.uri; if (!tu || tu.scheme !== 'file' || !/\.md$/i.test(tu.fsPath) || have.has(tu.toString())) continue;
+        have.add(tu.toString());
+        let txt = ''; try { txt = await fs.promises.readFile(tu.fsPath, 'utf8'); } catch (_) { continue; }
+        if (/\u25bcmCN=\ud83c\udf05LaunchD_\d{8}[SMTWtFs]?\d{6}/.test(txt)) await vscode.workspace.openTextDocument(tu);
+      } } catch (_) { }
     const nw = meosLaunchDNewest(); const cur = await meosLaunchDReadMac(); if (cur === undefined) return;
     for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
       let ps = []; try { ps = collectPairs(d, { excludeIndex: false }).filter(p => meosIsLaunchDKey(p.id)); } catch (_) { }

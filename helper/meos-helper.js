@@ -148,6 +148,7 @@ function run(argv) {
   //   → クリックとぶつかるとメニューを取りこぼす。読むのも書くのも別の仕事(NSTask)に任せ、V-helper は待たない・前へ出ない。
   const WAKE_DAYS = { MTWRFSU: 'every day', MTWRF: 'weekdays', SU: 'weekends' };   // v5.0.0-48(俊克「Weekdayがあるなら、Weekendがあって当然」): pmset の S=土 U=日
   const WAKE_TIMES = ['05:00', '05:30', '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00'];
+  let wakeSeen = false;   // v5.1.552: pmset を1度でも読めた= wake の null は本当に「予定なし」
   let wake = null, wakeReadAt = 0;   // {days:'MTWRFSU'|'MTWRF'|'SU'|'', hm:'06:30'|'', raw:'…'} / null= 予定なし
   let wakeRead = null, wakeJob = null;   // 走っている読む仕事 / 書く・訊く仕事 {t, p, kind, days}
   const task = (args) => { const t = $.NSTask.alloc.init; t.launchPath = $('/usr/bin/' + args[0]); t.arguments = $(args.slice(1));
@@ -207,7 +208,7 @@ function run(argv) {
       + '" buttons {"Cancel", "Set"} default button "Set" with title "MeOS - Wake")']), { kind: 'ask', days }); };
   // 0.5秒の見回りで、終わった仕事を片付ける(待たない)
   const wakePoll = () => {
-    if (wakeRead && !wakeRead.t.isRunning) { const o = taskOut(wakeRead); wakeRead = null; const w = parseWake(o);
+    if (wakeRead && !wakeRead.t.isRunning) { const rcW = wakeRead.t.terminationStatus, o = taskOut(wakeRead); wakeRead = null; const w = parseWake(o); if (rcW === 0) wakeSeen = true;
       // ★v5.0.0-53(実測 2026.10.14 pm04:04: 月水木金を入れると `wakepoweron at 6:30AM Some days`= どの曜日かは言わない): 時刻が合えば、入れた時に覚えた曜日を使う
       if (w && !w.days && /some days/i.test(w.raw) && presets.applied && presets.applied.hm === w.hm) w.days = presets.applied.days;
       if (JSON.stringify(w) !== JSON.stringify(wake)) { wake = w; lastMenu = null; }
@@ -1008,6 +1009,13 @@ function run(argv) {
 // {* ▲mCN=1430_MGATE_WINDOW // end [cGJF=h] *}
 // {* ▼mCN=1500_SHOW // 札を描く show() (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   function show(text, menu, anchor) {
+    // ★v5.1.552(俊克 11.07 am09:55「昨夜確認した時に、そう出てないとおかしい」): 🌅の時計の行は本文の⏰の残り= macOS の予定を見ていない。am03:39 に予定が消えた後も「🌅 Wake (chaining)」と出続け、一番下の「Wake off」は🌅の行が居ると隠していた= 嘘の表示。
+    //   → 札とメニューの🌅は pmset の答えに従う= macOS に予定が無ければ ⚠️ Wake off(読み直しは5秒ごと= ▶️の直後の待ちを短く)
+    try { const isSun = (s) => /^(?:\u2b50\ufe0f )?\ud83c\udf05 /.test(s || '');
+      if (wakeSeen && !wake && ((text && isSun(text)) || (menu || []).some(e => e && !e.sep && isSun(e.title)))) {
+        if (!wakeRead && Date.now() - wakeReadAt > 5000) readWake();
+        if (text && isSun(text)) text = text.replace(/^(\ud83c\udf05) \S+ Wake/, '$1 \u26a0\ufe0f Wake off');
+        menu = (menu || []).map(e => (e && !e.sep && isSun(e.title)) ? Object.assign({}, e, { title: e.title.replace(/\ud83c\udf05 .*$/, '\ud83c\udf05 \u26a0\ufe0f Wake off   not set on this Mac') }) : e); } } catch (e) {}
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
     try { menu = (menu || []).slice(); if (menu.some(e => e && !e.sep && /^(?:\u2b50\ufe0f )?\ud83c\udf05 /.test(e.title || ''))) throw 0;   /* v5.1.503(俊克「一番下にも重複して表示されて紛らわしい」): 真因= v5.1.479 の⭐️が頭に付くと🌅の時計と読めなかった */   // v5.0.0-62: 🌅 の時計が一覧に居れば、別の行は出さない
