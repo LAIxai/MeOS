@@ -7356,9 +7356,9 @@ function meosFofChipClick(e) {
       if (col === x.index || col === x.index - 1) { fm = x; if (col === x.index) break; } }
     if (!fm) return;
     // ★v5.1.564(俊克 11.07 pm02:16「▼/▲を押せると、折り畳めるように思ってしまう…文字カーソルのままにして、♥ボタンの上だけで選択指に」): ワープは♥で押す。▼▲は印= 押しても飛ばない。組の♥は F の付け替えをしない(中間♥を押すと今まで通り F が移る)
-    if (fm[1] === '7') { const pr = meosFofPair(doc), me = pr && pr.m && (pr.f.name === fm[2] ? pr.f : (pr.m.name === fm[2] ? pr.m : null)); if (me) { if (_prev !== doc.uri.toString() + '#' + ln) { const to = me === pr.f ? pr.m : pr.f; meosDbg('[puzzleTag] ♥膜 ' + (ln + 1) + '→' + (to.line + 1)); meosPuzzleLand(ed, to.line); } return; }
+    if (fm[1] === '7') { const pr = meosFofPair(doc), me = pr && pr.m && (pr.f.name === fm[2] ? pr.f : (pr.m.name === fm[2] ? pr.m : null)); if (me) { if (_prev !== doc.uri.toString() + '#' + ln) { const to = me === pr.f ? pr.m : pr.f; meosDbg('[puzzleTag] ♥膜 ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } return; }
       // ★v5.1.565(俊克 pm02:21「中間の♥を押して新しい相方になるのはおかしい…飽くまで中継点…次の中間♥へのワープかな」): 組がある時の中間♥= 次の中間♥へ(最後は最初へ)。F も相方も動かさない
-      if (pr && pr.m) { if (_prev !== doc.uri.toString() + '#' + ln) { const mids = meosPuzzleTagsOf(doc, 7).filter(h => h.name !== pr.f.name && h.name !== pr.m.name); if (mids.length >= 2) { const to = mids.find(h => h.line > ln) || mids[0]; meosDbg('[puzzleTag] 中間♥ ' + (ln + 1) + '→' + (to.line + 1)); meosPuzzleLand(ed, to.line); } } return; } }
+      if (pr && pr.m) { if (_prev !== doc.uri.toString() + '#' + ln) { const mids = meosPuzzleTagsOf(doc, 7).filter(h => h.name !== pr.f.name && h.name !== pr.m.name); if (mids.length >= 2) { const to = mids.find(h => h.line > ln) || mids[0]; meosDbg('[puzzleTag] 中間♥ ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } } return; } }
     const n = +fm[1], hits = meosPuzzleTagsOf(doc, n); if (meosPuzzleFGet(doc, n) === fm[2] || hits.length < 2) return;
     if (n === 7) _meosFofWant = { uri: doc.uri.toString(), name: meosPuzzleFGet(doc, 7) };   // v5.1.559: 元の F が相方になる= 組の2か所は変わらない
     meosPuzzleFSet(doc, n, fm[2]); meosDbg('[puzzleTag] 本文の札で F を移した P' + n + ' 行=' + (ln + 1));
@@ -7403,7 +7403,25 @@ async function meosPuzzleLand(ed, line) {
   const pos = new vscode.Position(land, 0);
   const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
   try { shown.revealRange(new vscode.Range(line, 0, land, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
-  meosPostPuzzleDots(true);
+  meosPostPuzzleDots(true); return shown;
+}
+// ★v5.1.566(俊克 11.07 pm02:28 改良1「♥をクリックしても、ポインタ位置が少しズレてしまうので、ポインタを自動で♥の右下に自動追従して」): ♥へ飛ぶと着地は画面の真ん中= ♥の画面の高さが変わる。
+//   拡張から♥の画素の位置は見えない→ 飛ぶ前と後で「画面の上から何段目か」を数え、差の段数×行の高さだけ V-helper に運んでもらう(横は同じ桁なので動かさない)。ファイルの端で真ん中へ来ない時も、段を数えるので合う
+function meosFofRowOf(ed, line) {
+  try { const doc = ed.document, W = meosFenceWrapColumn(doc); let n = 0;
+    for (const r of ed.visibleRanges || []) for (let l = r.start.line; l <= r.end.line && l < doc.lineCount; l++) { if (l === line) return n; n += W > 0 ? meosTcwRowsOf(doc.lineAt(l).text, W) : 1; }
+  } catch (_) { } return -1;
+}
+async function meosFofWarpTo(ed, from, to) {
+  const r0 = meosFofRowOf(ed, from), shown = await meosPuzzleLand(ed, to);
+  if (r0 < 0 || !meosRealHost() || !meosVHelperOn()) return;
+  setTimeout(() => { try {
+    const e2 = shown || ed, r1 = meosFofRowOf(e2, to); if (r1 < 0 || r1 === r0) return;
+    const c = meosFenceCfg(e2.document), fs0 = Number(c.get('fontSize')) || 14, z = Number(vscode.workspace.getConfiguration('window').get('zoomLevel')) || 0, dy = (r1 - r0) * meosTcwLineEm(e2.document) * fs0 * Math.pow(1.2, z);
+    if (!isFinite(dy) || Math.abs(dy) > 2000) return;
+    const fs = require('fs'), path = require('path'), dir = meosHelperDir(); fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify({ dx: 0, dy, pt: true, t: Date.now() })); meosDbg('[ptrWarp] ♥ 段 ' + r0 + '→' + r1 + ' dy=' + dy.toFixed(1) + 'pt');
+  } catch (_) { } }, 90);
 }
 async function meosPuzzleTag(ch, opt) {
   try {

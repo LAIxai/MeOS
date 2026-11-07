@@ -1290,7 +1290,8 @@ function run(argv) {
     //   その動いた先から片道を足していた(04:33:04 乗った所より62ポイント下から運んだ)= 速く入るほど行き過ぎる。
     //   → 乗った点の画面の位置(sx,sy)から片道を足す= 今どこに居ても、膨らんだ図形の同じ点へ置く。物差しが合わない時(今の位置と200ポイント以上違う)は今まで通り
     const h = scr.objectAtIndex(0).frame.size.height, cx = p.x, cy = h - p.y;
-    let x = cx + Number(o.dx) / bs, y = cy + Number(o.dy) / bs, how = 'rel';
+    const pk = o.pt ? 1 : bs; let x = cx + Number(o.dx) / pk, y = cy + Number(o.dy) / pk, how = 'rel';   // v5.1.566: pt= もう Mac のポイント(♥のワープ)
+    if (!isFinite(x) || !isFinite(y)) return;
     const ex = Number(o.sx), ey = Number(o.sy);   // v5.1.240: 乗った点はもう Mac のポイント(screenX)
     // ★v5.1.243(俊克 pm01:57 バグ1「右上から近づくと、右上にズレる」): 実測= 右上から入ると、頼みから運ぶまでの間に左下へ動き続けている(04:58:25 で 9pt)。
     //   v5.1.239 の abs はその動きを捨てていた(×0)・それ以前の rel は等倍で足していた(×1)。図形は2.2倍に膨らむので、その間の動きも2.2倍して足すのが正しい
