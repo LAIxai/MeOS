@@ -84,10 +84,14 @@ for (let n = 0; n < 300; n++) {
   }
   T.meosPatchDocLines(e);
   const t0 = process.hrtime.bigint();
-  const got = snap(T.collectMembraneStructure(doc, { excludeIndex: false }));
-  const dt = Number(process.hrtime.bigint() - t0) / 1e6;
+  const got0 = T.collectMembraneStructure(doc, { excludeIndex: false });
+  const dt = Number(process.hrtime.bigint() - t0) / 1e6;   // 測るのは構造を訊く所だけ(下の snap= JSON 化は検査の都合)
   if (dt < 3) { carried++; cms += dt; } else { rescan++; rms += dt; }
-  if (got === fullScan()) same++; else diff++;
+  if (snap(got0) === fullScan()) same++; else diff++;
+  // 2026.11.07(v5.1.553 の時点): 物差しの fullScan は別の文書を読むので、1枠の行キャッシュ(_meosTextCache)を奪う(v4.2.258 で数え上げが囲い判定=行キャッシュを通るようになってから)。
+  //   そのままだと次の打鍵の meosPatchDocLines が「直前の版でない」と諦め、持ち越しが毎回消えていた= 1/300 は検査の作りで出ていた数字。
+  //   実機は打鍵の前に行の控えが在る(上の「実機では開いた時に出来ている」)→ 物差しの後に控えを戻す
+  T.meosDocLines(doc);
 }
 console.log('① 持ち越した構造は、素で数え直した結果と完全に一致する');
 ok(diff === 0, '300回の乱数編集で食い違い 0', { same, diff });
