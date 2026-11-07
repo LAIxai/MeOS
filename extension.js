@@ -40591,18 +40591,24 @@ function meosFcKeysNeeded(editor) {
 }
 let _meosInTableCtx = false;
 // v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
-let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, hold: false };
+let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, hold: false, busy: false };
 // ★v5.1.579(俊克 pm08:37 改良1「罫線のところで↓/↑キーが一時停止するようにできないか? 一時停止したあと、再度↓/↑キーを押すと、進める」): キーの離れは拡張に見えない→ 間隔で読む。
-//   0.2秒より短い間隔= 押しっぱなし。罫線の手前の行で止まり、押しっぱなしが続く間は受け流す。0.2秒空いたら押し直し= 進める
+// ★v5.1.580(俊克 pm11:14 バグ1「罫線のところで、↓/↑キーが一時停止しない」): 実機の連打は30ms間隔(KeyRepeat 2)・初回だけ225ms(InitialKeyRepeat 15)。
+//   ①拡張ホストが1回の移動に30ms以上かかると、見ているカーソルが実物より遅れる→ 文脈キーが着いた時には本物が罫線を過ぎていた(台で再現)→ 預かる範囲を上下200行へ
+//   ②預かった後も読むカーソルが古いと追い越す→ 1回ずつ通す(動いている間の次のキーは捨てる)
+//   ③初回の225msが「押し直し」に読めた→ 手前で止める判定は間隔0.4秒未満。止まった後は0.15秒空いたら離れた印(リピートは30ms)
+//   ④折り畳みの中の罫線だけ止まらない= 見えている範囲の「間」にある行。画面の下の外は止める(下端を走る時に止まらなかった)
+function meosRuleHidden(ed, l) { const v = ed.visibleRanges || []; for (let i = 0; i + 1 < v.length; i++) if (l > v[i].end.line && l < v[i + 1].start.line) return true; return false; }
 async function meosRuleStep(down) {
   const cmd = down ? 'cursorDown' : 'cursorUp', ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
+  if (_meosRuleKey.busy) return;
   try {
-    if (_meosRuleKey.hold && gap < 200) return;
+    if (_meosRuleKey.hold && gap < 150) return;
     _meosRuleKey.hold = false;
-    if (ed && gap < 200) { const d = ed.document, to = ed.selection.active.line + (down ? 1 : -1);
-      if (to >= 0 && to < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(to).text) && (ed.visibleRanges || []).some(r => to >= r.start.line && to <= r.end.line)) { _meosRuleKey.hold = true; return; } }
+    if (ed && gap < 400) { const d = ed.document, to = ed.selection.active.line + (down ? 1 : -1);
+      if (to >= 0 && to < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(to).text) && !meosRuleHidden(ed, to)) { _meosRuleKey.hold = true; return; } }
   } catch (_) { }
-  await vscode.commands.executeCommand(cmd);
+  _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
 }
 function meosUpdateInTableContext(editor) {
   let v = false;
@@ -40610,8 +40616,8 @@ function meosUpdateInTableContext(editor) {
   if (MEOS_RELEASE_PHASE < 3) v = false; // v1.0.0: テーブル未解禁フェーズでは inTable を常にfalse=セル移動keybindingを無効化
   if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} }
   // v4.0.400: bs/改行/fs を横取りするかどうか。変わった時だけ送る(打鍵の道に仕事を足さない)。
-  // ★v5.1.579: 罫線の近く(上下4行)に居る間だけ ↑↓ を預かる(打鍵の道に仕事を足さない)
-  let rn = false; try { if (editor && editor.document && editor.selection && meosIsProseDoc(editor.document)) { const d = editor.document, l = editor.selection.active.line; for (let i = Math.max(0, l - 4), e = Math.min(d.lineCount - 1, l + 4); i <= e; i++) if (MEOS_RULE_LINE_RE.test(d.lineAt(i).text)) { rn = true; break; } } } catch (_) { }
+  // ★v5.1.579→580: 罫線の近く(上下200行)に居る間だけ ↑↓ を預かる(打鍵の道に仕事を足さない)
+  let rn = false; try { if (editor && editor.document && editor.selection && meosIsProseDoc(editor.document)) { const d = editor.document, l = editor.selection.active.line; for (let i = Math.max(0, l - 200), e = Math.min(d.lineCount - 1, l + 200); i <= e; i++) if (MEOS_RULE_LINE_RE.test(d.lineAt(i).text)) { rn = true; break; } } } catch (_) { }
   if (rn !== _meosRuleNearCtx) { _meosRuleNearCtx = rn; try { vscode.commands.executeCommand('setContext', 'meos.ruleNear', rn); } catch (_) { } }
   const fk = meosFcKeysNeeded(editor);
   if (fk !== _meosFcKeysCtx) { _meosFcKeysCtx = fk; try { vscode.commands.executeCommand('setContext', 'meos.fcKeys', fk); } catch (_) {} }
