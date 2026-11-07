@@ -23963,7 +23963,7 @@ function meosLaunchDSample(id) {
 function meosLaunchDNewest() {
   let newest = null;
   for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
-    try { for (const p of collectPairs(d, { excludeIndex: false })) if (meosIsLaunchDKey(p.id)) { const ts = meosLaunchDTs(p.id); if (!newest || ts > newest.ts) newest = { doc: d, id: p.id, ts }; } } catch (_) { } }
+    try { for (const p of collectPairs(d, { excludeIndex: false })) if (meosIsLaunchDKey(p.id)) { const ts = meosLaunchDTs(p.id); if (!ts) continue; if (!newest || ts > newest.ts) newest = { doc: d, id: p.id, ts }; } } catch (_) { } }   // ★v5.1.551: 本物の膜名は必ず日時つき= 説明文の見本(…2010xx・_TS)を拾わない(真因は Reconcile の注)
   return newest;
 }
 // ★v5.0.0-59(俊克 pm08:14 改良1「他のタイマー設定と同様に、メニューをクリックすると、設定している膜にワープ。初期膜は、メタ膜の近くに配置」):
@@ -24169,6 +24169,11 @@ async function meosLaunchDReconcile(doc, key, quiet) {
   let want = run ? meosLaunchDSpec(run) : null;
   const cur = await meosLaunchDReadMac(), sch = await meosLaunchDReadSched();
   if (cur === undefined || sch === undefined) { say('\ud83c\udf05 Could not read the start-up schedule of this Mac (pmset).'); return; }
+  // ★★★v5.1.551(俊克 11.07 am09:42 バグ1「am8:30 の自動起動に失敗。昨夜は予定に入っていたのに Wake off。前にも同じ事」):
+  //   真因(実測)= meos-debug.log の am03:39.37 に MeOS 自身の「The daily start-up of your Mac is off」。日記に貼られた説明文の見本 🌅LaunchD_20261014W2010xxJST(35万行の日記では囲いの中と判定されない)を、
+  //   My diary.md が閉じている間「一番新しい🌅」と読み、走る行が無い= 望む姿は off → 許可(sudo)で黙って繰り返しと14日分の予定を全部消した。きっかけは日記の ⏰↺ の行を打った2秒後(v5.1.504)。11.06 pm01:00 も同じ。
+  //   → 人が押していない突き合わせ(quiet)は、予定を入れ直しはしても切らない。切るのは ⏸ を押した時だけ。分からない時は触らない
+  if (quiet && !want && (cur || sch.length)) { await meosLaunchDSyncMarks(doc, key, cur); meosDbg('[launchd] 人が押していないので切らない(望む姿 off・今 ' + (cur ? cur.days + ' ' + cur.hm : 'なし') + ' +' + sch.length + ')'); return; }
   if (want && want.err) { await meosLaunchDSyncMarks(doc, key, cur); say(want.err); return; }
   let dates = [], nLines = 1;
   if (grp && grp.rows.length > 1) {   // v5.1.497: ⛓️ の組
