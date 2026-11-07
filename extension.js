@@ -7064,9 +7064,9 @@ const REF_MARK_ACTIVE = '\u25b6\u25c0';   // ▶◀
 //   現在のLine位置にパズルタグが書き込まれる。消す時は、直接消す」「間抜けのときは制限。並べ直せば飛べる」):
 //   ★印= 点膜 {* ▶◀mP1=M_TS *}(参照符 mRn と同じ形の別の族)。字に結ぶ= M e D o c k → P1〜P6(並べ替えても行き先は字と一緒)。
 //   ★印が無い字= カーソルの行(の上)に印を書く / 有る字= そこへ飛ぶ(2つ以上なら、カーソルの次の印へ巡る)。間抜け/Deco の間は拡張が知らせを受けない(v4.2.500 の門)。
-const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*(?:\u2665\ufe0f?)*\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=/;
+const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=/;
 const MEOS_PUZZLE_LETTERS = 'MeDockf';   // ★v5.1.537(俊克 11.06 pm03:05 改良1「♥️ボタンは、他のパズルと基本は同じに」): 末尾の f= mGATE の♡(P7)。印・F・tip・削除は他の字と同じ。ただし🔴(最後の字)は動かさない= 🔴は「今いる場所」・♥はその中の作業の箇所
-const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*(?:\u2665\ufe0f?)*\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)[^\r\n]*?\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;   // v4.2.565: 飾り用(殻ごと)
+const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)[^\r\n]*?\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;   // v4.2.565: 飾り用(殻ごと)
 // v2.0.4(俊克): Date Warp=暦の軸で日記膜へ相対/絶対ジャンプ。基準=今いる日付膜(無ければ今日)/完全一致のみ。v4.2.777-1: Me Dock の受け口から関数へ出した
 // ★v5.1.423(俊克 11.03 am04:55「日記を表す絵文字が無いのが不思議だね。そこで、🄳iaryをファイル全体を覆う膜の開始膜のコメント部分に書いてあるものを日記ファイルと定義しようか?膜名とかファイル名に入れると、見栄えも悪くなる」):
 //   日記帳= 外側の膜(他の膜に包まれていない膜)の開始膜の、膜名より後ろ(コメント)に 🄳iary(U+1F133)が在るファイル。Ⓣが今日の膜を作るのは日記帳だけ
@@ -7318,9 +7318,10 @@ async function meosDiaryTplMenu(ed) {
 // ★v5.1.560(俊克 pm00:46 バグ1「F付きの♥に逆さ♥が出てこない」＋「Rawに♥はなかったね。`{* ♥️♥️▶◀mP7=… *}` のようにすればいいんじゃない?」):
 //   ①F の♥は1本だけでも逆さ♥を出す(相方が居なければ薄く・押しても飛ばない) ②組は本文の ♥️♥️ が持つ(559 の裏の控えをやめた= 別の機械でも同じ組)。組から外れた♥は ♥️ 1つへ戻す
 //   _meosFofWant= 次に組へ入れたい♥(複製した♥・元の F)。望む姿と本文を突き合わせて違う所だけ打つ(meosFofReconcile)
-const MEOS_FOF_MARK_RE = /\{\*[ \t]*((?:\u2665\ufe0f?)*)\u25b6\u25c0[ \t]*mP7[ \t]*=/, MEOS_FOF_2 = '\u2665\ufe0f\u2665\ufe0f', MEOS_FOF_1 = '\u2665\ufe0f';
+// ★v5.1.563(俊克 11.07 pm01:53「♥▼を開始膜、♥▲を閉じ膜に…♥膜(お気に入り膜)と呼ぶ」・pm02:06「概念的な話…開始と閉じがあることが膜の基本」): 折り畳みはしない= 印の見た目と本文の字が ♥️▼ / ♥️▲。上下は位置で決める(上が▼)・押すとワープ・F はどちらにも付く。560 の ♥️♥️ は♥の行にカーソルが入った時に直す
+const MEOS_FOF_MARK_RE = /\{\*[ \t]*((?:\u2665\ufe0f?|[\u25bc\u25b2])*)\u25b6\u25c0[ \t]*mP7[ \t]*=/, MEOS_FOF_O = '\u2665\ufe0f\u25bc', MEOS_FOF_C = '\u2665\ufe0f\u25b2', MEOS_FOF_1 = '\u2665\ufe0f';
 let _meosFofWant = null, _meosFofBusy = false;
-function meosFofIsTwo(t) { const m = MEOS_FOF_MARK_RE.exec(meosRefScanText(t || '')); return !!m && m[1].replace(/\ufe0f/g, '').length >= 2; }
+function meosFofIsTwo(t) { const m = MEOS_FOF_MARK_RE.exec(meosRefScanText(t || '')); return !!m && m[1].replace(/\ufe0f/g, '').length >= 2; }   // ♥️▼ ♥️▲ も旧 ♥️♥️ も2字
 function meosFofPair(doc) {
   try {
     const hits = meosPuzzleTagsOf(doc, 7); if (!hits.length) return null;
@@ -7336,7 +7337,7 @@ async function meosFofReconcile(ed) {
   try {
     const pr = meosFofPair(doc); if (!pr) return; const L = meosDocLines(doc), jobs = [];
     for (const h of meosPuzzleTagsOf(doc, 7)) { const t = meosRefScanText(L[h.line] || ''), m = MEOS_FOF_MARK_RE.exec(t); if (!m) continue;
-      const on = h.name === pr.f.name || (pr.m && h.name === pr.m.name), cnt = m[1].replace(/\ufe0f/g, '').length, to = on ? MEOS_FOF_2 : (cnt >= 2 ? MEOS_FOF_1 : null);
+      const on = h.name === pr.f.name || (pr.m && h.name === pr.m.name), cnt = m[1].replace(/\ufe0f/g, '').length, to = on ? (pr.m && h.line === Math.max(pr.f.line, pr.m.line) ? MEOS_FOF_C : MEOS_FOF_O) : (cnt >= 2 ? MEOS_FOF_1 : null);
       if (to && to !== m[1]) { const a = m.index + m[0].indexOf('\u25b6\u25c0') - m[1].length; jobs.push({ line: h.line, a, b: a + m[1].length, to }); } }
     if (!jobs.length) { _meosFofWant = null; return; }
     _meosFofBusy = true;
@@ -7415,9 +7416,9 @@ async function meosPuzzleTag(ch, opt) {
       //   生涯で最初に書く1本だけ、説明(// の後ろ)に入れておく= 字に白い点が付き、触れると tip に出る→ ここに書けば tip になると分かる
       const _shadow = meosPuzzleShadowGet(String(ch));   // ★v5.1.539: 影の tip で書く
       let _welcome = false; try { _welcome = !_shadow && !extensionContext.globalState.get('meosPuzzleWelcomed', false); } catch (_) { }
-      const tag = ind + wrapRefMark(doc, '{* ' + (n === 7 ? MEOS_FOF_2 : '') + '\u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_shadow ? _shadow + ' ' : _welcome ? MEOS_PUZZLE_WELCOME + ' ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
+      const tag = ind + wrapRefMark(doc, '{* ' + (n === 7 ? MEOS_FOF_O : '') + '\u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_shadow ? _shadow + ' ' : _welcome ? MEOS_PUZZLE_WELCOME + ' ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
       // ★v5.1.562(俊克 pm01:33「最初から組で作った方がいいね」): 最初の♥は3行= 開始♥・空の行・閉じ♥。カーソルは間の行= そのまま書き始める
-      const _tag2 = n === 7 ? ind + '\n' + ind + wrapRefMark(doc, '{* ' + MEOS_FOF_2 + '\u25b6\u25c0mP7=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n' : '';
+      const _tag2 = n === 7 ? ind + '\n' + ind + wrapRefMark(doc, '{* ' + MEOS_FOF_C + '\u25b6\u25c0mP7=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n' : '';
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag + _tag2));
       if (n === 7) { const _p = new vscode.Position(ln + 1, ind.length); ed.selection = new vscode.Selection(_p, _p); }
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
@@ -7445,7 +7446,7 @@ async function meosPuzzleTag(ch, opt) {
   } catch (e) { meosDbg('[puzzleTag] ' + (e && e.message)); }
 }
 // 1つの字の印を全部= {line, n, name}
-const MEOS_PUZZLE_TAG_NAME_RE = /\{\*[ \t]*(?:\u2665\ufe0f?)*\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)/;
+const MEOS_PUZZLE_TAG_NAME_RE = /\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)/;
 // ★v4.2.564(俊克 改良2「MをOptクリックしたら、貴方がコードブロックに書いた所に飛んでしまった」): 引用した記法は本物にならない
 //   ([[feedback_quoted_notation_must_be_inert]])= 囲い(```)の中の行と、`…` の中は数えない(参照符と同じ meosFenceLines / meosRefScanText)
 function meosPuzzleTagLine(doc, i, raw) {
@@ -8351,7 +8352,7 @@ function applyPrettyLabels(editor) {
         if (_rev) refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + 1) });
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
         if (_rev) { fofHints.push({ line, col: mPz.index + 1, lone: !_pr.m }); (_pr.m ? fofSkin : fofSkinLone).push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });   /* v5.1.561(俊克 pm00:57 バグ1「相方がいないのに選択指になるのは駄目」): 押しても飛ばない薄い逆さ♥は手にしない */
-          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + 1, line, mPz.index + 1), renderOptions: { before: { contentText: '\u2665', color: '#e53935', textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; display: inline-block; position: relative; top: -0.14em; width: 1em; margin-left: -1em; text-align: center; transform: rotate(180deg); pointer-events: none;' } } }); }
+          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + 1, line, mPz.index + 1), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: '#e53935', textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; display: inline-block; width: 1em; margin-left: -1em; text-align: center; pointer-events: none;' } } }); }
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
           renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()) + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
