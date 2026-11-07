@@ -7343,7 +7343,7 @@ async function meosFofReconcile(ed) {
     _meosFofWant = null; meosDbg('[puzzleTag] ♥の組を本文へ ' + jobs.length + '本'); try { refresh(ed); } catch (_) { }
   } catch (_) { } finally { _meosFofBusy = false; }
 }
-const _meosFofHints = new Map(), _meosFofHintSig = new Map(); let meosFofSkinDeco = null, _meosFofCaret = '';
+const _meosFofHints = new Map(), _meosFofHintSig = new Map(); let meosFofSkinDeco = null, meosFofSkinLoneDeco = null, _meosFofCaret = '';
 function meosFofChipClick(e) {
   try {
     if (!e) return; const _prev = _meosFofCaret; try { const _s0 = e.selections && e.selections[0]; if (_s0 && e.textEditor) { _meosFofCaret = e.textEditor.document.uri.toString() + '#' + _s0.active.line; if (_s0.active.line < e.textEditor.document.lineCount && e.textEditor.document.lineAt(_s0.active.line).text.indexOf('mP7') >= 0) meosFofReconcile(e.textEditor); } } catch (_) { }   // v5.1.559: 押す前にその行に居た= 生の字を直している時は飛ばない
@@ -8205,7 +8205,7 @@ function applyPrettyLabels(editor) {
   const refPointCounts = {};
   const refPtAll = []; // v0.9.99969: F参照符ガター判定用(カーソル行の符も含む全収集)
   const puzzlePtAll = []; // v4.2.565: パズルタグ(カーソル行も含む全部)= F のガター用
-  const fofHints = [], fofSkin = []; let _pzPair; const _pzPairGet = () => { if (_pzPair === undefined) _pzPair = meosFofPair(editor.document); return _pzPair; };   // v5.1.559: 逆さ♥
+  const fofHints = [], fofSkin = [], fofSkinLone = []; let _pzPair; const _pzPairGet = () => { if (_pzPair === undefined) _pzPair = meosFofPair(editor.document); return _pzPair; };   // v5.1.559: 逆さ♥
   // ★v5.1.545(俊克 11.06 pm07:04 改良1「F付きの♥ボタンは押しても変化しないので、ポインターを文字カーソルに」): 押して変わる札だけ手・F(1本だけの札も F)は文字カーソル
   const _pzCnt = {}, _pzIsF = (n, name) => { if (_pzCnt[n] === undefined) _pzCnt[n] = meosPuzzleTagsOf(editor.document, n).length; return _pzCnt[n] < 2 || meosPuzzleFGet(editor.document, n) === name; };
   // v1.0.10(俊克 バグ1): グループごとの注釈(desc符=参照膜)の個数を先に計算=符ホバーに「Jump to note」リンクを出す判定用。
@@ -8341,7 +8341,7 @@ function applyPrettyLabels(editor) {
         const _pr = mPz[1] === '7' ? _pzPairGet() : null, _rev = !!_pr && (_pr.f.name === mPz[2] || (!!_pr.m && _pr.m.name === mPz[2]));   // v5.1.559: 組の♥= 隠す範囲を2桁目で割り、そこに札と逆さ♥を立てる(隠す範囲の中に立てると一緒に隠れる)
         if (_rev) refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + 1) });
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
-        if (_rev) { fofHints.push({ line, col: mPz.index + 1, lone: !_pr.m }); fofSkin.push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });
+        if (_rev) { fofHints.push({ line, col: mPz.index + 1, lone: !_pr.m }); (_pr.m ? fofSkin : fofSkinLone).push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });   /* v5.1.561(俊克 pm00:57 バグ1「相方がいないのに選択指になるのは駄目」): 押しても飛ばない薄い逆さ♥は手にしない */
           refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + 1, line, mPz.index + 1), renderOptions: { before: { contentText: '\u2665', color: '#e53935', textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; display: inline-block; position: relative; top: -0.14em; width: 1em; margin-left: -1em; text-align: center; transform: rotate(180deg); pointer-events: none;' } } }); }
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
           renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()) + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
@@ -9325,7 +9325,7 @@ function applyPrettyLabels(editor) {
     } catch (_) {}
     setDecoCached(editor, refFrontGutterDecoration, 'refFront', refFrontItems);
     // v5.1.559: 逆さ♥の札(押す物)と手の形
-    try { const _u = editor.document.uri.toString(), _sg = fofHints.map(h => h.line + ':' + h.col + (h.lone ? 'L' : '')).join(','); _meosFofHints.set(_u, fofHints); if (fofSkin.length && !meosFofSkinDeco) meosFofSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); if (meosFofSkinDeco) editor.setDecorations(meosFofSkinDeco, fofSkin); if ((_meosFofHintSig.get(_u) || '') !== _sg) { _meosFofHintSig.set(_u, _sg); _meosNudgeHintsEv.fire(); } } catch (_) { }
+    try { const _u = editor.document.uri.toString(), _sg = fofHints.map(h => h.line + ':' + h.col + (h.lone ? 'L' : '')).join(','); _meosFofHints.set(_u, fofHints); if (fofSkin.length && !meosFofSkinDeco) meosFofSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); if (meosFofSkinDeco) editor.setDecorations(meosFofSkinDeco, fofSkin); if (fofSkinLone.length && !meosFofSkinLoneDeco) meosFofSkinLoneDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); if (meosFofSkinLoneDeco) editor.setDecorations(meosFofSkinLoneDeco, fofSkinLone); if ((_meosFofHintSig.get(_u) || '') !== _sg) { _meosFofHintSig.set(_u, _sg); _meosNudgeHintsEv.fire(); } } catch (_) { }
     // v4.2.565: パズルタグの F= 覚えた名前の1本(覚えが無く1本だけならそれ)
     if (puzzleFrontGutterDecoration) { const _pf = [];
       try { for (let n = 1; n <= 7; n++) { const g = puzzlePtAll.filter(q => q.n === n); if (!g.length) continue;
