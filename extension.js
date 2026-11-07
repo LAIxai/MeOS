@@ -27197,19 +27197,22 @@ async function addMembrane() {
   const close = tpl.close;                                            // v4.0.331: バッジ行は close が持っている
   const ok = await editor.edit(editBuilder => {
     if (hasSelection) {
-      const block = tpl.markdown
-        ? `${open}\n\n`
-        : `${open}\n`;
-      const tail = tpl.markdown
-        ? `\n\n${close}`
-        : `\n${close}`;
-      editBuilder.insert(new vscode.Position(startLine, 0), wrapInsertedMembraneBlock(doc, startLine, startLine, block));
-      editBuilder.insert(new vscode.Position(endLine + 1, 0), wrapInsertedMembraneBlock(doc, endLine + 1, endLine + 1, tail));
+      // ★v5.1.575(俊克 pm07:37「通常の膜にも付けると安心」→「通常の膜にも付ける」pm07:50「新規に作成する膜だけ」): 膜と中身の境に罫線= 何かの弾みで膜の一部を消さない為。今ある膜は触らない
+      const rule = tpl.markdown ? `${indent}${MEOS_TIMER_DB_RULE}` : '';
+      if (rule) {
+        const last = endLine + 1 >= doc.lineCount, after = !last && !isBlankDocumentLine(doc, endLine + 1) ? '\n' : '';
+        editBuilder.insert(new vscode.Position(startLine, 0), `${startLine > 0 && !isBlankDocumentLine(doc, startLine - 1) ? '\n' : ''}${open}\n${rule}\n`);
+        if (last) editBuilder.insert(new vscode.Position(endLine, doc.lineAt(endLine).text.length), `\n${rule}\n${close}`); else editBuilder.insert(new vscode.Position(endLine + 1, 0), `${rule}\n${close}\n${after}`);
+      } else {
+        const block = `${open}\n`, tail = `\n${close}`;
+        editBuilder.insert(new vscode.Position(startLine, 0), wrapInsertedMembraneBlock(doc, startLine, startLine, block));
+        editBuilder.insert(new vscode.Position(endLine + 1, 0), wrapInsertedMembraneBlock(doc, endLine + 1, endLine + 1, tail));
+      }
       // v4.0.334: 覆えば中の膜は必ず1つ深くなる。**覆った範囲の中だけ**、同じ1回の編集で直す。
       for (const e of meosDeepenBadgeEdits(doc, startLine, endLine, meosWrapDepthShift(doc, startLine, endLine))) editBuilder.replace(e.range, e.text);
     } else {
       const block = tpl.markdown
-        ? `${open}\n\n${indent}\n\n${close}`
+        ? `${open}\n${indent}${MEOS_TIMER_DB_RULE}\n${indent}\n${indent}${MEOS_TIMER_DB_RULE}\n${close}`   // v5.1.575
         : `${open}\n${indent}\n${close}`;
       editBuilder.insert(sel.active, wrapInsertedMembraneBlock(doc, startLine, startLine, block));
     }
@@ -30402,12 +30405,12 @@ async function addMembraneWithName(nameInput, colorCode = '') {
     if (hasSelection) {
       const selectedText = meosDeepenBadgesInText(doc.getText(selection), meosWrapDepthShift(doc, startLine, endLine)); // v4.0.334
       const wrapped = template.markdown
-        ? `${openLine}\n\n${selectedText}\n\n${closeLine}`
+        ? `${openLine}\n${indent}${MEOS_TIMER_DB_RULE}\n${selectedText}\n${indent}${MEOS_TIMER_DB_RULE}\n${closeLine}`   // v5.1.575
         : `${openLine}\n${selectedText}\n${closeLine}`;
       edit.replace(selection, wrapped);
     } else {
       const block = template.markdown
-        ? `${openLine}\n\n${indent}\n\n${closeLine}`
+        ? `${openLine}\n${indent}${MEOS_TIMER_DB_RULE}\n${indent}\n${indent}${MEOS_TIMER_DB_RULE}\n${closeLine}`
         : `${openLine}\n${indent}\n${closeLine}`;
       edit.insert(selection.active, wrapInsertedMembraneBlock(doc, startLine, startLine, block));
     }
