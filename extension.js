@@ -7388,6 +7388,9 @@ async function meosPuzzleSweep(ed, n, ch) {
     let rest = '', p = 0; for (const g of segs) { rest += raw.slice(p, g[0]); p = g[1]; } rest += raw.slice(p);
     if (!rest.trim()) whole.push(ln); else for (const g of segs) spans.push(new vscode.Range(ln, g[0], ln, g[1]));
   }
+  if (n === 7) for (const ln of whole.slice()) { const t = doc.lineAt(ln).text, up = !/\u25bc\u25b6/.test(t), dn = !/\u25b2\u25b6/.test(t);   // v5.1.574: ♥に付いた罫線も一緒に(開始♥=下・閉じ♥=上・中間♥=両方)
+    if (dn && ln + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(ln + 1).text) && !whole.includes(ln + 1)) whole.push(ln + 1);
+    if (up && ln > 0 && MEOS_RULE_LINE_RE.test(doc.lineAt(ln - 1).text) && !whole.includes(ln - 1)) whole.push(ln - 1); }
   whole.sort((a, b) => a - b);
   for (let i = 0; i < whole.length;) { let j = i; while (j + 1 < whole.length && whole[j + 1] === whole[j] + 1) j++; const a = whole[i], b = whole[j];   // 隣り合う行は1塊に(範囲が重なると編集ごと断られる)
     spans.push(b < last ? new vscode.Range(a, 0, b + 1, 0) : a > 0 ? new vscode.Range(a - 1, doc.lineAt(a - 1).text.length, b, doc.lineAt(b).text.length) : new vscode.Range(0, 0, b, doc.lineAt(b).text.length)); i = j + 1; }
@@ -7399,7 +7402,8 @@ async function meosPuzzleSweepGo(ch) { try { const o = meosDockTiles(); if (meos
 async function meosPuzzleLand(ed, line, onRow) {
   const doc = ed.document;
   // ★v4.2.589(俊克「パズルワープでは、P1〜6の行の次の行に着陸しよう。紫のP1〜6を見せるため」): 印の行に立つと生データに戻って紫のチップが消える→ 1行下へ
-  const land = Math.min(line + 1, doc.lineCount - 1);
+  let land = Math.min(line + 1, doc.lineCount - 1);
+  if (onRow && land + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(land).text)) land++;   // v5.1.574: 罫線の行に立つと生の字に戻る= 中身の1行目へ
   const pos = new vscode.Position(land, 0);
   const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
   // ★v5.1.568(俊克 pm06:16 バグ1「最初に任意の位置だと大きく外れる…5行目の位置に表示すれば」): 567 の真ん中置きをやめる。♥の行を AtTop で置く= 実機では1段目に来る(俊克 pm06:29「1行目の方がいいね」)。折り返しに左右されない
@@ -7441,16 +7445,18 @@ async function meosFofWarpTo(ed, from, to) {
 }
 // ★v5.1.570(俊克 pm06:44 改良2「文字列を選択した状態で♡ボタンを押すと、それを内部に取り込んだ形に。まさに膜でしょ」): 通常の膜と同じく行単位で包む。
 //   最後に指定した所が組になる= 新しい開始♥が F・閉じ♥が相方。前の組は消さず中間♥に落とす(消すのは Cmd+クリック)。Cmd+Z 1回で戻る
+// ★v5.1.574(俊克 pm07:37「♥膜と中身との境界に、罫線を入れよう。何かの弾みで膜の一部を削除してしまったりするから。見た目も分かり易く」): 開始♥の下・閉じ♥の上に1本ずつ。HTML コメントの文書だけ
+function meosFofRule(doc, ind) { return wrapRefMark(doc, 'x').indexOf('<!--') >= 0 ? ind + MEOS_TIMER_DB_RULE + '\n' : ''; }
 async function meosFofWrap(ed, ch) {
   const doc = ed.document, sel = ed.selection, a = sel.start.line, b = (sel.end.character === 0 && sel.end.line > a) ? sel.end.line - 1 : sel.end.line, ind = (doc.lineAt(a).text.match(/^[ \t]*/) || [''])[0], used = new Set(meosPuzzleTagsOf(doc, 7).map(h => h.name));
   const free = (t) => { for (let i = 0; i < 100; i++, t += 1000) { const nm = ch + '_' + meosMembraneStamp(new Date(t)); if (!used.has(nm)) { used.add(nm); return { nm, t }; } } return { nm: ch + '_' + meosMembraneStamp(new Date(t)), t }; };   // 刻みは秒= 続けて包むと前の閉じ♥と同じ名になる
   const _shadow = meosPuzzleShadowGet(ch), _o = free(Date.now()), nameO = _o.nm, nameC = free(_o.t + 1000).nm;
   const tagO = ind + wrapRefMark(doc, '{* ' + MEOS_FOF_O + '\u25b6\u25c0mP7=' + nameO + ' // ' + (_shadow ? _shadow + ' ' : ' ') + '*}'), tagC = ind + wrapRefMark(doc, '{* ' + MEOS_FOF_C + '\u25b6\u25c0mP7=' + nameC + ' //  *}');
-  const last = b + 1 >= doc.lineCount;
-  const ok = await ed.edit(eb => { eb.insert(new vscode.Position(a, 0), tagO + '\n'); if (last) eb.insert(new vscode.Position(b, doc.lineAt(b).text.length), '\n' + tagC); else eb.insert(new vscode.Position(b + 1, 0), tagC + '\n'); });
+  const last = b + 1 >= doc.lineCount, rule = meosFofRule(doc, ind);
+  const ok = await ed.edit(eb => { eb.insert(new vscode.Position(a, 0), tagO + '\n' + rule); if (last) eb.insert(new vscode.Position(b, doc.lineAt(b).text.length), '\n' + rule + tagC); else eb.insert(new vscode.Position(b + 1, 0), rule + tagC + '\n'); });
   if (!ok) return;
   meosPuzzleFSet(doc, 7, nameO); _meosFofWant = { uri: doc.uri.toString(), name: nameC };
-  const _p = new vscode.Position(a + 1, 0); ed.selection = new vscode.Selection(_p, _p);
+  const _p = new vscode.Position(a + (rule ? 2 : 1), 0); ed.selection = new vscode.Selection(_p, _p);
   await meosFofReconcile(ed); meosPostPuzzleDots(true); meosDbg('[puzzleTag] ♥で包んだ 行=' + (a + 1) + '〜' + (b + 3));
 }
 async function meosPuzzleTag(ch, opt) {
@@ -7470,9 +7476,9 @@ async function meosPuzzleTag(ch, opt) {
       let _welcome = false; try { _welcome = !_shadow && !extensionContext.globalState.get('meosPuzzleWelcomed', false); } catch (_) { }
       const tag = ind + wrapRefMark(doc, '{* ' + (n === 7 ? MEOS_FOF_O : '') + '\u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_shadow ? _shadow + ' ' : _welcome ? MEOS_PUZZLE_WELCOME + ' ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
       // ★v5.1.562(俊克 pm01:33「最初から組で作った方がいいね」): 最初の♥は3行= 開始♥・空の行・閉じ♥。カーソルは間の行= そのまま書き始める
-      const _tag2 = n === 7 ? ind + '\n' + ind + wrapRefMark(doc, '{* ' + MEOS_FOF_C + '\u25b6\u25c0mP7=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n' : '';
+      const _rule7 = n === 7 ? meosFofRule(doc, ind) : '', _tag2 = n === 7 ? _rule7 + ind + '\n' + _rule7 + ind + wrapRefMark(doc, '{* ' + MEOS_FOF_C + '\u25b6\u25c0mP7=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n' : '';
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag + _tag2));
-      if (n === 7) { const _p = new vscode.Position(ln + 1, ind.length); ed.selection = new vscode.Selection(_p, _p); }
+      if (n === 7) { const _p = new vscode.Position(ln + (_rule7 ? 2 : 1), ind.length); ed.selection = new vscode.Selection(_p, _p); }
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
       if (_welcome) { try { extensionContext.globalState.update('meosPuzzleWelcomed', true); } catch (_) { } }
       meosPostPuzzleDots(true);
