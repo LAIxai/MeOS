@@ -7457,7 +7457,7 @@ async function meosFofWrap(ed, ch) {
   const ok = await ed.edit(eb => { eb.insert(new vscode.Position(a, 0), tagO + '\n' + rule); const gap = rule ? '\n' : ''; if (last) eb.insert(new vscode.Position(b, doc.lineAt(b).text.length), '\n' + gap + rule + tagC); else eb.insert(new vscode.Position(b + 1, 0), gap + rule + tagC + '\n'); });
   if (!ok) return;
   meosPuzzleFSet(doc, 7, nameO); _meosFofWant = { uri: doc.uri.toString(), name: nameC };
-  const _p = new vscode.Position(a + (rule ? 2 : 1), 0); ed.selection = new vscode.Selection(_p, _p);
+  const _ln = b + (rule ? 2 : 1), _p = new vscode.Position(_ln, ed.document.lineAt(_ln).text.length); ed.selection = new vscode.Selection(_p, _p);   // ★v5.1.578(俊克 pm08:19 改良1「♥膜を作成した直後の文字カーソルの着地点を行末に」): 中身の最後の行の行末= そのまま続きを書ける
   await meosFofReconcile(ed); meosPostPuzzleDots(true); meosDbg('[puzzleTag] ♥で包んだ 行=' + (a + 1) + '〜' + (b + 3));
 }
 async function meosPuzzleTag(ch, opt) {
@@ -7597,7 +7597,7 @@ const REF_PENDING_FAM = 'P';
 // v1.0.11(俊克 改良1): ジャンプ着地の一時raw抑止。この行はカーソルが乗っていても参照符をraw化せずチップ描画のまま(脚注/巡回で飛んだ直後は読む用=インライン編集にしない)。カーソルがこの行を離れたら解除→再クリックで通常のraw編集。
 let _refNoRawUri = '';
 let _refNoRawLine = -1;
-let _refNoRawAt = 0;   // v5.0.0-32: 抑止を張った時刻
+let _refNoRawAt = 0, _meosMemClickAt = 0;   // v5.0.0-32: 抑止を張った時刻
 function setRefNoRaw(doc, line) { _refNoRawAt = Date.now(); try { _refNoRawUri = doc.uri.toString(); _refNoRawLine = Number(line); } catch (_) { _refNoRawUri = ''; _refNoRawLine = -1; } }
 // ★v4.2.759: 抑止を解いた時の控え(押す直前にまだ効いていたかを、押した後から訊くため)
 let _refNoRawPrevUri = '', _refNoRawPrevLine = -1, _refNoRawPrevAt = 0;
@@ -8414,7 +8414,7 @@ function applyPrettyLabels(editor) {
           /* ★v5.1.570(俊克 pm06:44 改良1「下付きが見えにくいので、▼を♥の左側に…通常の膜の拡張のようにも見える」): ▼▲が先の桁・♥が次の桁。隠す範囲の境に立てる
              ★v5.1.573(俊克 pm07:33「▼を緑、▲を青にするということだよ」): 572 の灰色は読み違い= ▼と▲で色を変える
              ★v5.1.571(俊克 pm07:01「やはり、▼/▲は押せないようにしよう」): クリックは2つの桁の位置の中点で分かれる(台で実測)。▼は場所を取らず(幅=負の余白)、♥の箱の左に同じ幅の余白= 桁0は左端・桁1は♥の右端→ 中点がちょうど♥の左端。▼=印の頭の桁・♥=次の桁に分かれる */
-          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: membraneCssColorForCode((_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? 'B' : 'G') || undefined, textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; font-size: 90%; display: inline-block; width: 1.556em; margin-right: -1.556em; text-align: right;' } } }); }
+          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: membraneCssColorForCode((_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? 'B' : 'G') || undefined, textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; font-size: 90%; display: inline-block; width: 1.556em; margin-right: -1.556em; text-align: right; pointer-events: none; transform: translateX(' + ((_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '0.4' : '0.2') + 'em);' } } }); }   /* ★v5.1.578(俊克 pm08:19 改良2「▼と♥の間をもう少し詰めよう。▲と♥は斜辺がほぼ同じ角度なので、さらに近づけられる」): 絵だけ寄せる(transform= 桁の境は動かない) */
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + (_rev ? 1 : 0)),
           renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (_rev ? 'font-size: 140%; display: inline-block; width: 1em; margin-left: 1em; text-align: center; ' : mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : ((_pr && _pr.m) ? (meosPuzzleTagsOf(editor.document, 7).length >= 4 ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()))) + ';', margin: _rev ? undefined : '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
@@ -46330,12 +46330,13 @@ function activate(context) {
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor !== vscode.window.activeTextEditor) return; _vrPrev = _vrCur; _vrCur = _snap(e.textEditor); _vrAt = Date.now(); } catch (_) { } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
       try {
+        try { if (Date.now() - _meosMemClickAt < 1500) { const _a = e.selections[0]; meosDbg('[memClick] 動いた kind=' + e.kind + ' ' + (_a.active.line + 1) + ':' + _a.active.character + ' 選択=' + (_a.isEmpty ? 'なし' : 'あり') + ' 見える上端=' + (((e.textEditor.visibleRanges || [])[0] || { start: { line: -2 } }).start.line + 1)); } } catch (_) { }   // kind 1=キー 2=マウス 3=コマンド 空=拡張
         if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
         const ed = e.textEditor, sel = e.selections && e.selections[0];
         // v5.0.0-32(俊克 バグ1「膜をクリックしても全体がRaw表示にならない。最初の1回だけRawになった」): ▼で畳むと、頭の行に着地の抑止(setRefNoRaw)が張られ、
         //   カーソルがその行を出るまで生にならない= 同じ行を何度押しても生にならなかった。人がマウスで押し直したら抑止を解く(張った直後の0.4秒は▼自身の着地なので解かない)
         // v5.1.577 測る(俊克 pm08:12「折り返されているとき、2行目をクリックしてコメント部分を修正しようとすると、Rawモードが解除」): 膜の行を押した時の桁と生の状態
-        try { if (ed && sel && sel.isEmpty) { const _t = ed.document.lineAt(sel.active.line).text; if (/[▼▲▽△]/.test(_t) && _t.indexOf('mCN=') >= 0) { const _i = membraneLineInfo(ed.document, sel.active.line); meosDbg('[memClick] 行=' + (sel.active.line + 1) + ' 桁=' + sel.active.character + '/' + _t.length + ' idStart=' + (_i ? _i.idStart : -1) + ' raw=' + meosShowsRawLine(ed, sel.active.line) + ' noRaw=' + _refNoRawLine); setTimeout(() => { try { meosDbg('[memClick] 0.5秒後 桁=' + ed.selection.active.character + ' 行=' + (ed.selection.active.line + 1) + ' raw=' + meosShowsRawLine(ed, sel.active.line) + ' noRaw=' + _refNoRawLine); } catch (_) { } }, 500); } } } catch (_) { }
+        try { if (ed && sel && sel.isEmpty) { const _t = ed.document.lineAt(sel.active.line).text; if (/[▼▲▽△]/.test(_t) && _t.indexOf('mCN=') >= 0) { const _i = membraneLineInfo(ed.document, sel.active.line); _meosMemClickAt = Date.now(); meosDbg('[memClick] 行=' + (sel.active.line + 1) + ' 桁=' + sel.active.character + '/' + _t.length + ' idStart=' + (_i ? _i.idStart : -1) + ' raw=' + meosShowsRawLine(ed, sel.active.line) + ' noRaw=' + _refNoRawLine); setTimeout(() => { try { meosDbg('[memClick] 0.5秒後 桁=' + ed.selection.active.character + ' 行=' + (ed.selection.active.line + 1) + ' raw=' + meosShowsRawLine(ed, sel.active.line) + ' noRaw=' + _refNoRawLine); } catch (_) { } }, 500); } } } catch (_) { }
         try {
           if (ed && sel && _refNoRawLine === sel.active.line && _refNoRawUri === ed.document.uri.toString() && Date.now() - _refNoRawAt > 400) {
             meosDbg('[noRaw] マウスで同じ行を押し直した 行=' + (sel.active.line + 1) + ' → 着地の抑止を解く');
