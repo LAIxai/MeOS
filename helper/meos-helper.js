@@ -452,7 +452,8 @@ function run(argv) {
   let clockFold = false, foldMode = 1;
   // ★v5.1.554(俊克 11.07 am11:18 改良1「今日と明日の⏰だけ出すモード…明後日以降は閉じるボタン…ポスターのため…今日と明日の予定に集中できる」): ⏰の見出しの ▾ALL / ▸ALL(FUSEN の ▾ALL と同じ作り)。
   //   ▸ALL= 明後日以降の行と、その前の区切りを隠す。far= 明後日の0時から先の印(行と区切りに拡張とヘルパーが付ける)。押して変えた姿は動いている間は覚えている
-  let clockNear = false;
+  // ★v5.1.555(俊克 11.07 am11:30「パーペキ…この状態をデフォルトにしようよ」): 起動時の姿= ▸ALL(今日と明日だけ)
+  let clockNear = true;
   const clockAll = { hb: null, cyc: null, nb: null, rows: [], seps: [], far: [] };
   const clockTitle = () => { try { headPaint(); if (!clockAll.hb) return; const f = clockFold;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((clockAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
