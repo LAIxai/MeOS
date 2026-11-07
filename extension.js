@@ -7402,8 +7402,8 @@ async function meosPuzzleLand(ed, line, onRow) {
   const land = Math.min(line + 1, doc.lineCount - 1);
   const pos = new vscode.Position(land, 0);
   const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
-  // ★v5.1.567(俊克 pm05:54 バグ1「微妙に押せない」): 2行ぶんの範囲を真ん中へ置くと、♥の行が折り返して2段ある時と1段の時で♥の高さが半段ずれる= ポインターが♥の上下へ外れる。♥の段だけを真ん中へ置けば、どの♥も同じ高さに来る
-  try { shown.revealRange(onRow ? new vscode.Range(line, 0, line, 0) : new vscode.Range(line, 0, land, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
+  // ★v5.1.568(俊克 pm06:16 バグ1「最初に任意の位置だと大きく外れる…5行目の位置に表示すれば」): 567 の真ん中置きをやめる。AtTop は上に5段の余白を残すので、♥の行を渡すだけで上から6段目に来る(台で実測・折り返しがあっても段は同じ)
+  try { shown.revealRange(onRow ? new vscode.Range(line, 0, line, 0) : new vscode.Range(line, 0, land, 0), onRow ? vscode.TextEditorRevealType.AtTop : vscode.TextEditorRevealType.InCenter); } catch (_) { }
   meosPostPuzzleDots(true); return shown;
 }
 // ★v5.1.566(俊克 11.07 pm02:28 改良1「♥をクリックしても、ポインタ位置が少しズレてしまうので、ポインタを自動で♥の右下に自動追従して」): ♥へ飛ぶと着地は画面の真ん中= ♥の画面の高さが変わる。
@@ -7413,16 +7413,21 @@ function meosFofRowOf(ed, line) {
     for (const r of ed.visibleRanges || []) for (let l = r.start.line; l <= r.end.line && l < doc.lineCount; l++) { if (l === line) return n; n += W > 0 ? meosTcwRowsOf(doc.lineAt(l).text, W) : 1; }
   } catch (_) { } return -1;
 }
+// ★v5.1.568: ①直前に自分で置いた♥から押した時は、数えず「同じ段」と決める(567 は毎回数えて1〜2段ぶれ、合っているポインターを動かしていた)
+//   ②倍率は window.zoomLevel でなく Me Dock の devicePixelRatio(俊克の窓は 1.728 倍なのに 1 倍で計算し、段の高さを 20pt=本当は 34.6pt としていた)
+let _meosFofLanded = null; const MEOS_FOF_ROW = 5;
 async function meosFofWarpTo(ed, from, to) {
-  const r0 = meosFofRowOf(ed, from), shown = await meosPuzzleLand(ed, to, true);
-  if (r0 < 0 || !meosRealHost() || !meosVHelperOn()) return;
+  const uri = ed.document.uri.toString(), top0 = ((ed.visibleRanges || [])[0] || { start: { line: -1 } }).start.line, L = _meosFofLanded, same = !!L && L.uri === uri && L.line === from && L.top === top0;
+  const r0 = same ? L.row : meosFofRowOf(ed, from), shown = await meosPuzzleLand(ed, to, true);
   setTimeout(() => { try {
-    const e2 = shown || ed, r1 = meosFofRowOf(e2, to); if (r1 < 0 || r1 === r0) return;
-    const c = meosFenceCfg(e2.document), fs0 = Number(c.get('fontSize')) || 14, z = Number(vscode.workspace.getConfiguration('window').get('zoomLevel')) || 0, dy = (r1 - r0) * meosTcwLineEm(e2.document) * fs0 * Math.pow(1.2, z);
-    if (!isFinite(dy) || Math.abs(dy) > 2000) return;
+    const e2 = shown || ed, top = ((e2.visibleRanges || [])[0] || { start: { line: -1 } }).start.line, r1 = top > 0 ? MEOS_FOF_ROW : meosFofRowOf(e2, to);   // ファイルの頭では6段目まで下がらない
+    _meosFofLanded = { uri, line: to, top, row: r1 };
+    if (r0 < 0 || r1 < 0 || r1 === r0 || !meosRealHost() || !meosVHelperOn()) return;
+    const c = meosFenceCfg(e2.document), fs0 = Number(c.get('fontSize')) || 14, rowCss = meosTcwLineEm(e2.document) * fs0, dpr = Number(extensionContext.globalState.get('meosDpr', 0)) || 0, z = Number(vscode.workspace.getConfiguration('window').get('zoomLevel')) || 0;
+    const dy = (r1 - r0) * rowCss * (dpr > 0 ? dpr : Math.pow(1.2, z)); if (!isFinite(dy) || Math.abs(dy) > 8000) return;
     const fs = require('fs'), path = require('path'), dir = meosHelperDir(); fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify({ dx: 0, dy, pt: true, t: Date.now() })); meosDbg('[ptrWarp] ♥ 段 ' + r0 + '→' + r1 + ' dy=' + dy.toFixed(1) + 'pt');
-  } catch (_) { } }, 90);
+    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify(Object.assign({ dx: 0, dy, t: Date.now() }, dpr > 0 ? {} : { pt: true }))); meosDbg('[ptrWarp] ♥ 段 ' + r0 + '→' + r1 + ' dy=' + dy.toFixed(1) + ' dpr=' + dpr);
+  } catch (_) { } }, 250);
 }
 async function meosPuzzleTag(ch, opt) {
   try {
@@ -8374,7 +8379,7 @@ function applyPrettyLabels(editor) {
         if (_rev) refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + 1) });
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
         if (_rev) { fofHints.push({ line, col: mPz.index + 1, lone: !_pr.m }); fofSkinLone.push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });   /* v5.1.561(俊克 pm00:57 バグ1「相方がいないのに選択指になるのは駄目」): 押しても飛ばない薄い逆さ♥は手にしない */
-          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + 1, line, mPz.index + 1), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: '#e53935', textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; display: inline-block; width: 1em; margin-left: -1em; text-align: center; pointer-events: none;' } } }); }
+          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + 1, line, mPz.index + 1), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: '#e53935', textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; font-size: 80%; display: inline-block; width: 1em; margin-left: -1.6em; margin-right: 0.6em; text-align: center; pointer-events: none;' } } }); }
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
           renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : ((_pr && _pr.m) ? (meosPuzzleTagsOf(editor.document, 7).length >= 4 ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()))) + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
@@ -33120,7 +33125,7 @@ color:#ffffff;z-index:4;padding:0}
 <script>
 // {* ▼mCN=dock_js // Me Dock のJS(ボタンの動き・パネルとの往復) *}
 // {* ▼mCN=dock_js_elements // Me Dockの部品を掴む(getElementById)と、状態の変数 *}
-const vscode=acquireVsCodeApi();let currentMode=${JSON.stringify(initial.mode)};let currentValue=${JSON.stringify(initial.value)};
+const vscode=acquireVsCodeApi();(function(){var d0=0;function s(){var d=window.devicePixelRatio||1;if(d!==d0){d0=d;vscode.postMessage({type:'meosDpr',dpr:d});}}s();window.addEventListener('resize',s);})();let currentMode=${JSON.stringify(initial.mode)};let currentValue=${JSON.stringify(initial.value)};
 let draftName=currentValue||'';let draftDirty=false;let currentLine=${JSON.stringify(initial.line || '')};let markerOn=${JSON.stringify(!!meDockCurrentLineMarkerActive)};
 let historyState={canBack:false,canForward:false};let currentColor='';let draftColor='';let flipMinusColor='';let flipPlusColor='';
 let meScope='me';
@@ -38466,6 +38471,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'dwCaretDayAsk') { _meosCaretDayKey = null; meosPostCaretDay(true); return; }   // v5.0.0-24
     if (message && message.type === 'diaryTplSet') { await meosDiaryTplSet(message); return; }   // v4.2.777-5
     if (message && message.type === 'diaryTplMenu') { await meosDiaryTplMenu(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }   // v4.2.777-3
+    if (message && message.type === 'meosDpr') { const _d = Number(message.dpr); if (isFinite(_d) && _d > 0) extensionContext.globalState.update('meosDpr', _d); return; }   // v5.1.568: 窓の本当の倍率= 拡張からは見えない(window.zoomLevel は 0 のまま)
     if (message && message.type === 'ptrWarp') { meosPtrWarp(message); return; }   // v5.1.237: 🔰に乗った時、膨らんだ図形の同じ所へポインターを運ぶ(V-helper)
     if (message && message.type === 'meosBeginnerLv') { try { extensionContext.globalState.update('meosBeginnerLv', [1, 2, 3].includes(message.lv) ? message.lv : 1); } catch (_) { } return; }   // v5.1.228: ①②
     if (message && message.type === 'meosBeginner') { try { extensionContext.globalState.update('meosBeginner', !!message.on); } catch (_) { } return; }   // v5.1.226: 🔰モードの覚え
