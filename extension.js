@@ -26609,9 +26609,9 @@ async function meosContinueListOnEnterFC(editor, pos) {
   //   Debugチャネル(MeOS Debug)に1行だけ出す。うるさくないよう、**箇条書きの行で押した時だけ**。
   const _dbg = (why) => { try { meosDbg('[fcEnter] ' + why + ' line=' + (pos.line + 1) + ' ch=' + pos.character); } catch (_) { } };
   let bodyLn = pos.line;
-  if (meosIsSpecLine(doc.lineAt(bodyLn).text)) { if (bodyLn === 0) return false; bodyLn--; } // 指定行に居る→上が本文
+  if (meosIsBoundSpecLine(doc.lineAt(bodyLn).text)) { if (bodyLn === 0) return false; bodyLn--; } // 指定行に居る→上が本文
   let specEnd = bodyLn;
-  while (specEnd + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(specEnd + 1).text)) specEnd++;
+  while (specEnd + 1 < doc.lineCount && meosIsBoundSpecLine(doc.lineAt(specEnd + 1).text)) specEnd++;
   const bodyText = doc.lineAt(bodyLn).text;
   const m = MEOS_LIST_ITEM_RE.exec(bodyText);
   if (specEnd === bodyLn) { if (m) _dbg('指定行が無い(FC方式ではない)'); return false; }
@@ -26725,7 +26725,7 @@ async function meosSplitSpecsOnEnter(editor, pos) {
   if (meosIsSpecLine(bodyText)) return false;               // 指定行の上では何もしない
   if (MEOS_LIST_ITEM_RE.test(bodyText)) return false;       // 箇条書きは上の口(meosContinueListOnEnterFC)の持ち物
   let specEnd = bodyLn;
-  while (specEnd + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(specEnd + 1).text)) specEnd++;
+  while (specEnd + 1 < doc.lineCount && meosIsBoundSpecLine(doc.lineAt(specEnd + 1).text)) specEnd++;
   if (specEnd === bodyLn) return false;                     // FC方式ではない
   const spec = meosSpecLineFor(meosDocLines(doc), bodyLn);
   if (!spec) return false;
@@ -26789,14 +26789,14 @@ async function meosJoinSpecsOnBackspace(editor) {
   if (/^[ \t]*#{1,6}[ \t]/.test(lowText)) return false;
   // 上の本文行を探す(間に指定行thatあれば飛び越える)
   let sTop = pos.line - 1, hasUpSpec = false;
-  while (sTop >= 0 && meosIsSpecLine(doc.lineAt(sTop).text)) { sTop--; hasUpSpec = true; }
+  while (sTop >= 0 && meosIsBoundSpecLine(doc.lineAt(sTop).text)) { sTop--; hasUpSpec = true; }
   if (sTop < 0) return false;
   const upLn = sTop, upText = doc.lineAt(upLn).text;
   if (!upText.trim()) return false;                                // 空行との結合は既定どおり
   if (MEOS_LIST_ITEM_RE.test(upText) || MEOS_LIST_ITEM_RE.test(lowText)) return false; // 箇条書きは触らない
   // 下の指定行(あれば)
   let lowSpecEnd = pos.line;
-  while (lowSpecEnd + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(lowSpecEnd + 1).text)) lowSpecEnd++;
+  while (lowSpecEnd + 1 < doc.lineCount && meosIsBoundSpecLine(doc.lineAt(lowSpecEnd + 1).text)) lowSpecEnd++;
   const lines = meosDocLines(doc);
   const upSpec = hasUpSpec ? meosSpecLineFor(lines, upLn) : null;
   const lowSpec = (lowSpecEnd > pos.line) ? meosSpecLineFor(lines, pos.line) : null;
@@ -41288,6 +41288,8 @@ function meosSpecLinePayloads(text) {
 }
 function meosSpecLinePayload(text) { const a = meosSpecLinePayloads(text); return a ? a.join(' ') : null; }
 function meosIsSpecLine(text) { return meosSpecLinePayloads(text) !== null; }
+// ★v5.1.577(俊克 pm08:12「最後の行と罫線を1行と見なさないようにできないのか?」): 罫線は上の本文の説明ではない= 本文に付く指定行に数えない(Enter が越えない・本文に居ても罫線が生にならない・本文が橙にならない)
+function meosIsBoundSpecLine(text) { return meosIsSpecLine(text) && !MEOS_RULE_LINE_RE.test(String(text || '')); }
 // ★v5.1.380(俊克 11.01 pm05:47 改良1「見出しのH2をH1に変えた時、頭の##を#に変更しようよ。これはソースを1mmも変えないという原則には矛盾しないよ」)
 // ★v5.1.381(pm05:50「同様に、頭の##を直接#に変更したら、H2をH1に変更しようよ。既存のマークダウンエディターを使っていた人は、その方が慣れている」)
 // ★v5.1.382(pm05:56「データで不一致を見つけた時は、ソースを信じてH1の部分を修正するということが原則」)
@@ -41914,7 +41916,7 @@ function meosFcPairAt(doc, line) {
     //   含めてオレンジ色になる**」): ★★**持ち主の無い⏰は、ただの字**(v4.1.1120)so、
     //   橙の対応(本文行 ⇄ 指定行)にも入れない。入れると、関係の無い行thatが「対だ」と名乗ってしまう。
     const _orphanClock = (i) => { try { const t = doc.lineAt(i).text; return !!(t.indexOf('\u23f0') >= 0 && meosClockFcParse(t)) && !meosClockLineIsLive(doc, i); } catch (_) { return false; } };
-    const isSpec = (i) => (i >= 0 && i < doc.lineCount) && meosIsSpecLine(doc.lineAt(i).text) && !_orphanClock(i);
+    const isSpec = (i) => (i >= 0 && i < doc.lineCount) && meosIsBoundSpecLine(doc.lineAt(i).text) && !_orphanClock(i);
     if (isSpec(line)) {                                   // FC行に居る
       let f = line; while (f > 0 && isSpec(f - 1)) f--;
       const head = f - 1; if (head < 0) return null;
@@ -46332,6 +46334,8 @@ function activate(context) {
         const ed = e.textEditor, sel = e.selections && e.selections[0];
         // v5.0.0-32(俊克 バグ1「膜をクリックしても全体がRaw表示にならない。最初の1回だけRawになった」): ▼で畳むと、頭の行に着地の抑止(setRefNoRaw)が張られ、
         //   カーソルがその行を出るまで生にならない= 同じ行を何度押しても生にならなかった。人がマウスで押し直したら抑止を解く(張った直後の0.4秒は▼自身の着地なので解かない)
+        // v5.1.577 測る(俊克 pm08:12「折り返されているとき、2行目をクリックしてコメント部分を修正しようとすると、Rawモードが解除」): 膜の行を押した時の桁と生の状態
+        try { if (ed && sel && sel.isEmpty) { const _t = ed.document.lineAt(sel.active.line).text; if (/[▼▲▽△]/.test(_t) && _t.indexOf('mCN=') >= 0) { const _i = membraneLineInfo(ed.document, sel.active.line); meosDbg('[memClick] 行=' + (sel.active.line + 1) + ' 桁=' + sel.active.character + '/' + _t.length + ' idStart=' + (_i ? _i.idStart : -1) + ' raw=' + meosShowsRawLine(ed, sel.active.line) + ' noRaw=' + _refNoRawLine); setTimeout(() => { try { meosDbg('[memClick] 0.5秒後 桁=' + ed.selection.active.character + ' 行=' + (ed.selection.active.line + 1) + ' raw=' + meosShowsRawLine(ed, sel.active.line) + ' noRaw=' + _refNoRawLine); } catch (_) { } }, 500); } } } catch (_) { }
         try {
           if (ed && sel && _refNoRawLine === sel.active.line && _refNoRawUri === ed.document.uri.toString() && Date.now() - _refNoRawAt > 400) {
             meosDbg('[noRaw] マウスで同じ行を押し直した 行=' + (sel.active.line + 1) + ' → 着地の抑止を解く');
