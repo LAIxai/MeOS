@@ -7353,9 +7353,10 @@ function meosFofChipClick(e) {
     const doc = ed.document, ln = sel.active.line, col = sel.active.character; if (ln >= doc.lineCount) return; const raw = doc.lineAt(ln).text; if (raw.indexOf('mP') < 0 || !meosPuzzleTagLine(doc, ln, raw)) return;
     // ★v5.1.543(俊克 pm06:48 改良1「P1〜P6のラベルもボタン化した方が分かりやすい」): ♥と同じ。1行に2つあっても押した桁の札を選ぶ
     const scan = meosRefScanText(raw); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; let fm = null, x; while ((x = MEOS_PUZZLE_TAG_FULL_RE.exec(scan)) !== null) {
-      if (col === x.index + 1 && x[1] === '7' && _prev !== doc.uri.toString() + '#' + ln) { const pr = meosFofPair(doc), me = pr && (pr.f.name === x[2] ? pr.f : (pr.m && pr.m.name === x[2] ? pr.m : null)); if (me) { const to = me === pr.f ? pr.m : pr.f; if (to) { meosDbg('[puzzleTag] 逆さ♥ ' + (ln + 1) + '→' + (to.line + 1)); meosPuzzleLand(ed, to.line); } return; } }   // v5.1.559
       if (col === x.index || col === x.index - 1) { fm = x; if (col === x.index) break; } }
     if (!fm) return;
+    // ★v5.1.564(俊克 11.07 pm02:16「▼/▲を押せると、折り畳めるように思ってしまう…文字カーソルのままにして、♥ボタンの上だけで選択指に」): ワープは♥で押す。▼▲は印= 押しても飛ばない。組の♥は F の付け替えをしない(中間♥を押すと今まで通り F が移る)
+    if (fm[1] === '7') { const pr = meosFofPair(doc), me = pr && pr.m && (pr.f.name === fm[2] ? pr.f : (pr.m.name === fm[2] ? pr.m : null)); if (me) { if (_prev !== doc.uri.toString() + '#' + ln) { const to = me === pr.f ? pr.m : pr.f; meosDbg('[puzzleTag] ♥膜 ' + (ln + 1) + '→' + (to.line + 1)); meosPuzzleLand(ed, to.line); } return; } }
     const n = +fm[1], hits = meosPuzzleTagsOf(doc, n); if (meosPuzzleFGet(doc, n) === fm[2] || hits.length < 2) return;
     if (n === 7) _meosFofWant = { uri: doc.uri.toString(), name: meosPuzzleFGet(doc, 7) };   // v5.1.559: 元の F が相方になる= 組の2か所は変わらない
     meosPuzzleFSet(doc, n, fm[2]); meosDbg('[puzzleTag] 本文の札で F を移した P' + n + ' 行=' + (ln + 1));
@@ -8351,10 +8352,10 @@ function applyPrettyLabels(editor) {
         const _pr = mPz[1] === '7' ? _pzPairGet() : null, _rev = !!_pr && (_pr.f.name === mPz[2] || (!!_pr.m && _pr.m.name === mPz[2]));   // v5.1.559: 組の♥= 隠す範囲を2桁目で割り、そこに札と逆さ♥を立てる(隠す範囲の中に立てると一緒に隠れる)
         if (_rev) refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + 1) });
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
-        if (_rev) { fofHints.push({ line, col: mPz.index + 1, lone: !_pr.m }); (_pr.m ? fofSkin : fofSkinLone).push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });   /* v5.1.561(俊克 pm00:57 バグ1「相方がいないのに選択指になるのは駄目」): 押しても飛ばない薄い逆さ♥は手にしない */
+        if (_rev) { fofHints.push({ line, col: mPz.index + 1, lone: !_pr.m }); fofSkinLone.push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });   /* v5.1.561(俊克 pm00:57 バグ1「相方がいないのに選択指になるのは駄目」): 押しても飛ばない薄い逆さ♥は手にしない */
           refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + 1, line, mPz.index + 1), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: '#e53935', textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; display: inline-block; width: 1em; margin-left: -1em; text-align: center; pointer-events: none;' } } }); }
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
-          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()) + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
+          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor())) + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
     }
     if (lineHasRefMark(text)) {
@@ -47180,7 +47181,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
               const _vb = meosVeilBtnSpot(document, ln, _ed89); if (_vb) out.push(new vscode.InlayHint(new vscode.Position(ln, _vb.col), '\u3000')); } }   // v5.1.175: 小さい🙈の札   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
             { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
           }
-          for (const _fh of _meosFofHints.get(_u89) || []) if (_fh.line >= range.start.line && _fh.line <= range.end.line && _fh.line < document.lineCount && document.lineAt(_fh.line).text.indexOf('mP7') >= 0) { const _ih = new vscode.InlayHint(new vscode.Position(_fh.line, _fh.col), '\u3000'); _ih.tooltip = _fh.lone ? 'Copy this line to make the other \u2665' : 'Warp to the other \u2665'; out.push(_ih); }   // v5.1.559: 逆さ♥の札
+          for (const _fh of _meosFofHints.get(_u89) || []) if (_fh.line >= range.start.line && _fh.line <= range.end.line && _fh.line < document.lineCount && document.lineAt(_fh.line).text.indexOf('mP7') >= 0) { const _ih = new vscode.InlayHint(new vscode.Position(_fh.line, _fh.col), '\u3000'); if (_fh.lone) _ih.tooltip = 'Copy this line to make the other \u2665'; out.push(_ih); }   // v5.1.559: 逆さ♥の札
 
         } catch (_) { }
         return out;
