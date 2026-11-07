@@ -40591,7 +40591,7 @@ function meosFcKeysNeeded(editor) {
 }
 let _meosInTableCtx = false;
 // v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
-let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, hold: false, busy: false };
+let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, moved: 0, hold: false, busy: false };
 // ★v5.1.579(俊克 pm08:37 改良1「罫線のところで↓/↑キーが一時停止するようにできないか? 一時停止したあと、再度↓/↑キーを押すと、進める」): キーの離れは拡張に見えない→ 間隔で読む。
 // ★v5.1.580(俊克 pm11:14 バグ1「罫線のところで、↓/↑キーが一時停止しない」): 実機の連打は30ms間隔(KeyRepeat 2)・初回だけ225ms(InitialKeyRepeat 15)。
 //   ①拡張ホストが1回の移動に30ms以上かかると、見ているカーソルが実物より遅れる→ 文脈キーが着いた時には本物が罫線を過ぎていた(台で再現)→ 預かる範囲を上下200行へ
@@ -40607,6 +40607,10 @@ function meosRuleStopAt(ed, cur, down) {
   if (isRule(to)) return !edge(cur) && !meosRuleHidden(ed, to);
   return isRule(to + dir) && !!edge(to) && !meosRuleHidden(ed, to) && !meosRuleHidden(ed, to + dir);
 }
+// ★v5.1.582(俊克 pm11:53「停止点の前後10行の範囲では減速して、近づけば良いんじゃないか?」→「入れて」): 止まる点まで10行以内で、そこへ向かう押しっぱなしだけ1行80msに間引く。
+//   離れる向きは止まる点が前に無いので遅くならない。距離と速さは下の2つの数字で調整
+const MEOS_RULE_SLOW_LINES = 10, MEOS_RULE_SLOW_MS = 80;
+function meosRuleApproaching(ed, cur, down) { for (let k = 0, dir = down ? 1 : -1; k < MEOS_RULE_SLOW_LINES; k++) { if (meosRuleStopAt(ed, cur + k * dir, down)) return true; } return false; }
 async function meosRuleStep(down) {
   const cmd = down ? 'cursorDown' : 'cursorUp', ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
   if (_meosRuleKey.busy) return;
@@ -40614,8 +40618,9 @@ async function meosRuleStep(down) {
     if (_meosRuleKey.hold && gap < 150) return;
     const again = _meosRuleKey.hold; _meosRuleKey.hold = false;
     if (ed && gap < 400 && !again && meosRuleStopAt(ed, ed.selection.active.line, down)) { _meosRuleKey.hold = true; return; }
+    if (ed && gap < 150 && now - _meosRuleKey.moved < MEOS_RULE_SLOW_MS && meosRuleApproaching(ed, ed.selection.active.line, down)) return;
   } catch (_) { }
-  _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
+  _meosRuleKey.moved = now; _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
 }
 function meosUpdateInTableContext(editor) {
   let v = false;
