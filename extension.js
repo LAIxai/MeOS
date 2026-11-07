@@ -40599,14 +40599,21 @@ let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, hold: false, busy: f
 //   ③初回の225msが「押し直し」に読めた→ 手前で止める判定は間隔0.4秒未満。止まった後は0.15秒空いたら離れた印(リピートは30ms)
 //   ④折り畳みの中の罫線だけ止まらない= 見えている範囲の「間」にある行。画面の下の外は止める(下端を走る時に止まらなかった)
 function meosRuleHidden(ed, l) { const v = ed.visibleRanges || []; for (let i = 0; i + 1 < v.length; i++) if (l > v[i].end.line && l < v[i + 1].start.line) return true; return false; }
+// ★v5.1.581(俊克 pm11:43「上から来ると、♥️開始膜のRawで止まるね。入る手前で止まると最高」): 膜の行のすぐ向こうが罫線なら、膜の行へ入る手前で止まる(上の開始膜・下の閉じ膜の両方)。
+//   止まった後は押し直しの1打を止めない= 膜の行に着いたら、その先の罫線では止まらない(2度止まらない)
+function meosRuleStopAt(ed, cur, down) {
+  const d = ed.document, dir = down ? 1 : -1, to = cur + dir, isRule = l => l >= 0 && l < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(l).text), edge = l => down ? parseOpenLine(d.lineAt(l).text) : parseCloseLine(d.lineAt(l).text);
+  if (to < 0 || to >= d.lineCount) return false;
+  if (isRule(to)) return !edge(cur) && !meosRuleHidden(ed, to);
+  return isRule(to + dir) && !!edge(to) && !meosRuleHidden(ed, to) && !meosRuleHidden(ed, to + dir);
+}
 async function meosRuleStep(down) {
   const cmd = down ? 'cursorDown' : 'cursorUp', ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
   if (_meosRuleKey.busy) return;
   try {
     if (_meosRuleKey.hold && gap < 150) return;
-    _meosRuleKey.hold = false;
-    if (ed && gap < 400) { const d = ed.document, to = ed.selection.active.line + (down ? 1 : -1);
-      if (to >= 0 && to < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(to).text) && !meosRuleHidden(ed, to)) { _meosRuleKey.hold = true; return; } }
+    const again = _meosRuleKey.hold; _meosRuleKey.hold = false;
+    if (ed && gap < 400 && !again && meosRuleStopAt(ed, ed.selection.active.line, down)) { _meosRuleKey.hold = true; return; }
   } catch (_) { }
   _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
 }
