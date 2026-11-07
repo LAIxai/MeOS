@@ -40067,6 +40067,9 @@ function meosApplyTableCellWrapDecorations(editor) {
         try { if (meosModeAtLine(doc, blk.start) === 'raw') continue; } catch (_) { }
         const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
         const L = meosTcwLayout(lines, W, true); if (!L) continue;
+        // ★v5.1.553(同じバグ1の整形前): ソースの段(Monaco が折る数)は増やせない= 要る段に足りない行があると、見せかけが次の行へ重なる(貼っただけの詰めていない表)。
+        //   足りる時だけ見せかけで描く(見出しの最後の段は区切りの行に乗るので1段少なくて良い)。足りない表は▦で詰めるまで本物の表のまま= 重ねない
+        if (L.rows.some((r, i) => !r.sep && r.h > meosTcwRowsOf(lines[i], W) + (i === L.sep - 1 ? 1 : 0))) { try { const m0 = uri + '#' + blk.start, s0 = 'short#' + W; if (_meosTcwSig.get(m0) !== s0) { _meosTcwSig.set(m0, s0); meosDbg('[tcw] 表 ' + (blk.start + 1) + '〜' + (blk.end + 1) + ' 段が足りない= 見せかけで描かない'); } } catch (_) { } continue; }
         // ★v5.1.199(俊克 10.26 am00:13 改良1「セル折り返しをしたケースで、細い横罫線が引かれていない」): 行の罫線の装飾(手を引かせた)と同じ線を自分で引く=
         //   各行が取っている段(ソースの段 R)の下端に細い線(panel.border 2px)・区切りの行は --- を描かず下に太い線(foreground 3px)・表の上端に細い線
         const tw = L.c.reduce((p, q) => p + q, 0) + 3 * L.nc + 1, em = (x) => Math.round(x * lhEm * 1000) / 1000;
@@ -40089,9 +40092,11 @@ function meosApplyTableCellWrapDecorations(editor) {
             textDecoration: 'none; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + (Math.round(k * lhEm * 1000) / 1000) + 'em; white-space: pre; z-index: 3; pointer-events: none; color: ' + fg + ' !important; -webkit-text-fill-color: ' + fg + ' !important;' } } }));
           if (L.rows[i].sep) { logs.push((ln2 + 1) + ':sep'); continue; }   // 区切りの行の --- は描かない(太い線だけ)
           // ★v5.1.208: 段ごとに駒(縦線・飾りの塊)を桁の位置(ch)に置く。太字=太く/斜体=傾け/インラインコード=クリームの板(家の板と同じ #f3e6c4・濃い茶の字)/リンク=リンクの色＋下線
-          (L.rows[i].pc || []).forEach((row, j) => { if (j >= t.length) return; const top = (Math.round((j + shift) * lhEm * 1000) / 1000) + 'em';
+          // ★v5.1.553(俊克 11.07 am10:30 バグ1「GPTの表」= 最後の行の4段目が丸ごと空・3〜5段目が太い): 段 j の駒をソースの j 桁目に差していた= 行が `| **Prettier** |` だと3桁目は隠れた ** の中。
+          //   before は差した所の字の飾りを受け継ぐ(隠し= font-size:0 で字も em も0・太字の範囲= 太くなる)→ 段の番号と桁は無関係なので、どの段も行頭(0桁)に差す(見出しの帯の縦線と同じ)
+          (L.rows[i].pc || []).forEach((row, j) => { const top = (Math.round((j + shift) * lhEm * 1000) / 1000) + 'em';
             row.forEach(pz => { const s0 = pz.st || '', code = s0.indexOf('c') >= 0, link = s0.indexOf('l') >= 0, col = code ? '#3b3020' : (link ? 'var(--vscode-textLink-foreground)' : ((s0.indexOf('b') >= 0 && boldCol) ? boldCol : ((s0.indexOf('i') >= 0 && itCol) ? itCol : fg)));
-              pieces.push({ range: new vscode.Range(ln2, j, ln2, j), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
+              pieces.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
                 textDecoration: (link ? 'underline' : 'none') + '; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
                   + (s0.indexOf('b') >= 0 ? ' font-weight: 900; -webkit-text-stroke: 0.5px currentcolor;' : '')   /* ★v5.1.210(俊克 pm11:59「太字に見えない・74行目の表の外の太字と同じ太さに」): 実機(CDP)で測った= 表の外の太字は MeOS の飾り font-weight 900 ＋ 縁取り0.5px・見せかけは bold(700)だった→ 同じ値に */ + (s0.indexOf('i') >= 0 ? ' font-style: italic;' : '')
                   + (code ? ' background: #f3e6c4; border-radius: 4px; box-shadow: 0 0 0 1px #cbb98c;' : '') } } }); }); });
