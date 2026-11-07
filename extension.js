@@ -7402,7 +7402,7 @@ async function meosPuzzleLand(ed, line, onRow) {
   const land = Math.min(line + 1, doc.lineCount - 1);
   const pos = new vscode.Position(land, 0);
   const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
-  // ★v5.1.568(俊克 pm06:16 バグ1「最初に任意の位置だと大きく外れる…5行目の位置に表示すれば」): 567 の真ん中置きをやめる。AtTop は上に5段の余白を残すので、♥の行を渡すだけで上から6段目に来る(台で実測・折り返しがあっても段は同じ)
+  // ★v5.1.568(俊克 pm06:16 バグ1「最初に任意の位置だと大きく外れる…5行目の位置に表示すれば」): 567 の真ん中置きをやめる。♥の行を AtTop で置く= 実機では1段目に来る(俊克 pm06:29「1行目の方がいいね」)。折り返しに左右されない
   try { shown.revealRange(onRow ? new vscode.Range(line, 0, line, 0) : new vscode.Range(line, 0, land, 0), onRow ? vscode.TextEditorRevealType.AtTop : vscode.TextEditorRevealType.InCenter); } catch (_) { }
   meosPostPuzzleDots(true); return shown;
 }
@@ -7413,21 +7413,31 @@ function meosFofRowOf(ed, line) {
     for (const r of ed.visibleRanges || []) for (let l = r.start.line; l <= r.end.line && l < doc.lineCount; l++) { if (l === line) return n; n += W > 0 ? meosTcwRowsOf(doc.lineAt(l).text, W) : 1; }
   } catch (_) { } return -1;
 }
-// ★v5.1.568: ①直前に自分で置いた♥から押した時は、数えず「同じ段」と決める(567 は毎回数えて1〜2段ぶれ、合っているポインターを動かしていた)
-//   ②倍率は window.zoomLevel でなく Me Dock の devicePixelRatio(俊克の窓は 1.728 倍なのに 1 倍で計算し、段の高さを 20pt=本当は 34.6pt としていた)
-let _meosFofLanded = null; const MEOS_FOF_ROW = 5;
+// ★v5.1.568: 直前に自分で置いた♥から押した時は、数えず「同じ段」と決める(567 は毎回数えて1〜2段ぶれ、合っているポインターを動かしていた)
+// ★v5.1.569(俊克 pm06:29 改良1「1行目の方がいいね」改良2「mGATEの♥ボタンをクリックしたときも、1行目に表示して、ポインターもそこに移動」): ♥は常に1段目へ置く。
+//   1段目の♥を実際に押した時のポインターの位置を V-helper が heart-home.json に控え(home:'set')、次からはそこへ運ぶ(home:'go')= 拡張から見えない♥の画面の位置を、押された事実から知る
+let _meosFofLanded = null;
+function meosFofWinZoom() {   // 俊克の窓は window.zoomLevel が 0 でも本当は 3= VS Code の控え(storage.json)を読む
+  try { const z = Number(vscode.workspace.getConfiguration('window').get('zoomLevel')) || 0; if (z) return z; const fs = require('fs'), path = require('path'), f = path.join(path.dirname(extensionContext.globalStorageUri.fsPath), 'storage.json'), w = JSON.parse(fs.readFileSync(f, 'utf8')).windowsState; return Number(w && w.lastActiveWindow && w.lastActiveWindow.uiState && w.lastActiveWindow.uiState.zoomLevel) || 0; } catch (_) { return 0; }
+}
+function meosFofSettle(shown, to, o) {
+  setTimeout(() => { try {
+    const e2 = shown, doc = e2.document, top = ((e2.visibleRanges || [])[0] || { start: { line: -1 } }).start.line, r1 = meosFofRowOf(e2, to), r0 = o.r0;
+    _meosFofLanded = { uri: doc.uri.toString(), line: to, top, row: r1 };
+    if (!meosRealHost() || !meosVHelperOn()) return;
+    const fs = require('fs'), path = require('path'), dir = meosHelperDir(), put = (j) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify(Object.assign({ dx: 0, dy: 0, t: Date.now() }, j))); };
+    if (o.same && r0 === 0 && r1 === 0) { put({ home: 'set' }); meosDbg('[ptrWarp] ♥ 1段目の位置を控えた'); return; }
+    if (r1 === 0 && fs.existsSync(path.join(dir, 'heart-home.json'))) { put({ home: 'go' }); meosDbg('[ptrWarp] ♥ 控えた位置へ' + (o.gate ? '(mGATE)' : '')); return; }
+    if (o.gate || r0 === undefined || r0 < 0 || r1 < 0 || r1 === r0) return;
+    const c = meosFenceCfg(doc), rowCss = meosTcwLineEm(doc) * (Number(c.get('fontSize')) || 14), dpr = Number(extensionContext.globalState.get('meosDpr', 0)) || 0, dy = (r1 - r0) * rowCss * (dpr > 0 ? dpr : Math.pow(1.2, meosFofWinZoom()));
+    if (!isFinite(dy) || Math.abs(dy) > 8000) return;
+    put(Object.assign({ dy }, dpr > 0 ? {} : { pt: true })); meosDbg('[ptrWarp] ♥ 段 ' + r0 + '→' + r1 + ' dy=' + dy.toFixed(1) + ' dpr=' + dpr);
+  } catch (_) { } }, 250);
+}
 async function meosFofWarpTo(ed, from, to) {
   const uri = ed.document.uri.toString(), top0 = ((ed.visibleRanges || [])[0] || { start: { line: -1 } }).start.line, L = _meosFofLanded, same = !!L && L.uri === uri && L.line === from && L.top === top0;
   const r0 = same ? L.row : meosFofRowOf(ed, from), shown = await meosPuzzleLand(ed, to, true);
-  setTimeout(() => { try {
-    const e2 = shown || ed, top = ((e2.visibleRanges || [])[0] || { start: { line: -1 } }).start.line, r1 = top > 0 ? MEOS_FOF_ROW : meosFofRowOf(e2, to);   // ファイルの頭では6段目まで下がらない
-    _meosFofLanded = { uri, line: to, top, row: r1 };
-    if (r0 < 0 || r1 < 0 || r1 === r0 || !meosRealHost() || !meosVHelperOn()) return;
-    const c = meosFenceCfg(e2.document), fs0 = Number(c.get('fontSize')) || 14, rowCss = meosTcwLineEm(e2.document) * fs0, dpr = Number(extensionContext.globalState.get('meosDpr', 0)) || 0, z = Number(vscode.workspace.getConfiguration('window').get('zoomLevel')) || 0;
-    const dy = (r1 - r0) * rowCss * (dpr > 0 ? dpr : Math.pow(1.2, z)); if (!isFinite(dy) || Math.abs(dy) > 8000) return;
-    const fs = require('fs'), path = require('path'), dir = meosHelperDir(); fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'warp-ptr.json'), JSON.stringify(Object.assign({ dx: 0, dy, t: Date.now() }, dpr > 0 ? {} : { pt: true }))); meosDbg('[ptrWarp] ♥ 段 ' + r0 + '→' + r1 + ' dy=' + dy.toFixed(1) + ' dpr=' + dpr);
-  } catch (_) { } }, 250);
+  meosFofSettle(shown || ed, to, { r0, same });
 }
 async function meosPuzzleTag(ch, opt) {
   try {
@@ -7463,12 +7473,12 @@ async function meosPuzzleTag(ch, opt) {
     if (!f && hits.length === 1) { f = hits[0]; meosPuzzleFSet(doc, n, f.name); }
     // ★v5.1.541: Opt+クリック= 全ての印を順に巡るだけ。Mac の Ctrl+クリックは右クリック扱いなので Opt(v5.1.72 の 🔐 と同じ事情)
     // ★v5.1.544(俊克 11.06「直接消すに揃える」): 全ての字で押し直しの削除をやめた(539 の撤回)。消すのは本文で直接・F の付け替えは本文の札(meosFofChipClick)
-    if (opt && opt.cycle) { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur) || hits[0]; await meosPuzzleLand(ed, nx.line); meosDbg('[puzzleTag] ' + ch + ' を巡った 行=' + (nx.line + 1)); return; }
+    if (opt && opt.cycle) { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur) || hits[0]; { const _sh = await meosPuzzleLand(ed, nx.line, ch === 'f'); if (ch === 'f') meosFofSettle(_sh || ed, nx.line, {}); } meosDbg('[puzzleTag] ' + ch + ' を巡った 行=' + (nx.line + 1)); return; }
     let line;
     if (f) line = f.line;
     else { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur); line = (nx || hits[0]).line;
       vscode.window.setStatusBarMessage('MeOS: ' + ch + ' has ' + hits.length + ' marks \u2014 click the mark to keep in the text; it becomes the front.', 5000); }
-    await meosPuzzleLand(ed, line);
+    { const _sh = await meosPuzzleLand(ed, line, ch === 'f'); if (ch === 'f') meosFofSettle(_sh || ed, line, { gate: !!(opt && opt.gate) }); }   // v5.1.569: ♥は Me Dock/mGATE からも1段目へ。ポインターを運ぶのは mGATE から
     meosDbg('[puzzleTag] ' + ch + '=P' + n + ' へ飛んだ' + (f ? '(F)' : '(F無し・候補)') + ' 行=' + (line + 1) + ' (' + hits.length + '本)');
   } catch (e) { meosDbg('[puzzleTag] ' + (e && e.message)); }
 }
@@ -14305,7 +14315,7 @@ async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっ�
 //   置き場は globalState(meosFoF)= uri・行・桁・その行の字。行は本文の編集でずれるので、字が変わっていたら元の行から近い順に同じ字の行を探す。着地は付箋と同じ口(畳みの中でも着く)
 // ★v5.1.537(俊克 11.06 pm03:05 改良1「♥️ボタンは、他のパズルと基本は同じに。shift長押しのあと、ffと連打することでコメント行を書き込む。削除は直接消す」): 536 の裏の控え(globalState)をやめ、本文の印 mP7 にした= 無ければ書く・在れば飛ぶ・消すのは行を消す。
 //   ★他の字との違いは1つ= 🔴(meosPuzzleLast)を動かさない(俊克 考察1「cパズルで飛んだ先で、今書き進めている箇所に♥️を入れておけば、🔴を見れば、そこを編集していて、その中の♥️で作業している」)
-async function meosFofWarp(opt) { try { meosPuzzleArmSet(false); const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (meosCycRevGet()) meosCycRevSet(false); if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag('f', { cycle: !!(opt && opt.cycle) }); } catch (_) { } }   // ★v5.1.542(俊克 11.06 pm06:26「もっとシンプルに」): 無ければ書く・在れば F へ・Opt で巡る・削除は本文で直接。F の付け替えは本文の♥を押す(meosFofChipClick)
+async function meosFofWarp(opt) { try { meosPuzzleArmSet(false); const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (meosCycRevGet()) meosCycRevSet(false); if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag('f', { cycle: !!(opt && opt.cycle), gate: !!(opt && opt.gate) }); } catch (_) { } }   // ★v5.1.542(俊克 11.06 pm06:26「もっとシンプルに」): 無ければ書く・在れば F へ・Opt で巡る・削除は本文で直接。F の付け替えは本文の♥を押す(meosFofChipClick)
 async function meosFusenLand(f, cold) {   // v5.1.348: 付箋の場所(uri・種類・行・桁)へ着地する= メニューの行からも、閉じている時の V-helper の URL からも
   try {
     const doc = await vscode.workspace.openTextDocument(f.uri);
@@ -46830,7 +46840,7 @@ function activate(context) {
           meosDbg('[helper] FoF');
           if (!_meosLastLineDone) meosLastLineFinish('FoF が先 → 戻さない');
           if (new URLSearchParams(u.query || '').get('sweep') === '1') { await meosPuzzleSweepGo('f'); return; }   // ★v5.1.546
-          await meosFofWarp({ cycle: new URLSearchParams(u.query || '').get('alt') === '1' }); return;
+          { const _alt = new URLSearchParams(u.query || '').get('alt') === '1'; await meosFofWarp({ cycle: _alt, gate: !_alt }); } return;
         }
         if (u && u.path === '/fusen') {   // v5.1.348: 閉じている時に V-helper の付箋を押した= 起きてその付箋へ
           const q = new URLSearchParams(u.query || ''), f = { uri: vscode.Uri.parse(q.get('uri') || ''), k: q.get('k') || 'c', line: Number(q.get('line')) || 0, ch: Number(q.get('ch')) || 0 };

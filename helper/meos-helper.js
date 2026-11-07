@@ -1290,6 +1290,9 @@ function run(argv) {
     //   その動いた先から片道を足していた(04:33:04 乗った所より62ポイント下から運んだ)= 速く入るほど行き過ぎる。
     //   → 乗った点の画面の位置(sx,sy)から片道を足す= 今どこに居ても、膨らんだ図形の同じ点へ置く。物差しが合わない時(今の位置と200ポイント以上違う)は今まで通り
     const h = scr.objectAtIndex(0).frame.size.height, cx = p.x, cy = h - p.y;
+    // ★v5.1.569(俊克 pm06:29 改良2): ♥の1段目の位置= 押した所を控え(set)、mGATE や別の♥からそこへ運ぶ(go)
+    if (o.home === 'set') { $.NSString.stringWithString(JSON.stringify({ x: cx, y: cy })).writeToFileAtomicallyEncodingError(dir + '/heart-home.json', true, $.NSUTF8StringEncoding, null); hlog('heartHome set ' + cx.toFixed(1) + ',' + cy.toFixed(1)); return; }
+    if (o.home === 'go') { let hh = null; try { hh = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(dir + '/heart-home.json', $.NSUTF8StringEncoding, null))); } catch (e) {} if (!hh || !isFinite(hh.x) || !isFinite(hh.y)) return; try { $.CGWarpMouseCursorPosition({ x: hh.x, y: hh.y }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {} hlog('heartHome go ' + hh.x + ',' + hh.y); return; }
     const pk = o.pt ? 1 : bs; let x = cx + Number(o.dx) / pk, y = cy + Number(o.dy) / pk, how = 'rel';   // v5.1.566: pt= もう Mac のポイント(♥のワープ)
     if (!isFinite(x) || !isFinite(y)) return;
     const ex = Number(o.sx), ey = Number(o.sy);   // v5.1.240: 乗った点はもう Mac のポイント(screenX)
