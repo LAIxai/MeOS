@@ -40661,6 +40661,39 @@ async function meosRuleStep(down) {
   } catch (_) { }
   meosRuleGo(cmd, down, gap < 400);
 }
+// ★v5.1.587(俊克 am02:59 改良1「Cmd+↑/↓をハックして、膜の内部で実行したときは、罫線の手前までジャンプ」): 上は開始の罫線の次の行の頭・下は閉じの罫線の前の行の末尾へ。
+//   中の子の膜は深さで飛ばす。膜の外・罫線の無い膜・もう端に居る時は本来の先頭/末尾へ(もう1回押せば抜ける)。♥膜も同じ。囲いと `…` の中の字は数えない
+function meosMemEdgeAt(t, inFence) {
+  if (inFence || !/[▼▽▲△]/.test(t)) return 0;
+  if (parseOpenLine(t)) return 1; if (parseCloseLine(t)) return -1;
+  const m = MEOS_FOF_MARK_RE.exec(meosRefScanText(t)); if (!m) return 0;
+  return m[1].indexOf('\u25bc') >= 0 ? 1 : (m[1].indexOf('\u25b2') >= 0 ? -1 : 0);
+}
+function meosMembraneRuleTarget(doc, cur, down) {
+  const L = meosDocLines(doc), fence = meosFenceLines(doc), dir = down ? 1 : -1, want = down ? -1 : 1; let depth = 0;
+  for (let i = cur + dir; i >= 0 && i < L.length; i += dir) {
+    const e = meosMemEdgeAt(L[i], fence.has(i)); if (!e) continue;
+    if (e !== want) { depth++; continue; }
+    if (depth > 0) { depth--; continue; }
+    const rule = i - dir, to = rule - dir;
+    if (rule < 0 || rule >= L.length || !MEOS_RULE_LINE_RE.test(L[rule])) return -1;
+    return (down ? to > cur : to < cur) ? to : -1;
+  }
+  return -1;
+}
+async function meosMembraneEdge(down) {
+  const ed = vscode.window.activeTextEditor, native = down ? 'cursorBottom' : 'cursorTop';
+  try {
+    if (ed && meosIsProseDoc(ed.document) && ed.selections.length === 1) {
+      const doc = ed.document, cur = ed.selection.active.line, edge = meosMemEdgeAt(doc.lineAt(cur).text, false), head = down ? 1 : -1;
+      if (!(edge === head && meosRuleHidden(ed, cur + head))) {   // 畳んだ膜の見出しから中へは入らない
+        const to = meosMembraneRuleTarget(doc, cur, down);
+        if (to >= 0) { const p = new vscode.Position(to, down ? doc.lineAt(to).text.length : 0); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport); return; }
+      }
+    }
+  } catch (_) { }
+  await vscode.commands.executeCommand(native);
+}
 function meosUpdateInTableContext(editor) {
   let v = false;
   try { if (editor && editor.document && editor.selection) v = !!meosTableInfoAny(editor.document, editor.selection.active.line); } catch (_) {}   // v5.1.279: 見せかけで描いている表でも、カーソルが居れば表の中
@@ -46815,7 +46848,7 @@ function activate(context) {
   // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.ruleStepDown', () => meosRuleStep(true)), vscode.commands.registerCommand('laiMembrane.ruleStepUp', () => meosRuleStep(false)));   // v5.1.579
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.membraneEdgeDown', () => meosMembraneEdge(true)), vscode.commands.registerCommand('laiMembrane.membraneEdgeUp', () => meosMembraneEdge(false)), vscode.commands.registerCommand('laiMembrane.ruleStepDown', () => meosRuleStep(true)), vscode.commands.registerCommand('laiMembrane.ruleStepUp', () => meosRuleStep(false)));   // v5.1.579
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   // ★★v4.0.402(俊克 8/26 am10:09 改良2「橙色の表示が切り替わるのに、3、4秒かかるのが良くない。
