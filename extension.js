@@ -7597,7 +7597,7 @@ const REF_PENDING_FAM = 'P';
 // v1.0.11(俊克 改良1): ジャンプ着地の一時raw抑止。この行はカーソルが乗っていても参照符をraw化せずチップ描画のまま(脚注/巡回で飛んだ直後は読む用=インライン編集にしない)。カーソルがこの行を離れたら解除→再クリックで通常のraw編集。
 let _refNoRawUri = '';
 let _refNoRawLine = -1;
-let _refNoRawAt = 0, _meosMemClickAt = 0;   // v5.0.0-32: 抑止を張った時刻
+let _refNoRawAt = 0;   // v5.0.0-32: 抑止を張った時刻
 function setRefNoRaw(doc, line) { _refNoRawAt = Date.now(); try { _refNoRawUri = doc.uri.toString(); _refNoRawLine = Number(line); } catch (_) { _refNoRawUri = ''; _refNoRawLine = -1; } }
 // ★v4.2.759: 抑止を解いた時の控え(押す直前にまだ効いていたかを、押した後から訊くため)
 let _refNoRawPrevUri = '', _refNoRawPrevLine = -1, _refNoRawPrevAt = 0;
@@ -25379,54 +25379,7 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
 // the wrap column, so clicks there are unaffected.
 //
 // v0.9.615: †† 注釈領域があればその直後へリダイレクト。なければ次行先頭へ。
-function maybeRedirectClickFromHiddenSuffix(editor) {
-  if (!editor || mSkeletonMode) return;
-  const sel = editor.selection;
-  if (!sel || !sel.isEmpty) return;
-  const pos = sel.active;
-  const text = editor.document.lineAt(pos.line).text || '';
-
-  // Only act on membrane open lines (close lines are short, rarely wrap).
-  const parts = membraneLineParts(text, 'open');
-  if (!parts) return;
-
-  // Only act when the line is long enough to word-wrap.
-  const wrapCfg = vscode.workspace.getConfiguration('editor');
-  const wrapMode = wrapCfg.get('wordWrap', 'off');
-  if (wrapMode === 'off') return;
-  // For 'wordWrapColumn' / 'bounded': use configured column.
-  // For 'on': wrap at viewport edge — approximate with 80 (conservative).
-  const wrapColumn = (wrapMode === 'on')
-    ? 80
-    : Math.max(40, Math.min(300, Number(wrapCfg.get('wordWrapColumn', 80)) || 80));
-  const lineLen = text.replace(/\t/g, '  ').length;
-  if (lineLen <= wrapColumn) return; // Line doesn't wrap — no visual 2nd line.
-
-  // If cursor is past the wrap column, it's on the visual 2nd line.
-  if (pos.character < wrapColumn) return;
-
-  // v0.9.99971: ††注釈へのカーソルリダイレクト(v626)は††廃止で撤去。
-
-  // v0.9.909: ★折り畳まれた膜では、次行(=隠れた行)へカーソルを移すとVSCodeがそれを見せるため自動展開して
-  // しまう(俊克 6/16 pm10:00: 膜名コメントが折り返し、その部分をクリックすると膜が展開)。畳まれている時は
-  // 再配置せず、クリックが落ちた可視のヘッダ行にカーソルを留める=誤展開しない。
-  const _pairHere = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === pos.line);
-  if (_pairHere && isPairFolded(editor, _pairHere)) return;
-  // No annotation area — move cursor to the beginning of the next line.
-  const nextLine = pos.line + 1;
-  if (nextLine < editor.document.lineCount) {
-    const p = new vscode.Position(nextLine, 0);
-    editor.selection = new vscode.Selection(p, p);
-  } else {
-    // At end of file — insert a new line and move there.
-    editor.edit(edit => {
-      edit.insert(new vscode.Position(pos.line, text.length), '\n');
-    }, { undoStopBefore: false, undoStopAfter: false }).then(() => {
-      const p = new vscode.Position(nextLine, 0);
-      editor.selection = new vscode.Selection(p, p);
-    });
-  }
-}
+// ★v5.1.579(俊克 pm08:12→08:37「折り返された開始膜のコメントをクリックすると次の行に出てしまう」): maybeRedirectClickFromHiddenSuffix を撤去。2段目が隠し字だけだった v0.9.613 の頃の処理= v4.0.344 で膜の行は生を見せるようになり、2段目は本物のコメントになった。桁80以降のクリックを全部次の行へ送っていた
 
 async function maybeAutoUnfoldOnSelection(editor, selectionKind) {
   // v0.9.756: NEUTERED. Auto-unfold-on-click is abolished — the ▼⇄▼▲ Toggle button on
@@ -40638,12 +40591,28 @@ function meosFcKeysNeeded(editor) {
 }
 let _meosInTableCtx = false;
 // v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
+let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, hold: false };
+// ★v5.1.579(俊克 pm08:37 改良1「罫線のところで↓/↑キーが一時停止するようにできないか? 一時停止したあと、再度↓/↑キーを押すと、進める」): キーの離れは拡張に見えない→ 間隔で読む。
+//   0.2秒より短い間隔= 押しっぱなし。罫線の手前の行で止まり、押しっぱなしが続く間は受け流す。0.2秒空いたら押し直し= 進める
+async function meosRuleStep(down) {
+  const cmd = down ? 'cursorDown' : 'cursorUp', ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
+  try {
+    if (_meosRuleKey.hold && gap < 200) return;
+    _meosRuleKey.hold = false;
+    if (ed && gap < 200) { const d = ed.document, to = ed.selection.active.line + (down ? 1 : -1);
+      if (to >= 0 && to < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(to).text) && (ed.visibleRanges || []).some(r => to >= r.start.line && to <= r.end.line)) { _meosRuleKey.hold = true; return; } }
+  } catch (_) { }
+  await vscode.commands.executeCommand(cmd);
+}
 function meosUpdateInTableContext(editor) {
   let v = false;
   try { if (editor && editor.document && editor.selection) v = !!meosTableInfoAny(editor.document, editor.selection.active.line); } catch (_) {}   // v5.1.279: 見せかけで描いている表でも、カーソルが居れば表の中
   if (MEOS_RELEASE_PHASE < 3) v = false; // v1.0.0: テーブル未解禁フェーズでは inTable を常にfalse=セル移動keybindingを無効化
   if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} }
   // v4.0.400: bs/改行/fs を横取りするかどうか。変わった時だけ送る(打鍵の道に仕事を足さない)。
+  // ★v5.1.579: 罫線の近く(上下4行)に居る間だけ ↑↓ を預かる(打鍵の道に仕事を足さない)
+  let rn = false; try { if (editor && editor.document && editor.selection && meosIsProseDoc(editor.document)) { const d = editor.document, l = editor.selection.active.line; for (let i = Math.max(0, l - 4), e = Math.min(d.lineCount - 1, l + 4); i <= e; i++) if (MEOS_RULE_LINE_RE.test(d.lineAt(i).text)) { rn = true; break; } } } catch (_) { }
+  if (rn !== _meosRuleNearCtx) { _meosRuleNearCtx = rn; try { vscode.commands.executeCommand('setContext', 'meos.ruleNear', rn); } catch (_) { } }
   const fk = meosFcKeysNeeded(editor);
   if (fk !== _meosFcKeysCtx) { _meosFcKeysCtx = fk; try { vscode.commands.executeCommand('setContext', 'meos.fcKeys', fk); } catch (_) {} }
   // ★★v4.0.405(俊克 8/26 am11:09 改良1「bs1回が1、2秒遅延することがまだある。何とかならないか?」):
@@ -46330,13 +46299,10 @@ function activate(context) {
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor !== vscode.window.activeTextEditor) return; _vrPrev = _vrCur; _vrCur = _snap(e.textEditor); _vrAt = Date.now(); } catch (_) { } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
       try {
-        try { if (Date.now() - _meosMemClickAt < 1500) { const _a = e.selections[0]; meosDbg('[memClick] 動いた kind=' + e.kind + ' ' + (_a.active.line + 1) + ':' + _a.active.character + ' 選択=' + (_a.isEmpty ? 'なし' : 'あり') + ' 見える上端=' + (((e.textEditor.visibleRanges || [])[0] || { start: { line: -2 } }).start.line + 1)); } } catch (_) { }   // kind 1=キー 2=マウス 3=コマンド 空=拡張
         if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
         const ed = e.textEditor, sel = e.selections && e.selections[0];
         // v5.0.0-32(俊克 バグ1「膜をクリックしても全体がRaw表示にならない。最初の1回だけRawになった」): ▼で畳むと、頭の行に着地の抑止(setRefNoRaw)が張られ、
         //   カーソルがその行を出るまで生にならない= 同じ行を何度押しても生にならなかった。人がマウスで押し直したら抑止を解く(張った直後の0.4秒は▼自身の着地なので解かない)
-        // v5.1.577 測る(俊克 pm08:12「折り返されているとき、2行目をクリックしてコメント部分を修正しようとすると、Rawモードが解除」): 膜の行を押した時の桁と生の状態
-        try { if (ed && sel && sel.isEmpty) { const _t = ed.document.lineAt(sel.active.line).text; if (/[▼▲▽△]/.test(_t) && _t.indexOf('mCN=') >= 0) { const _i = membraneLineInfo(ed.document, sel.active.line); _meosMemClickAt = Date.now(); meosDbg('[memClick] 行=' + (sel.active.line + 1) + ' 桁=' + sel.active.character + '/' + _t.length + ' idStart=' + (_i ? _i.idStart : -1) + ' raw=' + meosShowsRawLine(ed, sel.active.line) + ' noRaw=' + _refNoRawLine); setTimeout(() => { try { meosDbg('[memClick] 0.5秒後 桁=' + ed.selection.active.character + ' 行=' + (ed.selection.active.line + 1) + ' raw=' + meosShowsRawLine(ed, sel.active.line) + ' noRaw=' + _refNoRawLine); } catch (_) { } }, 500); } } } catch (_) { }
         try {
           if (ed && sel && _refNoRawLine === sel.active.line && _refNoRawUri === ed.document.uri.toString() && Date.now() - _refNoRawAt > 400) {
             meosDbg('[noRaw] マウスで同じ行を押し直した 行=' + (sel.active.line + 1) + ' → 着地の抑止を解く');
@@ -46792,6 +46758,7 @@ function activate(context) {
   // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.ruleStepDown', () => meosRuleStep(true)), vscode.commands.registerCommand('laiMembrane.ruleStepUp', () => meosRuleStep(false)));   // v5.1.579
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   // ★★v4.0.402(俊克 8/26 am10:09 改良2「橙色の表示が切り替わるのに、3、4秒かかるのが良くない。
@@ -47421,7 +47388,6 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       // v0.9.675: IMMEDIATE click actions only (lightweight): cursor-redirect, W-click button
       // hit-test + jump + 🟢 render, auto-unfold. These queue their renderer updates and the
       // handler returns at once so the ext host yields — Line field / 🟢 / paste paint now.
-      maybeRedirectClickFromHiddenSuffix(e.textEditor);
       handleMembraneNameSelection(e.textEditor, e.kind);
       maybeAutoUnfoldOnSelection(e.textEditor, e.kind);
       // v0.9.675: DEFER the heavy full refresh (applyPrettyLabels + all decoration computers)

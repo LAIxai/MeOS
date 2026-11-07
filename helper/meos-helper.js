@@ -942,10 +942,11 @@ function run(argv) {
 // {* ▼mCN=1420_MGATE_SEATS // mGATE の4つの席 / ドラッグ / 吸い付き / クリックの見張り dockOutFast (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.532(俊克 11.06 am09:42「メニューバーの左端と右端にも移動できるようにしよう。Picture-in-picture のようにね…左右の端、自分のメニューバーの真下(現状)、画面の中央、この4種類」/ am09:47「ウィンドウを左上目一杯広げて使っていることを想定して、ウィンドウ左上の3つのボタンを避ける位置まで」):
   //   席は4つ= tag(札の真下・従来) / left / center / right。↖の地を横へドラッグし、放すと近い席へ吸い付く。高さはメニューバーの真下のまま。tag 以外の席は出しっぱなし(閉じるのはロゴの Shift クリック)
+  const DO_RIGHT_SAFE = 376;   // ★v5.1.579(俊克 pm08:37 改良1「mGATEを右端に移動すると、いろんな通知が被るので、それを避ける位置に」): macOS の通知(幅344+余白)を避ける
   const DO_LEFT_SAFE = 84;   // 左端の席= 画面の左から窓の3つのボタンの分だけ空ける
   const dockOutSeat = () => { if (dockOut.seat) return dockOut.seat; let t = ''; try { const n = $.NSString.stringWithContentsOfFileEncodingError($(dir + '/dockout-seat'), $.NSUTF8StringEncoding, null); if (n && !n.isNil()) t = ObjC.unwrap(n).trim(); } catch (e) {} dockOut.seat = /^(left|center|right)$/.test(t) ? t : 'tag'; return dockOut.seat; };
   const dockOutSeatX = (seat, w) => { const b = item.button, bw = b.window, r = bw.convertRectToScreen(b.convertRectToView(b.bounds, $())), sc = bw.screen, sf = sc.visibleFrame, lo = sf.origin.x + 4, hi = sf.origin.x + sf.size.width - w - 4; const cl = (x) => Math.max(lo, Math.min(x, hi));
-    if (seat === 'left') return cl(sf.origin.x + DO_LEFT_SAFE); if (seat === 'right') return hi; if (seat === 'center') return cl(sc.frame.origin.x + (sc.frame.size.width - w) / 2);
+    if (seat === 'left') return cl(sf.origin.x + DO_LEFT_SAFE); if (seat === 'right') return cl(hi - DO_RIGHT_SAFE); if (seat === 'center') return cl(sc.frame.origin.x + (sc.frame.size.width - w) / 2);
     return cl(r.origin.x + r.size.width - Math.max(0, (r.size.width - pieceImgW) / 2) - w); };
   const dockOutDragMove = () => { const g = dockOut.drag, f = dockOut.win.frame, sf = item.button.window.screen.visibleFrame, dx = $.NSEvent.mouseLocation.x - g.mx; if (Math.abs(dx) > 3) g.moved = true; if (!g.moved) return; dockOut.win.setFrameOrigin($.NSMakePoint(Math.max(sf.origin.x + 4, Math.min(g.ox + dx, sf.origin.x + sf.size.width - f.size.width - 4)), f.origin.y)); };
   const dockOutDragEnd = () => { const g = dockOut.drag; dockOut.drag = null; if (!g.moved) return; const f = dockOut.win.frame; let best = 'tag', bd = Infinity; for (const k of ['tag', 'left', 'center', 'right']) { const d = Math.abs(dockOutSeatX(k, f.size.width) - f.origin.x); if (d < bd) { bd = d; best = k; } }
