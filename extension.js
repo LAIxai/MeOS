@@ -7399,15 +7399,37 @@ async function meosPuzzleSweep(ed, n, ch) {
   vscode.window.setStatusBarMessage('MeOS: ' + ch + ' \u2014 removed ' + kill.length, 3000);
 }
 async function meosPuzzleSweepGo(ch) { try { const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag(ch, { sweep: true }); } catch (_) { } }
-async function meosPuzzleLand(ed, line, onRow) {
+// ★v5.1.585(俊克 am02:14 改良1「通常の膜と同様に、最後にいた場所、つまり、♥️開始膜からの行数を記憶して、mGATEの♥️ボタンをクリックしたとき、そこにワープ。行頭からの文字数もね」):
+//   通常の膜と同じ控え(getMeCursorMap)へ、印の名前に ♥ を付けて入れる。組の範囲を読むのは全行を見るので、手が止まってから1回・文書が変わった時だけ読み直す
+let _meosFofPlaceT = null, _meosFofPairC = null;
+function meosFofRange(doc) {
+  const k = doc.uri.toString() + '|' + doc.version; if (_meosFofPairC && _meosFofPairC.k === k) return _meosFofPairC.r;
+  let r = null; try { const p = meosFofPair(doc), L = meosDocLines(doc); if (p && p.m && meosFofIsTwo(L[p.f.line]) && meosFofIsTwo(L[p.m.line])) { const o = p.f.line < p.m.line ? p.f : p.m; r = { start: o.line, end: (o === p.f ? p.m : p.f).line, key: '\u2665' + o.name }; } } catch (_) { }
+  _meosFofPairC = { k, r }; return r;
+}
+function meosFofNotePlace(ed) {
+  if (_meosFofPlaceT) clearTimeout(_meosFofPlaceT);
+  _meosFofPlaceT = setTimeout(() => { _meosFofPlaceT = null; try {
+    const doc = ed.document; if (!meosIsProseDoc(doc) || doc.isClosed) return;
+    const r = meosFofRange(doc), a = ed.selection.active; if (!r || a.line <= r.start || a.line >= r.end || MEOS_RULE_LINE_RE.test(doc.lineAt(a.line).text)) return;
+    const m = getMeCursorMap(doc), cols = (m.__col && typeof m.__col === 'object') ? m.__col : (m.__col = {}); m[r.key] = a.line - r.start; cols[r.key] = a.character;
+    if (extensionContext) extensionContext.globalState.update(meCursorKey(doc), m);
+  } catch (_) { } }, 300);
+}
+function meosFofSavedPos(doc) {
+  try { const r = meosFofRange(doc); if (!r) return null; const l = savedMeCursorLine(doc, r.key, r.start, r.end - 1); return l > r.start ? { start: r.start, pos: new vscode.Position(l, savedMeCursorCol(doc, r.key, l)) } : null; } catch (_) { return null; }
+}
+async function meosPuzzleLand(ed, line, onRow, at) {
   const doc = ed.document;
   // ★v4.2.589(俊克「パズルワープでは、P1〜6の行の次の行に着陸しよう。紫のP1〜6を見せるため」): 印の行に立つと生データに戻って紫のチップが消える→ 1行下へ
   let land = Math.min(line + 1, doc.lineCount - 1);
   if (onRow && land + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(land).text)) land++;   // v5.1.574: 罫線の行に立つと生の字に戻る= 中身の1行目へ
-  const pos = new vscode.Position(land, 0);
+  const pos = at || new vscode.Position(land, 0);
   const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
   // ★v5.1.568(俊克 pm06:16 バグ1「最初に任意の位置だと大きく外れる…5行目の位置に表示すれば」): 567 の真ん中置きをやめる。♥の行を AtTop で置く= 実機では1段目に来る(俊克 pm06:29「1行目の方がいいね」)。折り返しに左右されない
   try { shown.revealRange(onRow ? new vscode.Range(line, 0, line, 0) : new vscode.Range(line, 0, land, 0), onRow ? vscode.TextEditorRevealType.AtTop : vscode.TextEditorRevealType.InCenter); } catch (_) { }
+  // v5.1.585: ♥を1段目に置くと最後の場所が画面の外になる長い膜は、カーソルの方を見せる
+  if (at) try { await new Promise(r => setTimeout(r, 120)); if (!(shown.visibleRanges || []).some(r => at.line >= r.start.line && at.line <= r.end.line)) meosRevealNearTop(shown, at.line); } catch (_) { }
   meosPostPuzzleDots(true); return shown;
 }
 // ★v5.1.566(俊克 11.07 pm02:28 改良1「♥をクリックしても、ポインタ位置が少しズレてしまうので、ポインタを自動で♥の右下に自動追従して」): ♥へ飛ぶと着地は画面の真ん中= ♥の画面の高さが変わる。
@@ -7500,7 +7522,7 @@ async function meosPuzzleTag(ch, opt) {
     if (f) line = f.line;
     else { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur); line = (nx || hits[0]).line;
       vscode.window.setStatusBarMessage('MeOS: ' + ch + ' has ' + hits.length + ' marks \u2014 click the mark to keep in the text; it becomes the front.', 5000); }
-    { const _sh = await meosPuzzleLand(ed, line, ch === 'f'); if (ch === 'f') meosFofSettle(_sh || ed, line, { gate: !!(opt && opt.gate) }); }   // v5.1.569: ♥は Me Dock/mGATE からも1段目へ。ポインターを運ぶのは mGATE から
+    { const _sv = ch === 'f' ? meosFofSavedPos(doc) : null; if (_sv) line = _sv.start; const _sh = await meosPuzzleLand(ed, line, ch === 'f', _sv ? _sv.pos : null); if (ch === 'f') meosFofSettle(_sh || ed, line, { gate: !!(opt && opt.gate) }); }   // v5.1.569: ♥は Me Dock/mGATE からも1段目へ。ポインターを運ぶのは mGATE から
     meosDbg('[puzzleTag] ' + ch + '=P' + n + ' へ飛んだ' + (f ? '(F)' : '(F無し・候補)') + ' 行=' + (line + 1) + ' (' + hits.length + '本)');
   } catch (e) { meosDbg('[puzzleTag] ' + (e && e.message)); }
 }
@@ -40591,7 +40613,7 @@ function meosFcKeysNeeded(editor) {
 }
 let _meosInTableCtx = false;
 // v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
-let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, moved: 0, hold: false, busy: false };
+let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, moved: 0, hold: false, busy: false, pass: -1 };
 // ★v5.1.579(俊克 pm08:37 改良1「罫線のところで↓/↑キーが一時停止するようにできないか? 一時停止したあと、再度↓/↑キーを押すと、進める」): キーの離れは拡張に見えない→ 間隔で読む。
 // ★v5.1.580(俊克 pm11:14 バグ1「罫線のところで、↓/↑キーが一時停止しない」): 実機の連打は30ms間隔(KeyRepeat 2)・初回だけ225ms(InitialKeyRepeat 15)。
 //   ①拡張ホストが1回の移動に30ms以上かかると、見ているカーソルが実物より遅れる→ 文脈キーが着いた時には本物が罫線を過ぎていた(台で再現)→ 預かる範囲を上下200行へ
@@ -40599,10 +40621,11 @@ let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, moved: 0, hold: fals
 //   ③初回の225msが「押し直し」に読めた→ 手前で止める判定は間隔0.4秒未満。止まった後は0.15秒空いたら離れた印(リピートは30ms)
 //   ④折り畳みの中の罫線だけ止まらない= 見えている範囲の「間」にある行。画面の下の外は止める(下端を走る時に止まらなかった)
 function meosRuleHidden(ed, l) { const v = ed.visibleRanges || []; for (let i = 0; i + 1 < v.length; i++) if (l > v[i].end.line && l < v[i + 1].start.line) return true; return false; }
+// ★v5.1.585(俊克 am02:14 バグ1「まだ、外側から♥️膜の中に入ってしまう」): 実機の控えで判明= ♥膜の行は `♥️▼▶◀mP7=` で、parseOpenLine(mCN等だけ)が膜の行と認めていなかった= 台の `▼mCN=` では止まり、実物の♥では素通り。♥の印も見る
 // ★v5.1.581(俊克 pm11:43「上から来ると、♥️開始膜のRawで止まるね。入る手前で止まると最高」): 膜の行のすぐ向こうが罫線なら、膜の行へ入る手前で止まる(上の開始膜・下の閉じ膜の両方)。
 //   止まった後は押し直しの1打を止めない= 膜の行に着いたら、その先の罫線では止まらない(2度止まらない)
 function meosRuleStopAt(ed, cur, down) {
-  const d = ed.document, dir = down ? 1 : -1, to = cur + dir, isRule = l => l >= 0 && l < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(l).text), edge = l => down ? parseOpenLine(d.lineAt(l).text) : parseCloseLine(d.lineAt(l).text);
+  const d = ed.document, dir = down ? 1 : -1, to = cur + dir, isRule = l => l >= 0 && l < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(l).text), edge = l => { const t = d.lineAt(l).text, m = MEOS_FOF_MARK_RE.exec(t); return (down ? parseOpenLine(t) : parseCloseLine(t)) || (m && m[1].indexOf(down ? '\u25bc' : '\u25b2') >= 0); };
   if (to < 0 || to >= d.lineCount) return false;
   if (isRule(to)) return !edge(cur) && !meosRuleHidden(ed, to);
   return isRule(to + dir) && !!edge(to) && !meosRuleHidden(ed, to) && !meosRuleHidden(ed, to + dir);
@@ -40619,23 +40642,23 @@ function meosRuleApproaching(ed, cur, down) { for (let k = 0, dir = down ? 1 : -
 async function meosRuleGo(cmd, down, run) {
   _meosRuleKey.moved = Date.now(); _meosRuleKey.busy = true;
   try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
-  if (run) try { const ed = vscode.window.activeTextEditor; if (ed && meosRuleStopAt(ed, ed.selection.active.line, down)) { _meosRuleKey.hold = true; meosRuleLog('arrive-hold', ed, 0); } } catch (_) { }
+  if (run) try { const ed = vscode.window.activeTextEditor, l = ed && ed.selection.active.line; if (ed && l !== _meosRuleKey.pass && meosRuleStopAt(ed, l, down)) _meosRuleKey.hold = true; } catch (_) { }
 }
-// ★TEMP v5.1.584: 実機の間隔を読むための仮の控え(/tmp/meos-rule.log)。次の版で外す
-function meosRuleLog(what, ed, gap) { try { require('fs').appendFileSync('/tmp/meos-rule.log', Date.now() + ' ' + what + ' gap=' + gap + ' line=' + (ed ? ed.selection.active.line : -1) + ' hold=' + _meosRuleKey.hold + '\n'); } catch (_) { } }
+// ★v5.1.585: 実機の手前の行は折り返しが多い= 押し直しの1打が同じ行の2段目に動くだけだと、もう一度止まっていた→ 押し直した行では止めない(pass)
 async function meosRuleStep(down) {
   const cmd = down ? 'cursorDown' : 'cursorUp', ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
-  if (_meosRuleKey.busy) { meosRuleLog('busy', ed, gap); return; }
+  if (_meosRuleKey.busy) return;
   try {
+    const cur = ed ? ed.selection.active.line : -1;
     if (_meosRuleKey.hold) {
-      meosRuleLog('held', ed, gap);
-      if (gap >= 150) setTimeout(() => setImmediate(() => { if (_meosRuleKey.at !== now || !_meosRuleKey.hold) return; _meosRuleKey.hold = false; meosRuleLog('release', ed, gap); meosRuleGo(cmd, down, false); }), 120);
+      if (gap >= 150) setTimeout(() => setImmediate(() => { if (_meosRuleKey.at !== now || !_meosRuleKey.hold) return; _meosRuleKey.hold = false; _meosRuleKey.pass = cur; meosRuleGo(cmd, down, false); }), 120);
       return;
     }
-    if (ed && gap < 400 && meosRuleStopAt(ed, ed.selection.active.line, down)) { _meosRuleKey.hold = true; meosRuleLog('stop', ed, gap); return; }
-    if (ed && gap < 150 && now - _meosRuleKey.moved < MEOS_RULE_SLOW_MS && meosRuleApproaching(ed, ed.selection.active.line, down)) return;
+    if (cur !== _meosRuleKey.pass) _meosRuleKey.pass = -1;
+    if (ed && gap < 400 && cur !== _meosRuleKey.pass && meosRuleStopAt(ed, cur, down)) { _meosRuleKey.hold = true; return; }
+    if (ed && gap < 150 && now - _meosRuleKey.moved < MEOS_RULE_SLOW_MS && meosRuleApproaching(ed, cur, down)) return;
   } catch (_) { }
-  meosRuleLog('go', ed, gap); meosRuleGo(cmd, down, gap < 400);
+  meosRuleGo(cmd, down, gap < 400);
 }
 function meosUpdateInTableContext(editor) {
   let v = false;
@@ -46804,6 +46827,7 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
     if (_meosCaretProbing) return; 
     meosUpdateInTableContext(e.textEditor);
+    meosFofNotePlace(e.textEditor);   // v5.1.585: ♥膜の最後にいた場所
     try { meosApplyFcRowDecorations(e.textEditor); } catch (_) { }
     try { meosOpenByBadgeOnEnter(e.textEditor); } catch (_) { }   // v4.1.153: 入った膜はバッジのとおりに開く
   }));
