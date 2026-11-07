@@ -428,7 +428,7 @@ function run(argv) {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((f ? '\u25b8 ' : '\u25be ') + p.name)); starLbl(p, p.hb.superview, p.star);   /* v5.1.483: ⭐️は題の外(左の余白) */   /* v5.1.477 */ const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFontManager.sharedFontManager.convertFontToHaveTrait($.NSFont.menuFontOfSize(0), 3), r);   // v5.1.338(俊克 pm01:41「CB FUSEN・Yellow などの見出しも太字＋イタリックに。項目名と区別しやすいように」): 3= 太字|斜体
     a.addAttributeValueRange($.NSForegroundColorAttributeName, p.its.length ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f);
-    p.hb.attributedTitle = a; } catch (e) {} };
+    p.hb.attributedTitle = a; hbFit(p.hb); } catch (e) {} };
   // ★v5.1.321(俊克 am02:47 改良1「FUSEN という全体ラベルを ⏰0y… の下に入れ、間に罫線。FUSEN をクリックすると付箋すべてを折り畳める」):
   //   全体の見出し= 群と同じ「メニューの中のボタン」(押しても閉じない)。畳むと群の見出しも中身も、CB と IC の間の区切りも隠す。群ごとの畳みは覚えたまま
   const fusenAll = { hb: null, seps: [] };
@@ -442,7 +442,7 @@ function run(argv) {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((fusenAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ')));   /* v5.1.477: ⭐️= 最後に着地した付箋を含む */ fusenHead(a); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, pagers.some(p => p.its.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, f, null, fusenAll.star ? STAR.length : 0); starSm(a, fusenAll.star);
-    fusenAll.hb.attributedTitle = a; } catch (e) {} };
+    fusenAll.hb.attributedTitle = a; hbFit(fusenAll.hb); } catch (e) {} };
 // {* ▲mCN=0700_MENU_PARTS // end [cGJF=h] *}
 // {* ▼mCN=0800_HEAD_CYCLE // 見出しの畳み / ↻ の4姿 / 待ちの姿 / 🏷️の見出し (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v5.1.356(俊克 10.31 am10:03 改良1「メニューバーを1クリックで全て折り畳んだ状態にするボタン…通常の⏰も折り畳めるように」・タイトル「▼ ⏰」/
@@ -454,12 +454,14 @@ function run(argv) {
   //   ▸ALL= 明後日以降の行と、その前の区切りを隠す。far= 明後日の0時から先の印(行と区切りに拡張とヘルパーが付ける)。押して変えた姿は動いている間は覚えている
   // ★v5.1.555(俊克 11.07 am11:30「パーペキ…この状態をデフォルトにしようよ」): 起動時の姿= ▸ALL(今日と明日だけ)
   let clockNear = true;
+  // ★v5.1.557(俊克 11.07 am11:51 バグ1「ボタン以外のところで、↖ポインターが正しく出ていない」): 見出しのボタンは字の幅だけ= 右の空き地は押せず指も出ない
+  const hbFit = (b) => { try { const f = b.frame; b.autoresizingMask = 0; b.frame = $.NSMakeRect(f.origin.x, f.origin.y, Math.ceil(b.intrinsicContentSize.width) + 4, f.size.height); } catch (e) {} };
   const clockAll = { hb: null, cyc: null, nb: null, rows: [], seps: [], far: [] };
   const clockTitle = () => { try { headPaint(); if (!clockAll.hb) return; const f = clockFold;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((clockAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, f, TRI_RED, clockAll.star ? STAR.length : 0); starSm(a, clockAll.star);   /* v5.1.479 */
-    clockAll.hb.attributedTitle = a; } catch (e) {} };
+    clockAll.hb.attributedTitle = a; hbFit(clockAll.hb); } catch (e) {} };
   // ★v5.1.357(俊克 am10:19 改良1「⊟の代わりに、↻を45°ずつ回転…↻を赤色に…Me Dockのボタンのように円で囲む。角度ごとに色を変えても」):
   //   押すたびに45°ずつ回る↻を円で囲んだ絵。色は姿ごと= はじめ/全部畳む=赤・⏰だけ=橙・付箋だけ=緑・タグだけ=青
   let cycN = 0, cycRev = false, cycHover = false;   // v5.1.373: cycHover= ↻をポイント中(拡大して描く)
@@ -500,7 +502,7 @@ function run(argv) {
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((tagAll.star ? STAR : '') + (tagAll.fold ? '\u25b8 ' : '\u25be ') + '\ud83c\udff7\ufe0f')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
     a.addAttributeValueRange($.NSForegroundColorAttributeName, (tagAll.list.length || tagAll.rows.length) ? $.NSColor.labelColor : $.NSColor.tertiaryLabelColor, r); triCol(a, tagAll.fold, TRI_PURPLE, tagAll.star ? STAR.length : 0); starSm(a, tagAll.star);   /* v5.1.479 */
-    tagAll.hb.attributedTitle = a; } catch (e) {} };
+    tagAll.hb.attributedTitle = a; hbFit(tagAll.hb); } catch (e) {} };
   // ★v5.1.327(俊克 10.30 am10:40 改良4「TAG の … 14 more も、FUSEN の ▲ ▼ 1/2 のようにスライドできるように」): 札の見出しと膜の行を1本の並びにして TAG_PAGE 行ずつ・▲▼で送る(FUSEN の群と同じ、押しても閉じない)
   const TAG_PAGE = 10;
   // ★v5.1.343(俊克 pm02:25「スライドボタンを連続で押せるように、ポインター位置を移動しよう」): 送るとページの行数が変わり▲▼が上下にずれる→ 描き直した後(0.05秒・メニューの中でも鳴る)、押したボタンの真ん中へポインターを運ぶ(TAG と FUSEN の群)
@@ -522,12 +524,13 @@ function run(argv) {
   let moveOn = false;
   const moveCur = (k) => { const n = handCur.n || 'btron', grip = k === 'grip'; if (n === 'system') return grip ? $.NSCursor.closedHandCursor : $.NSCursor.openHandCursor; const mac = n === 'macos22', q = k + (mac ? '22' : ''); if (moveCur[q]) return moveCur[q]; try { const im = $.NSImage.alloc.initWithContentsOfFile($(handFile() + 'mgate-' + q + '.png')); if (im && !im.isNil()) { im.size = mac ? $.NSMakeSize(21, 25) : $.NSMakeSize(24, 26); moveCur[q] = $.NSCursor.alloc.initWithImageHotSpot(im, mac ? $.NSMakePoint(3, grip ? 9 : 3) : $.NSMakePoint(0, 5)); return moveCur[q]; } } catch (e) {} return grip ? $.NSCursor.closedHandCursor : $.NSCursor.openHandCursor; };
   const dockOutInPanel = () => { try { const f = dockOut.win.frame, p = $.NSEvent.mouseLocation, x = p.x - f.origin.x, y = p.y - f.origin.y, W = f.size.width, H = f.size.height, R = 10; if (x < 0 || y < 0 || x > W || y > H) return false; return Math.hypot(Math.max(R - x, x - (W - R), 0), Math.max(R - y, y - (H - R), 0)) <= R; } catch (e) { return false; } };   // 角は丸い(半径10)
-  const menuHandStep = () => { try { const b = clockAll.cyc, w = b ? b.window : null, s = item.button.window, mp = $.NSEvent.mouseLocation; let on = false, tagIn = false;
+  const menuHandStep = () => { try { const b = clockAll.cyc, w = b ? b.window : null, s = item.button.window, mp = $.NSEvent.mouseLocation; let on = false, tagIn = false, menuIn = false;
     if (s && !s.isNil() && s.isVisible) { const f = s.frame; on = mp.x >= f.origin.x && mp.x <= f.origin.x + f.size.width && mp.y >= f.origin.y && mp.y <= f.origin.y + f.size.height; tagIn = on; if (on) { const ph = pieceHit(); on = typeof ph === 'string' && !!ph && (ph === '\u0000logo' || ph.charAt(0) !== '\u0000'); } }   /* v5.1.522(俊克 pm06:59 改良1「MeOS はロゴで終了でき、パズル2つで操作できるので手を出す必然がある。⏰と離席タイマーは他のアプリと同様の操作対象なので↖」): 札の中で指はロゴとパズルの2枚だけ */   // v5.1.517(俊克 pm06:13 改良2「メニューバーの中のクリックできるところでも」): メニューバーの札の上は、メニューを開いていても閉じていても指
     if (!on && w && !w.isNil() && w.isVisible) { const v = w.contentView, h = v.hitTest(v.superview.convertPointFromView(w.convertPointFromScreen(mp), $())); on = !!h && !h.isNil() && h.isKindOfClass($.NSButton) && h.isEnabled; if (!on) { const hi = b.superview.enclosingMenuItem.menu.highlightedItem; on = !!hi && !hi.isNil() && (!hi.view || hi.view.isNil()); } }   // v5.1.517(改良1「ボタンの範囲外の所では↖に」): ボタンを載せた見出しの行(絵の部品の行)も選ばれた扱いになるので除く
+    if (w && !w.isNil() && w.isVisible) { const f = w.frame; menuIn = mp.x >= f.origin.x && mp.x <= f.origin.x + f.size.width && mp.y >= f.origin.y && mp.y <= f.origin.y + f.size.height; }   // v5.1.557: メニューの中の押せない所も札と同じ白い45°↖
     if (!on && dockOut.shown) on = dockOutOnTile() || dockOutOnLogo();   // v5.1.518(俊克 pm06:27「mGATEのパズルとMW-GATEロゴでも選択指を出そうね」)
     const gr = !!dockOut.drag, pm = !gr && !on && dockOut.shown && dockOutOnGrip(); if (gr || pm) { if (!moveOn) handRead(); moveCur(gr ? 'grip' : 'palm').set; moveOn = true; handOn = false; arrOn = false; return; }   // v5.1.533: 掴んでいる間は窓の外へ出ても握りのまま
-    let arr = false; if (!on && (tagIn || (dockOut.shown && dockOutInPanel()))) {   // v5.1.530(俊克 am01:33「メニューバーの⏰と離席タイマーのところでも同様に」): 札の中で指が出ない所も
+    let arr = false; if (!on && (tagIn || menuIn || (dockOut.shown && dockOutInPanel()))) {   // v5.1.530(俊克 am01:33「メニューバーの⏰と離席タイマーのところでも同様に」): 札の中で指が出ない所も
       if (!arrOn) handRead(); arr = (handCur.n || 'btron') === 'btron' && !!arrow45(); }
     if (on) { if (!handOn) handRead(); handCur().set; handOn = true; arrOn = false; moveOn = false; } else if (arr) { arrow45().set; arrOn = true; handOn = false; moveOn = false; } else if (handOn || arrOn || moveOn) { handOn = false; arrOn = false; moveOn = false; $.NSCursor.arrowCursor.set; } } catch (e) {} };
   const cycHoverStep = () => { try { const b = clockAll.cyc; if (!b) return; const w = b.window; let on = false;
@@ -574,7 +577,7 @@ function run(argv) {
     for (let k = 0; k < tagAll.slots.length; k++) { const it = W[k], mi = tagAll.slots[k];
       if (it && it.off) {
         if (!tagAll.hv[k]) { const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 22)); const b = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgTagFold:'); b.bordered = false; b.alignment = 0; b.frame = $.NSMakeRect(14, 1, 220, 20); b.tag = k; hv.addSubview(b); tagAll.hv[k] = { v: hv, b: b }; }
-        tagAll.hv[k].b.attributedTitle = tagHead(it.title, !!tagFold[it.title]); starLbl(tagAll.hv[k], tagAll.hv[k].v, !!it.star); mi.state = 0; mi.view = tagAll.hv[k].v;
+        tagAll.hv[k].b.attributedTitle = tagHead(it.title, !!tagFold[it.title]); hbFit(tagAll.hv[k].b); starLbl(tagAll.hv[k], tagAll.hv[k].v, !!it.star); mi.state = 0; mi.view = tagAll.hv[k].v;
       } else if (it) { mi.view = $(); mi.attributedTitle = $(); starRow(mi, it.title, true); mi.representedObject = $(it.id || ''); mi.enabled = true; mi.indentationLevel = it.indent || 0; }
       mi.hidden = F || !it; }
     if (tagAll.pi) { tagAll.pi.hidden = F || P.length <= 1;
