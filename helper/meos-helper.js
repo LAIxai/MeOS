@@ -450,7 +450,10 @@ function run(argv) {
   //   ⏰の見出し= FUSEN/TAG と同じ「メニューの中のボタン」(押しても閉じない)。右端の⊟で4つの姿を巡る。畳んだ姿は作り直しても覚えている
   // ★v5.1.515(俊克 11.05 pm05:45 改良1「デフォルトでは、すべて折り畳んだ状態で。ただし⏰だけは例外でデフォルトで展開」): 起動時の姿= ⏰だけ開く(↻も⏰だけの姿・赤)。付箋= 全体と CB-ALL/IC-ALL の蓋を閉じ、群も畳む。🏷️= 全体も札も畳む。押して変えた姿は動いている間は覚えている
   let clockFold = false, foldMode = 1;
-  const clockAll = { hb: null, cyc: null, rows: [], seps: [] };
+  // ★v5.1.554(俊克 11.07 am11:18 改良1「今日と明日の⏰だけ出すモード…明後日以降は閉じるボタン…ポスターのため…今日と明日の予定に集中できる」): ⏰の見出しの ▾ALL / ▸ALL(FUSEN の ▾ALL と同じ作り)。
+  //   ▸ALL= 明後日以降の行と、その前の区切りを隠す。far= 明後日の0時から先の印(行と区切りに拡張とヘルパーが付ける)。押して変えた姿は動いている間は覚えている
+  let clockNear = false;
+  const clockAll = { hb: null, cyc: null, nb: null, rows: [], seps: [], far: [] };
   const clockTitle = () => { try { headPaint(); if (!clockAll.hb) return; const f = clockFold;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((clockAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r);
@@ -488,7 +491,8 @@ function run(argv) {
   const gateLoad = () => { if (gateImg) return gateImg; try { const d = String(cycRevPath()).replace(/[^\/]*$/, ''); const l = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-l.png')), k = $.NSImage.alloc.initWithContentsOfFile($(d + 'mgate-d.png')); if (l && !l.isNil() && k && !k.isNil()) gateImg = { l: l, d: k }; } catch (e) {} return gateImg; };
   const gateDark = () => { try { return /Dark/.test(ObjC.unwrap(item.button.effectiveAppearance.name)); } catch (e) { return false; } };
   const cycPaint = () => { try { if (!clockAll.cyc) return; const im = cycImg(); if (im) { clockAll.cyc.image = im; clockAll.cyc.title = $(''); clockAll.cyc.imagePosition = 1; } } catch (e) {} };
-  const clockPaint = () => { try { for (const mi of clockAll.rows) mi.hidden = clockFold; for (const sp of clockAll.seps) sp.hidden = clockFold; clockTitle(); } catch (e) {} };
+  const nearPaint = () => { try { const b = clockAll.nb; if (!b) return; const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((clockNear ? '\u25b8' : '\u25be') + 'ALL')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.boldSystemFontOfSize($.NSFont.systemFontSize), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.labelColor, r); triCol(a, clockNear); b.attributedTitle = a; b.toolTip = $(clockNear ? 'Show every \u23f0' : 'Today and tomorrow only'); b.hidden = clockFold || !clockAll.far.length; } catch (e) {} };
+  const clockPaint = () => { try { for (const mi of clockAll.rows) mi.hidden = clockFold; for (const sp of clockAll.seps) sp.hidden = clockFold; if (clockNear) for (const x of clockAll.far) x.hidden = true; nearPaint(); clockTitle(); } catch (e) {} };
   // ★v5.1.325〜326(俊克 10.30 改良「Tag の一覧に TAG の見出し・VSCm が起動している間も出す・最初は畳んだ状態で」): 見出し= FUSEN の全体見出しと同じ「メニューの中のボタン」(押しても閉じない)・太字
   const tagAll = { hb: null, rows: [], fold: true, slots: [], list: [], off: 0, up: null, dn: null, lab: null, pi: null };
   const tagTitle = () => { try { headPaint(); if (!tagAll.hb) return;
@@ -599,6 +603,7 @@ function run(argv) {
     'pgTagDn:': { types: ['void', ['id']], implementation: function (s) { try { if (tagAll.off + 1 < (tagAll.pages || []).length) { tagAll.off += 1; tagPaint(); ptrTo(s); } } catch (e) {} } },   // v5.1.327
     'pgTagFold:': { types: ['void', ['id']], implementation: function (s) { try { const it = ((tagAll.pages || [])[tagAll.off] || [])[Number(s.tag)]; if (it && it.off) { tagFold[it.title] = !tagFold[it.title]; tagPaint(); } } catch (e) {} } },   // v5.1.341: 札の見出しで畳む
     'pgClk:': { types: ['void', ['id']], implementation: function (s) { try { clockFold = !clockFold; clockPaint(); } catch (e) {} } },   // v5.1.356: ⏰の見出しで畳む
+    'pgNear:': { types: ['void', ['id']], implementation: function (s) { try { clockNear = !clockNear; clockPaint(); hlog('[menu] \u23f0 ' + (clockNear ? '今日と明日だけ' : '全部') + ' 隠す物=' + clockAll.far.length); } catch (e) {} } },   // v5.1.554
     'pgCyc:': { types: ['void', ['id']], implementation: function (s) { try { let sh = false; try { sh = !!($.NSEvent.modifierFlags & (1 << 17)); } catch (x) {}   // ★v5.1.360(俊克 am11:10 改良1「↻ボタンは、シフトクリックで、逆回転に」)
       if (sh) { cycRev = !cycRev; try { const fp = $(cycRevPath()); if (cycRev) $('1').writeToFileAtomicallyEncodingError(fp, true, $.NSUTF8StringEncoding, null); else $.NSFileManager.defaultManager.removeItemAtPathError(fp, null); } catch (e) {} }   // v5.1.364: Me Dock へも渡す   // ★v5.1.362(俊克 am11:18「一旦↺になったら、シフトを押さなくてもクリックだけで反時計回りに…shiftクリックは方向を反転するためのもの」): Shift= 向きを裏返して1つ進む・ふつう= 今の向きに1つ進む
       foldMode = cycRev ? (foldMode + 3) % 4 : (foldMode + 1) % 4; if (foldMode < 0) foldMode = 3; cycN++; cycPaint();   // v5.1.356: ⊟= 全部畳む→⏰だけ→付箋だけ→タグだけ(全部開くは無し)
@@ -651,7 +656,8 @@ function run(argv) {
   function buildClockAll(m) {   // v5.1.356: ⏰の見出し＋右端の⊟
     const hv = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 240, 30)); hv.autoresizingMask = 2;   // v5.1.372: ↻を 22→28 に拡大したので見出しの高さも 22→30
     clockAll.hb = $.NSButton.buttonWithTitleTargetAction($('\u23f0'), pgt, 'pgClk:'); clockAll.hb.bordered = false; clockAll.hb.alignment = 0;
-    clockAll.hb.frame = $.NSMakeRect(14, 5, 150, 20); hv.addSubview(clockAll.hb);
+    clockAll.hb.frame = $.NSMakeRect(14, 5, 120, 20); hv.addSubview(clockAll.hb);
+    clockAll.nb = $.NSButton.buttonWithTitleTargetAction($(''), pgt, 'pgNear:'); clockAll.nb.bordered = false; clockAll.nb.alignment = 1; clockAll.nb.frame = $.NSMakeRect(138, 5, 60, 20); clockAll.nb.autoresizingMask = 1; hv.addSubview(clockAll.nb);   // v5.1.554
     clockAll.cyc = $.NSButton.buttonWithTitleTargetAction($('\u21bb'), pgt, 'pgCyc:'); clockAll.cyc.bordered = false;
     clockAll.cyc.frame = $.NSMakeRect(202, 0, 30, 30); clockAll.cyc.autoresizingMask = 1; clockAll.cyc.toolTip = $('Fold: all \u2192 \u23f0 only \u2192 FUSEN only \u2192 TAG only   (Shift: turn the other way)'); hv.addSubview(clockAll.cyc); cycHover = false; cycPaint();
     try { if (!cycHovTimer) { cycHovTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'cycHov:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(cycHovTimer, $.NSRunLoopCommonModes); } } catch (e) {}
@@ -689,8 +695,8 @@ function run(argv) {
     let headPrev = null;
     for (let e of entries) { if (headPrev) { const k = e.fusenAll ? 'c' : e.tagAll ? 'f' : e.title === 'Spells' ? 't' : ''; if (k) { headSeps.push([headPrev, k]); headPaint(); } } headPrev = null;   // v5.1.483: let= ⭐️を外した写しに差し替える
       if (nv && (e.clockAll || e.fusenAll || e.fusen || e.tagAll || e.tagPager)) { its.push(null); continue; }   // v5.1.331: 切り分け
-      if (e.sep && e.dd && !nv) { try { const di = dashItem(e.dd === 2); m.addItem(di); clockAll.seps.push(di); di.hidden = clockFold && !!clockAll.hb; } catch (x) {} its.push(null); continue; }   // v5.1.398
-      if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); headPrev = sp; if (e.cz) { clockAll.seps.push(sp); sp.hidden = clockFold && !!clockAll.hb; } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
+      if (e.sep && e.dd && !nv) { try { const di = dashItem(e.dd === 2); m.addItem(di); clockAll.seps.push(di); di.hidden = (clockFold || (clockNear && !!e.far)) && !!clockAll.hb; if (e.far) clockAll.far.push(di); } catch (x) {} its.push(null); continue; }   // v5.1.398
+      if (e.sep) { const sp = $.NSMenuItem.separatorItem; m.addItem(sp); headPrev = sp; if (e.cz) { clockAll.seps.push(sp); sp.hidden = (clockFold || (clockNear && !!e.far)) && !!clockAll.hb; if (e.far) clockAll.far.push(sp); } if (e.fz) { fusenAll.seps.push(sp); sp.hidden = !!fusenFold['\u0000all']; } its.push(null); continue; }   // v5.1.321: fz= 付箋の群の間の区切り(全体を畳むと隠す)
       if (e.fusenAll) { fusenAll.star = !!e.star; try { its.push(buildFusenAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.321
       if (e.clockAll) { clockAll.star = !!e.star; try { its.push(buildClockAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.356
       if (e.tagAll) { tagAll.star = !!e.star; try { its.push(buildTagAll(m)); } catch (x) { its.push(null); } continue; }   // v5.1.325
@@ -705,12 +711,12 @@ function run(argv) {
       if (e.off) mi.enabled = false;
       if (e.check) mi.state = 1;   // v4.2.311: ✓
       if (e.tg) { tagAll.rows.push(mi); mi.hidden = tagAll.fold; }
-      if (e.clk) { clockAll.rows.push(mi); mi.hidden = clockFold && !!clockAll.hb; }   // v5.1.356: ⏰の見出しで畳む行(見出しが無い時は隠さない)   // v5.1.325: TAG の見出しで畳む行
+      if (e.clk) { clockAll.rows.push(mi); mi.hidden = (clockFold || (clockNear && !!e.far)) && !!clockAll.hb; if (e.far) clockAll.far.push(mi); }   // v5.1.356: ⏰の見出しで畳む行(見出しが無い時は隠さない)   // v5.1.325: TAG の見出しで畳む行
       if (e.dayRow) { try { mi.view = makeDayRow(e.dayRow); } catch (x) {} its.push(mi); continue; }   // v5.0.0-52
       styleItem(mi, e);
       its.push(mi);
     }
-    if (top) { lastItems = its; lastEntries = entries; }
+    if (top) { lastItems = its; lastEntries = entries; nearPaint(); }   // v5.1.554: 明後日以降の行が在るかは組み終えて分かる
     return m;
   }
   function styleItem(mi, e) {
@@ -1027,7 +1033,7 @@ function run(argv) {
     // ★v5.1.328(俊克 10.30 am11:06 バグ1「メニューバーが開いて直ぐ閉じる・今もまだ」): 実測(sample)= 本体の時間の55%が「メニューを丸ごと作り直して item.menu を差し替える」に使われていた。
     //   ⏰の秒が変わるたびに JSON が変わり、閉じている間は毎回作り直していた。macOS 27 の札は別の係(MenuBarAgent)が開くので、開きかけた所で差し替えると開きかけのメニューが捨てられて閉じる。
     //   v5.1.327 の TAG の▲▼で作り直しが重くなり、重なる率が上がった。→ 並び(区切り・id・群の中身・TAG の並び)が同じなら、開いていても閉じていても字だけ差し替える。並びが変わった時だけ、閉じている間に作り直す
-    const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') + (e.cz ? 'c' : '') + (e.dd ? 'd' + e.dd : '') : e.clockAll ? 'CA' + (e.star ? '*' : '') : e.fusenAll ? 'FA' + (e.star ? '*' : '') : e.tagAll ? 'TA' + (e.star ? '*' : '') : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.star, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || '') + (e.clk ? '\u23f0' : ''))).join('|');
+    const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' + (e.fz ? 'z' : '') + (e.cz ? 'c' : '') + (e.dd ? 'd' + e.dd : '') + (e.far ? 'f' : '') : e.clockAll ? 'CA' + (e.star ? '*' : '') : e.fusenAll ? 'FA' + (e.star ? '*' : '') : e.tagAll ? 'TA' + (e.star ? '*' : '') : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.star, e.items]) : e.tagPager ? 'T' + JSON.stringify(e.rows) : e.dayRow ? 'D' + JSON.stringify(e.dayRow) : ((e.id || '') + (e.sub ? '>' + JSON.stringify(e.sub) : '') + (e.check ? '\u2713' : '') + (e.off ? '~' : '') + (e.indent || '') + (e.clk ? '\u23f0' : '') + (e.far ? 'f' : ''))).join('|');
     if (noViews() !== lastNoViews) { lastMenu = null; lastEntries = []; hlog('[menu] noviews=' + noViews()); }
     if (freshMenu && !tracking()) { freshMenu = false; lastMenu = null; lastEntries = []; }   // v5.1.332: 閉じた後は新しいメニューに差し替える
     if (renewItem && !tracking()) { renewItem = false;   // ★v5.1.335(俊克 pm00:30「札が一瞬消えて出るのは見えたが改善しない・手で🛟をオフオンすると復旧・0.5〜1秒完全に消えてから」):
@@ -1047,7 +1053,7 @@ function run(argv) {
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
           try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
-      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.rows.length = 0; clockAll.seps.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; headSeps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
+      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.nb = null; clockAll.rows.length = 0; clockAll.seps.length = 0; clockAll.far.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; headSeps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
     const pk = pzl.ch + pzl.lv + pzl.prev + (edRunning() ? 'Q' : '');   // v5.1.445: もう一方は見ない
@@ -1089,6 +1095,7 @@ function run(argv) {
   //   名前の器(タイトルの `1.`)に回数を入れるのは拡張(meosChainFillSlot)だけだった→ 同じ規則をここにも1つ
   // v5.1.398: ⏰の時刻の帯= 0今日 / 1 1週間以内 / 2 1ヶ月以内 / 3 1年未満 / 4 それより先(拡張の meosClockZone と同じ)
   const clockZone = (t, now) => { const d = new Date(now), e = new Date(t); if (e.getFullYear() === d.getFullYear() && e.getMonth() === d.getMonth() && e.getDate() === d.getDate()) return 0; if (t - now <= 7 * 864e5) return 1; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 2; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 3 : 4; };
+  const clockFar = (t, now) => { const d = new Date(now); return t >= new Date(d.getFullYear(), d.getMonth(), d.getDate() + 2).getTime(); };   // v5.1.554: 明後日の0時から先(拡張の meosClockFar と同じ)
   const fillSlot = (text, round) => { let s = String(text || '').replace(/^\s*\d{1,3}[.)]\s*/, ''); if (round > 0) s = s.replace(/\d{1,3}[.)]/, String(round)); return s.trim(); };
   const chainNext = (a, now) => {
     const ch = a.chain, n = ch.length; const stepOf = (r, k) => ((r.steps && r.steps.length) ? r.steps[k % r.steps.length] : 0);
@@ -1195,8 +1202,8 @@ function run(argv) {
       if (next.length) menu.push({ id: 'h:pass', title: '\u23ed\ufe0f Pass the next   ' + (next[0].name || next[0].key || '') + '   ' + _lab(next[0].at) }, { sep: true });   // v4.2.459
       const LS = (st && st.listStar) || {}, lsIs = (k, a) => !!(LS[k] && LS[k].key && a && LS[k].uri === String(a.uri || '') && LS[k].key === String(a.key || ''));   // v5.1.479: ⭐️
       if (next.length) menu.push({ clockAll: true });   // v5.1.480: 一番上の親には⭐️なし   // v5.1.356: 閉じている時も ⏰の見出し(畳む・⊟)
-      next.forEach((a, i) => { if (i && clockZone(a.at, now) !== clockZone(next[i - 1].at, now)) menu.push({ sep: true, cz: 1, dd: clockZone(next[i - 1].at, now) <= 1 ? 2 : 1 });   // v5.1.406: 最初の2本(今日|1週間・1週間|1ヶ月)は太い(2)   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線
-        menu.push({ clk: 1, id: 'h:' + alarms.indexOf(a), title: (lsIs('clk', a) ? STAR : '') + (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
+      next.forEach((a, i) => { if (i && clockZone(a.at, now) !== clockZone(next[i - 1].at, now)) menu.push(Object.assign({ sep: true, cz: 1, dd: clockZone(next[i - 1].at, now) <= 1 ? 2 : 1 }, clockFar(a.at, now) ? { far: 1 } : {}));   // v5.1.406: 最初の2本(今日|1週間・1週間|1ヶ月)は太い(2)   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線
+        menu.push({ clk: 1, far: clockFar(a.at, now) ? 1 : 0, id: 'h:' + alarms.indexOf(a), title: (lsIs('clk', a) ? STAR : '') + (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
       if (next.length) menu.push({ sep: true });
       // ★v4.2.342(俊克「VSCmが閉じている時は、その時のリストをメニューバーのメニューのTag&Goの下に表示する」):
       //   最後に見ていた部屋の姿(選んだ札・打った字・札の並び)で、札ごとに並べる(v4.2.309の形)。押せば VSCodium を起こして膜へ
