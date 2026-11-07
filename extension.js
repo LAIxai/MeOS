@@ -7396,13 +7396,14 @@ async function meosPuzzleSweep(ed, n, ch) {
   vscode.window.setStatusBarMessage('MeOS: ' + ch + ' \u2014 removed ' + kill.length, 3000);
 }
 async function meosPuzzleSweepGo(ch) { try { const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag(ch, { sweep: true }); } catch (_) { } }
-async function meosPuzzleLand(ed, line) {
+async function meosPuzzleLand(ed, line, onRow) {
   const doc = ed.document;
   // ★v4.2.589(俊克「パズルワープでは、P1〜6の行の次の行に着陸しよう。紫のP1〜6を見せるため」): 印の行に立つと生データに戻って紫のチップが消える→ 1行下へ
   const land = Math.min(line + 1, doc.lineCount - 1);
   const pos = new vscode.Position(land, 0);
   const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
-  try { shown.revealRange(new vscode.Range(line, 0, land, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
+  // ★v5.1.567(俊克 pm05:54 バグ1「微妙に押せない」): 2行ぶんの範囲を真ん中へ置くと、♥の行が折り返して2段ある時と1段の時で♥の高さが半段ずれる= ポインターが♥の上下へ外れる。♥の段だけを真ん中へ置けば、どの♥も同じ高さに来る
+  try { shown.revealRange(onRow ? new vscode.Range(line, 0, line, 0) : new vscode.Range(line, 0, land, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
   meosPostPuzzleDots(true); return shown;
 }
 // ★v5.1.566(俊克 11.07 pm02:28 改良1「♥をクリックしても、ポインタ位置が少しズレてしまうので、ポインタを自動で♥の右下に自動追従して」): ♥へ飛ぶと着地は画面の真ん中= ♥の画面の高さが変わる。
@@ -7413,7 +7414,7 @@ function meosFofRowOf(ed, line) {
   } catch (_) { } return -1;
 }
 async function meosFofWarpTo(ed, from, to) {
-  const r0 = meosFofRowOf(ed, from), shown = await meosPuzzleLand(ed, to);
+  const r0 = meosFofRowOf(ed, from), shown = await meosPuzzleLand(ed, to, true);
   if (r0 < 0 || !meosRealHost() || !meosVHelperOn()) return;
   setTimeout(() => { try {
     const e2 = shown || ed, r1 = meosFofRowOf(e2, to); if (r1 < 0 || r1 === r0) return;
