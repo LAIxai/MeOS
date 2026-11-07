@@ -7320,12 +7320,13 @@ async function meosDiaryTplMenu(ed) {
 //   _meosFofWant= 次に組へ入れたい♥(複製した♥・元の F)。望む姿と本文を突き合わせて違う所だけ打つ(meosFofReconcile)
 const MEOS_FOF_MARK_RE = /\{\*[ \t]*((?:\u2665\ufe0f?)*)\u25b6\u25c0[ \t]*mP7[ \t]*=/, MEOS_FOF_2 = '\u2665\ufe0f\u2665\ufe0f', MEOS_FOF_1 = '\u2665\ufe0f';
 let _meosFofWant = null, _meosFofBusy = false;
+function meosFofIsTwo(t) { const m = MEOS_FOF_MARK_RE.exec(meosRefScanText(t || '')); return !!m && m[1].replace(/\ufe0f/g, '').length >= 2; }
 function meosFofPair(doc) {
   try {
     const hits = meosPuzzleTagsOf(doc, 7); if (!hits.length) return null;
     const fn = meosPuzzleFGet(doc, 7), f = hits.find(h => h.name === fn) || (hits.length === 1 ? hits[0] : null); if (!f) return null;
     const rest = hits.filter(h => h !== f).sort((a, b) => (a.name < b.name ? 1 : -1)), L = meosDocLines(doc);
-    const two = (h) => { const m = MEOS_FOF_MARK_RE.exec(meosRefScanText(L[h.line] || '')); return !!m && m[1].replace(/\ufe0f/g, '').length >= 2; };
+    const two = (h) => meosFofIsTwo(L[h.line]);
     const w = _meosFofWant && _meosFofWant.uri === doc.uri.toString() ? rest.find(h => h.name === _meosFofWant.name) : null;
     return { f, m: w || rest.find(two) || rest[0] || null };
   } catch (_) { return null; }
@@ -7371,7 +7372,9 @@ function meosPuzzleShadowSet(ch, tip) { try { tip = String(tip || '').trim(); if
 async function meosPuzzleSweep(ed, n, ch) {
   const doc = ed.document, hits = meosPuzzleTagsOf(doc, n); if (!hits.length) return;
   const fn = meosPuzzleFGet(doc, n), f = hits.find(h => h.name === fn) || (hits.length === 1 ? hits[0] : null);
-  const kill = (f && hits.length > 1) ? hits.filter(h => h !== f) : hits;
+  let kill = (f && hits.length > 1) ? hits.filter(h => h !== f) : hits;
+  // ★v5.1.562(俊克 11.07 pm01:47「cmdクリックの1段目は、中間♥だけをすべて消し、2段目は、閉じ♥を消し、最後に、開始ハートを消す」): ♥は3段= 組でない♥ → 相方 → F
+  if (n === 7) { const pr = meosFofPair(doc); if (pr && pr.m) { const mid = hits.filter(h => h.name !== pr.f.name && h.name !== pr.m.name); kill = mid.length ? mid : [pr.m]; } }
   if (f && hits.length === 1) meosPuzzleShadowSet(ch, f.desc);
   const byLine = new Map(); for (const h of kill) { if (!byLine.has(h.line)) byLine.set(h.line, []); byLine.get(h.line).push(h.name); }
   const spans = [], whole = [], last = doc.lineCount - 1;
@@ -7413,7 +7416,10 @@ async function meosPuzzleTag(ch, opt) {
       const _shadow = meosPuzzleShadowGet(String(ch));   // ★v5.1.539: 影の tip で書く
       let _welcome = false; try { _welcome = !_shadow && !extensionContext.globalState.get('meosPuzzleWelcomed', false); } catch (_) { }
       const tag = ind + wrapRefMark(doc, '{* ' + (n === 7 ? MEOS_FOF_2 : '') + '\u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_shadow ? _shadow + ' ' : _welcome ? MEOS_PUZZLE_WELCOME + ' ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
-      await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag));
+      // ★v5.1.562(俊克 pm01:33「最初から組で作った方がいいね」): 最初の♥は3行= 開始♥・空の行・閉じ♥。カーソルは間の行= そのまま書き始める
+      const _tag2 = n === 7 ? ind + '\n' + ind + wrapRefMark(doc, '{* ' + MEOS_FOF_2 + '\u25b6\u25c0mP7=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n' : '';
+      await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag + _tag2));
+      if (n === 7) { const _p = new vscode.Position(ln + 1, ind.length); ed.selection = new vscode.Selection(_p, _p); }
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
       if (_welcome) { try { extensionContext.globalState.update('meosPuzzleWelcomed', true); } catch (_) { } }
       meosPostPuzzleDots(true);
@@ -7495,6 +7501,9 @@ function meosPuzzleDupFollow(e) {
     fix.push(h);
   }
   if (!fix.length) return;
+  // ★v5.1.562(俊克 pm01:39「開始♥と閉じ♥の間が広がったとき、適当な位置に♥を差し込む」・pm01:47「中間は相方にしない」): 組の間に増やした♥はふつうの♥= 相方を奪わない(♥️♥️ を写しても ♥️ へ戻す)
+  const _fofOld = all.filter(h => h.n === 7 && !fresh.has(h.line)), _fofF = _fofOld.find(h => h.name === meosPuzzleFGet(doc, 7)), _fofM = _fofF ? _fofOld.filter(h => h !== _fofF && meosFofIsTwo(doc.lineAt(h.line).text)).sort((a, b) => (a.name < b.name ? 1 : -1))[0] : null;
+  const _fofIn = (ln) => !!_fofM && ln > Math.min(_fofF.line, _fofM.line) && ln < Math.max(_fofF.line, _fofM.line);
   _meosPuzzleDupBusy = true;
   (async () => {
     try {
@@ -7504,7 +7513,7 @@ function meosPuzzleDupFollow(e) {
         for (const h of fix) {
           const t = doc.lineAt(h.line).text, i = t.indexOf(h.name); if (i < 0) continue;
           let nm; do { nm = h.name.replace(/_[^_]*$/, '') + '_' + meosMembraneStamp(new Date(Date.now() + 1000 * k++)); } while (used.has(nm)); used.add(nm);
-          if (h.n === 7) _meosFofWant = { uri: doc.uri.toString(), name: nm };   // v5.1.559: 2個目以降の♥= 相方
+          if (h.n === 7) _meosFofWant = { uri: doc.uri.toString(), name: _fofIn(h.line) ? _fofM.name : nm };   // v5.1.559: 2個目以降の♥= 相方
           eb.replace(new vscode.Range(h.line, i, h.line, i + h.name.length), nm);
         }
       }, { undoStopBefore: false, undoStopAfter: false });
