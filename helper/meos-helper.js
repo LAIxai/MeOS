@@ -455,7 +455,7 @@ function run(argv) {
   // ★v5.1.555(俊克 11.07 am11:30「パーペキ…この状態をデフォルトにしようよ」): 起動時の姿= ▸ALL(今日と明日だけ)
   let clockNear = true;
   // ★v5.1.557(俊克 11.07 am11:51 バグ1「ボタン以外のところで、↖ポインターが正しく出ていない」): 見出しのボタンは字の幅だけ= 右の空き地は押せず指も出ない
-  const hbFit = (b) => { try { const f = b.frame; b.autoresizingMask = 0; b.frame = $.NSMakeRect(f.origin.x, f.origin.y, Math.ceil(b.intrinsicContentSize.width) + 4, f.size.height); } catch (e) {} };
+  const hbFit = (b) => { try { const f = b.frame; b.autoresizingMask = 0; b.frame = $.NSMakeRect(f.origin.x, f.origin.y, Math.ceil(b.cell.titleRectForBounds(b.bounds).origin.x + b.attributedTitle.size.width), f.size.height); } catch (e) {} };   // v5.1.558(俊克 pm00:02 改良1「メニューバーのほうは、境界が少しズレている」): intrinsic+4 は字より8pt広かった(⏰ 42pt・字34pt)→ 字の右端ちょうどまで(絵の分は titleRect の x に入っている)
   const clockAll = { hb: null, cyc: null, nb: null, rows: [], seps: [], far: [] };
   const clockTitle = () => { try { headPaint(); if (!clockAll.hb) return; const f = clockFold;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($((clockAll.star ? STAR : '') + (f ? '\u25b8 ' : '\u25be ') + '\u23f0')); const r = $.NSMakeRange(0, a.length);
