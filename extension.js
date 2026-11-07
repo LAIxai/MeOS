@@ -7353,7 +7353,7 @@ function meosFofChipClick(e) {
     const doc = ed.document, ln = sel.active.line, col = sel.active.character; if (ln >= doc.lineCount) return; const raw = doc.lineAt(ln).text; if (raw.indexOf('mP') < 0 || !meosPuzzleTagLine(doc, ln, raw)) return;
     // ★v5.1.543(俊克 pm06:48 改良1「P1〜P6のラベルもボタン化した方が分かりやすい」): ♥と同じ。1行に2つあっても押した桁の札を選ぶ
     const scan = meosRefScanText(raw); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; let fm = null, x; while ((x = MEOS_PUZZLE_TAG_FULL_RE.exec(scan)) !== null) {
-      if (col === x.index || col === x.index - 1) { fm = x; if (col === x.index) break; } }
+      if (col === x.index || col === x.index - 1 || (x[1] === '7' && col === x.index + 1)) { fm = x; if (col >= x.index) break; } }   // v5.1.570: ♥を押すと左半分=印の頭・右半分=次の桁(台で実測)
     if (!fm) return;
     // ★v5.1.564(俊克 11.07 pm02:16「▼/▲を押せると、折り畳めるように思ってしまう…文字カーソルのままにして、♥ボタンの上だけで選択指に」): ワープは♥で押す。▼▲は印= 押しても飛ばない。組の♥は F の付け替えをしない(中間♥を押すと今まで通り F が移る)
     if (fm[1] === '7') { const pr = meosFofPair(doc), me = pr && pr.m && (pr.f.name === fm[2] ? pr.f : (pr.m.name === fm[2] ? pr.m : null)); if (me) { if (_prev !== doc.uri.toString() + '#' + ln) { const to = me === pr.f ? pr.m : pr.f; meosDbg('[puzzleTag] ♥膜 ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } return; }
@@ -7439,6 +7439,20 @@ async function meosFofWarpTo(ed, from, to) {
   const r0 = same ? L.row : meosFofRowOf(ed, from), shown = await meosPuzzleLand(ed, to, true);
   meosFofSettle(shown || ed, to, { r0, same });
 }
+// ★v5.1.570(俊克 pm06:44 改良2「文字列を選択した状態で♡ボタンを押すと、それを内部に取り込んだ形に。まさに膜でしょ」): 通常の膜と同じく行単位で包む。
+//   最後に指定した所が組になる= 新しい開始♥が F・閉じ♥が相方。前の組は消さず中間♥に落とす(消すのは Cmd+クリック)。Cmd+Z 1回で戻る
+async function meosFofWrap(ed, ch) {
+  const doc = ed.document, sel = ed.selection, a = sel.start.line, b = (sel.end.character === 0 && sel.end.line > a) ? sel.end.line - 1 : sel.end.line, ind = (doc.lineAt(a).text.match(/^[ \t]*/) || [''])[0], used = new Set(meosPuzzleTagsOf(doc, 7).map(h => h.name));
+  const free = (t) => { for (let i = 0; i < 100; i++, t += 1000) { const nm = ch + '_' + meosMembraneStamp(new Date(t)); if (!used.has(nm)) { used.add(nm); return { nm, t }; } } return { nm: ch + '_' + meosMembraneStamp(new Date(t)), t }; };   // 刻みは秒= 続けて包むと前の閉じ♥と同じ名になる
+  const _shadow = meosPuzzleShadowGet(ch), _o = free(Date.now()), nameO = _o.nm, nameC = free(_o.t + 1000).nm;
+  const tagO = ind + wrapRefMark(doc, '{* ' + MEOS_FOF_O + '\u25b6\u25c0mP7=' + nameO + ' // ' + (_shadow ? _shadow + ' ' : ' ') + '*}'), tagC = ind + wrapRefMark(doc, '{* ' + MEOS_FOF_C + '\u25b6\u25c0mP7=' + nameC + ' //  *}');
+  const last = b + 1 >= doc.lineCount;
+  const ok = await ed.edit(eb => { eb.insert(new vscode.Position(a, 0), tagO + '\n'); if (last) eb.insert(new vscode.Position(b, doc.lineAt(b).text.length), '\n' + tagC); else eb.insert(new vscode.Position(b + 1, 0), tagC + '\n'); });
+  if (!ok) return;
+  meosPuzzleFSet(doc, 7, nameO); _meosFofWant = { uri: doc.uri.toString(), name: nameC };
+  const _p = new vscode.Position(a + 1, 0); ed.selection = new vscode.Selection(_p, _p);
+  await meosFofReconcile(ed); meosPostPuzzleDots(true); meosDbg('[puzzleTag] ♥で包んだ 行=' + (a + 1) + '〜' + (b + 3));
+}
 async function meosPuzzleTag(ch, opt) {
   try {
     const n = MEOS_PUZZLE_LETTERS.indexOf(String(ch || '')) + 1; if (n < 1) return;
@@ -7446,6 +7460,7 @@ async function meosPuzzleTag(ch, opt) {
     const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
     const doc = ed.document;
     if (opt && opt.sweep) { await meosPuzzleSweep(ed, n, String(ch)); return; }
+    if (n === 7 && !ed.selection.isEmpty && !(opt && opt.cycle)) { await meosFofWrap(ed, String(ch)); return; }   // v5.1.570
     const hits = meosPuzzleTagsOf(doc, n);
     if (!hits.length) {
       const ln = ed.selection.active.line, ind = (doc.lineAt(ln).text.match(/^[ \t]*/) || [''])[0];
@@ -8388,10 +8403,11 @@ function applyPrettyLabels(editor) {
         const _pr = mPz[1] === '7' ? _pzPairGet() : null, _rev = !!_pr && (_pr.f.name === mPz[2] || (!!_pr.m && _pr.m.name === mPz[2]));   // v5.1.559: 組の♥= 隠す範囲を2桁目で割り、そこに札と逆さ♥を立てる(隠す範囲の中に立てると一緒に隠れる)
         if (_rev) refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + 1) });
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
-        if (_rev) { fofHints.push({ line, col: mPz.index + 1, lone: !_pr.m }); fofSkinLone.push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });   /* v5.1.561(俊克 pm00:57 バグ1「相方がいないのに選択指になるのは駄目」): 押しても飛ばない薄い逆さ♥は手にしない */
-          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + 1, line, mPz.index + 1), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: '#e53935', textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; font-size: 80%; display: inline-block; width: 1em; margin-left: -1.6em; margin-right: 0.6em; text-align: center; pointer-events: none;' } } }); }
-        refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
-          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : ((_pr && _pr.m) ? (meosPuzzleTagsOf(editor.document, 7).length >= 4 ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()))) + ';', margin: '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
+        if (_rev) { fofSkinLone.push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });   /* v5.1.561(俊克 pm00:57 バグ1「相方がいないのに選択指になるのは駄目」): 押しても飛ばない薄い逆さ♥は手にしない */
+          /* ★v5.1.570(俊克 pm06:44 改良1「下付きが見えにくいので、▼を♥の左側に…通常の膜の拡張のようにも見える」): ▼▲が先の桁・♥が次の桁。隠す範囲の境に立てる */
+          refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: '#e53935', textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; font-size: 90%;', margin: '0 1px 0 2px' } } }); }
+        refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + (_rev ? 1 : 0)),
+          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : ((_pr && _pr.m) ? (meosPuzzleTagsOf(editor.document, 7).length >= 4 ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()))) + ';', margin: _rev ? '0 2px 0 0' : '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
     }
     if (lineHasRefMark(text)) {
@@ -47218,7 +47234,6 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
               const _vb = meosVeilBtnSpot(document, ln, _ed89); if (_vb) out.push(new vscode.InlayHint(new vscode.Position(ln, _vb.col), '\u3000')); } }   // v5.1.175: 小さい🙈の札   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
             { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
           }
-          for (const _fh of _meosFofHints.get(_u89) || []) if (_fh.line >= range.start.line && _fh.line <= range.end.line && _fh.line < document.lineCount && document.lineAt(_fh.line).text.indexOf('mP7') >= 0) { const _ih = new vscode.InlayHint(new vscode.Position(_fh.line, _fh.col), '\u3000'); if (_fh.lone) _ih.tooltip = 'Copy this line to make the other \u2665'; out.push(_ih); }   // v5.1.559: 逆さ♥の札
 
         } catch (_) { }
         return out;
