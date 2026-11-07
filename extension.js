@@ -40611,16 +40611,22 @@ function meosRuleStopAt(ed, cur, down) {
 //   離れる向きは止まる点が前に無いので遅くならない。距離と速さは下の2つの数字で調整
 const MEOS_RULE_SLOW_LINES = 10, MEOS_RULE_SLOW_MS = 80;
 function meosRuleApproaching(ed, cur, down) { for (let k = 0, dir = down ? 1 : -1; k < MEOS_RULE_SLOW_LINES; k++) { if (meosRuleStopAt(ed, cur + k * dir, down)) return true; } return false; }
+// ★v5.1.583(俊克 am00:00 バグ1「少し止まったあと動き出してしまう。一旦停止したあとのキー入力と勘違いしている」): 止まった直後は拡張の遅い片付けが動く→ 0.2秒詰まると、その空きを押し直しと読んでいた(台で再現)。
+//   間隔だけでは「詰まり」と「押し直し」を見分けられない→ 空いた直後のキーは70ms待つ。リピート(詰まって溜まった分も)が続けば押しっぱなしのまま、続かなければ本当の押し直し。
+//   setImmediate= タイマーが溜まったキーより先に走っても、届いているキーを読んでから決める
+async function meosRuleGo(cmd) { _meosRuleKey.moved = Date.now(); _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; } }
 async function meosRuleStep(down) {
   const cmd = down ? 'cursorDown' : 'cursorUp', ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
   if (_meosRuleKey.busy) return;
   try {
-    if (_meosRuleKey.hold && gap < 150) return;
-    const again = _meosRuleKey.hold; _meosRuleKey.hold = false;
-    if (ed && gap < 400 && !again && meosRuleStopAt(ed, ed.selection.active.line, down)) { _meosRuleKey.hold = true; return; }
+    if (_meosRuleKey.hold) {
+      if (gap >= 150) setTimeout(() => setImmediate(() => { if (_meosRuleKey.at !== now || !_meosRuleKey.hold) return; _meosRuleKey.hold = false; meosRuleGo(cmd); }), 70);
+      return;
+    }
+    if (ed && gap < 400 && meosRuleStopAt(ed, ed.selection.active.line, down)) { _meosRuleKey.hold = true; return; }
     if (ed && gap < 150 && now - _meosRuleKey.moved < MEOS_RULE_SLOW_MS && meosRuleApproaching(ed, ed.selection.active.line, down)) return;
   } catch (_) { }
-  _meosRuleKey.moved = now; _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
+  meosRuleGo(cmd);
 }
 function meosUpdateInTableContext(editor) {
   let v = false;
