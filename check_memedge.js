@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_edge_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosMemJumpTarget, meosOptJump, meosOptUturn };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosMemJumpTarget, meosOptJump, meosOptUturn, meosOptTrailOnSel, trail: () => _meosOptTrail };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -105,6 +105,13 @@ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,
   await T.meosOptJump(true); await T.meosOptJump(true); await T.meosOptJump(true); const way=[at()];
   T.meosOptUturn(); way.push(at()); T.meosOptUturn(); way.push(at()); T.meosOptUturn(); way.push(at(), ed.selection.active.character); T.meosOptUturn(); way.push(at());
   ok(JSON.stringify(way)==='[22,18,15,15,2,15]','U-turn で ▲子→15行(桁も)へ逆にたどる・足跡が尽きたら動かない',way);
+  // v5.1.606: 向きを逆にした時だけ明るい・普通に動いたら消える
+  { ed.selection=new stub.Selection(new stub.Position(15,2),new stub.Position(15,2)); T.meosOptTrailOnSel({textEditor:ed});
+    await T.meosOptJump(true); const l1=T.trail().lit; await T.meosOptJump(true); const l2=T.trail().lit; await T.meosOptJump(false); const l3=T.trail().lit;
+    T.meosOptTrailOnSel({textEditor:ed}); const keep=T.trail().stack.length;   // 着地した所= 自分の動き
+    T.meosOptUturn(); T.meosOptTrailOnSel({textEditor:ed}); const l4=T.trail().lit, n4=T.trail().stack.length;
+    ed.selection=new stub.Selection(new stub.Position(3,0),new stub.Position(3,0)); T.meosOptTrailOnSel({textEditor:ed}); const l5=T.trail().lit, n5=T.trail().stack.length;
+    ok(!l1&&!l2&&l3&&keep===3&&l4&&n4===2&&!l5&&n5===0,'U-turnは向きを逆にした時に明るく・途中まで戻っても明るいまま・普通に動いたら消える',[l1,l2,l3,keep,l4,n4,l5,n5]); }
   console.log(ng?'NG '+ng:'全項目 PASS(U-turn後)'); })();
 ok(T.meosMemEdgeAt(Q,false)===0,'`…` の中の♥は膜の行でない',T.meosMemEdgeAt(Q,false));
 console.log(ng?('NG '+ng):'全項目 PASS');
