@@ -2,6 +2,24 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
+## v5.1 era (2026-11 →)
+
+### v5.1.608 (2026-11-09) — the first public v5.1
+- **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
+- **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.
+- **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE.
+- **🏦 The safe-deposit membrane.** A 🔐 membrane with a deadline. Extend it with 🔄 before the deadline; if you don't, its passphrase can be read — words left for later. A bell rings before the deadline.
+- **⏰ The ⏰ database.** `⏰0y0d0h3m …` on the menu bar or in Format Me warps to a membrane of everyday timers, one per line. ▶️ runs just that line; copy a line into any membrane and it works there.
+- **⛓️ Clocks on a chain.** `⛓️⤵️2` runs this line and the next one after the other, `⛓️⤴️2)×8` goes back and repeats 8 times, `⛓️‍💥` cuts the chain. Write `1.` in a title and the round number is filled in.
+- **🛑 Stop lines.** `<!-- Mew!UFC --- -->` is drawn as a stop line, with an octagonal STOP sign at each end; `===` makes a double line and `-.-` a dash-dot one. Holding ↓/↑ pauses at it; let go within 20 lines and the cursor glides on to it. **Cmd+↓/↑** jumps from stop line to stop line. The 🛑 button in Format Me puts one in and takes it off (🚫). On a membrane boundary the line turns green under the opening membrane and blue above the closing one.
+- **Every Me Dock letter is a membrane.** ♥ and M e D o c k can each wrap a passage: `▼P1` … `▲P1`, with stop lines inside the edges. Other marks of the same letter are relay points, visited in turn with Opt-click. ▼ is green and ▲ blue; the chips wear the letter's colour from Me Dock.
+- **Opt+↑/↓ → Jump to M-🛑.** A button in Format Me turns Opt+↑/↓ (moving a line) into a jump to the ends of a membrane, as Opt+↑/↓ means "to the end of the paragraph" on the Mac. When you turn round, **U-turn** lights up and takes you back the way you came.
+- **A note under your code block.** A UFC comment on the line after the closing ` ``` ` is drawn inside the sheet as a blue note. Other Markdown viewers show only the code.
+- **Tables wrap in their cells.** Long cells wrap on screen without touching the source.
+- **Sticky notes (FUSEN) and 🏷️ TAG on the menu bar.** Square and long sticky notes in yellow, red and blue, listed on the menu bar beside your ⏰ and tags.
+- **The ` button in Format Me.** One button for inline code, a code block, and their red forms (the backticks themselves as code); ↻ cycles them.
+- **Notice: H-IDX will be retired around v6.** Sticky notes and the Me Dock letters now do its work.
+
 ## v5.0 era (2026-10 →)
 
 ### v5.0.26 (2026-10-16) — the first public v5.0

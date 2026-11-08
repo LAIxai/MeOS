@@ -99,10 +99,28 @@ always holds the ciphertext. So when nobody has touched the Mac for a tenth of t
 or press a key, and you are back under the everyday blind — no passphrase. It is not a lock; it is for the eyes
 behind you, a shared screen or a screenshot. The 🪑 is the lock.
 
-**`<!-- Mew!UFC --- -->` draws a line.** Three dashes or more, as in Markdown's own `---`: the comment disappears and
-an orange rule takes its place, so the groups in a long list of clocks stand apart. Two dashes are not enough, and
-inside a code block it stays text. It is a UFC line (one that never folds), so it does not break the list — the
-badge line and the chains reach across it.
+**🛑 Stop lines.** `<!-- Mew!UFC --- -->` — three dashes or more, as in Markdown's own `---` — is drawn as a stop line:
+a rule with an octagonal STOP sign at each end. `===` makes a double line and `-.-` a dash-dot one. Hold ↓ or ↑ and the
+cursor pauses at the line; let go within 20 lines of one, and it glides the rest of the way and stops there.
+**Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Fold a membrane to
+jump over the lines inside it. The 🛑 button in **Format Me** puts a stop line under the cursor (↻ picks solid, double
+or dash-dot) and turns into 🚫 to take it off when the cursor is on or next to one. On a membrane boundary the line
+turns green under the opening membrane and blue above the closing one. Two dashes are not enough, and inside a code
+block it stays text. It is a UFC line (one that never folds), so it does not break a list of clocks — the badge line
+and the chains reach across it.
+
+**Every Me Dock letter is a membrane.** ♥ and the letters M e D o c k can each wrap a passage: select it and press the
+letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Pressing the letter warps
+you back into the membrane, to the place you last were. Other marks of the same letter are relay points along the
+way — Opt-click the chip to visit them in turn. One membrane per letter; ▼ is green and ▲ blue, as with ♥, and the
+chips wear the letter's colour from Me Dock.
+
+**Opt+↑/↓ — Jump to M-🛑.** In VSCodium, Opt+↑/↓ moves a line up or down. On the Mac it has always meant "to the start
+or end of the paragraph" — and in MeOS a membrane is a paragraph. Press **Opt+↑/↓** in Format Me and it becomes
+**Jump to M-🛑**: Opt+↓ jumps to the closing membrane, Opt+↑ to the opening one, and on a membrane line to its mate.
+Each press climbs one membrane outward, and from outside a membrane it walks only the ends — so the way back is not
+the way there. When you turn round, **U-turn** lights up orange and takes you back one jump per click; move the cursor
+any other way and it goes out. Code files keep Opt+↑/↓ for moving lines.
 
 **⛓️ Clocks on a chain.** A chain mark on a ⏰ line links it to its neighbours. Lines without one stay independent.
 
