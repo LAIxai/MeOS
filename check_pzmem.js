@@ -44,7 +44,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosRuleStopAt, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleSweep, parseOpenLine, parseCloseLine, meosPuzzleColor, meosPuzzleDupFollow, meosPuzzleLand, meosStopLineNear, meosStopLineToggle, meosStopKindOf, meosRuleStep, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosRuleStopAt, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleSweep, parseOpenLine, parseCloseLine, meosPuzzleColor, meosPuzzleDupFollow, meosPuzzleLand, meosStopLineNear, meosStopLineToggle, meosStopKindOf, meosRuleStep, meosStopEdgeOf, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -182,6 +182,10 @@ const S = (sel) => sel;
     let l = await run(mk(), 15, 8); ok(l === 39, '押しっぱなし(8回)で離す= 一時停止線の手前(39)まで運ぶ', l);
     l = await run(mk(), 5, 8); ok(l === 13, '止まる点が20行より先= 運ばない(離した所のまま)', l);
     l = await run(mk(), 30, 1); ok(l === 31, '1回押しただけ= 運ばない', l); }
+  // 14. v5.1.600 膜の境の一時停止線= 開始膜の下(1)・閉じ膜の上(-1)・中(0)
+  { const d = mkDoc([P1O, R, '中', R, '中2', '', R, P1C, H1, R, 'x', '', R, H2, '<!-- {* ▼mCN=親_1 // c *} -->', R, 'y', R, '<!-- {* ▲mCN=親_1 // c *} -->']);
+    const g = [1, 3, 6, 9, 12, 15, 17].map(i => T.meosStopEdgeOf(d, i));
+    ok(g.join(',') === '1,0,-1,1,-1,1,-1', '膜の境= P1・♥・mCN 膜とも開始の下=1/閉じの上=-1・中の線=0', g); }
   // 7. 色
   ok(T.meosPuzzleColor('M', 0.95) === 'rgba(229, 57, 53, 0.95)' && T.meosPuzzleColor('k', 0.14) === 'rgba(194, 24, 91, 0.14)', '札の色= Me Dock の字の色', [T.meosPuzzleColor('M', 0.95), T.meosPuzzleColor('k', 0.14)]);
   console.log(ng ? ('NG ' + ng) : '全項目 PASS');
