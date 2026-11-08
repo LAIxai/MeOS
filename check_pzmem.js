@@ -127,6 +127,23 @@ const S = (sel) => sel;
   const d10 = mkDoc(['a', P1O, R, '中', '', R, P1C, 'z']); T.meosPuzzleFSet(d10, 1, 'M_20261108S100001JST');
   await paste(d10, 4, P1O);
   ok(/\{\* ▶◀mP1=/.test(d10.L[4]) && /▼▶/.test(d10.L[1]) && /▲▶/.test(d10.L[7]), '▼P1のコピペ= ▼を外して中継点', d10.L);
+  // 9. v5.1.590 実機の形= 1本だけの字は F の控えが無い・元の行のすぐ上に貼る
+  const d11 = mkDoc(['a', P1a, 'b']);
+  await paste(d11, 1, P1a);
+  ok(/▼▶◀mP1=/.test(d11.L[1]) && /▲▶◀mP1=M_20261101S090000JST/.test(d11.L[2]), 'Fの控え無し・元のすぐ上に貼る= 複製▼・元▲', d11.L);
+  const d12 = mkDoc(['a', P1a, 'b']);
+  await paste(d12, 2, P1a);
+  ok(/▼▶◀mP1=M_20261101S090000JST/.test(d12.L[1]) && /▲▶◀mP1=/.test(d12.L[2]), 'Fの控え無し・すぐ下に貼る= 元▼・複製▲', d12.L);
+  // 10. v5.1.590 膜を消したら🔴を1つ前の字へ
+  gs.set('meosPuzzleLast', 'c'); gs.set('meosPuzzlePrev', 'D');
+  const P5O = P1O.replace(/mP1=M_/, 'mP5=c_'), P5C = P1C.replace(/mP1=M_/, 'mP5=c_');
+  const d13 = mkDoc(['a', P5O, R, '中', '', R, P5C, 'z']); T.meosPuzzleFSet(d13, 5, 'c_20261108S100001JST');
+  await T.meosPuzzleSweep(mkEd(d13), 5, 'c');
+  ok(gs.get('meosPuzzleLast') === 'D' && gs.get('meosPuzzlePrev') === '', 'c膜を消す= 🔴は1つ前の D へ', [gs.get('meosPuzzleLast'), gs.get('meosPuzzlePrev')]);
+  gs.set('meosPuzzleLast', 'c'); gs.set('meosPuzzlePrev', 'D');
+  const d14 = mkDoc(['a', P5O, R, P1a.replace(/mP1=M_/, 'mP5=c_'), '', R, P5C, 'z']); T.meosPuzzleFSet(d14, 5, 'c_20261108S100001JST');
+  await T.meosPuzzleSweep(mkEd(d14), 5, 'c');
+  ok(gs.get('meosPuzzleLast') === 'c', '中継点だけ消す1段目= 🔴は動かない', gs.get('meosPuzzleLast'));
   // 7. 色
   ok(T.meosPuzzleColor('M', 0.95) === 'rgba(229, 57, 53, 0.95)' && T.meosPuzzleColor('k', 0.14) === 'rgba(194, 24, 91, 0.14)', '札の色= Me Dock の字の色', [T.meosPuzzleColor('M', 0.95), T.meosPuzzleColor('k', 0.14)]);
   console.log(ng ? ('NG ' + ng) : '全項目 PASS');

@@ -7415,7 +7415,10 @@ async function meosPuzzleSweep(ed, n, ch) {
   whole.sort((a, b) => a - b);
   for (let i = 0; i < whole.length;) { let j = i; while (j + 1 < whole.length && whole[j + 1] === whole[j] + 1) j++; const a = whole[i], b = whole[j];   // 隣り合う行は1塊に(範囲が重なると編集ごと断られる)
     spans.push(b < last ? new vscode.Range(a, 0, b + 1, 0) : a > 0 ? new vscode.Range(a - 1, doc.lineAt(a - 1).text.length, b, doc.lineAt(b).text.length) : new vscode.Range(0, 0, b, doc.lineAt(b).text.length)); i = j + 1; }
+  // ★v5.1.590(俊克 am10:22 バグ2「パズルcをCmdクリックして、c膜を削除したけど、🔴マークのままで、白マークにならない」): 膜(組の片方)か最後の1本を消したら、🔴(行き先)を1つ前の字へ返す
+  const _prS = meosFofPair(doc, n), _gone = kill.length === hits.length || (!!_prS && !!_prS.m && kill.some(h => h.name === _prS.f.name || h.name === _prS.m.name));
   await ed.edit(eb => { for (const r of spans) eb.delete(r); });
+  if (_gone) meosPuzzleLastDrop(ch);
   meosPostPuzzleDots(true); meosDbg('[puzzleTag] 一括で消した P' + n + ' ' + kill.length + '本' + (f && hits.length > 1 ? '(F は残した)' : ''));
   vscode.window.setStatusBarMessage('MeOS: ' + ch + ' \u2014 removed ' + kill.length, 3000);
 }
@@ -7597,7 +7600,7 @@ function meosPuzzleDupFollow(e) {
   if (!e.contentChanges.some(c => String(c.text || '').indexOf('mP') >= 0 && String(c.text || '').indexOf('\u25b6\u25c0') >= 0)) return;
   const ed = vscode.window.visibleTextEditors.find(x => x.document === doc); if (!ed) return;
   const fresh = new Set();
-  for (const c of e.contentChanges) { const t = String(c.text || ''); if (t.indexOf('mP') < 0) continue; const a = c.range.start.line, k = (t.match(/\n/g) || []).length; for (let i = a; i <= a + k; i++) fresh.add(i); }
+  for (const c of e.contentChanges) { const t = String(c.text || ''); if (t.indexOf('mP') < 0) continue; const a = c.range.start.line, k = (t.match(/\n/g) || []).length, z = (k > 0 && /\n$/.test(t) && !(c.range.start.character > 0)) ? k - 1 : k; for (let i = a; i <= a + z; i++) fresh.add(i); }   // v5.1.590: 行頭に「…\n」を貼ると、最後の行は押し下げられた元の行= 新しくない
   const all = meosPuzzleTagsOf(doc, 0), fix = [];
   for (const h of all) {
     if (!fresh.has(h.line)) continue;
@@ -7612,6 +7615,7 @@ function meosPuzzleDupFollow(e) {
   //   ♥と同じに= 膜がまだ無い字は、複製が相方(上が▼・下が▲)。膜が在る字の複製は中継点
   const _pzHasPair = {}; for (const h of fix) { const n = h.n; if (n === 7 || _pzHasPair[n] !== undefined) continue;
     const old = all.filter(o => o.n === n && !fresh.has(o.line)), F = old.find(o => o.name === meosPuzzleFGet(doc, n)) || (old.length === 1 ? old[0] : null);
+    if (F && meosPuzzleFGet(doc, n) !== F.name) meosPuzzleFSet(doc, n, F.name);   // ★v5.1.590(俊克 am10:22 バグ1「まだ、既存のP1に▼/▲が付かない」): 1本だけの字は F の控えが無い(1本ならそれが F と読むだけ)→ 複製と2本になると F が決まらず組を作れなかった
     _pzHasPair[n] = !F ? true : (meosFofIsTwo(doc.lineAt(F.line).text, n) && old.some(o => o !== F && meosFofIsTwo(doc.lineAt(o.line).text, n))); }
   const _pzWant = [];
   _meosPuzzleDupBusy = true;
@@ -14737,6 +14741,14 @@ function meosPuzzleLastSet(ch) {
     gs.update('meosPuzzleLast', ch);
     // v5.1.420(俊克 pm09:17 バグ1「小猫が一鳴きしてabcの鍵が開いたあと、Ⓣcなどになっても、鍵が元に戻らない」): [M][e] で開けた鍵は、2枚が [M][e] でなくなったら(どの並びでも)閉じる。ロゴのドラッグで開けた物は触らない
     if (ch && ch !== old) { if (old === 'M' && ch === 'e') meosJumbleSet(true, true); else if (meosJumbleByMe) meosJumbleSet(false, true); } } catch (_) { }
+  meosPuzzleBadgeFile();
+}
+// v5.1.590: 消した字が🔴なら1つ前の字を🔴に(1つ前は空にする= 消した字を1つ前に残さない)
+function meosPuzzleLastDrop(ch) {
+  try { const gs = extensionContext.globalState; if (String(gs.get('meosPuzzleLast') || '') !== String(ch)) return;
+    const prev = String(gs.get('meosPuzzlePrev') || ''), to = prev && prev !== String(ch) ? prev : '';
+    gs.update('meosPuzzleLast', to); gs.update('meosPuzzlePrev', '');
+    if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch: to }); meosDbg('[puzzleTag] 🔴を ' + ch + ' から ' + (to || '無し') + ' へ'); } catch (_) { }
   meosPuzzleBadgeFile();
 }
 // ★v5.1.419(俊克 pm07:12「MEWを一鳴きで良いんじゃない?そして、パズルをドラッグできるようにする鍵の1つにする…eMになると再び鍵がかかる」→ pm07:19「Aということだね」):
