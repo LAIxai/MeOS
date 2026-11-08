@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_edge_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosMemJumpTarget };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosMemJumpTarget, meosOptJump, meosOptUturn };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -99,5 +99,12 @@ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,
 // ★v5.1.604: 閉じない ```` が1本あっても、その後の ``` の囲いは囲い(生涯日記193973行)
 { const P=[O,'a','````','b','```',C,'```','c',C]; const dp={...doc,uri:{toString:()=>'file:///f.md',fsPath:'/f.md',scheme:'file'},fileName:'/f.md',lineCount:P.length,lineAt:n=>({text:P[n]}),getText:()=>P.join('\n')};
   ok(T.meosMemJumpTarget(dp,0,true)===8,'迷子の```` の後の囲いの中の閉じ膜を数えない',T.meosMemJumpTarget(dp,0,true)); }
+// ★v5.1.605: U-turn= Opt ジャンプで来た道を1歩ずつ逆にたどる
+(async () => { const ed={document:doc,selection:new stub.Selection(new stub.Position(15,2),new stub.Position(15,2)),selections:[1],revealRange(){},viewColumn:1};
+  stub.window.activeTextEditor=ed; stub.window.showTextDocument=()=>Promise.resolve(); const at=()=>ed.selection.active.line;
+  await T.meosOptJump(true); await T.meosOptJump(true); await T.meosOptJump(true); const way=[at()];
+  T.meosOptUturn(); way.push(at()); T.meosOptUturn(); way.push(at()); T.meosOptUturn(); way.push(at(), ed.selection.active.character); T.meosOptUturn(); way.push(at());
+  ok(JSON.stringify(way)==='[22,18,15,15,2,15]','U-turn で ▲子→15行(桁も)へ逆にたどる・足跡が尽きたら動かない',way);
+  console.log(ng?'NG '+ng:'全項目 PASS(U-turn後)'); })();
 ok(T.meosMemEdgeAt(Q,false)===0,'`…` の中の♥は膜の行でない',T.meosMemEdgeAt(Q,false));
 console.log(ng?('NG '+ng):'全項目 PASS');
