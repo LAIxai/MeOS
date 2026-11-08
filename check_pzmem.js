@@ -44,7 +44,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosRuleStopAt, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleSweep, parseOpenLine, parseCloseLine, meosPuzzleColor, meosPuzzleDupFollow, meosPuzzleLand, meosStopLineNear, meosStopLineToggle, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosRuleStopAt, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleSweep, parseOpenLine, parseCloseLine, meosPuzzleColor, meosPuzzleDupFollow, meosPuzzleLand, meosStopLineNear, meosStopLineToggle, meosStopKindOf, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -166,6 +166,13 @@ const S = (sel) => sel;
     ok(d.L.join('|') === ['', R, ''].join('|'), '上下が空行= 線だけ', d.L);
     [d, e] = at(['本文1', '', R, '', '後'], 3); ok(T.meosStopLineNear(d, 3) === 2 && T.meosStopLineNear(d, 1) === 2 && T.meosStopLineNear(d, 2) === 2 && T.meosStopLineNear(d, 0) === -1 && T.meosStopLineNear(d, 4) === -1, '🚫になるのは線の上と前後の行だけ', [0, 1, 2, 3, 4].map(l => T.meosStopLineNear(d, l)));
     await T.meosStopLineToggle(e, true); ok(d.L.join('|') === ['本文1', '', '後'].join('|'), '外す= 線と空行1つ(入れた時の形へ戻る)', d.L);
+    [d, e] = at(['', R, '', R, ''], 2); await T.meosStopLineToggle(e, true);
+    ok(d.L.join('|') === ['', R, ''].join('|'), '2本の間で🚫= 上の線と、その向こうの空行を消す(カーソルの行と下の線は隣のまま)', d.L);
+    [d, e] = at(['上', '', '<!-- Mew!UFC === -->', '中', '<!-- Mew!UFC -.- -->', '', '下'], 3); await T.meosStopLineToggle(e, true);
+    ok(d.L.join('|') === ['上', '', '中', '<!-- Mew!UFC -.- -->', '', '下'].join('|'), '本文の行で上下とも線= 上の線を消す', d.L);
+    ok(T.meosStopKindOf(R) === 0 && T.meosStopKindOf('<!-- Mew!UFC === -->') === 1 && T.meosStopKindOf('<!-- Mew!UFC -.- -->') === 2 && T.meosStopLineNear(mkDoc(['<!-- Mew!UFC ===== -->']), 0) === 0 && T.meosStopLineNear(mkDoc(['<!-- Mew!UFC -.-.- -->']), 0) === 0, '線の種類= --- / === / -.-(長くても可)', 0);
+    gs.set('fmtStopKind', 1); [d, e] = at(['本文'], 0); await T.meosStopLineToggle(e, false); gs.set('fmtStopKind', 0);
+    ok(d.L[2] === '<!-- Mew!UFC === -->', '↻で二重線を選ぶと === を書く', d.L);
     [d, e] = at(['```', R, '```', 'x'], 3); ok(T.meosStopLineNear(d, 2) === -1, '囲いの中の線は数えない', T.meosStopLineNear(d, 2)); }
   // 7. 色
   ok(T.meosPuzzleColor('M', 0.95) === 'rgba(229, 57, 53, 0.95)' && T.meosPuzzleColor('k', 0.14) === 'rgba(194, 24, 91, 0.14)', '札の色= Me Dock の字の色', [T.meosPuzzleColor('M', 0.95), T.meosPuzzleColor('k', 0.14)]);
