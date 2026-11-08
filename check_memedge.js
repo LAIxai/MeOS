@@ -96,5 +96,8 @@ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,
   ok(j(12,true)===22&&j(19,false)===10,'親の中=子を飛ばして親の端',[j(12,true),j(19,false)]);
   ok(j(15,true)===18&&j(18,true)===22&&j(13,false)===10,'子の中→子の端→もう一度で親の端',[j(15,true),j(18,true),j(13,false)]);
   ok(j(23,true)===-1&&j(0,true)===-1,'膜の外=動かない(囲いの中の♥も数えない)',[j(23,true),j(0,true)]); }
+// ★v5.1.604: 閉じない ```` が1本あっても、その後の ``` の囲いは囲い(生涯日記193973行)
+{ const P=[O,'a','````','b','```',C,'```','c',C]; const dp={...doc,uri:{toString:()=>'file:///f.md',fsPath:'/f.md',scheme:'file'},fileName:'/f.md',lineCount:P.length,lineAt:n=>({text:P[n]}),getText:()=>P.join('\n')};
+  ok(T.meosMemJumpTarget(dp,0,true)===8,'迷子の```` の後の囲いの中の閉じ膜を数えない',T.meosMemJumpTarget(dp,0,true)); }
 ok(T.meosMemEdgeAt(Q,false)===0,'`…` の中の♥は膜の行でない',T.meosMemEdgeAt(Q,false));
 console.log(ng?('NG '+ng):'全項目 PASS');

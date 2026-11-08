@@ -45279,7 +45279,11 @@ function meosFenceBlocks(doc) {
   const key = _meosTextKey(doc);
   if (_meosFenceBlkCache.key === key && _meosFenceBlkCache.list) return _meosFenceBlkCache.list;
   const lines = meosDocLines(doc), list = []; let open = null;
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.length || open; i++) {
+    // ★v5.1.604(俊克 11.08 pm06:11 改良1「Opt+↓を1回押すと、198749行のコードブロックに入った膜に着地…しかも⚠️が出ている」): 生涯日記の193973行に閉じない ```` が1本=
+    //   開いたまま以後の ``` を全部「中の字」と読み、そこから先の囲いが1つも囲いにならなかった(36万行の後ろ半分)。閉じていない囲いは囲いでない(v4.2.258)の続き=
+    //   300行(MEOS_FENCE_MAX_LINES)待って閉じなければ、その開きを捨てて開きの次の行から読み直す(終わりまで閉じない時も同じ)
+    if (open && (i >= lines.length || i - open.open + 1 > MEOS_FENCE_MAX_LINES)) { i = open.open; open = null; continue; }
     const t = lines[i]; if (t.length < 3) continue;
     const m = /^[ \t]{0,3}((`{3,})|(~{3,}))[ \t]*([^\s`~]*)/.exec(t);
     if (!m) continue;
