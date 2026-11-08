@@ -15373,7 +15373,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
             if (!_inFence && !meosShowsRawLineStable(editor, i)) {
               badgeHide.push(new vscode.Range(i, 0, i, txt.length));
               items.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; display: inline-block; width: 60ch; height: ' + MEOS_STOP_SIGN_EM + 'em; vertical-align: middle; background: url(' + MEOS_STOP_SIGN_URL + ') left center / ' + MEOS_STOP_SIGN_EM + 'em ' + MEOS_STOP_SIGN_EM + 'em no-repeat, linear-gradient(#e0803a, #e0803a) ' + (MEOS_STOP_SIGN_EM + 0.3) + 'em center / calc(100% - ' + (MEOS_STOP_SIGN_EM + 0.3) + 'em) 1px no-repeat; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線
+                textDecoration: 'none; display: inline-block; width: 60ch; height: ' + MEOS_STOP_SIGN_EM + 'em; vertical-align: middle; background: url(' + MEOS_STOP_SIGN_URL + ') left center / ' + MEOS_STOP_SIGN_EM + 'em ' + MEOS_STOP_SIGN_EM + 'em no-repeat, url(' + MEOS_STOP_SIGN_URL + ') right center / ' + MEOS_STOP_SIGN_EM + 'em ' + MEOS_STOP_SIGN_EM + 'em no-repeat, linear-gradient(#e0803a, #e0803a) ' + (MEOS_STOP_SIGN_EM + 0.3) + 'em center / calc(100% - ' + (2 * (MEOS_STOP_SIGN_EM + 0.3)) + 'em) 1px no-repeat; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
             }
             continue;
           }
