@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_edge_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosMemJumpTarget };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -89,5 +89,12 @@ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,
   ok(u(15,false)===12,'膜の外 ↑=閉じ膜の直下で止まる(膜の行に着地しない)',u(15,false));
   ok(u(2,false)===-1&&u(0,true)===2,'線のすぐ隣: 越えた先に線が無ければ本来/膜を飛ばして次の線',[u(2,false),u(0,true)]);
 }
+// ★v5.1.603: Opt+↑/↓(Jump to M-🛑)= 膜の端へ・膜の行なら相方・もう一度で外側・子は飛ばす・囲いは数えない
+{ const j=(c,d)=>T.meosMemJumpTarget(doc,c,d);
+  ok(j(3,true)===8&&j(3,false)===1,'♥膜の中 Opt+↓=閉じ膜/Opt+↑=開始膜',[j(3,true),j(3,false)]);
+  ok(j(1,true)===8&&j(8,false)===1,'膜の行で押す=相方へ',[j(1,true),j(8,false)]);
+  ok(j(12,true)===22&&j(19,false)===10,'親の中=子を飛ばして親の端',[j(12,true),j(19,false)]);
+  ok(j(15,true)===18&&j(18,true)===22&&j(13,false)===10,'子の中→子の端→もう一度で親の端',[j(15,true),j(18,true),j(13,false)]);
+  ok(j(23,true)===-1&&j(0,true)===-1,'膜の外=動かない(囲いの中の♥も数えない)',[j(23,true),j(0,true)]); }
 ok(T.meosMemEdgeAt(Q,false)===0,'`…` の中の♥は膜の行でない',T.meosMemEdgeAt(Q,false));
 console.log(ng?('NG '+ng):'全項目 PASS');
