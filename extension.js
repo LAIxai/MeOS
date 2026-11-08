@@ -7359,8 +7359,16 @@ async function meosFofReconcile(ed, n) {
       const on = h.name === pr.f.name || (pr.m && h.name === pr.m.name), to = on ? (pr.m && h.line === Math.max(pr.f.line, pr.m.line) ? meosPzmC(n) : meosPzmO(n)) : (meosFofTwoPre(m[1], n) ? meosPzmPre(n) : null);
       if (to !== null && to !== m[1]) { const a = m.index + m[0].indexOf('\u25b6\u25c0') - m[1].length; jobs.push({ line: h.line, a, b: a + m[1].length, to }); } }
     if (!jobs.length) { _meosFofWant = null; return; }
+    // ★v5.1.591(俊克 am10:40 改良1「既存のP1を膜化したとき、罫線も自動で入れようよ」): 組が今できた(▼▲の無かった印が▼▲になる)時、開始の下・閉じの上に罫線(閉じ罫線の上は空行= v5.1.576)。既に在れば足さない
+    let rules = null;
+    if (pr.m && jobs.some(j => !meosFofTwoPre(L[j.line].slice(j.a, j.b), n) && /[\u25bc\u25b2]/.test(j.to))) {
+      const o = Math.min(pr.f.line, pr.m.line), c = Math.max(pr.f.line, pr.m.line), ind = (L[o].match(/^[ \t]*/) || [''])[0], ru = meosFofRule(doc, ind);
+      if (ru) { const isR = (l) => l >= 0 && l < L.length && MEOS_RULE_LINE_RE.test(L[l]), blank = (l) => l >= 0 && l < L.length && !L[l].trim();
+        const top = isR(o + 1) ? '' : ru, bot = isR(c - 1) ? '' : ((c - 1 === o || blank(c - 1) ? '' : ind + '\n') + ru);
+        if (c === o + 1) rules = (top || bot) ? [{ line: c, text: top + ind + '\n' + '\n' + ru }] : null;
+        else rules = [top ? { line: o + 1, text: top } : null, bot ? { line: c, text: bot } : null].filter(Boolean); } }
     _meosFofBusy = true;
-    await ed.edit(eb => { for (const j of jobs) eb.replace(new vscode.Range(j.line, j.a, j.line, j.b), j.to); }, { undoStopBefore: false, undoStopAfter: false });
+    await ed.edit(eb => { for (const j of jobs) eb.replace(new vscode.Range(j.line, j.a, j.line, j.b), j.to); if (rules) for (const r of rules) eb.insert(new vscode.Position(r.line, 0), r.text); }, { undoStopBefore: false, undoStopAfter: false });
     _meosFofWant = null; meosDbg('[puzzleTag] P' + n + 'の組を本文へ ' + jobs.length + '本'); try { refresh(ed); } catch (_) { }
   } catch (_) { } finally { _meosFofBusy = false; }
 }
@@ -7454,7 +7462,11 @@ async function meosPuzzleLand(ed, line, onRow, at) {
   // ★v5.1.568(俊克 pm06:16 バグ1「最初に任意の位置だと大きく外れる…5行目の位置に表示すれば」): 567 の真ん中置きをやめる。♥の行を AtTop で置く= 実機では1段目に来る(俊克 pm06:29「1行目の方がいいね」)。折り返しに左右されない
   try { shown.revealRange(onRow ? new vscode.Range(line, 0, line, 0) : new vscode.Range(line, 0, land, 0), onRow ? vscode.TextEditorRevealType.AtTop : vscode.TextEditorRevealType.InCenter); } catch (_) { }
   // v5.1.585: ♥を1段目に置くと最後の場所が画面の外になる長い膜は、カーソルの方を見せる
-  if (at) try { await new Promise(r => setTimeout(r, 120)); if (!(shown.visibleRanges || []).some(r => at.line >= r.start.line && at.line <= r.end.line)) meosRevealNearTop(shown, at.line); } catch (_) { }
+  // ★v5.1.591(俊克 11.08 am10:40 改良2「P1膜も、最後にいた場所を記憶しているんだけど、なぜか、画面の中に出てこない…半画面くらい手前を表示する」): 0.12秒で見えるかを確かめていた→
+  //   34万行では画面がまだ AtTop の前(カーソルを中央に見せた古い画面)= 見えると誤って読み、その後に AtTop が効いて外れた。→ 上端が印の行になるまで(最長1.5秒)待ってから確かめる
+  if (at) try { const _top = () => ((shown.visibleRanges || [])[0] || { start: { line: -1 } }).start.line, _here = () => { try { const a = shown.selection.active; return a.line === at.line; } catch (_) { return false; } };
+    for (let i = 0; i < 50 && onRow && _top() !== line && _here(); i++) await new Promise(r => setTimeout(r, 30)); if (!onRow) await new Promise(r => setTimeout(r, 120));
+    if (_here() && !(shown.visibleRanges || []).some(r => at.line >= r.start.line && at.line <= r.end.line)) meosRevealNearTop(shown, at.line); } catch (_) { }
   meosPostPuzzleDots(true); return shown;
 }
 // ★v5.1.566(俊克 11.07 pm02:28 改良1「♥をクリックしても、ポインタ位置が少しズレてしまうので、ポインタを自動で♥の右下に自動追従して」): ♥へ飛ぶと着地は画面の真ん中= ♥の画面の高さが変わる。
