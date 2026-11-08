@@ -7424,7 +7424,8 @@ async function meosPuzzleSweep(ed, n, ch) {
   for (let i = 0; i < whole.length;) { let j = i; while (j + 1 < whole.length && whole[j + 1] === whole[j] + 1) j++; const a = whole[i], b = whole[j];   // 隣り合う行は1塊に(範囲が重なると編集ごと断られる)
     spans.push(b < last ? new vscode.Range(a, 0, b + 1, 0) : a > 0 ? new vscode.Range(a - 1, doc.lineAt(a - 1).text.length, b, doc.lineAt(b).text.length) : new vscode.Range(0, 0, b, doc.lineAt(b).text.length)); i = j + 1; }
   // ★v5.1.590(俊克 am10:22 バグ2「パズルcをCmdクリックして、c膜を削除したけど、🔴マークのままで、白マークにならない」): 膜(組の片方)か最後の1本を消したら、🔴(行き先)を1つ前の字へ返す
-  const _prS = meosFofPair(doc, n), _gone = kill.length === hits.length || (!!_prS && !!_prS.m && kill.some(h => h.name === _prS.f.name || h.name === _prS.m.name));
+  //   ★v5.1.592(俊克 am11:03 バグ1「閉じ膜を消した段階で、白マークになってしまった…白マークにするのは、開始膜も消したとき」): F(開始膜)まで消した時だけ
+  const _gone = kill.length === hits.length || (!!f && kill.some(h => h.name === f.name));
   await ed.edit(eb => { for (const r of spans) eb.delete(r); });
   if (_gone) meosPuzzleLastDrop(ch);
   meosPostPuzzleDots(true); meosDbg('[puzzleTag] 一括で消した P' + n + ' ' + kill.length + '本' + (f && hits.length > 1 ? '(F は残した)' : ''));
