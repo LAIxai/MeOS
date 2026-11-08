@@ -44,7 +44,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosRuleStopAt, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleSweep, parseOpenLine, parseCloseLine, meosPuzzleColor, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosRuleStopAt, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleSweep, parseOpenLine, parseCloseLine, meosPuzzleColor, meosPuzzleDupFollow, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -113,6 +113,20 @@ const S = (sel) => sel;
   const d7 = mkDoc(['a', P1O, R, P1a, '中', '', R, P1C, 'z']); T.meosPuzzleFSet(d7, 1, 'M_20261108S100001JST');
   await T.meosPuzzleSweep(mkEd(d7), 1, 'M'); ok(d7.L.join('|') === ['a', P1O, R, '中', '', R, P1C, 'z'].join('|'), '開始罫線の直下の中継点= 罫線は残す', d7.L);
   await T.meosPuzzleSweep(mkEd(d7), 1, 'M'); ok(d7.L.join('|') === ['a', P1O, R, '中', '', 'z'].join('|'), '2段目= 相方と罫線', d7.L);
+  // 8. v5.1.589 コピペ: 膜が無い字= 複製が相方(▲)/膜が在る字= 中継点
+  const paste = async (d, at, text) => { const ed = mkEd(d); stub.window.visibleTextEditors = [ed]; d.L.splice(at, 0, text); d.version++;
+    T.meosPuzzleDupFollow({ document: d, contentChanges: [{ text: text + '\n', range: { start: { line: at, character: 0 } } }] }); await new Promise(r => setTimeout(r, 50)); };
+  const d8 = mkDoc(['a', P1a, 'b', 'c']); T.meosPuzzleFSet(d8, 1, 'M_20261101S090000JST');
+  await paste(d8, 3, P1a);
+  ok(/\{\* ▼▶◀mP1=M_20261101S090000JST/.test(d8.L[1]) && /\{\* ▲▶◀mP1=M_2026\d{4}\w\d{6}JST/.test(d8.L[3]) && !/090000/.test(d8.L[3]), '古いP1を下へコピペ= 元が▼・複製が▲', d8.L);
+  const d9 = mkDoc(['a', 'b', P1a, 'c']); T.meosPuzzleFSet(d9, 1, 'M_20261101S090000JST');
+  await paste(d9, 0, P1a);
+  ok(/\{\* ▼▶◀mP1=/.test(d9.L[0]) && /\{\* ▲▶◀mP1=M_20261101S090000JST/.test(d9.L[3]), '上へコピペ= 複製が▼・元が▲', d9.L);
+  await paste(d9, 2, P1a.replace('▶◀', '▶◀'));
+  ok(!/[▼▲]▶/.test(d9.L[2]) && /▼▶/.test(d9.L[0]) && /▲▶/.test(d9.L[4]), '膜が在る時のコピペ= 中継点', d9.L);
+  const d10 = mkDoc(['a', P1O, R, '中', '', R, P1C, 'z']); T.meosPuzzleFSet(d10, 1, 'M_20261108S100001JST');
+  await paste(d10, 4, P1O);
+  ok(/\{\* ▶◀mP1=/.test(d10.L[4]) && /▼▶/.test(d10.L[1]) && /▲▶/.test(d10.L[7]), '▼P1のコピペ= ▼を外して中継点', d10.L);
   // 7. 色
   ok(T.meosPuzzleColor('M', 0.95) === 'rgba(229, 57, 53, 0.95)' && T.meosPuzzleColor('k', 0.14) === 'rgba(194, 24, 91, 0.14)', '札の色= Me Dock の字の色', [T.meosPuzzleColor('M', 0.95), T.meosPuzzleColor('k', 0.14)]);
   console.log(ng ? ('NG ' + ng) : '全項目 PASS');

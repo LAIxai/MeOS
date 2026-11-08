@@ -7608,6 +7608,12 @@ function meosPuzzleDupFollow(e) {
   // ★v5.1.562(俊克 pm01:39「開始♥と閉じ♥の間が広がったとき、適当な位置に♥を差し込む」・pm01:47「中間は相方にしない」): 組の間に増やした♥はふつうの♥= 相方を奪わない(♥️♥️ を写しても ♥️ へ戻す)
   const _fofOld = all.filter(h => h.n === 7 && !fresh.has(h.line)), _fofF = _fofOld.find(h => h.name === meosPuzzleFGet(doc, 7)), _fofM = _fofF ? _fofOld.filter(h => h !== _fofF && meosFofIsTwo(doc.lineAt(h.line).text)).sort((a, b) => (a.name < b.name ? 1 : -1))[0] : null;
   const _fofIn = (ln) => !!_fofM && ln > Math.min(_fofF.line, _fofM.line) && ln < Math.max(_fofF.line, _fofM.line);
+  // ★v5.1.589(俊克 11.08 am10:10 バグ1「今までのP1のコメントを別の場所にペーストしたけど、▲P1にならないよ」): 588 は P1〜P6 の複製を全部中継点に落としていた。
+  //   ♥と同じに= 膜がまだ無い字は、複製が相方(上が▼・下が▲)。膜が在る字の複製は中継点
+  const _pzHasPair = {}; for (const h of fix) { const n = h.n; if (n === 7 || _pzHasPair[n] !== undefined) continue;
+    const old = all.filter(o => o.n === n && !fresh.has(o.line)), F = old.find(o => o.name === meosPuzzleFGet(doc, n)) || (old.length === 1 ? old[0] : null);
+    _pzHasPair[n] = !F ? true : (meosFofIsTwo(doc.lineAt(F.line).text, n) && old.some(o => o !== F && meosFofIsTwo(doc.lineAt(o.line).text, n))); }
+  const _pzWant = [];
   _meosPuzzleDupBusy = true;
   (async () => {
     try {
@@ -7620,10 +7626,12 @@ function meosPuzzleDupFollow(e) {
           if (h.n === 7) _meosFofWant = { uri: doc.uri.toString(), name: _fofIn(h.line) ? _fofM.name : nm };   // v5.1.559: 2個目以降の♥= 相方
           eb.replace(new vscode.Range(h.line, i, h.line, i + h.name.length), nm);
           // ★v5.1.588(俊克 am09:37「その他のマーキングP1は、Optクリックで循環できる中継点という意味だけ」): P1〜P6 の複製は中継点= ▼▲ を写しても外す(組を奪わない)
+          if (h.n !== 7 && !_pzHasPair[h.n]) { _pzHasPair[h.n] = true; _pzWant.push({ uri: doc.uri.toString(), name: nm, n: h.n }); continue; }   // v5.1.589: 最初の複製1本だけが相方
           if (h.n !== 7) { const pm = meosPzmMark(t, h.n); if (pm && pm[1] && meosFofTwoPre(pm[1], h.n)) { const pa = pm.index + pm[0].indexOf('\u25b6\u25c0') - pm[1].length; if (pa + pm[1].length <= i) eb.replace(new vscode.Range(h.line, pa, h.line, pa + pm[1].length), ''); } }
         }
       }, { undoStopBefore: false, undoStopAfter: false });
       meosDbg('[puzzleTag] 複製を打ち直した ' + fix.length + '本'); if (_meosFofWant) await meosFofReconcile(ed);
+      for (const w of _pzWant) { _meosFofWant = w; await meosFofReconcile(ed, w.n); }
     } catch (_) { } finally { _meosPuzzleDupBusy = false; }
   })();
 }
