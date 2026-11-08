@@ -40785,9 +40785,13 @@ function meosMemEdgeAt(t, inFence) {
   const m = MEOS_FOF_MARK_RE.exec(meosRefScanText(t)); if (!m) return 0;
   return m[1].indexOf('\u25bc') >= 0 ? 1 : (m[1].indexOf('\u25b2') >= 0 ? -1 : 0);
 }
-function meosMembraneRuleTarget(doc, cur, down) {
+// ★v5.1.601(俊克 11.08 pm04:39 💥💥「Cmd+↑/↓は、P1〜6膜と♥️膜の境界にしか効かない…任意の位置に入れた一時停止線🛑でも、止まる方が使い易い」):
+//   同じ深さ(子の膜の中は飛ばす)の一時停止線でも止まる= 下は線の前の行の末尾・上は線の次の行の頭。もう線の手前に居たら、その線を越えて次を探す。
+//   膜の境の線も同じ規則で止まる(前と同じ所)。囲いの中・畳んで隠れた線は数えない
+function meosMembraneRuleTarget(doc, cur, down, ed) {
   const L = meosDocLines(doc), fence = meosFenceLines(doc), dir = down ? 1 : -1, want = down ? -1 : 1; let depth = 0;
   for (let i = cur + dir; i >= 0 && i < L.length; i += dir) {
+    if (depth === 0 && !fence.has(i) && MEOS_RULE_LINE_RE.test(L[i]) && !(ed && meosRuleHidden(ed, i))) { const to = i - dir; if ((down ? to > cur : to < cur) && to >= 0 && to < L.length) return to; continue; }
     const e = meosMemEdgeAt(L[i], fence.has(i)); if (!e) continue;
     if (e !== want) { depth++; continue; }
     if (depth > 0) { depth--; continue; }
@@ -40803,7 +40807,7 @@ async function meosMembraneEdge(down) {
     if (ed && meosIsProseDoc(ed.document) && ed.selections.length === 1) {
       const doc = ed.document, cur = ed.selection.active.line, edge = meosMemEdgeAt(doc.lineAt(cur).text, false), head = down ? 1 : -1;
       if (!(edge === head && meosRuleHidden(ed, cur + head))) {   // 畳んだ膜の見出しから中へは入らない
-        const to = meosMembraneRuleTarget(doc, cur, down);
+        const to = meosMembraneRuleTarget(doc, cur, down, ed);
         if (to >= 0) { const p = new vscode.Position(to, down ? doc.lineAt(to).text.length : 0); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport); return; }
       }
     }

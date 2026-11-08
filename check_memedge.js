@@ -72,5 +72,18 @@ ok(t(16,false)===15,'子の中 ↑',t(16,false));
 ok(t(28,true)===-1,'罫線の無い膜=本来の動き',t(28,true));
 ok(t(23,true)===-1,'囲いの中の♥を数えない',t(23,true));
 ok(t(2,true)===6,'開始罫線の上から ↓',t(2,true));
+// ★v5.1.601: 任意の一時停止線でも止まる(同じ深さだけ・もう手前なら越えて次へ)
+{ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,'y12','',S,'y15','```',S,'```','end'];
+  const dm={...doc,uri:{toString:()=>'file:///s.md',fsPath:'/s.md',scheme:'file'},fileName:'/s.md',lineCount:M.length,lineAt:n=>({text:M[n]}),getText:()=>M.join('\n')};
+  const u=(c,d)=>T.meosMembraneRuleTarget(dm,c,d);
+  ok(u(5,true)===6,'膜の中の任意の線 ↓=線の1行上',u(5,true));
+  ok(u(6,true)===9,'線の手前でもう1回 ↓=越えて閉じ罫線の上',u(6,true));
+  ok(u(9,false)===8,'膜の中の任意の線 ↑=線の1行下',u(9,false));
+  ok(u(8,false)===5,'線の直下でもう1回 ↑=越えて開始罫線の下',u(8,false));
+  ok(u(12,true)===13,'膜の外の線 ↓',u(12,true));
+  ok(u(13,true)===-1,'囲いの中の線は数えない=本来の末尾',u(13,true));
+  ok(u(15,false)===2,'膜の外 ↑=手前の線を越え・膜を丸ごと飛ばして上の線の下',u(15,false));
+  ok(u(2,false)===-1&&u(0,true)===13,'線のすぐ隣: 越えた先に線が無ければ本来/膜を飛ばして次の線',[u(2,false),u(0,true)]);
+}
 ok(T.meosMemEdgeAt(Q,false)===0,'`…` の中の♥は膜の行でない',T.meosMemEdgeAt(Q,false));
 console.log(ng?('NG '+ng):'全項目 PASS');
