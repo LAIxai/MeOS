@@ -15267,6 +15267,9 @@ function meosClockLineHints(editor, doc, i) {
   return out;
 }
 const MEOS_RULE_LINE_RE = /^\s*<!--\s*Mew!UFC\s+-{3,}\s*-->\s*$/;   // v5.1.112: 罫線の行(`<!-- Mew!UFC --- -->`)
+// ★v5.1.593(俊克 11.08 am11:27「罫線 <!-- Mew!UFC --- --> を一時停止線と命名しよう。区別する為に、頭に見かけ上の標識を作って付けよう。世界的な一時停止標識は正八角形なので、オーストリアを参考に」):
+//   名前= 一時停止線(↑↓の押しっぱなしが止まる線・v5.1.579)。行頭に正八角形の STOP(黒の外枠・白の縁・赤の地・白い字)を絵で重ねる(本文の字は変えない= 見かけだけ)
+const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjI5LjI5LDAuMDAgNzAuNzEsMC4wMCAxMDAuMDAsMjkuMjkgMTAwLjAwLDcwLjcxIDcwLjcxLDEwMC4wMCAyOS4yOSwxMDAuMDAgMC4wMCw3MC43MSAwLjAwLDI5LjI5IiBmaWxsPSIjMWExYTFhIi8+PHBvbHlnb24gcG9pbnRzPSIzMC43NCwzLjUwIDY5LjI2LDMuNTAgOTYuNTAsMzAuNzQgOTYuNTAsNjkuMjYgNjkuMjYsOTYuNTAgMzAuNzQsOTYuNTAgMy41MCw2OS4yNiAzLjUwLDMwLjc0IiBmaWxsPSIjZmZmIi8+PHBvbHlnb24gcG9pbnRzPSIzMi4xOSw3LjAwIDY3LjgxLDcuMDAgOTMuMDAsMzIuMTkgOTMuMDAsNjcuODEgNjcuODEsOTMuMDAgMzIuMTksOTMuMDAgNy4wMCw2Ny44MSA3LjAwLDMyLjE5IiBmaWxsPSIjZGMzYjMwIi8+PHRleHQgeD0iNTAiIHk9IjYyLjUiIGZvbnQtZmFtaWx5PSJBcmlhbCBOYXJyb3csSGVsdmV0aWNhIE5ldWUsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIzMyIgdGV4dExlbmd0aD0iNjYiIGxlbmd0aEFkanVzdD0ic3BhY2luZ0FuZEdseXBocyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+U1RPUDwvdGV4dD48L3N2Zz4=', MEOS_STOP_SIGN_EM = 1.3;
 function meosApplyTimerLineDecorations(editor, fromHints) {
   try {
     if (!editor || !editor.document) return;
@@ -15370,7 +15373,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
             if (!_inFence && !meosShowsRawLineStable(editor, i)) {
               badgeHide.push(new vscode.Range(i, 0, i, txt.length));
               items.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; display: inline-block; width: 60ch; height: 0; vertical-align: middle; border-top: 1px solid #e0803a; pointer-events: none;' } } });
+                textDecoration: 'none; display: inline-block; width: 60ch; height: ' + MEOS_STOP_SIGN_EM + 'em; vertical-align: middle; background: url(' + MEOS_STOP_SIGN_URL + ') left center / ' + MEOS_STOP_SIGN_EM + 'em ' + MEOS_STOP_SIGN_EM + 'em no-repeat, linear-gradient(#e0803a, #e0803a) ' + (MEOS_STOP_SIGN_EM + 0.3) + 'em center / calc(100% - ' + (MEOS_STOP_SIGN_EM + 0.3) + 'em) 1px no-repeat; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線
             }
             continue;
           }
