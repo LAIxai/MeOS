@@ -60,20 +60,24 @@ const doc={uri:{toString:()=>'file:///e.md',fsPath:'/e.md',scheme:'file'},langua
 const t=(cur,down)=>T.meosMembraneRuleTarget(doc,cur,down);
 ok(t(3,true)===6,'♥膜の中 ↓=閉じ罫線の1行上',t(3,true));
 ok(t(4,false)===3,'♥膜の中 ↑=開始罫線の次の行',t(4,false));
-ok(t(6,true)===-1,'もう下端=本来の末尾へ',t(6,true));
+ok(t(6,true)===9,'もう下端=次の膜の手前(v5.1.602)',t(6,true));
 ok(t(3,false)===-1,'もう上端=本来の先頭へ',t(3,false));
-ok(t(0,true)===-1,'膜の外',t(0,true));
-ok(t(9,false)===-1,'♥膜の下の外から↑',t(9,false));
-ok(t(12,true)===20,'親の中 ↓=子を飛ばして親の閉じ罫線の上',t(12,true));
-ok(t(19,false)===12,'親の中 ↑=子を飛ばす',t(19,false));
+ok(t(0,true)===6,'開始膜の手前から ↓=膜の中の閉じ罫線の上(v5.1.602)',t(0,true));
+ok(t(9,false)===3,'閉じ膜の直下から ↑=膜の中の開始罫線の下(v5.1.602)',t(9,false));
+ok(t(12,true)===16,'親の中 ↓=開いた子の中の線でも止まる(v5.1.602)',t(12,true));
+ok(t(19,false)===15,'親の中 ↑=開いた子の中の線でも止まる(v5.1.602)',t(19,false));
 ok(t(15,true)===16,'子の中 ↓',t(15,true));
-ok(t(15,false)===15||t(15,false)===-1,'子の中 ↑ もう上端',t(15,false));
+ok(t(15,false)===12,'子の中 ↑ もう上端=子の膜を出て親の開始罫線の下(v5.1.602)',t(15,false));
 ok(t(16,false)===15,'子の中 ↑',t(16,false));
 ok(t(28,true)===-1,'罫線の無い膜=本来の動き',t(28,true));
 ok(t(23,true)===-1,'囲いの中の♥を数えない',t(23,true));
 ok(t(2,true)===6,'開始罫線の上から ↓',t(2,true));
 // ★v5.1.601: 任意の一時停止線でも止まる(同じ深さだけ・もう手前なら越えて次へ)
-{ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,'y12','',S,'y15','```',S,'```','end'];
+{ { const N=['top',R,'x2','x3',R,'x5','x6',H1.replace('mP7=f','mP7=meta'),'meta8','meta9'];   // v5.1.602: 末尾が閉じの無い膜の中(生涯日記の mMETA)
+  const dn={...doc,uri:{toString:()=>'file:///n.md',fsPath:'/n.md',scheme:'file'},fileName:'/n.md',lineCount:N.length,lineAt:n=>({text:N[n]}),getText:()=>N.join('\n')};
+  const v=(c,d)=>T.meosMembraneRuleTarget(dn,c,d);
+  ok(v(9,false)===5&&v(5,false)===2&&v(2,false)===-1,'末尾の閉じの無い膜から ↑= 膜を出て線を順に遡る',[v(9,false),v(5,false),v(2,false)]); }
+const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,'y12','',S,'y15','```',S,'```','end'];
   const dm={...doc,uri:{toString:()=>'file:///s.md',fsPath:'/s.md',scheme:'file'},fileName:'/s.md',lineCount:M.length,lineAt:n=>({text:M[n]}),getText:()=>M.join('\n')};
   const u=(c,d)=>T.meosMembraneRuleTarget(dm,c,d);
   ok(u(5,true)===6,'膜の中の任意の線 ↓=線の1行上',u(5,true));
@@ -82,8 +86,8 @@ ok(t(2,true)===6,'開始罫線の上から ↓',t(2,true));
   ok(u(8,false)===5,'線の直下でもう1回 ↑=越えて開始罫線の下',u(8,false));
   ok(u(12,true)===13,'膜の外の線 ↓',u(12,true));
   ok(u(13,true)===-1,'囲いの中の線は数えない=本来の末尾',u(13,true));
-  ok(u(15,false)===2,'膜の外 ↑=手前の線を越え・膜を丸ごと飛ばして上の線の下',u(15,false));
-  ok(u(2,false)===-1&&u(0,true)===13,'線のすぐ隣: 越えた先に線が無ければ本来/膜を飛ばして次の線',[u(2,false),u(0,true)]);
+  ok(u(15,false)===12,'膜の外 ↑=閉じ膜の直下で止まる(膜の行に着地しない)',u(15,false));
+  ok(u(2,false)===-1&&u(0,true)===2,'線のすぐ隣: 越えた先に線が無ければ本来/膜を飛ばして次の線',[u(2,false),u(0,true)]);
 }
 ok(T.meosMemEdgeAt(Q,false)===0,'`…` の中の♥は膜の行でない',T.meosMemEdgeAt(Q,false));
 console.log(ng?('NG '+ng):'全項目 PASS');

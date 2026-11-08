@@ -40789,15 +40789,14 @@ function meosMemEdgeAt(t, inFence) {
 //   同じ深さ(子の膜の中は飛ばす)の一時停止線でも止まる= 下は線の前の行の末尾・上は線の次の行の頭。もう線の手前に居たら、その線を越えて次を探す。
 //   膜の境の線も同じ規則で止まる(前と同じ所)。囲いの中・畳んで隠れた線は数えない
 function meosMembraneRuleTarget(doc, cur, down, ed) {
-  const L = meosDocLines(doc), fence = meosFenceLines(doc), dir = down ? 1 : -1, want = down ? -1 : 1; let depth = 0;
+  // ★v5.1.602(俊克 11.08 pm04:48 💥💥 同じ件): 生涯日記は全体が「日記」膜に包まれている= 子の膜を丸ごと飛ばす決まりだと、外(末尾)から↑で日記ごと飛んで先頭へ。↓と↑が同じ線を通らない。
+  //   → 深さで飛ばすのをやめ、見えている一時停止線は全部止まる(畳んで隠れた線だけ飛ばす=畳みが「飛ばす」の意思)。
+  //   着地が膜の行(↓で開始膜・↑で閉じ膜)になる線は、長押しと同じく膜の行へ入る手前で止まる(Rawの膜の行には着地しない)
+  const L = meosDocLines(doc), fence = meosFenceLines(doc), dir = down ? 1 : -1, beyond = l => l >= 0 && l < L.length && (down ? l > cur : l < cur);
   for (let i = cur + dir; i >= 0 && i < L.length; i += dir) {
-    if (depth === 0 && !fence.has(i) && MEOS_RULE_LINE_RE.test(L[i]) && !(ed && meosRuleHidden(ed, i))) { const to = i - dir; if ((down ? to > cur : to < cur) && to >= 0 && to < L.length) return to; continue; }
-    const e = meosMemEdgeAt(L[i], fence.has(i)); if (!e) continue;
-    if (e !== want) { depth++; continue; }
-    if (depth > 0) { depth--; continue; }
-    const rule = i - dir, to = rule - dir;
-    if (rule < 0 || rule >= L.length || !MEOS_RULE_LINE_RE.test(L[rule])) return -1;
-    return (down ? to > cur : to < cur) ? to : -1;
+    if (fence.has(i) || !MEOS_RULE_LINE_RE.test(L[i]) || (ed && meosRuleHidden(ed, i))) continue;
+    let to = i - dir; if (to >= 0 && to < L.length && meosMemEdgeAt(L[to], fence.has(to))) to -= dir;
+    if (beyond(to) && !meosMemEdgeAt(L[to], fence.has(to))) return to;
   }
   return -1;
 }
