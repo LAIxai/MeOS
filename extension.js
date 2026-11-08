@@ -7065,6 +7065,8 @@ const REF_MARK_ACTIVE = '\u25b6\u25c0';   // ▶◀
 //   ★印= 点膜 {* ▶◀mP1=M_TS *}(参照符 mRn と同じ形の別の族)。字に結ぶ= M e D o c k → P1〜P6(並べ替えても行き先は字と一緒)。
 //   ★印が無い字= カーソルの行(の上)に印を書く / 有る字= そこへ飛ぶ(2つ以上なら、カーソルの次の印へ巡る)。間抜け/Deco の間は拡張が知らせを受けない(v4.2.500 の門)。
 const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=/;
+const MEOS_PUZZLE_COL = { M: '#e53935', e: '#f57c00', D: '#2e9d3a', o: '#1e7fd6', c: '#8e24aa', k: '#c2185b' };   // v5.1.588: Me Dock の字の色= 本文の P1〜P6 の札も同じ色(1か所から引く)
+function meosPuzzleColor(ch, a) { const h = MEOS_PUZZLE_COL[ch]; if (!h) return 'rgba(124, 58, 237, ' + a + ')'; return 'rgba(' + parseInt(h.slice(1, 3), 16) + ', ' + parseInt(h.slice(3, 5), 16) + ', ' + parseInt(h.slice(5, 7), 16) + ', ' + a + ')'; }
 const MEOS_PUZZLE_LETTERS = 'MeDockf';   // ★v5.1.537(俊克 11.06 pm03:05 改良1「♥️ボタンは、他のパズルと基本は同じに」): 末尾の f= mGATE の♡(P7)。印・F・tip・削除は他の字と同じ。ただし🔴(最後の字)は動かさない= 🔴は「今いる場所」・♥はその中の作業の箇所
 const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)[^\r\n]*?\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;   // v4.2.565: 飾り用(殻ごと)
 // v2.0.4(俊克): Date Warp=暦の軸で日記膜へ相対/絶対ジャンプ。基準=今いる日付膜(無ければ今日)/完全一致のみ。v4.2.777-1: Me Dock の受け口から関数へ出した
@@ -7319,48 +7321,65 @@ async function meosDiaryTplMenu(ed) {
 //   ①F の♥は1本だけでも逆さ♥を出す(相方が居なければ薄く・押しても飛ばない) ②組は本文の ♥️♥️ が持つ(559 の裏の控えをやめた= 別の機械でも同じ組)。組から外れた♥は ♥️ 1つへ戻す
 //   _meosFofWant= 次に組へ入れたい♥(複製した♥・元の F)。望む姿と本文を突き合わせて違う所だけ打つ(meosFofReconcile)
 // ★v5.1.563(俊克 11.07 pm01:53「♥▼を開始膜、♥▲を閉じ膜に…♥膜(お気に入り膜)と呼ぶ」・pm02:06「概念的な話…開始と閉じがあることが膜の基本」): 折り畳みはしない= 印の見た目と本文の字が ♥️▼ / ♥️▲。上下は位置で決める(上が▼)・押すとワープ・F はどちらにも付く。560 の ♥️♥️ は♥の行にカーソルが入った時に直す
-const MEOS_FOF_MARK_RE = /\{\*[ \t]*((?:\u2665\ufe0f?|[\u25bc\u25b2])*)\u25b6\u25c0[ \t]*mP7[ \t]*=/, MEOS_FOF_O = '\u2665\ufe0f\u25bc', MEOS_FOF_C = '\u2665\ufe0f\u25b2', MEOS_FOF_1 = '\u2665\ufe0f';
+// ★v5.1.588(俊克 11.08 am09:37「ライオン等で言えば、テリトリーが膜に相当する…基本は膜の中に中継点がある。時として、膜の外に進出して、マーキングする」): ♥膜の部品を P1〜P7 共通に。
+//   印= {* ▼▶◀mP1=… *} / {* ▲▶◀mP1=… *}(♥だけ字の頭に ♥️)。組は字ごとに F の1組。組の外の印は中継点(Opt で巡る)。
+//   ♥と違う所= P1〜P6 は今ある印を組へ引き込まない(俊克③「今のまま中継点として残す」)。組は新しく作る/選択を包む時だけ。コピペした ▼▲ の印は中継点に落とす
+const MEOS_FOF_MARK_RE = /\{\*[ \t]*((?:\u2665\ufe0f?|[\u25bc\u25b2])*)\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=/, MEOS_FOF_MARK_G = /\{\*[ \t]*((?:\u2665\ufe0f?|[\u25bc\u25b2])*)\u25b6\u25c0[ \t]*mP([1-7])[ \t]*=/g;
+function meosPzmPre(n) { return n === 7 ? '\u2665\ufe0f' : ''; }
+function meosPzmO(n) { return meosPzmPre(n) + '\u25bc'; }
+function meosPzmC(n) { return meosPzmPre(n) + '\u25b2'; }
+function meosPzmMark(t, n) { const s = meosRefScanText(t || ''); MEOS_FOF_MARK_G.lastIndex = 0; let m; while ((m = MEOS_FOF_MARK_G.exec(s)) !== null) if (!n || +m[2] === n) return m; return null; }   // その字の最初の印
 let _meosFofWant = null, _meosFofBusy = false;
-function meosFofIsTwo(t) { const m = MEOS_FOF_MARK_RE.exec(meosRefScanText(t || '')); return !!m && m[1].replace(/\ufe0f/g, '').length >= 2; }   // ♥️▼ ♥️▲ も旧 ♥️♥️ も2字
-function meosFofPair(doc) {
+function meosFofTwoPre(p, n) { return /[\u25bc\u25b2]/.test(p) || (n === 7 && p.replace(/\ufe0f/g, '').length >= 2); }   // ▼ ▲ が付く(♥は旧 ♥️♥️ も)
+function meosFofIsTwo(t, n) { const m = meosPzmMark(t, n || 7); return !!m && meosFofTwoPre(m[1], +m[2]); }
+function meosFofPair(doc, n) {
+  n = n || 7;
   try {
-    const hits = meosPuzzleTagsOf(doc, 7); if (!hits.length) return null;
-    const fn = meosPuzzleFGet(doc, 7), f = hits.find(h => h.name === fn) || (hits.length === 1 ? hits[0] : null); if (!f) return null;
+    const hits = meosPuzzleTagsOf(doc, n); if (!hits.length) return null;
+    const fn = meosPuzzleFGet(doc, n), f = hits.find(h => h.name === fn) || (hits.length === 1 ? hits[0] : null); if (!f) return null;
     const rest = hits.filter(h => h !== f).sort((a, b) => (a.name < b.name ? 1 : -1)), L = meosDocLines(doc);
-    const two = (h) => meosFofIsTwo(L[h.line]);
-    const w = _meosFofWant && _meosFofWant.uri === doc.uri.toString() ? rest.find(h => h.name === _meosFofWant.name) : null;
-    return { f, m: w || rest.find(two) || rest[0] || null };
+    const two = (h) => meosFofIsTwo(L[h.line], n);
+    const w = _meosFofWant && _meosFofWant.uri === doc.uri.toString() && (_meosFofWant.n || 7) === n ? rest.find(h => h.name === _meosFofWant.name) : null;
+    if (n === 7) return { f, m: w || rest.find(two) || rest[0] || null };
+    // P1〜P6: 組は本文に ▼▲ を持つ2本だけ= F が ▼▲ を持ち、向きの違う相方(近い方)が居る時
+    if (w) return { f, m: w };
+    const fm = meosPzmMark(L[f.line], n); if (!fm || !meosFofTwoPre(fm[1], n)) return { f, m: null };
+    const up = fm[1].indexOf('\u25bc') >= 0, cand = rest.filter(two).filter(h => { const k = meosPzmMark(L[h.line], n); return k && (k[1].indexOf('\u25bc') >= 0) !== up; });
+    cand.sort((a, b) => Math.abs(a.line - f.line) - Math.abs(b.line - f.line));
+    return { f, m: cand.find(h => up ? h.line > f.line : h.line < f.line) || cand[0] || null };
   } catch (_) { return null; }
 }
-async function meosFofReconcile(ed) {
+async function meosFofReconcile(ed, n) {
+  n = n || 7;
   if (_meosFofBusy || !ed) return; const doc = ed.document;
   try {
-    const pr = meosFofPair(doc); if (!pr) return; const L = meosDocLines(doc), jobs = [];
-    for (const h of meosPuzzleTagsOf(doc, 7)) { const t = meosRefScanText(L[h.line] || ''), m = MEOS_FOF_MARK_RE.exec(t); if (!m) continue;
-      const on = h.name === pr.f.name || (pr.m && h.name === pr.m.name), cnt = m[1].replace(/\ufe0f/g, '').length, to = on ? (pr.m && h.line === Math.max(pr.f.line, pr.m.line) ? MEOS_FOF_C : MEOS_FOF_O) : (cnt >= 2 ? MEOS_FOF_1 : null);
-      if (to && to !== m[1]) { const a = m.index + m[0].indexOf('\u25b6\u25c0') - m[1].length; jobs.push({ line: h.line, a, b: a + m[1].length, to }); } }
+    const pr = meosFofPair(doc, n); if (!pr) return; if (n !== 7 && !pr.m) { _meosFofWant = null; return; }   // P1〜P6 は組が無ければ何も書き換えない
+    const L = meosDocLines(doc), jobs = [];
+    for (const h of meosPuzzleTagsOf(doc, n)) { const m = meosPzmMark(L[h.line] || '', n); if (!m) continue;
+      const on = h.name === pr.f.name || (pr.m && h.name === pr.m.name), to = on ? (pr.m && h.line === Math.max(pr.f.line, pr.m.line) ? meosPzmC(n) : meosPzmO(n)) : (meosFofTwoPre(m[1], n) ? meosPzmPre(n) : null);
+      if (to !== null && to !== m[1]) { const a = m.index + m[0].indexOf('\u25b6\u25c0') - m[1].length; jobs.push({ line: h.line, a, b: a + m[1].length, to }); } }
     if (!jobs.length) { _meosFofWant = null; return; }
     _meosFofBusy = true;
     await ed.edit(eb => { for (const j of jobs) eb.replace(new vscode.Range(j.line, j.a, j.line, j.b), j.to); }, { undoStopBefore: false, undoStopAfter: false });
-    _meosFofWant = null; meosDbg('[puzzleTag] ♥の組を本文へ ' + jobs.length + '本'); try { refresh(ed); } catch (_) { }
+    _meosFofWant = null; meosDbg('[puzzleTag] P' + n + 'の組を本文へ ' + jobs.length + '本'); try { refresh(ed); } catch (_) { }
   } catch (_) { } finally { _meosFofBusy = false; }
 }
 const _meosFofHints = new Map(), _meosFofHintSig = new Map(); let meosFofSkinDeco = null, meosFofSkinLoneDeco = null, _meosFofCaret = '';
 function meosFofChipClick(e) {
   try {
-    if (!e) return; const _prev = _meosFofCaret; try { const _s0 = e.selections && e.selections[0]; if (_s0 && e.textEditor) { _meosFofCaret = e.textEditor.document.uri.toString() + '#' + _s0.active.line; if (_s0.active.line < e.textEditor.document.lineCount && e.textEditor.document.lineAt(_s0.active.line).text.indexOf('mP7') >= 0) meosFofReconcile(e.textEditor); } } catch (_) { }   // v5.1.559: 押す前にその行に居た= 生の字を直している時は飛ばない
+    if (!e) return; const _prev = _meosFofCaret; try { const _s0 = e.selections && e.selections[0]; if (_s0 && e.textEditor) { _meosFofCaret = e.textEditor.document.uri.toString() + '#' + _s0.active.line; if (_s0.active.line < e.textEditor.document.lineCount) { const _t0 = e.textEditor.document.lineAt(_s0.active.line).text; if (_t0.indexOf('mP') >= 0) { const _m0 = meosPzmMark(_t0, 0); if (_m0) meosFofReconcile(e.textEditor, +_m0[2]); } } } } catch (_) { }   // v5.1.559: 押す前にその行に居た= 生の字を直している時は飛ばない
     if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return; const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return;
     const doc = ed.document, ln = sel.active.line, col = sel.active.character; if (ln >= doc.lineCount) return; const raw = doc.lineAt(ln).text; if (raw.indexOf('mP') < 0 || !meosPuzzleTagLine(doc, ln, raw)) return;
     // ★v5.1.543(俊克 pm06:48 改良1「P1〜P6のラベルもボタン化した方が分かりやすい」): ♥と同じ。1行に2つあっても押した桁の札を選ぶ
     const scan = meosRefScanText(raw); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; let fm = null, x; while ((x = MEOS_PUZZLE_TAG_FULL_RE.exec(scan)) !== null) {
-      if (col === x.index || col === x.index - 1 || (x[1] === '7' && col === x.index + 1)) { fm = x; if (col >= x.index) break; } }   // v5.1.570: ♥を押すと左半分=印の頭・右半分=次の桁(台で実測)
+      if (col === x.index || col === x.index - 1 || (col === x.index + 1 && (x[1] === '7' || meosFofTwoPre((MEOS_FOF_MARK_RE.exec(x[0]) || ['', ''])[1], +x[1])))) { fm = x; if (col >= x.index) break; } }   // v5.1.570: ♥を押すと左半分=印の頭・右半分=次の桁(台で実測)
     if (!fm) return;
     // ★v5.1.564(俊克 11.07 pm02:16「▼/▲を押せると、折り畳めるように思ってしまう…文字カーソルのままにして、♥ボタンの上だけで選択指に」): ワープは♥で押す。▼▲は印= 押しても飛ばない。組の♥は F の付け替えをしない(中間♥を押すと今まで通り F が移る)
-    if (fm[1] === '7') { const pr = meosFofPair(doc), me = pr && pr.m && (pr.f.name === fm[2] ? pr.f : (pr.m.name === fm[2] ? pr.m : null)); if (me && col !== fm.index + 1) return;   /* v5.1.571: ▼▲を押した */ if (me) { if (_prev !== doc.uri.toString() + '#' + ln) { const to = me === pr.f ? pr.m : pr.f; meosDbg('[puzzleTag] ♥膜 ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } return; }
+    { const _n = +fm[1], pr = meosFofPair(doc, _n), me = pr && pr.m && (pr.f.name === fm[2] ? pr.f : (pr.m.name === fm[2] ? pr.m : null)); if (me && col !== fm.index + 1) return;   /* v5.1.571: ▼▲を押した */ if (me) { if (_prev !== doc.uri.toString() + '#' + ln) { const to = me === pr.f ? pr.m : pr.f; meosDbg('[puzzleTag] P' + _n + '膜 ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } return; }
       // ★v5.1.565(俊克 pm02:21「中間の♥を押して新しい相方になるのはおかしい…飽くまで中継点…次の中間♥へのワープかな」): 組がある時の中間♥= 次の中間♥へ(最後は最初へ)。F も相方も動かさない
-      if (pr && pr.m) { if (_prev !== doc.uri.toString() + '#' + ln) { const mids = meosPuzzleTagsOf(doc, 7).filter(h => h.name !== pr.f.name && h.name !== pr.m.name); if (mids.length >= 2) { const to = mids.find(h => h.line > ln) || mids[0]; meosDbg('[puzzleTag] 中間♥ ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } } return; } }
+      if (pr && pr.m) { if (_prev !== doc.uri.toString() + '#' + ln) { const mids = meosPuzzleTagsOf(doc, _n).filter(h => h.name !== pr.f.name && h.name !== pr.m.name); if (mids.length >= 2) { const to = mids.find(h => h.line > ln) || mids[0]; meosDbg('[puzzleTag] 中継点 P' + _n + ' ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } } return; } }
     const n = +fm[1], hits = meosPuzzleTagsOf(doc, n); if (meosPuzzleFGet(doc, n) === fm[2] || hits.length < 2) return;
-    if (n === 7) _meosFofWant = { uri: doc.uri.toString(), name: meosPuzzleFGet(doc, 7) };   // v5.1.559: 元の F が相方になる= 組の2か所は変わらない
+    if (n === 7) _meosFofWant = { uri: doc.uri.toString(), name: meosPuzzleFGet(doc, 7), n: 7 };   // v5.1.559: 元の F が相方になる= 組の2か所は変わらない
     meosPuzzleFSet(doc, n, fm[2]); meosDbg('[puzzleTag] 本文の札で F を移した P' + n + ' 行=' + (ln + 1));
     const land = Math.min(ln + 1, doc.lineCount - 1), pos = new vscode.Position(land, 0); ed.selection = new vscode.Selection(pos, pos);
     meosPostPuzzleDots(true); refresh(ed); if (n === 7) meosFofReconcile(ed);
@@ -7378,7 +7397,7 @@ async function meosPuzzleSweep(ed, n, ch) {
   const fn = meosPuzzleFGet(doc, n), f = hits.find(h => h.name === fn) || (hits.length === 1 ? hits[0] : null);
   let kill = (f && hits.length > 1) ? hits.filter(h => h !== f) : hits;
   // ★v5.1.562(俊克 11.07 pm01:47「cmdクリックの1段目は、中間♥だけをすべて消し、2段目は、閉じ♥を消し、最後に、開始ハートを消す」): ♥は3段= 組でない♥ → 相方 → F
-  if (n === 7) { const pr = meosFofPair(doc); if (pr && pr.m) { const mid = hits.filter(h => h.name !== pr.f.name && h.name !== pr.m.name); kill = mid.length ? mid : [pr.m]; } }
+  { const pr = meosFofPair(doc, n); if (pr && pr.m) { const mid = hits.filter(h => h.name !== pr.f.name && h.name !== pr.m.name); kill = mid.length ? mid : [pr.m]; } }
   if (f && hits.length === 1) meosPuzzleShadowSet(ch, f.desc);
   const byLine = new Map(); for (const h of kill) { if (!byLine.has(h.line)) byLine.set(h.line, []); byLine.get(h.line).push(h.name); }
   const spans = [], whole = [], last = doc.lineCount - 1;
@@ -7388,9 +7407,11 @@ async function meosPuzzleSweep(ed, n, ch) {
     let rest = '', p = 0; for (const g of segs) { rest += raw.slice(p, g[0]); p = g[1]; } rest += raw.slice(p);
     if (!rest.trim()) whole.push(ln); else for (const g of segs) spans.push(new vscode.Range(ln, g[0], ln, g[1]));
   }
-  if (n === 7) for (const ln of whole.slice()) { const t = doc.lineAt(ln).text, up = !/\u25bc\u25b6/.test(t), dn = !/\u25b2\u25b6/.test(t);   // v5.1.574: ♥に付いた罫線も一緒に(開始♥=下・閉じ♥=上・中間♥=両方)
-    if (dn && ln + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(ln + 1).text) && !whole.includes(ln + 1)) whole.push(ln + 1);
-    if (up && ln > 0 && MEOS_RULE_LINE_RE.test(doc.lineAt(ln - 1).text) && !whole.includes(ln - 1)) whole.push(ln - 1); }
+  // v5.1.588: どの字も印に付いた罫線を一緒に消す。ただし罫線の向こうが別の膜の行なら、その膜の罫線= 残す(膜の境のすぐ隣に貼った中継点)
+  const _edgeAt = (l) => l >= 0 && l < doc.lineCount ? meosMemEdgeAt(doc.lineAt(l).text, false) : 0;
+  for (const ln of whole.slice()) { const t = doc.lineAt(ln).text, up = !/\u25bc\u25b6/.test(t), dn = !/\u25b2\u25b6/.test(t);   // v5.1.574: ♥に付いた罫線も一緒に(開始♥=下・閉じ♥=上・中間♥=両方)
+    if (dn && ln + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(ln + 1).text) && !whole.includes(ln + 1) && (_edgeAt(ln + 2) !== -1 || whole.includes(ln + 2))) whole.push(ln + 1);
+    if (up && ln > 0 && MEOS_RULE_LINE_RE.test(doc.lineAt(ln - 1).text) && !whole.includes(ln - 1) && (_edgeAt(ln - 2) !== 1 || whole.includes(ln - 2))) whole.push(ln - 1); }
   whole.sort((a, b) => a - b);
   for (let i = 0; i < whole.length;) { let j = i; while (j + 1 < whole.length && whole[j + 1] === whole[j] + 1) j++; const a = whole[i], b = whole[j];   // 隣り合う行は1塊に(範囲が重なると編集ごと断られる)
     spans.push(b < last ? new vscode.Range(a, 0, b + 1, 0) : a > 0 ? new vscode.Range(a - 1, doc.lineAt(a - 1).text.length, b, doc.lineAt(b).text.length) : new vscode.Range(0, 0, b, doc.lineAt(b).text.length)); i = j + 1; }
@@ -7401,23 +7422,24 @@ async function meosPuzzleSweep(ed, n, ch) {
 async function meosPuzzleSweepGo(ch) { try { const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return; if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor); await meosPuzzleTag(ch, { sweep: true }); } catch (_) { } }
 // ★v5.1.585(俊克 am02:14 改良1「通常の膜と同様に、最後にいた場所、つまり、♥️開始膜からの行数を記憶して、mGATEの♥️ボタンをクリックしたとき、そこにワープ。行頭からの文字数もね」):
 //   通常の膜と同じ控え(getMeCursorMap)へ、印の名前に ♥ を付けて入れる。組の範囲を読むのは全行を見るので、手が止まってから1回・文書が変わった時だけ読み直す
-let _meosFofPlaceT = null, _meosFofPairC = null;
-function meosFofRange(doc) {
-  const k = doc.uri.toString() + '|' + doc.version; if (_meosFofPairC && _meosFofPairC.k === k) return _meosFofPairC.r;
-  let r = null; try { const p = meosFofPair(doc), L = meosDocLines(doc); if (p && p.m && meosFofIsTwo(L[p.f.line]) && meosFofIsTwo(L[p.m.line])) { const o = p.f.line < p.m.line ? p.f : p.m; r = { start: o.line, end: (o === p.f ? p.m : p.f).line, key: '\u2665' + o.name }; } } catch (_) { }
-  _meosFofPairC = { k, r }; return r;
+let _meosFofPlaceT = null, _meosFofPairC = new Map();
+function meosFofRange(doc, n) {
+  n = n || 7; const k = doc.uri.toString() + '|' + doc.version, c = _meosFofPairC.get(n); if (c && c.k === k) return c.r;
+  let r = null; try { const p = meosFofPair(doc, n), L = meosDocLines(doc); if (p && p.m && meosFofIsTwo(L[p.f.line], n) && meosFofIsTwo(L[p.m.line], n)) { const o = p.f.line < p.m.line ? p.f : p.m; r = { start: o.line, end: (o === p.f ? p.m : p.f).line, key: '\u2665' + o.name }; } } catch (_) { }
+  _meosFofPairC.set(n, { k, r }); return r;
 }
 function meosFofNotePlace(ed) {
   if (_meosFofPlaceT) clearTimeout(_meosFofPlaceT);
   _meosFofPlaceT = setTimeout(() => { _meosFofPlaceT = null; try {
     const doc = ed.document; if (!meosIsProseDoc(doc) || doc.isClosed) return;
-    const r = meosFofRange(doc), a = ed.selection.active; if (!r || a.line <= r.start || a.line >= r.end || MEOS_RULE_LINE_RE.test(doc.lineAt(a.line).text)) return;
-    const m = getMeCursorMap(doc), cols = (m.__col && typeof m.__col === 'object') ? m.__col : (m.__col = {}); m[r.key] = a.line - r.start; cols[r.key] = a.character;
+    const a = ed.selection.active; if (MEOS_RULE_LINE_RE.test(doc.lineAt(a.line).text)) return;
+    const rs = []; for (let n = 1; n <= 7; n++) { const r = meosFofRange(doc, n); if (r && a.line > r.start && a.line < r.end) rs.push(r); } if (!rs.length) return;   // v5.1.588: 居る膜(P1〜P7)ぜんぶ= 入れ子でもそれぞれの膜の最後の場所
+    const m = getMeCursorMap(doc), cols = (m.__col && typeof m.__col === 'object') ? m.__col : (m.__col = {}); for (const r of rs) { m[r.key] = a.line - r.start; cols[r.key] = a.character; }
     if (extensionContext) extensionContext.globalState.update(meCursorKey(doc), m);
   } catch (_) { } }, 300);
 }
-function meosFofSavedPos(doc) {
-  try { const r = meosFofRange(doc); if (!r) return null; const l = savedMeCursorLine(doc, r.key, r.start, r.end - 1); return l > r.start ? { start: r.start, pos: new vscode.Position(l, savedMeCursorCol(doc, r.key, l)) } : null; } catch (_) { return null; }
+function meosFofSavedPos(doc, n) {
+  try { const r = meosFofRange(doc, n); if (!r) return null; const l = savedMeCursorLine(doc, r.key, r.start, r.end - 1); return l > r.start ? { start: r.start, pos: new vscode.Position(l, savedMeCursorCol(doc, r.key, l)) } : null; } catch (_) { return null; }
 }
 async function meosPuzzleLand(ed, line, onRow, at) {
   const doc = ed.document;
@@ -7470,17 +7492,17 @@ async function meosFofWarpTo(ed, from, to) {
 // ★v5.1.574(俊克 pm07:37「♥膜と中身との境界に、罫線を入れよう。何かの弾みで膜の一部を削除してしまったりするから。見た目も分かり易く」): 開始♥の下・閉じ♥の上に1本ずつ。HTML コメントの文書だけ
 // ★v5.1.576(俊克 pm07:59 改良1「下の罫線の上に1行の空行を…最後の行と閉じ罫線が1行として認識されている」): UFC は上の本文に付く助詞(FC と同じ)= 本文の直後に置くと Enter が罫線を越え、カーソルで Raw になる。閉じ罫線の上は必ず空行
 function meosFofRule(doc, ind) { return wrapRefMark(doc, 'x').indexOf('<!--') >= 0 ? ind + MEOS_TIMER_DB_RULE + '\n' : ''; }
-async function meosFofWrap(ed, ch) {
-  const doc = ed.document, sel = ed.selection, a = sel.start.line, b = (sel.end.character === 0 && sel.end.line > a) ? sel.end.line - 1 : sel.end.line, ind = (doc.lineAt(a).text.match(/^[ \t]*/) || [''])[0], used = new Set(meosPuzzleTagsOf(doc, 7).map(h => h.name));
+async function meosFofWrap(ed, ch, n) {
+  n = n || 7; const doc = ed.document, sel = ed.selection, a = sel.start.line, b = (sel.end.character === 0 && sel.end.line > a) ? sel.end.line - 1 : sel.end.line, ind = (doc.lineAt(a).text.match(/^[ \t]*/) || [''])[0], used = new Set(meosPuzzleTagsOf(doc, n).map(h => h.name));
   const free = (t) => { for (let i = 0; i < 100; i++, t += 1000) { const nm = ch + '_' + meosMembraneStamp(new Date(t)); if (!used.has(nm)) { used.add(nm); return { nm, t }; } } return { nm: ch + '_' + meosMembraneStamp(new Date(t)), t }; };   // 刻みは秒= 続けて包むと前の閉じ♥と同じ名になる
   const _shadow = meosPuzzleShadowGet(ch), _o = free(Date.now()), nameO = _o.nm, nameC = free(_o.t + 1000).nm;
-  const tagO = ind + wrapRefMark(doc, '{* ' + MEOS_FOF_O + '\u25b6\u25c0mP7=' + nameO + ' // ' + (_shadow ? _shadow + ' ' : ' ') + '*}'), tagC = ind + wrapRefMark(doc, '{* ' + MEOS_FOF_C + '\u25b6\u25c0mP7=' + nameC + ' //  *}');
+  const tagO = ind + wrapRefMark(doc, '{* ' + meosPzmO(n) + '\u25b6\u25c0mP' + n + '=' + nameO + ' // ' + (_shadow ? _shadow + ' ' : ' ') + '*}'), tagC = ind + wrapRefMark(doc, '{* ' + meosPzmC(n) + '\u25b6\u25c0mP' + n + '=' + nameC + ' //  *}');
   const last = b + 1 >= doc.lineCount, rule = meosFofRule(doc, ind);
   const ok = await ed.edit(eb => { eb.insert(new vscode.Position(a, 0), tagO + '\n' + rule); const gap = rule ? '\n' : ''; if (last) eb.insert(new vscode.Position(b, doc.lineAt(b).text.length), '\n' + gap + rule + tagC); else eb.insert(new vscode.Position(b + 1, 0), gap + rule + tagC + '\n'); });
   if (!ok) return;
-  meosPuzzleFSet(doc, 7, nameO); _meosFofWant = { uri: doc.uri.toString(), name: nameC };
+  meosPuzzleFSet(doc, n, nameO); _meosFofWant = { uri: doc.uri.toString(), name: nameC, n };
   const _ln = b + (rule ? 2 : 1), _p = new vscode.Position(_ln, ed.document.lineAt(_ln).text.length); ed.selection = new vscode.Selection(_p, _p);   // ★v5.1.578(俊克 pm08:19 改良1「♥膜を作成した直後の文字カーソルの着地点を行末に」): 中身の最後の行の行末= そのまま続きを書ける
-  await meosFofReconcile(ed); meosPostPuzzleDots(true); meosDbg('[puzzleTag] ♥で包んだ 行=' + (a + 1) + '〜' + (b + 3));
+  await meosFofReconcile(ed, n); meosPostPuzzleDots(true); meosDbg('[puzzleTag] P' + n + 'で包んだ 行=' + (a + 1) + '〜' + (b + 3));
 }
 async function meosPuzzleTag(ch, opt) {
   try {
@@ -7489,7 +7511,7 @@ async function meosPuzzleTag(ch, opt) {
     const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
     const doc = ed.document;
     if (opt && opt.sweep) { await meosPuzzleSweep(ed, n, String(ch)); return; }
-    if (n === 7 && !ed.selection.isEmpty && !(opt && opt.cycle)) { await meosFofWrap(ed, String(ch)); return; }   // v5.1.570
+    if (!ed.selection.isEmpty && !(opt && opt.cycle)) { await meosFofWrap(ed, String(ch), n); return; }   // v5.1.570 / v5.1.588: どの字も選択を包む
     const hits = meosPuzzleTagsOf(doc, n);
     if (!hits.length) {
       const ln = ed.selection.active.line, ind = (doc.lineAt(ln).text.match(/^[ \t]*/) || [''])[0];
@@ -7497,11 +7519,11 @@ async function meosPuzzleTag(ch, opt) {
       //   生涯で最初に書く1本だけ、説明(// の後ろ)に入れておく= 字に白い点が付き、触れると tip に出る→ ここに書けば tip になると分かる
       const _shadow = meosPuzzleShadowGet(String(ch));   // ★v5.1.539: 影の tip で書く
       let _welcome = false; try { _welcome = !_shadow && !extensionContext.globalState.get('meosPuzzleWelcomed', false); } catch (_) { }
-      const tag = ind + wrapRefMark(doc, '{* ' + (n === 7 ? MEOS_FOF_O : '') + '\u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_shadow ? _shadow + ' ' : _welcome ? MEOS_PUZZLE_WELCOME + ' ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
+      const tag = ind + wrapRefMark(doc, '{* ' + meosPzmO(n) + '\u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_shadow ? _shadow + ' ' : _welcome ? MEOS_PUZZLE_WELCOME + ' ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
       // ★v5.1.562(俊克 pm01:33「最初から組で作った方がいいね」): 最初の♥は3行= 開始♥・空の行・閉じ♥。カーソルは間の行= そのまま書き始める
-      const _rule7 = n === 7 ? meosFofRule(doc, ind) : '', _tag2 = n === 7 ? _rule7 + ind + '\n' + (_rule7 ? '\n' : '') + _rule7 + ind + wrapRefMark(doc, '{* ' + MEOS_FOF_C + '\u25b6\u25c0mP7=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n' : '';
+      const _rule7 = meosFofRule(doc, ind), _tag2 = _rule7 + ind + '\n' + (_rule7 ? '\n' : '') + _rule7 + ind + wrapRefMark(doc, '{* ' + meosPzmC(n) + '\u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n';   // v5.1.588: どの字も最初から膜(3行)
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag + _tag2));
-      if (n === 7) { const _p = new vscode.Position(ln + (_rule7 ? 2 : 1), ind.length); ed.selection = new vscode.Selection(_p, _p); }
+      { const _p = new vscode.Position(ln + (_rule7 ? 2 : 1), ind.length); ed.selection = new vscode.Selection(_p, _p); }
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
       if (_welcome) { try { extensionContext.globalState.update('meosPuzzleWelcomed', true); } catch (_) { } }
       meosPostPuzzleDots(true);
@@ -7517,12 +7539,12 @@ async function meosPuzzleTag(ch, opt) {
     if (!f && hits.length === 1) { f = hits[0]; meosPuzzleFSet(doc, n, f.name); }
     // ★v5.1.541: Opt+クリック= 全ての印を順に巡るだけ。Mac の Ctrl+クリックは右クリック扱いなので Opt(v5.1.72 の 🔐 と同じ事情)
     // ★v5.1.544(俊克 11.06「直接消すに揃える」): 全ての字で押し直しの削除をやめた(539 の撤回)。消すのは本文で直接・F の付け替えは本文の札(meosFofChipClick)
-    if (opt && opt.cycle) { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur) || hits[0]; { const _sh = await meosPuzzleLand(ed, nx.line, ch === 'f'); if (ch === 'f') meosFofSettle(_sh || ed, nx.line, {}); } meosDbg('[puzzleTag] ' + ch + ' を巡った 行=' + (nx.line + 1)); return; }
+    if (opt && opt.cycle) { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur) || hits[0]; { const _sh = await meosPuzzleLand(ed, nx.line, ch === 'f' || !!meosFofRange(doc, n)); if (ch === 'f') meosFofSettle(_sh || ed, nx.line, {}); } meosDbg('[puzzleTag] ' + ch + ' を巡った 行=' + (nx.line + 1)); return; }
     let line;
     if (f) line = f.line;
     else { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur); line = (nx || hits[0]).line;
       vscode.window.setStatusBarMessage('MeOS: ' + ch + ' has ' + hits.length + ' marks \u2014 click the mark to keep in the text; it becomes the front.', 5000); }
-    { const _sv = ch === 'f' ? meosFofSavedPos(doc) : null; if (_sv) line = _sv.start; const _sh = await meosPuzzleLand(ed, line, ch === 'f', _sv ? _sv.pos : null); if (ch === 'f') meosFofSettle(_sh || ed, line, { gate: !!(opt && opt.gate) }); }   // v5.1.569: ♥は Me Dock/mGATE からも1段目へ。ポインターを運ぶのは mGATE から
+    { const _mem = ch === 'f' || !!meosFofRange(doc, n), _sv = _mem && f ? meosFofSavedPos(doc, n) : null; if (_sv) line = _sv.start; const _sh = await meosPuzzleLand(ed, line, _mem, _sv ? _sv.pos : null);   /* v5.1.588: P1〜P6 も膜があれば♥と同じ= 1段目へ・最後にいた場所へ(ポインターを運ぶのは♥だけ) */ if (ch === 'f') meosFofSettle(_sh || ed, line, { gate: !!(opt && opt.gate) }); }   // v5.1.569: ♥は Me Dock/mGATE からも1段目へ。ポインターを運ぶのは mGATE から
     meosDbg('[puzzleTag] ' + ch + '=P' + n + ' へ飛んだ' + (f ? '(F)' : '(F無し・候補)') + ' 行=' + (line + 1) + ' (' + hits.length + '本)');
   } catch (e) { meosDbg('[puzzleTag] ' + (e && e.message)); }
 }
@@ -7597,6 +7619,8 @@ function meosPuzzleDupFollow(e) {
           let nm; do { nm = h.name.replace(/_[^_]*$/, '') + '_' + meosMembraneStamp(new Date(Date.now() + 1000 * k++)); } while (used.has(nm)); used.add(nm);
           if (h.n === 7) _meosFofWant = { uri: doc.uri.toString(), name: _fofIn(h.line) ? _fofM.name : nm };   // v5.1.559: 2個目以降の♥= 相方
           eb.replace(new vscode.Range(h.line, i, h.line, i + h.name.length), nm);
+          // ★v5.1.588(俊克 am09:37「その他のマーキングP1は、Optクリックで循環できる中継点という意味だけ」): P1〜P6 の複製は中継点= ▼▲ を写しても外す(組を奪わない)
+          if (h.n !== 7) { const pm = meosPzmMark(t, h.n); if (pm && pm[1] && meosFofTwoPre(pm[1], h.n)) { const pa = pm.index + pm[0].indexOf('\u25b6\u25c0') - pm[1].length; if (pa + pm[1].length <= i) eb.replace(new vscode.Range(h.line, pa, h.line, pa + pm[1].length), ''); } }
         }
       }, { undoStopBefore: false, undoStopAfter: false });
       meosDbg('[puzzleTag] 複製を打ち直した ' + fix.length + '本'); if (_meosFofWant) await meosFofReconcile(ed);
@@ -8296,7 +8320,7 @@ function applyPrettyLabels(editor) {
   const refPointCounts = {};
   const refPtAll = []; // v0.9.99969: F参照符ガター判定用(カーソル行の符も含む全収集)
   const puzzlePtAll = []; // v4.2.565: パズルタグ(カーソル行も含む全部)= F のガター用
-  const fofHints = [], fofSkin = [], fofSkinLone = []; let _pzPair; const _pzPairGet = () => { if (_pzPair === undefined) _pzPair = meosFofPair(editor.document); return _pzPair; };   // v5.1.559: 逆さ♥
+  const fofHints = [], fofSkin = [], fofSkinLone = []; const _pzPair = {}; const _pzPairGet = (n) => { n = n || 7; if (_pzPair[n] === undefined) _pzPair[n] = meosFofPair(editor.document, n); return _pzPair[n]; };   // v5.1.559: 逆さ♥
   // ★v5.1.545(俊克 11.06 pm07:04 改良1「F付きの♥ボタンは押しても変化しないので、ポインターを文字カーソルに」): 押して変わる札だけ手・F(1本だけの札も F)は文字カーソル
   const _pzCnt = {}, _pzIsF = (n, name) => { if (_pzCnt[n] === undefined) _pzCnt[n] = meosPuzzleTagsOf(editor.document, n).length; return _pzCnt[n] < 2 || meosPuzzleFGet(editor.document, n) === name; };
   // v1.0.10(俊克 バグ1): グループごとの注釈(desc符=参照膜)の個数を先に計算=符ホバーに「Jump to note」リンクを出す判定用。
@@ -8429,7 +8453,7 @@ function applyPrettyLabels(editor) {
         if (_isRawLine(line)) continue;
         const _letter = MEOS_PUZZLE_LETTERS.charAt(+mPz[1] - 1);
         const _pzd = (/\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(mPz[0]) || [])[1] || '';   // v4.2.607: 説明もホバーに
-        const _pr = mPz[1] === '7' ? _pzPairGet() : null, _rev = !!_pr && (_pr.f.name === mPz[2] || (!!_pr.m && _pr.m.name === mPz[2]));   // v5.1.559: 組の♥= 隠す範囲を2桁目で割り、そこに札と逆さ♥を立てる(隠す範囲の中に立てると一緒に隠れる)
+        const _pn = +mPz[1], _pr = (_pn === 7 || /[\u25bc\u25b2]\u25b6/.test(mPz[0])) ? _pzPairGet(_pn) : null, _rev = !!_pr && (_pr.f.name === mPz[2] || (!!_pr.m && _pr.m.name === mPz[2])) && (_pn === 7 || /[\u25bc\u25b2]\u25b6/.test(mPz[0]));   /* v5.1.588: P1〜P6 は印に ▼▲ を持つ組だけ */   // v5.1.559: 組の♥= 隠す範囲を2桁目で割り、そこに札と逆さ♥を立てる(隠す範囲の中に立てると一緒に隠れる)
         if (_rev) refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + 1) });
         refPointHideItems.push(Object.assign({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + mPz[0].length) }, _pzd ? { hoverMessage: new vscode.MarkdownString(_pzd) } : {}));   // v4.2.608: ホバーは説明だけ(字と番号の対応を明かさない)
         if (_rev) { fofSkinLone.push({ range: new vscode.Range(line, mPz.index, line, Math.min(text.length, mPz.index + 2)) });   /* v5.1.561(俊克 pm00:57 バグ1「相方がいないのに選択指になるのは駄目」): 押しても飛ばない薄い逆さ♥は手にしない */
@@ -8439,7 +8463,7 @@ function applyPrettyLabels(editor) {
              ★v5.1.571(俊克 pm07:01「やはり、▼/▲は押せないようにしよう」): クリックは2つの桁の位置の中点で分かれる(台で実測)。▼は場所を取らず(幅=負の余白)、♥の箱の左に同じ幅の余白= 桁0は左端・桁1は♥の右端→ 中点がちょうど♥の左端。▼=印の頭の桁・♥=次の桁に分かれる */
           refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: membraneCssColorForCode((_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? 'B' : 'G') || undefined, textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; font-size: 90%; display: inline-block; width: 1.556em; margin-right: -1.556em; text-align: right; pointer-events: none; transform: translateX(' + ((_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '0.4' : '0.2') + 'em);' } } }); }   /* ★v5.1.578(俊克 pm08:19 改良2「▼と♥の間をもう少し詰めよう。▲と♥は斜辺がほぼ同じ角度なので、さらに近づけられる」): 絵だけ寄せる(transform= 桁の境は動かない) */
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + (_rev ? 1 : 0)),
-          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : 'rgba(124, 58, 237, 0.95)', backgroundColor: mPz[1] === '7' ? undefined : 'rgba(124, 58, 237, 0.14)', textDecoration: 'none; ' + (_rev ? 'font-size: 140%; display: inline-block; width: 1.2em; margin-left: 1.2em; text-align: left; clip-path: polygon(0 0, 0.615em 0, 0.615em calc(50% - 0.082em), 0.308em calc(50% + 0.297em), 0.291em calc(50% + 0.297em), 0 calc(50% - 0.06em)); ' : mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : ((_pr && _pr.m) ? (meosPuzzleTagsOf(editor.document, 7).length >= 4 ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()))) + ';', margin: _rev ? undefined : '0 2px 0 2px', fontWeight: '600' } } });   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
+          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : meosPuzzleColor(_letter, 0.95), backgroundColor: mPz[1] === '7' ? undefined : meosPuzzleColor(_letter, 0.14), textDecoration: 'none; ' + (_rev ? (_pn === 7 ? 'font-size: 140%; display: inline-block; width: 1.2em; margin-left: 1.2em; text-align: left; clip-path: polygon(0 0, 0.615em 0, 0.615em calc(50% - 0.082em), 0.308em calc(50% + 0.297em), 0.291em calc(50% + 0.297em), 0 calc(50% - 0.06em)); ' : 'display: inline-block; width: 1.68em; margin-left: 1.68em; text-align: center; border-radius: 3px; ') : mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : ((_pzPairGet(_pn) && _pzPairGet(_pn).m) ? (meosPuzzleTagsOf(editor.document, _pn).length >= 4 ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()))) + ';', margin: _rev ? undefined : '0 2px 0 2px', fontWeight: '600' } } });   /* ★v5.1.588(俊克 am09:54「P1〜P6の色を、MeDockⓉの文字色に合わせよう…P1などの数字で判別できる」): 紫をやめ字の色(MEOS_PUZZLE_COL)。組の札は♥と同じ幅の箱= 桁の境の中点が札の左端 */   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
     }
     if (lineHasRefMark(text)) {
@@ -31062,7 +31086,7 @@ function meosPuzzleNote(o) {   // 戻り値 true= 今、金色になった
 const MEOS_GOLD_PREVIEW = '';   // v5.0.0: リリースなので空(試し見せは作者の机だけの物だった)
 function meosGoldPreviewNow() { try { if (!MEOS_GOLD_PREVIEW || meosPuzzleGold() || extensionContext.globalState.get('meosGoldPreviewDone') === MEOS_GOLD_PREVIEW) return false; extensionContext.globalState.update('meosGoldPreviewDone', MEOS_GOLD_PREVIEW); return true; } catch (_) { return false; } }
 function meosDockTilesHtml() {
-  const col = { M: '#e53935', e: '#f57c00', D: '#2e9d3a', o: '#1e7fd6', c: '#8e24aa', k: '#c2185b' };
+  const col = MEOS_PUZZLE_COL;   // v5.1.588: 本文の札と同じ1か所
   // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
   //   v4.2.610: 6字の外に置いた Ⓣ をやめ、7枚目のタイル(data-ch="T")に= 並べ替えられる・緑の地に白抜き・常に白い点
   let _last = ''; try { _last = String(extensionContext.globalState.get('meosPuzzleLast') || ''); } catch (_) { }   // v4.2.776-10: 最後にクリックした字= 点が赤
