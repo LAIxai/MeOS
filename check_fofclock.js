@@ -120,6 +120,7 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   const calls2 = [], e16 = mkEd(d16, { start: { line: 9, character: 0 }, end: { line: 9, character: 0 }, active: { line: 9, character: 0 }, isEmpty: true }); e16.selections = [e16.selection]; e16.setDecorations = (deco, items) => calls2.push({ deco, items: items || [] }); stub.window.activeTextEditor = e16; stub.window.visibleTextEditors = [e16];
   T.meosApplyTimerLineDecorations(e16); const onB = calls2.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === 7).map(x => { const r = x.renderOptions || {}; return (r.before && r.before.contentText) || (r.after && r.after.contentText) || ''; });
   ok(onB.some(s => /\d+:\d\d/.test(s)), '残り時間がバッジ行に出る', onB);
+  ok(onB.some(s => s.indexOf('♥️Timer') >= 0 && /\d+\/\d+\([SMTWtFs]\) [ap]m\d\d:\d\d/.test(s)) && !onB.some(s => /Timer dd/.test(s)), 'バッジの札の dd が消滅日時になる', onB);
   const c16 = T.meosClockFcScan(d16)[0]; await T.meosFofClockExpire(d16, c16, false); ok(!d16.L.includes(B) && clocks(d16).length === 0 && d16.L.includes(H1) && d16.L.includes('本文') && d16.L.includes('後'), '時間切れでバッジ行も消える', d16.L);
   const d17 = doc([H1, R, '本文', '', R, H2, B, far, '後']); T.meosPuzzleFSet(d17, 7, Fn); await T.meosPuzzleSweep(mkEd(d17), 7, 'f'); ok(badges(d17).length === 0 && clocks(d17).length === 0 && d17.L.includes('後'), 'Cmd+クリックで閉じ♥と一緒にバッジも', d17.L);
   // 10. ふつうの膜の⏰は今まで通り
