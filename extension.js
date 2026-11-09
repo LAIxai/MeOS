@@ -7499,13 +7499,14 @@ function meosPshPath() {
     const f = path.join(os.tmpdir(), 'meos-psh-' + process.pid + '.wav'); fs.writeFileSync(f, buf); _meosPshFile = f; return f; } catch (_) { return ''; }
 }
 // ★v5.1.615(俊克 11.09 am11:00「消滅する5秒前から、シューーーーープシュッのようにしよう」): 5秒の導火線+最後の一吹きを1つの音に。afplay の出だしの遅れ(0.3秒ほど)と時間切れの+0.25秒の分だけ早く鳴らし始め、プシュッが消える瞬間に合う
+// ★v5.1.616(俊克 am11:07 改良1「5秒前からの音が1音ずつ区切られたように鳴るので、シューーーーーーっと一つながりにしたい」): 毎秒9回の強弱の揺れと火花が区切りに聞こえた→ 揺れも火花もやめて、なだらかに強まるだけ
 const MEOS_FOF_FUSE_LEAD = 5300, _meosFofFuse = new Map();
 let _meosFuseFile = '';
 function meosFuseSamples() {
   const rate = 22050, end = 5, n = Math.floor(rate * (end + 0.4)), hiss = new Float64Array(n), burst = new Float64Array(n);
-  let seed = 19660917, lp = 0, slow = 0, lb = 0, spark = 0; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2147483648 - 1; };
+  let seed = 19660917, lp = 0, slow = 0, lb = 0; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2147483648 - 1; };
   for (let i = 0; i < n; i++) { const t = i / rate, x = rnd();
-    if (t < end) { lp += 0.62 * (x - lp); slow += 0.035 * (lp - slow); if (rnd() > 0.9965) spark = 0.9; spark *= 0.93; const flutter = 0.74 + 0.26 * Math.sin(2 * Math.PI * (9.1 * t + 1.6 * Math.sin(1.7 * t))); hiss[i] = ((lp - slow) * flutter + spark * rnd() * 0.55) * Math.min(1, t / 0.18) * (0.62 + 0.38 * t / end) * Math.min(1, (end - t) / 0.015); }
+    if (t < end) { lp += 0.62 * (x - lp); slow += 0.035 * (lp - slow); hiss[i] = (lp - slow) * Math.min(1, t / 0.18) * (0.62 + 0.38 * t / end) * Math.min(1, (end - t) / 0.015); }
     else { const u = t - end; lb += 0.24 * (x - lb); burst[i] = lb * Math.min(1, u / 0.005) * Math.exp(-u * 10.5); } }
   const norm = (a, to) => { let p = 0; for (const v of a) p = Math.max(p, Math.abs(v)); if (p) for (let i = 0; i < a.length; i++) a[i] *= to / p; };
   norm(hiss, 0.42); norm(burst, 0.92); const out = new Float64Array(n); for (let i = 0; i < n; i++) out[i] = hiss[i] + burst[i]; return { rate, end, out };
