@@ -4,7 +4,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
-### v5.1.623 (2026-11-09) — the first public v5.1
+### v5.1.624 (2026-11-09) — the first public v5.1
 - **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
 - **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.
 - **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE.
@@ -14,7 +14,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - **🛑 Stop lines.** `<!-- Mew!UFC --- -->` is drawn as a stop line, with an octagonal STOP sign at each end; `===` makes a double line and `-.-` a dash-dot one. Holding ↓/↑ pauses at it; let go within 20 lines and the cursor glides on to it. **Cmd+↓/↑** jumps from stop line to stop line. The 🛑 button in Format Me puts one in and takes it off (🚫). On a membrane boundary the line turns green under the opening membrane and blue above the closing one.
 - **Every Me Dock letter is a membrane.** ♥ and M e D o c k can each wrap a passage: `▼P1` … `▲P1`, with stop lines inside the edges. Other marks of the same letter are relay points, visited in turn with Opt-click. ▼ is green and ▲ blue; the chips wear the letter's colour from Me Dock.
 - **♥ A membrane with a one-day fuse.** A new ♥ membrane starts a one-shot ⏰ for 24 hours: `↺↻(0y1d0h0m0s)×1`. Change the digits for another length, and the ⏰ list shows the moment it ends — one more way to warp back. Don't want it? Delete the ⏰ line. Five seconds before the end a fuse starts to hiss; on the final *pssh* the closing ♥, the ⏰ and the stop lines go; the opening ♥ and all your text stay, so the ♥ on the menu bar still takes you there. Cmd+Z brings it back. If the file was closed, it tidies up the next time you open it.
-- **`dd` in a ⏰ title shows when it ends.** Write `// Tea dd` and the ⏰ list and badge show the end time in its place; the text keeps `dd`.
+- **`dd` in a ⏰ title shows when it ends.** Write `// Tea dd` and the ⏰ list and badge show the end time in its place; the text keeps `dd`. The ① button and the ⏰ database come with it.
 - **mGATE stays behind other apps.** When another app's window covers mGATE, clicks no longer go through to it, and its tips and hand pointer stay away.
 - **Opt+↑/↓ → Jump to M-🛑.** A button in Format Me turns Opt+↑/↓ (moving a line) into a jump to the ends of a membrane, as Opt+↑/↓ means "to the end of the paragraph" on the Mac. When you turn round, **U-turn** lights up and takes you back the way you came.
 - **A note under your code block.** A UFC comment on the line after the closing ` ``` ` is drawn inside the sheet as a blue note. Other Markdown viewers show only the code.

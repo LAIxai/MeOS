@@ -57,19 +57,21 @@ file, too, carries two layers in one — the text you read, and the comments tha
 a membrane near the end of your diary, just above the meta membrane. Your everyday timers wait there, one per line:
 
 ```md
-<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->
-<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes -->
-<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m0s ×1 // 1 hour -->
-<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days -->
-<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes dd -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes dd -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m0s ×1 // 1 hour dd -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days dd -->
+<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year dd -->
 <!-- Mew!UFC --- -->
-<!-- Mew!FC ⏰ 2026-10-21 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->
+<!-- Mew!FC ⏰ 2026-10-21 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 dd -->
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // 💪Tabata work -->
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest -->
 <!-- Mew!UFC --- -->
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻(25m)×1 ⛓️⤵️2 // 🍅Pomodoro focus -->
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻(5m)×1 ⛓️⤴️2)×4 // ☕Pomodoro break -->
 ```
+
+`dd` in a title turns into the time that ⏰ ends, on its badge and in the ⏰ list. The text keeps `dd`.
 
 Press ▶️ on a line and only that clock runs; when it has rung, it goes back to waiting, ready for next time. Copy a
 line into any membrane and it works there too. Each waiting line shows its title in grey, so you can find the one

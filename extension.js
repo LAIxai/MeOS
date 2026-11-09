@@ -12517,13 +12517,13 @@ function meosTimerDbText(eol, withLaunchD) {
   const t = membraneCommentTemplateForLanguage('markdown', id, '', '', 0);
   const day = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   const rows = [
-    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes -->',
-    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes -->',
-    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m0s ×1 // 1 hour -->',   // ★v5.1.121(俊克 10.21 pm05:32「不要なものは書かないという選択肢もあるので、データベースは1つだけ秒を書いておく」)= ①と同じ周期の行だけ秒まで
-    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days -->',
-    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h3m ×1 // 3 minutes dd -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d0h25m ×1 // 25 minutes dd -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y0d1h0m0s ×1 // 1 hour dd -->',   // ★v5.1.121(俊克 10.21 pm05:32「不要なものは書かないという選択肢もあるので、データベースは1つだけ秒を書いておく」)= ①と同じ周期の行だけ秒まで
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻0y7d0h0m ×1 // 7 days dd -->',
+    '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻1y0d0h0m ×1 // 1 year dd -->',
     MEOS_TIMER_DB_RULE,
-    '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 -->'].concat(meosTimerDbChainExLines());
+    '<!-- Mew!FC ⏰ ' + day + ' 10:00 ↺t1,3 // 1st & 3rd Thursday 10:00 dd -->'].concat(meosTimerDbChainExLines());   // ★v5.1.624(俊克 11.09 pm07:58 改良1「プリセットに、予め、ddを書いて置こう。ddと言う記法を学習できる」): 単発と暦の行。連なりの例は2本目に起点が無く dd のまま残るので書かない
   return { id, text: [t.open, 'Timer database — press ▶️ on a line to use it, or copy a line into another membrane. ⛓️⤵️2 links this line and the next; ⛓️⤴️2)×8 goes 2 lines back, 8 times. Click ⛓️ to cut it (⛓️‍💥). MeOS makes this membrane again if it is deleted.'].concat(withLaunchD ? meosLaunchDInnerLines() : [], [t.close]).join(eol) + eol + rows.join(eol) };
 }
 // ★v5.1.96: 本文の鎖の絵(⛓️ / ⛓️‍💥)の位置= 押す所。押すと切る/つなぐ(本文の字を書き換えるだけ= ⚓ と同じ作り)
@@ -35791,7 +35791,7 @@ hPaint();}
    ①= ↺↻(1h)×2(起点なし= 今から)・タイトルに回数の器(# 1.)= 1つの行が繰返しと回数の札の見本になる。2つの①は同じ1つの口
    ★v5.1.120(俊克 pm05:28「理想を言えば、フルスペックの表記」): 周期は 0y0d1h0m0s= 年・日・時・分・秒の桁が全部見え、どこを直せばいいかが字で分かる */
 const __oneShot=ev=>{ev.preventDefault();ev.stopPropagation();
-vscode.postMessage({type:'pseudoTimerSet',when:'',add:true,fresh:true,rep:true,up:false,dual:true,cycle:'(0y0d1h0m0s)\u00d72',title:'Timer 1h # 1.',tags:null,lock:false,anchor:false});};   /* v5.1.152: fresh= どこで押しても新しい⏰の膜 */
+vscode.postMessage({type:'pseudoTimerSet',when:'',add:true,fresh:true,rep:true,up:false,dual:true,cycle:'(0y0d1h0m0s)\u00d72',title:'Timer 1h dd # 1.',tags:null,lock:false,anchor:false});};   /* v5.1.152: fresh= どこで押しても新しい⏰の膜 */
 ['clk-one','os-one'].forEach(id=>{const c1=document.getElementById(id);if(c1)c1.addEventListener('click',__oneShot);});
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset',dir:ev.shiftKey?-1:1});});
 /* ★v5.1.93: Format Me の⏰0y0d0h3m … = メニューバーの同じ名前と同じ= ⏰のデータベース膜へ */
