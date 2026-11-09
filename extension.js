@@ -14670,7 +14670,8 @@ function meosParkApply() {
 //   名前はタイトル(// …)が在ればそれ、無ければ膜名。時刻は最下段と同じ数え方(meosClockFaceMs)。
 // ★v5.1.398(俊克 11.02 am09:12 改良3「今日の分の⏰と明日以降の間に一点鎖線を引こう。1週間以内、1ヶ月以内、1年未満にも」): dd= 一点鎖線の区切り(線8・間3・点1.5・間3)= 絵の項目。畳むと⏰の行と一緒に隠す
 //   帯= 0今日(暦の日付が同じ) / 1 1週間以内 / 2 1ヶ月以内(暦の1ヶ月後まで) / 3 1年未満 / 4 それより先。V-helper の clockZone も同じ
-function meosClockZone(t, now) { const d = new Date(now), e = new Date(t); if (e.getFullYear() === d.getFullYear() && e.getMonth() === d.getMonth() && e.getDate() === d.getDate()) return 0;
+// ★v5.1.628(俊克 11.09 pm09:18「pm0:00を過ぎたら、今日とは明日も含んだ範囲…朝に予定を見れば今日はまさに今日だけ。午後になれば明日の予定もほとんど今日みたいなもの」): 午後は帯0(今日)に明日まで入れる(ヘルパーの clockZone と同じ)
+function meosClockZone(t, now) { const d = new Date(now), t0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(), t1 = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (d.getHours() >= 12 ? 2 : 1)).getTime(); if (t >= t0 && t < t1) return 0;
   if (t - now <= 7 * 864e5) return 1; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 2; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 3 : 4; }
 function meosClockFar(t, now) { const d = new Date(now); return t >= new Date(d.getFullYear(), d.getMonth(), d.getDate() + 2).getTime(); }   // v5.1.554: 明後日の0時から先= メニューバーの ▸ALL で隠す行(ヘルパーの clockFar と同じ)
 function meosMenuBarClockItems() {

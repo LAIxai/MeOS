@@ -1113,7 +1113,7 @@ function run(argv) {
   // ★v4.2.341(俊克 バグ1「VSCmを閉じていると、目薬2本目のときに、メニューバーは、1本目と誤表示される」):
   //   名前の器(タイトルの `1.`)に回数を入れるのは拡張(meosChainFillSlot)だけだった→ 同じ規則をここにも1つ
   // v5.1.398: ⏰の時刻の帯= 0今日 / 1 1週間以内 / 2 1ヶ月以内 / 3 1年未満 / 4 それより先(拡張の meosClockZone と同じ)
-  const clockZone = (t, now) => { const d = new Date(now), e = new Date(t); if (e.getFullYear() === d.getFullYear() && e.getMonth() === d.getMonth() && e.getDate() === d.getDate()) return 0; if (t - now <= 7 * 864e5) return 1; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 2; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 3 : 4; };
+  const clockZone = (t, now) => { const d = new Date(now), t0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(), t1 = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (d.getHours() >= 12 ? 2 : 1)).getTime(); if (t >= t0 && t < t1) return 0;   /* v5.1.628: 午後は「今日」に明日まで入れる(拡張の meosClockZone と同じ) */ if (t - now <= 7 * 864e5) return 1; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 2; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 3 : 4; };
   const clockFar = (t, now) => { const d = new Date(now); return t >= new Date(d.getFullYear(), d.getMonth(), d.getDate() + 2).getTime(); };   // v5.1.554: 明後日の0時から先(拡張の meosClockFar と同じ)
   const fillSlot = (text, round) => { let s = String(text || '').replace(/^\s*\d{1,3}[.)]\s*/, ''); if (round > 0) s = s.replace(/\d{1,3}[.)]/, String(round)); return s.trim(); };
   const chainNext = (a, now) => {

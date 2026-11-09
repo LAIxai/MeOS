@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosClockDdTitle, meosClockWtOf, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosClockZone, meosClockDdTitle, meosClockWtOf, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -164,6 +164,9 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   // 10c. v5.1.625 畳みの中の一時停止線には絵を掛けない
   { const sr = fs.readFileSync(SRC, 'utf8'); ok(/!meosShowsRawLineStable\(editor, i\) && !meosRuleHidden\(editor, i\)\) \{\n\s*badgeHide\.push/.test(sr), '畳みの中の線は描かない');
     ok(/title:'Time up at dd # 1\.'/.test(sr), '①の名前は長さを言わない'); }
+  // 10d. v5.1.628 午後の「今日」は明日まで(拡張とヘルパーで同じ答え)
+  { const hz = eval('(' + /const clockZone = (\(t, now\) => \{[^\n]*?return t < y\.getTime\(\) \? 3 : 4; \});/.exec(hs)[1] + ')'), at = (m, d, h, mi) => new Date(2026, m - 1, d, h, mi || 0).getTime(), am = at(11, 9, 9), pm = at(11, 9, 21, 13);
+    for (const [zn, now, t, want] of [['朝の今日', am, at(11, 9, 22), 0], ['朝の明日は今日でない', am, at(11, 10, 1), 1], ['午後の今日', pm, at(11, 9, 23), 0], ['午後の明日は今日', pm, at(11, 10, 20, 53), 0], ['午後の明後日は今日でない', pm, at(11, 11, 0), 1], ['正午ちょうどから午後', at(11, 9, 12), at(11, 10, 1), 0], ['午前11:59は朝', at(11, 9, 11, 59), at(11, 10, 1), 1], ['6d先は1週間の帯', pm, at(11, 16, 16, 10), 1]]) ok(T.meosClockZone(t, now) === want && hz(t, now) === want, '帯: ' + zn, [T.meosClockZone(t, now), hz(t, now)]); }
   // 11. 音
   const f = T.meosPshPath(), b = fs.readFileSync(f); ok(b.slice(0, 4).toString() === 'RIFF' && b.length === 44 + Math.floor(22050 * 0.75) * 2, 'プシューのWAV', b.length); try { fs.unlinkSync(f); } catch (_) { }
   console.log(ng ? 'NG ' + ng + '件' : 'PASS'); process.exit(ng ? 1 : 0);
