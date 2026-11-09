@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosClockDdTitle, meosClockWtOf, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -147,6 +147,18 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   { const pm = eval(/const dockOutPressMine = (\(ever, gotAt, downT\) => [^;]*);/.exec(hs)[1]); ok(pm(false, 0, 1000) === true && pm(true, 1010, 1000) === true && pm(true, 950, 1000) === true && pm(true, 500, 1000) === false, 'mGATE= 届いた押しだけ受ける・一度も届いていない間は今まで通り', 0); }
   // 10. ふつうの膜の⏰は今まで通り
   const d12 = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', far]); const s12 = T.meosClockFcScan(d12); ok(s12.length <= 1 && (!s12[0] || s12[0].key.charAt(0) !== '♥'), 'ふつうの膜の鍵は変わらない', s12);
+  // 10b. v5.1.623 dd はふつうの⏰でも予定時刻(実物の書き方)
+  { const dd = (ln) => { const d = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', ln]); const c = T.meosClockFcScan(d)[0]; return c ? c.title : '(読めない)'; };
+    ok(dd('<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h3m0s)×1 v2027-01-05 18:00.00 // Tea dd -->') === 'Tea 1/5(T) pm06:03', 'dd: 1回切り= 起点+長さ', dd('<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h3m0s)×1 v2027-01-05 18:00.00 // Tea dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->') === 'Meet 1/5(T) am08:30', 'dd: 日時だけ= その日時', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:00 ↺8h // dd -->') === '1/5(T) am08:00', 'dd: 回数なしの繰り返し= 次の鐘', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:00 ↺8h // dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 10:00 ↺↻(25m 5m)×4 // 🍅 dd -->') === '🍅 1/5(T) pm12:00', 'dd: ×N= 最後の鐘', dd('<!-- Mew!UFC ⏰ 2027-01-05 10:00 ↺↻(25m 5m)×4 // 🍅 dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-07 10:00 ↺t1,3 ×2 // Meet dd -->') === 'Meet 2/4(t) am10:00', 'dd: 暦の規則= 最後の当たり日', dd('<!-- Mew!UFC ⏰ 2027-01-07 10:00 ↺t1,3 ×2 // Meet dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ ↺↻(3m)×1 // Tea dd -->') === 'Tea dd', 'dd: 起点がまだ無ければ dd のまま', dd('<!-- Mew!UFC ⏰ ↺↻(3m)×1 // Tea dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // add odd -->') === 'add odd', 'dd: 語の一部は変えない', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // add odd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // WT dd -->') === 'am08:30 1/5(T) am08:30', 'dd: WT と併用', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // WT dd -->'));
+    ok(T.meosClockWtOf({ title: undefined, when: '2027-01-05 08:30', cycle: [] }) === undefined, 'dd: 題なしで undefined の字を作らない');
+    const dr = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', '<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->']), cr = T.meosClockFcScan(dr)[0]; ok(cr && cr.titleRaw === 'Meet dd', 'dd: 本文の字は titleRaw に残す(焼き付けない)', cr); }
   // 11. 音
   const f = T.meosPshPath(), b = fs.readFileSync(f); ok(b.slice(0, 4).toString() === 'RIFF' && b.length === 44 + Math.floor(22050 * 0.75) * 2, 'プシューのWAV', b.length); try { fs.unlinkSync(f); } catch (_) { }
   console.log(ng ? 'NG ' + ng + '件' : 'PASS'); process.exit(ng ? 1 : 0);
