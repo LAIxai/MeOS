@@ -14669,11 +14669,13 @@ function meosParkApply() {
 // v4.2.207(俊克「+4のすべての予定出して、そこにワープできるのが先ずあるといいよね」): 一覧と同じ並び・同じ飛び先(meosJumpToScope)。
 //   名前はタイトル(// …)が在ればそれ、無ければ膜名。時刻は最下段と同じ数え方(meosClockFaceMs)。
 // ★v5.1.398(俊克 11.02 am09:12 改良3「今日の分の⏰と明日以降の間に一点鎖線を引こう。1週間以内、1ヶ月以内、1年未満にも」): dd= 一点鎖線の区切り(線8・間3・点1.5・間3)= 絵の項目。畳むと⏰の行と一緒に隠す
-//   帯= 0今日(今から24時間以内) / 1明日(48時間以内) / 2 1週間以内 / 3 1ヶ月以内(暦の1ヶ月後まで) / 4 1年未満 / 5 それより先。V-helper の clockZone も同じ
+//   帯= 0今日(24時間以内・pm6 を過ぎたら明日の24:00まで) / 1明日(その先の1日) / 2 1週間以内 / 3 1ヶ月以内(暦の1ヶ月後まで) / 4 1年未満 / 5 それより先。V-helper の clockZone も同じ
 // ★v5.1.629(俊克 11.09 pm09:28「今日とは24h以内、明日とは…規定しよう。pm0境界というさっきの話も不要」): 暦の日付でなく、今からの時間で決める(ヘルパーの clockZone/clockFar と同じ)。1週間・1ヶ月は丸めでよいので今まで通り
-function meosClockZone(t, now) { if (t - now <= 24 * 36e5) return 0; if (t - now <= 48 * 36e5) return 1;   /* ★v5.1.630(俊克 pm09:37 バグ1「48h境界の一点鎖線が入っていない」): 明日の帯を足す */
+// ★v5.1.631(俊克 11.09 pm09:52 考察1「24時間後がpm8だったら、pm8〜am0も今日に含まれるよね」→「pm6で入れる」): 24時間の線がひと続きの夜を切らないように、pm6 を過ぎたら 今日= 明日の24:00まで・明日= 明後日の24:00まで
+function meosClockDayEnds(now) { const d = new Date(now), Y = d.getFullYear(), M = d.getMonth(), D = d.getDate(); return d.getHours() >= 18 ? [new Date(Y, M, D + 2).getTime(), new Date(Y, M, D + 3).getTime()] : [now + 24 * 36e5, now + 48 * 36e5]; }
+function meosClockZone(t, now) { const _e = meosClockDayEnds(now); if (t <= _e[0]) return 0; if (t <= _e[1]) return 1;   /* ★v5.1.630(俊克 pm09:37 バグ1「48h境界の一点鎖線が入っていない」): 明日の帯を足す */
   if (t - now <= 7 * 864e5) return 2; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 3; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 4 : 5; }
-function meosClockFar(t, now) { return t - now > 48 * 36e5; }   // v5.1.629: 今から48時間より先= メニューバーの ▸ALL で隠す行(ヘルパーの clockFar と同じ)
+function meosClockFar(t, now) { return t > meosClockDayEnds(now)[1]; }   // v5.1.629/631: 明日の終わりより先= メニューバーの ▸ALL で隠す行(ヘルパーの clockFar と同じ)
 function meosMenuBarClockItems() {
   const out = [], go = [];
   try {

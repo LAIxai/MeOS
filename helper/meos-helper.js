@@ -1113,8 +1113,9 @@ function run(argv) {
   // ★v4.2.341(俊克 バグ1「VSCmを閉じていると、目薬2本目のときに、メニューバーは、1本目と誤表示される」):
   //   名前の器(タイトルの `1.`)に回数を入れるのは拡張(meosChainFillSlot)だけだった→ 同じ規則をここにも1つ
   // v5.1.398: ⏰の時刻の帯= 0今日 / 1明日 / 2 1週間以内 / 3 1ヶ月以内 / 4 1年未満 / 5 それより先(拡張の meosClockZone と同じ)
-  const clockZone = (t, now) => { if (t - now <= 24 * 36e5) return 0; if (t - now <= 48 * 36e5) return 1;   /* v5.1.629: 今日= 今から24時間以内 / v5.1.630: 明日= 48時間以内(拡張の meosClockZone と同じ) */ if (t - now <= 7 * 864e5) return 2; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 3; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 4 : 5; };
-  const clockFar = (t, now) => { return t - now > 48 * 36e5; };   // v5.1.629: 今から48時間より先(拡張の meosClockFar と同じ)
+  const clockDayEnds = (now) => { const d = new Date(now), Y = d.getFullYear(), M = d.getMonth(), D = d.getDate(); return d.getHours() >= 18 ? [new Date(Y, M, D + 2).getTime(), new Date(Y, M, D + 3).getTime()] : [now + 24 * 36e5, now + 48 * 36e5]; };   // v5.1.631: pm6 を過ぎたら 今日= 明日の24:00まで・明日= 明後日の24:00まで(拡張の meosClockDayEnds と同じ)
+  const clockZone = (t, now) => { const _e = clockDayEnds(now); if (t <= _e[0]) return 0; if (t <= _e[1]) return 1;   /* v5.1.629: 今日= 今から24時間以内 / v5.1.630: 明日= 48時間以内(拡張の meosClockZone と同じ) */ if (t - now <= 7 * 864e5) return 2; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 3; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 4 : 5; };
+  const clockFar = (t, now) => t > clockDayEnds(now)[1];   // v5.1.629/631: 明日の終わりより先(拡張の meosClockFar と同じ)
   const fillSlot = (text, round) => { let s = String(text || '').replace(/^\s*\d{1,3}[.)]\s*/, ''); if (round > 0) s = s.replace(/\d{1,3}[.)]/, String(round)); return s.trim(); };
   const chainNext = (a, now) => {
     const ch = a.chain, n = ch.length; const stepOf = (r, k) => ((r.steps && r.steps.length) ? r.steps[k % r.steps.length] : 0);
