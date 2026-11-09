@@ -7,7 +7,7 @@ const stubSrc=H.slice(H.indexOf('const stub = {'), H.indexOf('const origLoad'));
 const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')+')');
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mrt_'+process.pid+'.js';
-fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosMaybeRuleTyped,MEOS_RULE_LINE_RE};');
+fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosMaybeRuleTyped,MEOS_RULE_LINE_RE,meosStopKindOf,meosStopLineCss};');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const tick=()=>new Promise(r=>setTimeout(r,0));
@@ -18,8 +18,8 @@ function mk(L,lang){const _id=++_n;const doc={uri:{toString:()=>'file:///f'+_id+
  stub.window.activeTextEditor=ed;return {doc,ed,L};}
 const type=(d,line,ch,extra)=>{const col=d.L[line].length-ch.length;return X.meosMaybeRuleTyped(Object.assign({document:d.doc,contentChanges:[{text:ch,range:new stub.Range(line,col,line,col)}]},extra||{}));};
 (async()=>{
- for(const [t,k,n] of [['---','---','実線'],['- -','-.-','一点鎖線'],['===','===','二重実線']]){
-  const d=mk(['本文',t,'','次']);const f=type(d,1,t[2]);await tick();
+ for(const [t,k,n] of [['---','---','実線'],['-.-','-.-','一点鎖線'],['-..-','-..-','二点鎖線'],['===','===','二重実線']]){
+  const d=mk(['本文',t,'','次']);const f=type(d,1,t[t.length-1]);await tick();
   ok(f&&d.L[1]==='<!-- Mew!UFC '+k+' -->'&&X.MEOS_RULE_LINE_RE.test(d.L[1]),'★行頭の '+t+' → '+n,d.L);
   ok(d.ed.selection&&d.ed.selection.active.line===2,'★カーソルは罫線の次の行(ボタンと同じ)',d.ed.selection);}
  let d;
@@ -35,5 +35,11 @@ const type=(d,line,ch,extra)=>{const col=d.L[line].length-ch.length;return X.meo
  d=mk(['---','title: x','---']);type(d,2,'-');await tick();ok(d.L[2]==='---','YAMLの閉じも文字のまま',d.L);
  d=mk(['---','title: x','---','本文','---']);type(d,4,'-');await tick();ok(d.L[4]==='<!-- Mew!UFC --- -->','YAMLの後は変換する',d.L);
  d=mk(['本文','---'],'plaintext');type(d,1,'-');await tick();ok(d.L[1]==='---','Markdown以外は変換しない',d.L);
+ d=mk(['本文','- -']);type(d,1,'-');await tick();ok(d.L[1]==='- -','★- - は箇条書きの入れ子なので変換しない',d.L);
+ d=mk(['本文','-..']);type(d,1,'.');await tick();ok(d.L[1]==='-..','-.. はまだ',d.L);
+ ['<!-- Mew!UFC --- -->','<!-- Mew!UFC === -->','<!-- Mew!UFC -.- -->','<!-- Mew!UFC -..- -->'].forEach((l,i)=>ok(X.meosStopKindOf(l)===i,'★種類 '+l+' = '+i,X.meosStopKindOf(l)));
+ ok(X.MEOS_RULE_LINE_RE.test('<!-- Mew!UFC -..- -->'),'★-..- も一時停止線の行');
+ ok(!X.MEOS_RULE_LINE_RE.test('<!-- Mew!UFC -...- -->'),'-...- は線ではない');
+ ok((X.meosStopLineCss(3,1,0).match(/rgba|#e0803a/g)||[]).length===3,'★二点鎖線= 長い線+点2つ',X.meosStopLineCss(3,1,0));
  console.log(ng?('NG '+ng):'ALL OK');process.exit(ng?1:0);
 })();
