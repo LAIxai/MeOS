@@ -14669,10 +14669,10 @@ function meosParkApply() {
 // v4.2.207(俊克「+4のすべての予定出して、そこにワープできるのが先ずあるといいよね」): 一覧と同じ並び・同じ飛び先(meosJumpToScope)。
 //   名前はタイトル(// …)が在ればそれ、無ければ膜名。時刻は最下段と同じ数え方(meosClockFaceMs)。
 // ★v5.1.398(俊克 11.02 am09:12 改良3「今日の分の⏰と明日以降の間に一点鎖線を引こう。1週間以内、1ヶ月以内、1年未満にも」): dd= 一点鎖線の区切り(線8・間3・点1.5・間3)= 絵の項目。畳むと⏰の行と一緒に隠す
-//   帯= 0今日(今から24時間以内) / 1 1週間以内 / 2 1ヶ月以内(暦の1ヶ月後まで) / 3 1年未満 / 4 それより先。V-helper の clockZone も同じ
+//   帯= 0今日(今から24時間以内) / 1明日(48時間以内) / 2 1週間以内 / 3 1ヶ月以内(暦の1ヶ月後まで) / 4 1年未満 / 5 それより先。V-helper の clockZone も同じ
 // ★v5.1.629(俊克 11.09 pm09:28「今日とは24h以内、明日とは…規定しよう。pm0境界というさっきの話も不要」): 暦の日付でなく、今からの時間で決める(ヘルパーの clockZone/clockFar と同じ)。1週間・1ヶ月は丸めでよいので今まで通り
-function meosClockZone(t, now) { if (t - now <= 24 * 36e5) return 0;
-  if (t - now <= 7 * 864e5) return 1; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 2; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 3 : 4; }
+function meosClockZone(t, now) { if (t - now <= 24 * 36e5) return 0; if (t - now <= 48 * 36e5) return 1;   /* ★v5.1.630(俊克 pm09:37 バグ1「48h境界の一点鎖線が入っていない」): 明日の帯を足す */
+  if (t - now <= 7 * 864e5) return 2; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 3; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 4 : 5; }
 function meosClockFar(t, now) { return t - now > 48 * 36e5; }   // v5.1.629: 今から48時間より先= メニューバーの ▸ALL で隠す行(ヘルパーの clockFar と同じ)
 function meosMenuBarClockItems() {
   const out = [], go = [];
@@ -14685,7 +14685,7 @@ function meosMenuBarClockItems() {
     const _now = Date.now(); let _lastUntil = 0;
     for (const r of rows) {
       if (!r.sc) continue;
-      if (go.length && meosClockZone(r.until, _now) !== meosClockZone(_lastUntil, _now)) out.push(Object.assign({ sep: true, cz: 1, dd: meosClockZone(_lastUntil, _now) <= 1 ? 2 : 1 }, meosClockFar(r.until, _now) ? { far: 1 } : {}));   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線。★v5.1.406(俊克 11.02 am11:38 改良1「今日と1週間の境界だけ、一点鎖線を太くしよう。これで、近々やるべきことがはっきり分かる」): 今日の境だけ dd:2= 太い線(2pt)→ 俊克 am11:39「最初の2本を太くしよう」= 今日|1週間と1週間|1ヶ月の境
+      if (go.length && meosClockZone(r.until, _now) !== meosClockZone(_lastUntil, _now)) out.push(Object.assign({ sep: true, cz: 1, dd: meosClockZone(_lastUntil, _now) <= 2 ? 2 : 1 }, meosClockFar(r.until, _now) ? { far: 1 } : {}));   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線。★v5.1.406(俊克 11.02 am11:38 改良1「今日と1週間の境界だけ、一点鎖線を太くしよう。これで、近々やるべきことがはっきり分かる」): 今日の境だけ dd:2= 太い線(2pt)→ 俊克 am11:39「最初の2本を太くしよう」= 今日|1週間と1週間|1ヶ月の境
       _lastUntil = r.until;
       const nm = meosClockSayName(r.sc) || '(outside every membrane)';
       const _face = meosMmSs(meosClockFaceMs(r.until, r.sc)), _f2 = go.length ? _face.replace(/\.\d{2}$/, '') : _face;
@@ -15393,7 +15393,7 @@ function meosStopLineCss(kind, x, edge) { const c = edge === 1 ? 'rgba(22, 163, 
 const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjI5LjI5LDAuMDAgNzAuNzEsMC4wMCAxMDAuMDAsMjkuMjkgMTAwLjAwLDcwLjcxIDcwLjcxLDEwMC4wMCAyOS4yOSwxMDAuMDAgMC4wMCw3MC43MSAwLjAwLDI5LjI5IiBmaWxsPSIjMWExYTFhIi8+PHBvbHlnb24gcG9pbnRzPSIzMC43NCwzLjUwIDY5LjI2LDMuNTAgOTYuNTAsMzAuNzQgOTYuNTAsNjkuMjYgNjkuMjYsOTYuNTAgMzAuNzQsOTYuNTAgMy41MCw2OS4yNiAzLjUwLDMwLjc0IiBmaWxsPSIjZmZmIi8+PHBvbHlnb24gcG9pbnRzPSIzMi4xOSw3LjAwIDY3LjgxLDcuMDAgOTMuMDAsMzIuMTkgOTMuMDAsNjcuODEgNjcuODEsOTMuMDAgMzIuMTksOTMuMDAgNy4wMCw2Ny44MSA3LjAwLDMyLjE5IiBmaWxsPSIjZGMzYjMwIi8+PHRleHQgeD0iNTAiIHk9IjYyLjUiIGZvbnQtZmFtaWx5PSJBcmlhbCBOYXJyb3csSGVsdmV0aWNhIE5ldWUsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIzMyIgdGV4dExlbmd0aD0iNjYiIGxlbmd0aEFkanVzdD0ic3BhY2luZ0FuZEdseXBocyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+U1RPUDwvdGV4dD48L3N2Zz4=', MEOS_STOP_SIGN_EM = 1.3;
 // ★v5.1.595(俊克 11.08 pm00:27「Cmd+↑/↓で一時停止線までジャンプできることは、エディターを使っている人が歓喜する機能だよ。なので、一時停止線を入れるボタンをFormat Meに追加しよう。
 //   一時停止線の上、あるいは、前後の行に文字カーソルがあるときは、他のボタン同様に、🚫ボタンにして、取消もできるようにする。キーボード派は、直接コピペすればいいしね」):
-//   探す= カーソルの行→上の行→下の行の順(囲いの中は文字そのもの)。入れる= 今の行の下に「空行・一時停止線・空行」(上が空行なら空行は足さない= UFC は上の本文に付く助詞・v5.1.576)。外す= 線と、その分の空行1つ
+//   探す= カーソルの行→上の行→下の行の順(囲いの中は文字そのもの)。入れる= 今の行の下に一時停止線だけ(v5.1.630 空行は足さない)。外す= 線と、その分の空行1つ
 function meosStopLineNear(doc, line) {
   try { if (!doc || line < 0 || line >= doc.lineCount) return -1; let fence = null;
     for (const l of [line, line - 1, line + 1]) { if (l < 0 || l >= doc.lineCount || !MEOS_RULE_LINE_RE.test(doc.lineAt(l).text)) continue; if (!fence) { try { fence = meosFenceLines(doc); } catch (_) { fence = new Set(); } } if (!fence.has(l)) return l; }
@@ -15411,11 +15411,10 @@ async function meosStopLineToggle(ed, remove) {
     await ed.edit(eb => eb.delete(r)); meosDbg('[stopLine] 外した 行=' + (at + 1)); return; }
   if (wrapRefMark(doc, 'x').indexOf('<!--') < 0) { vscode.window.setStatusBarMessage('MeOS: the stop line needs a Markdown file', 3000); return; }
   const t = doc.lineAt(cur).text, ind = (t.match(/^[ \t]*/) || [''])[0], here = !t.trim();
-  // 空の行に居る= その行を「(上が本文なら空行)・線・空行」に。本文の行= その下へ
-  const pre = here ? (blank(cur - 1) || cur === 0 ? '' : '\n') : '\n', post = here ? (blank(cur + 1) ? '' : '\n' + ind) : (blank(cur + 1) ? '' : '\n' + ind);
-  const pos = here ? new vscode.Position(cur, 0) : new vscode.Position(cur, t.length), _rule = '<!-- Mew!UFC ' + MEOS_STOP_KINDS[meosStopKindNow()] + ' -->', text = here ? (pre + ind + _rule + post) : (pre + '\n' + ind + _rule + post);
+  // ★v5.1.630(俊克 pm09:37 別件改良1「罫線ボタンで、改行は要らない。今まで使って見て、改行を一々消すのが面倒くさい」): 空行を足さない。空の行に居る= その行を線に。本文の行= すぐ下に線
+  const pos = here ? new vscode.Position(cur, 0) : new vscode.Position(cur, t.length), _rule = '<!-- Mew!UFC ' + MEOS_STOP_KINDS[meosStopKindNow()] + ' -->', text = here ? (ind + _rule) : ('\n' + ind + _rule);
   const ok = await ed.edit(eb => here ? eb.replace(new vscode.Range(cur, 0, cur, t.length), text) : eb.insert(pos, text)); if (!ok) return;
-  const ruleLn = here ? cur + (pre ? 1 : 0) : cur + 2, land = Math.min(ruleLn + 1, ed.document.lineCount - 1), lp = new vscode.Position(land, ed.document.lineAt(land).text.length); ed.selection = new vscode.Selection(lp, lp);
+  const ruleLn = here ? cur : cur + 1, land = Math.min(ruleLn + 1, ed.document.lineCount - 1), lp = new vscode.Position(land, ed.document.lineAt(land).text.length); ed.selection = new vscode.Selection(lp, lp);
   meosDbg('[stopLine] 入れた 行=' + (ruleLn + 1));
 }
 function meosApplyTimerLineDecorations(editor, fromHints) {

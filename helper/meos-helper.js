@@ -1112,8 +1112,8 @@ function run(argv) {
   // ★v4.2.340: 連動の次の1歩(鳴った a から、次に鳴る行・回・時刻)。過ぎた分は同じ規則で飛ばす(眠っていた間など)
   // ★v4.2.341(俊克 バグ1「VSCmを閉じていると、目薬2本目のときに、メニューバーは、1本目と誤表示される」):
   //   名前の器(タイトルの `1.`)に回数を入れるのは拡張(meosChainFillSlot)だけだった→ 同じ規則をここにも1つ
-  // v5.1.398: ⏰の時刻の帯= 0今日 / 1 1週間以内 / 2 1ヶ月以内 / 3 1年未満 / 4 それより先(拡張の meosClockZone と同じ)
-  const clockZone = (t, now) => { if (t - now <= 24 * 36e5) return 0;   /* v5.1.629: 今日= 今から24時間以内(拡張の meosClockZone と同じ) */ if (t - now <= 7 * 864e5) return 1; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 2; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 3 : 4; };
+  // v5.1.398: ⏰の時刻の帯= 0今日 / 1明日 / 2 1週間以内 / 3 1ヶ月以内 / 4 1年未満 / 5 それより先(拡張の meosClockZone と同じ)
+  const clockZone = (t, now) => { if (t - now <= 24 * 36e5) return 0; if (t - now <= 48 * 36e5) return 1;   /* v5.1.629: 今日= 今から24時間以内 / v5.1.630: 明日= 48時間以内(拡張の meosClockZone と同じ) */ if (t - now <= 7 * 864e5) return 2; const m = new Date(now); m.setMonth(m.getMonth() + 1); if (t <= m.getTime()) return 3; const y = new Date(now); y.setFullYear(y.getFullYear() + 1); return t < y.getTime() ? 4 : 5; };
   const clockFar = (t, now) => { return t - now > 48 * 36e5; };   // v5.1.629: 今から48時間より先(拡張の meosClockFar と同じ)
   const fillSlot = (text, round) => { let s = String(text || '').replace(/^\s*\d{1,3}[.)]\s*/, ''); if (round > 0) s = s.replace(/\d{1,3}[.)]/, String(round)); return s.trim(); };
   const chainNext = (a, now) => {
@@ -1226,7 +1226,7 @@ function run(argv) {
       if (next.length) menu.push({ id: 'h:pass', title: '\u23ed\ufe0f Pass the next   ' + (next[0].name || next[0].key || '') + '   ' + _lab(next[0].at) }, { sep: true });   // v4.2.459
       const LS = (st && st.listStar) || {}, lsIs = (k, a) => !!(LS[k] && LS[k].key && a && LS[k].uri === String(a.uri || '') && LS[k].key === String(a.key || ''));   // v5.1.479: ⭐️
       if (next.length) menu.push({ clockAll: true });   // v5.1.480: 一番上の親には⭐️なし   // v5.1.356: 閉じている時も ⏰の見出し(畳む・⊟)
-      next.forEach((a, i) => { if (i && clockZone(a.at, now) !== clockZone(next[i - 1].at, now)) menu.push(Object.assign({ sep: true, cz: 1, dd: clockZone(next[i - 1].at, now) <= 1 ? 2 : 1 }, clockFar(a.at, now) ? { far: 1 } : {}));   // v5.1.406: 最初の2本(今日|1週間・1週間|1ヶ月)は太い(2)   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線
+      next.forEach((a, i) => { if (i && clockZone(a.at, now) !== clockZone(next[i - 1].at, now)) menu.push(Object.assign({ sep: true, cz: 1, dd: clockZone(next[i - 1].at, now) <= 2 ? 2 : 1 }, clockFar(a.at, now) ? { far: 1 } : {}));   // v5.1.406: 最初の2本(今日|1週間・1週間|1ヶ月)は太い(2)   // v5.1.398: 今日/1週間/1ヶ月/1年の境に一点鎖線
         menu.push({ clk: 1, far: clockFar(a.at, now) ? 1 : 0, id: 'h:' + alarms.indexOf(a), title: (lsIs('clk', a) ? STAR : '') + (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
       if (next.length) menu.push({ sep: true });
       // ★v4.2.342(俊克「VSCmが閉じている時は、その時のリストをメニューバーのメニューのTag&Goの下に表示する」):

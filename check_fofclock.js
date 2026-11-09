@@ -165,8 +165,8 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   { const sr = fs.readFileSync(SRC, 'utf8'); ok(/!meosShowsRawLineStable\(editor, i\) && !meosRuleHidden\(editor, i\)\) \{\n\s*badgeHide\.push/.test(sr), '畳みの中の線は描かない');
     ok(/title:'Time up at dd # 1\.'/.test(sr), '①の名前は長さを言わない'); }
   // 10d. v5.1.629 今日= 今から24h以内・明日= 48h以内(拡張とヘルパーで同じ答え)
-  { const hz = eval('(' + /const clockZone = (\(t, now\) => \{[^\n]*?return t < y\.getTime\(\) \? 3 : 4; \});/.exec(hs)[1] + ')'), hf = eval('(' + /const clockFar = (\(t, now\) => \{[^\n]*?\});/.exec(hs)[1] + ')'), now = new Date(2026, 10, 9, 21, 13).getTime(), H = 36e5;
-    for (const [zn, dt, want] of [['23h59は今日', 23.98, 0], ['ちょうど24hは今日', 24, 0], ['24h1分は今日でない', 24.02, 1], ['6d先は1週間の帯', 163, 1]]) ok(T.meosClockZone(now + dt * H, now) === want && hz(now + dt * H, now) === want, '帯: ' + zn, [T.meosClockZone(now + dt * H, now), hz(now + dt * H, now)]);
+  { const hz = eval('(' + /const clockZone = (\(t, now\) => \{[^\n]*?return t < y\.getTime\(\) \? 4 : 5; \});/.exec(hs)[1] + ')'), hf = eval('(' + /const clockFar = (\(t, now\) => \{[^\n]*?\});/.exec(hs)[1] + ')'), now = new Date(2026, 10, 9, 21, 13).getTime(), H = 36e5;
+    for (const [zn, dt, want] of [['23h59は今日', 23.98, 0], ['ちょうど24hは今日', 24, 0], ['24h1分は明日', 24.02, 1], ['ちょうど48hは明日', 48, 1], ['48h1分は1週間の帯', 48.02, 2], ['6d先は1週間の帯', 163, 2]]) ok(T.meosClockZone(now + dt * H, now) === want && hz(now + dt * H, now) === want, '帯: ' + zn, [T.meosClockZone(now + dt * H, now), hz(now + dt * H, now)]);
     for (const [zn, dt, want] of [['47hは明日まで', 47, false], ['ちょうど48hは明日まで', 48, false], ['48h1分は先', 48.02, true]]) ok(T.meosClockFar(now + dt * H, now) === want && hf(now + dt * H, now) === want, '先: ' + zn, [T.meosClockFar(now + dt * H, now), hf(now + dt * H, now)]); }
   // 11. 音
   const f = T.meosPshPath(), b = fs.readFileSync(f); ok(b.slice(0, 4).toString() === 'RIFF' && b.length === 44 + Math.floor(22050 * 0.75) * 2, 'プシューのWAV', b.length); try { fs.unlinkSync(f); } catch (_) { }

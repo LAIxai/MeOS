@@ -159,9 +159,9 @@ const S = (sel) => sel;
   // 12. v5.1.595 一時停止線ボタン
   { const at = (L, ln) => { const d = mkDoc(L), e = mkEd(d, { start: { line: ln, character: 0 }, end: { line: ln, character: 0 }, active: { line: ln, character: L[ln].length }, isEmpty: true }); return [d, e]; };
     let [d, e] = at(['本文1', '本文2', '後'], 0); await T.meosStopLineToggle(e, false);
-    ok(d.L.join('|') === ['本文1', '', R, '', '本文2', '後'].join('|') && e.selection.active.line === 3, '本文の行= 下へ「空行・線・空行」・カーソルは線の下', [d.L, e.selection.active]);
+    ok(d.L.join('|') === ['本文1', R, '本文2', '後'].join('|') && e.selection.active.line === 2, '本文の行= すぐ下に線だけ・カーソルは線の下', [d.L, e.selection.active]);
     [d, e] = at(['本文1', '', '後'], 1); await T.meosStopLineToggle(e, false);
-    ok(d.L.join('|') === ['本文1', '', R, '', '後'].join('|'), '空の行= 上に空行を足して線', d.L);
+    ok(d.L.join('|') === ['本文1', R, '後'].join('|'), '空の行= その行を線に', d.L);
     [d, e] = at(['', '', ''], 1); await T.meosStopLineToggle(e, false);
     ok(d.L.join('|') === ['', R, ''].join('|'), '上下が空行= 線だけ', d.L);
     [d, e] = at(['本文1', '', R, '', '後'], 3); ok(T.meosStopLineNear(d, 3) === 2 && T.meosStopLineNear(d, 1) === 2 && T.meosStopLineNear(d, 2) === 2 && T.meosStopLineNear(d, 0) === -1 && T.meosStopLineNear(d, 4) === -1, '🚫になるのは線の上と前後の行だけ', [0, 1, 2, 3, 4].map(l => T.meosStopLineNear(d, l)));
@@ -172,7 +172,7 @@ const S = (sel) => sel;
     ok(d.L.join('|') === ['上', '', '中', '<!-- Mew!UFC -.- -->', '', '下'].join('|'), '本文の行で上下とも線= 上の線を消す', d.L);
     ok(T.meosStopKindOf(R) === 0 && T.meosStopKindOf('<!-- Mew!UFC === -->') === 1 && T.meosStopKindOf('<!-- Mew!UFC -.- -->') === 2 && T.meosStopLineNear(mkDoc(['<!-- Mew!UFC ===== -->']), 0) === 0 && T.meosStopLineNear(mkDoc(['<!-- Mew!UFC -.-.- -->']), 0) === 0, '線の種類= --- / === / -.-(長くても可)', 0);
     gs.set('fmtStopKind', 1); [d, e] = at(['本文'], 0); await T.meosStopLineToggle(e, false); gs.set('fmtStopKind', 0);
-    ok(d.L[2] === '<!-- Mew!UFC === -->', '↻で二重線を選ぶと === を書く', d.L);
+    ok(d.L[1] === '<!-- Mew!UFC === -->', '↻で二重線を選ぶと === を書く', d.L);
     [d, e] = at(['```', R, '```', 'x'], 3); ok(T.meosStopLineNear(d, 2) === -1, '囲いの中の線は数えない', T.meosStopLineNear(d, 2)); }
   // 13. v5.1.599 押しっぱなしの↓を離した後、20行以内の一時停止線まで運ぶ
   { const mk = () => { const L = []; for (let i = 0; i < 60; i++) L.push('行' + i); L[40] = R; return mkDoc(L); };
