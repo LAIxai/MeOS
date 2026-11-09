@@ -71,7 +71,7 @@ a membrane near the end of your diary, just above the meta membrane. Your everyd
 <!-- Mew!FC ⏰ 🔔/🔔 ↺↻(5m)×1 ⛓️⤴️2)×4 // ☕Pomodoro break -->
 ```
 
-`dd` in a title turns into the time that ⏰ ends, on its badge and in the ⏰ list. The text keeps `dd`.
+`dd` in a title turns into the time of that ⏰'s next bell, on its badge and in the ⏰ list. The text keeps `dd`.
 
 Press ▶️ on a line and only that clock runs; when it has rung, it goes back to waiting, ready for next time. Copy a
 line into any membrane and it works there too. Each waiting line shows its title in grey, so you can find the one

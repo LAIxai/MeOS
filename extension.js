@@ -7458,10 +7458,10 @@ function meosFofClockOwner(doc, closeLine) {
 }
 const MEOS_CLOCK_DD_RE = /(^|\s)dd(?=\s|$)/;
 function meosClockDdTitle(c) {   // ★v5.1.613(俊克 am10:36 バグ1「バッジのdd部分に予定時刻が表示されていない」): 描く側の c は本文を読み直した物(鍵なし)= 札の2か所は owner を渡してここを通す。一時停止中は「今再開すれば」の時刻 / v5.1.610: 本文は dd のまま・見せる時だけ消滅日時(WT と同じ作法)。「数字+.」は回数の器に読まれるので月/日
-  // ★v5.1.623(俊克 11.09 pm06:02「通常のoneショットタイマーなどでも、ddと書くと、予定時刻を表示するようにしよう」): ♥膜だけの門を外す。予定時刻は鐘の計算と同じ1つから= 起点だけ→ その時刻 / ×N→ 最後の鐘(meosCycleLastAt) / 回数なしの繰り返し→ 次の鐘(meosCycleSeriesNext)。起点がまだ無い(待ち・連なりの2本目)は dd のまま
+  // ★v5.1.623(俊克 11.09 pm06:02「通常のoneショットタイマーなどでも、ddと書くと、予定時刻を表示するようにしよう」): ♥膜だけの門を外す。予定時刻は鐘の計算と同じ1つから= 起点だけ→ その時刻 / 周期あり→ 次の鐘(meosCycleSeriesNext)。起点がまだ無い(待ち・連なりの2本目)は dd のまま
   try { if (!MEOS_CLOCK_DD_RE.test((c && c.title) || '')) return c.title;
     const at = c.vAt || ((typeof c.vElapsed === 'number' && c.vElapsed >= 0) ? Date.now() - c.vElapsed : 0) || (meosParseStampLoose(c.when) || { getTime: () => 0 }).getTime(); if (!at) return c.title;
-    const hasC = Array.isArray(c.cycle) && c.cycle.length > 0, n = Number(c.rounds) || 0, end = !hasC ? at : (n > 0 && isFinite(n)) ? meosCycleLastAt(at, c.cycle, n) : ((meosCycleSeriesNext(at, c.cycle, Date.now()) || {}).at || 0); if (!end) return c.title;
+    const hasC = Array.isArray(c.cycle) && c.cycle.length > 0, n = Number(c.rounds) || 0, last = (hasC && n > 0 && isFinite(n)) ? meosCycleLastAt(at, c.cycle, n) : 0, nx = hasC ? ((meosCycleSeriesNext(at, c.cycle, Date.now()) || {}).at || 0) : at, end = (last && (!nx || nx > last)) ? last : nx; if (!end) return c.title;   // ★v5.1.626(俊克 11.09 pm08:39「2回の50時間後ではなく、知りたいのは、1回目の日時だよ。2回目に入ったら、2回目の終了日時に切り替える」): ×N も「次の鐘」。全部鳴り終えた後だけ最後の鐘
     const d = new Date(end), h = d.getHours();
     const face = (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ') ' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     return String(c.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + face); } catch (_) { return c.title; }
