@@ -7456,6 +7456,7 @@ function meosIsFofClockKey(k) { return String(k || '').charAt(0) === '♥'; }
 function meosFofClockOwner(doc, closeLine) {
   try { const r = meosFofRange(doc, 7); if (!r || r.end !== closeLine) return null; const o = meosPuzzleTagsOf(doc, 7).find(h => h.line === r.start), d = o && String(o.desc || '').trim(); return { id: r.key, fofName: '♥️' + (d ? ' ' + d : ''), start: r.start, end: r.end }; } catch (_) { return null; }
 }
+const MEOS_CLOCK_LABEL_FG = '#000000';   // ★v5.1.627(俊克 11.09 pm08:46 改良「明るい橙に白字は読み難い。黒字か灰色に」): ⏰の橙の札(本文の行とバッジの行)の字
 const MEOS_CLOCK_DD_RE = /(^|\s)dd(?=\s|$)/;
 function meosClockDdTitle(c) {   // ★v5.1.613(俊克 am10:36 バグ1「バッジのdd部分に予定時刻が表示されていない」): 描く側の c は本文を読み直した物(鍵なし)= 札の2か所は owner を渡してここを通す。一時停止中は「今再開すれば」の時刻 / v5.1.610: 本文は dd のまま・見せる時だけ消滅日時(WT と同じ作法)。「数字+.」は回数の器に読まれるので月/日
   // ★v5.1.623(俊克 11.09 pm06:02「通常のoneショットタイマーなどでも、ddと書くと、予定時刻を表示するようにしよう」): ♥膜だけの門を外す。予定時刻は鐘の計算と同じ1つから= 起点だけ→ その時刻 / 周期あり→ 次の鐘(meosCycleSeriesNext)。起点がまだ無い(待ち・連なりの2本目)は dd のまま
@@ -7463,7 +7464,7 @@ function meosClockDdTitle(c) {   // ★v5.1.613(俊克 am10:36 バグ1「バッ�
     const at = c.vAt || ((typeof c.vElapsed === 'number' && c.vElapsed >= 0) ? Date.now() - c.vElapsed : 0) || (meosParseStampLoose(c.when) || { getTime: () => 0 }).getTime(); if (!at) return c.title;
     const hasC = Array.isArray(c.cycle) && c.cycle.length > 0, n = Number(c.rounds) || 0, last = (hasC && n > 0 && isFinite(n)) ? meosCycleLastAt(at, c.cycle, n) : 0, nx = hasC ? ((meosCycleSeriesNext(at, c.cycle, Date.now()) || {}).at || 0) : at, end = (last && (!nx || nx > last)) ? last : nx; if (!end) return c.title;   // ★v5.1.626(俊克 11.09 pm08:39「2回の50時間後ではなく、知りたいのは、1回目の日時だよ。2回目に入ったら、2回目の終了日時に切り替える」): ×N も「次の鐘」。全部鳴り終えた後だけ最後の鐘
     const d = new Date(end), h = d.getHours();
-    const face = (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ') ' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    const face = (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     return String(c.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + face); } catch (_) { return c.title; }
 }
 function meosFofClockOneShot(c) { const n = Array.isArray(c && c.cycle) ? c.cycle.length : 0; return !n || (n === 1 && Number(c.rounds) === 1) || meosClockIsFinalStep(c); }
@@ -16145,7 +16146,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
             }
             if (_ta73 != null && c.title) titles.push({
               range: new vscode.Range(i, _ta73, i, _ta73),
-              renderOptions: { after: { contentText: '\u00a0' + meosLaunchDRipeTitle(meosChainFillSlot(meosClockWtOf(c), (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
+              renderOptions: { after: { contentText: '\u00a0' + meosLaunchDRipeTitle(meosChainFillSlot(meosClockWtOf(c), (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7) + '\u00a0', color: MEOS_CLOCK_LABEL_FG, backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
             });
           } catch (_) { }
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
@@ -16276,7 +16277,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _de = (_s2 > 0) ? _rnd.slice(_s2) : '';
               // ★v4.2.477: 回数はメッセージの札で出す= [R2]/12(俊克「⏰⚓︎ 2.53 0.07 | [R2]/12」)。メッセージが無ければ今までどおり ×2
               let _lb30 = ''; try { if (c.title) _lb30 = meosLaunchDRipeTitle(meosChainFillSlot(meosClockWtOf(c), (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7); } catch (_) { }   // v5.0.0-66(俊克 バグ1「バッジ部分はまだ青いリンゴ」): バッジ行の札も同じ口から
-              if (_lb30) return { before: { contentText: (_rndAfter ? '  ' : '') + '\u00a0' + _lb30 + '\u00a0', color: new vscode.ThemeColor('editor.foreground') /* ★v5.1.125(俊克 10.21 pm06:22「ライトモードで文字を黒くした時は、バッジに表示した1 hourも黒く」)= 走っている値と同じ字の色 */, backgroundColor: '#e0803a', fontWeight: '800', textDecoration: 'none; border-radius: 3px' },
+              if (_lb30) return { before: { contentText: (_rndAfter ? '  ' : '') + '\u00a0' + _lb30 + '\u00a0', color: MEOS_CLOCK_LABEL_FG /* ★v5.1.125(俊克 10.21 pm06:22「ライトモードで文字を黒くした時は、バッジに表示した1 hourも黒く」)= 走っている値と同じ字の色 */, backgroundColor: '#e0803a', fontWeight: '800', textDecoration: 'none; border-radius: 3px' },
                 after: { contentText: _de + (_rndAfter ? '' : ' '), color: '#e0803a', fontWeight: '800' } };
               return { before: { contentText: (_rndAfter ? '  ' : '') + _nu, color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' },
                 after: { contentText: _de + (_rndAfter ? '' : ' '), color: '#e0803a', fontWeight: '800' } };

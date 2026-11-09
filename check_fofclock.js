@@ -149,16 +149,16 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   const d12 = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', far]); const s12 = T.meosClockFcScan(d12); ok(s12.length <= 1 && (!s12[0] || s12[0].key.charAt(0) !== '♥'), 'ふつうの膜の鍵は変わらない', s12);
   // 10b. v5.1.623 dd はふつうの⏰でも予定時刻(実物の書き方)
   { const dd = (ln) => { const d = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', ln]); const c = T.meosClockFcScan(d)[0]; return c ? c.title : '(読めない)'; };
-    ok(dd('<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h3m0s)×1 v2026-01-05 18:00.00 // Tea dd -->') === 'Tea 1/5(M) pm06:03', 'dd: 1回切り= 起点+長さ', dd('<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h3m0s)×1 v2026-01-05 18:00.00 // Tea dd -->'));
-    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->') === 'Meet 1/5(T) am08:30', 'dd: 日時だけ= その日時', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->'));
-    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:00 ↺8h // dd -->') === '1/5(T) am08:00', 'dd: 回数なしの繰り返し= 次の鐘', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:00 ↺8h // dd -->'));
-    { const P = (x) => String(x).padStart(2, '0'), vs = (t) => { const d = new Date(t); return 'v' + d.getFullYear() + '-' + P(d.getMonth() + 1) + '-' + P(d.getDate()) + ' ' + P(d.getHours()) + ':' + P(d.getMinutes()) + '.' + P(d.getSeconds()); }, face = (t) => { const d = new Date(t), h = d.getHours(); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ') ' + (h >= 12 ? 'pm' : 'am') + P(h > 12 ? h - 12 : h) + ':' + P(d.getMinutes()); }, H = 3600000, base = Math.floor(Date.now() / 1000) * 1000, ln = (o) => '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d1h0m0s)×2 ' + vs(o) + ' // Up dd -->';
+    ok(dd('<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h3m0s)×1 v2026-01-05 18:00.00 // Tea dd -->') === 'Tea 1/5(M)pm06:03', 'dd: 1回切り= 起点+長さ', dd('<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h3m0s)×1 v2026-01-05 18:00.00 // Tea dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->') === 'Meet 1/5(T)am08:30', 'dd: 日時だけ= その日時', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:00 ↺8h // dd -->') === '1/5(T)am08:00', 'dd: 回数なしの繰り返し= 次の鐘', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:00 ↺8h // dd -->'));
+    { const P = (x) => String(x).padStart(2, '0'), vs = (t) => { const d = new Date(t); return 'v' + d.getFullYear() + '-' + P(d.getMonth() + 1) + '-' + P(d.getDate()) + ' ' + P(d.getHours()) + ':' + P(d.getMinutes()) + '.' + P(d.getSeconds()); }, face = (t) => { const d = new Date(t), h = d.getHours(); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + P(h > 12 ? h - 12 : h) + ':' + P(d.getMinutes()); }, H = 3600000, base = Math.floor(Date.now() / 1000) * 1000, ln = (o) => '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d1h0m0s)×2 ' + vs(o) + ' // Up dd -->';
       for (const [back, plus, name] of [[H / 6, H, 'dd: ×2の1回目= 1回目の鐘'], [H * 1.5, 2 * H, 'dd: ×2の2回目= 2回目の鐘'], [H * 5, 2 * H, 'dd: 鳴り終えた後= 最後の鐘']]) { const o = base - back, g = dd(ln(o)); ok(g === 'Up ' + face(o + plus), name, g); } }
-    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 10:00 ↺↻(25m 5m)×4 // 🍅 dd -->') === '🍅 1/5(T) am10:00', 'dd: 起点が未来= 最初の鐘', dd('<!-- Mew!UFC ⏰ 2027-01-05 10:00 ↺↻(25m 5m)×4 // 🍅 dd -->'));
-    ok(dd('<!-- Mew!UFC ⏰ 2027-01-07 10:00 ↺t1,3 ×2 // Meet dd -->') === 'Meet 1/7(t) am10:00', 'dd: 暦の規則= 次の当たり日', dd('<!-- Mew!UFC ⏰ 2027-01-07 10:00 ↺t1,3 ×2 // Meet dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 10:00 ↺↻(25m 5m)×4 // 🍅 dd -->') === '🍅 1/5(T)am10:00', 'dd: 起点が未来= 最初の鐘', dd('<!-- Mew!UFC ⏰ 2027-01-05 10:00 ↺↻(25m 5m)×4 // 🍅 dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-07 10:00 ↺t1,3 ×2 // Meet dd -->') === 'Meet 1/7(t)am10:00', 'dd: 暦の規則= 次の当たり日', dd('<!-- Mew!UFC ⏰ 2027-01-07 10:00 ↺t1,3 ×2 // Meet dd -->'));
     ok(dd('<!-- Mew!UFC ⏰ ↺↻(3m)×1 // Tea dd -->') === 'Tea dd', 'dd: 起点がまだ無ければ dd のまま', dd('<!-- Mew!UFC ⏰ ↺↻(3m)×1 // Tea dd -->'));
     ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // add odd -->') === 'add odd', 'dd: 語の一部は変えない', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // add odd -->'));
-    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // WT dd -->') === 'am08:30 1/5(T) am08:30', 'dd: WT と併用', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // WT dd -->'));
+    ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // WT dd -->') === 'am08:30 1/5(T)am08:30', 'dd: WT と併用', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // WT dd -->'));
     ok(T.meosClockWtOf({ title: undefined, when: '2027-01-05 08:30', cycle: [] }) === undefined, 'dd: 題なしで undefined の字を作らない');
     const dr = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', '<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->']), cr = T.meosClockFcScan(dr)[0]; ok(cr && cr.titleRaw === 'Meet dd', 'dd: 本文の字は titleRaw に残す(焼き付けない)', cr); }
   // 10c. v5.1.625 畳みの中の一時停止線には絵を掛けない
