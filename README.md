@@ -106,7 +106,8 @@ a rule with an octagonal STOP sign at each end. `===` makes a double line and `-
 cursor pauses at the line; let go within 20 lines of one, and it glides the rest of the way and stops there.
 **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Fold a membrane to
 jump over the lines inside it. The 🛑 button in **Format Me** puts a stop line under the cursor (↻ picks solid, double
-or dash-dot) and turns into 🚫 to take it off when the cursor is on or next to one. On a membrane boundary the line
+or dash-dot) and turns into 🚫 to take it off when the cursor is on or next to one. Or just type it: on an empty line,
+`---` becomes a solid line, `===` a double one and `- -` a dash-dot one (Cmd+Z keeps the plain text). On a membrane boundary the line
 turns green under the opening membrane and blue above the closing one. Two dashes are not enough, and inside a code
 block it stays text. It is a UFC line (one that never folds), so it does not break a list of clocks — the badge line
 and the chains reach across it.

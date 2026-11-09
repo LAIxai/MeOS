@@ -15420,8 +15420,24 @@ async function meosStopLineToggle(ed, remove) {
   // ★v5.1.630(俊克 pm09:37 別件改良1「罫線ボタンで、改行は要らない。今まで使って見て、改行を一々消すのが面倒くさい」): 空行を足さない。空の行に居る= その行を線に。本文の行= すぐ下に線
   const pos = here ? new vscode.Position(cur, 0) : new vscode.Position(cur, t.length), _rule = '<!-- Mew!UFC ' + MEOS_STOP_KINDS[meosStopKindNow()] + ' -->', text = here ? (ind + _rule) : ('\n' + ind + _rule);
   const ok = await ed.edit(eb => here ? eb.replace(new vscode.Range(cur, 0, cur, t.length), text) : eb.insert(pos, text)); if (!ok) return;
-  const ruleLn = here ? cur : cur + 1, land = Math.min(ruleLn + 1, ed.document.lineCount - 1), lp = new vscode.Position(land, ed.document.lineAt(land).text.length); ed.selection = new vscode.Selection(lp, lp);
+  const ruleLn = here ? cur : cur + 1; meosStopLineLand(ed, ruleLn);
   meosDbg('[stopLine] 入れた 行=' + (ruleLn + 1));
+}
+function meosStopLineLand(ed, ruleLn) { const land = Math.min(ruleLn + 1, ed.document.lineCount - 1), lp = new vscode.Position(land, ed.document.lineAt(land).text.length); ed.selection = new vscode.Selection(lp, lp); }
+// ★v5.1.634(俊克 11.10 am00:53「罫線を引く機会が多くなったので、簡易入力法を規定しよう。行頭に以下を入力すると、罫線ボタンの形式に変換する。--- 実線 / - - 一点鎖線 / === 二重実線」):
+//   その行が3字だけになった打鍵で変換(貼り付け・Undo・複数カーソルでは変換しない)。字のまま残したい時は Cmd+Z 1回で `---` に戻る。囲いの中と先頭の YAML(--- で挟まれた所)は文字のまま
+const MEOS_RULE_TYPED = new Map([['---', '---'], ['===', '==='], ['- -', '-.-']]);
+function meosInFrontMatter(doc, line) { if (doc.lineAt(0).text.trim() !== '---') return line === 0; for (let i = 1; i < line; i++) if (doc.lineAt(i).text.trim() === '---') return false; return true; }
+function meosMaybeRuleTyped(e) {
+  try {
+    if (e.reason || e.contentChanges.length !== 1) return false;
+    const c = e.contentChanges[0], ed = vscode.window.activeTextEditor, doc = e.document;
+    if ((c.text !== '-' && c.text !== '=') || !ed || ed.document !== doc || ed.selections.length !== 1 || doc.languageId !== 'markdown') return false;
+    const line = c.range.start.line, t = doc.lineAt(line).text, kind = MEOS_RULE_TYPED.get(t);
+    if (!kind || meosFenceLines(doc).has(line) || meosInFrontMatter(doc, line)) return false;
+    (async () => { try { if (await ed.edit(eb => eb.replace(new vscode.Range(line, 0, line, t.length), '<!-- Mew!UFC ' + kind + ' -->'))) { meosStopLineLand(ed, line); meosDbg('[stopLine] 打って入れた 行=' + (line + 1)); } } catch (_) { } })();
+    return true;
+  } catch (_) { return false; }
 }
 function meosApplyTimerLineDecorations(editor, fromHints) {
   try {
@@ -47851,6 +47867,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       // v0.9.99911: ★ペースト検知方式は撤去(俊克 6/24 am09:14: 環境依存で5回不発・誤爆/混乱)。
       //   クリップボード消去は確実な経路に一本化=①🔐施錠後②🔓解錠後(合言葉を残さない)③📋 Copy&auto-clear(秘密を選択→コピー→N秒後消去)。
       if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替
+      if (deferRefreshCount === 0 && meosMaybeRuleTyped(e)) return;    // v5.1.634: 行頭の --- / - - / === を罫線に
       if (deferRefreshCount === 0 && meosMaybeAutoHat(e)) return;      // v4.0.268: 手書きの `a↑👒(..)` を即、字にする
       if (deferRefreshCount === 0) { try { meosMetexArrowFollow(e); } catch (_) { } } // v4.0.290: 指定行の矢印を直したら本文も従う / v4.0.293: %も向きに付いてくる
       if (deferRefreshCount === 0) { try { meosLimitArrowSwap(e); } catch (_) { } }   // v4.0.293: 同じ演算子の上下限が両方同じ向きになったら入れ替える
