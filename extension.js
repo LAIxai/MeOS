@@ -15516,7 +15516,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           if (MEOS_RULE_LINE_RE.test(txt)) {
             // ★v5.1.113(俊克 10.21 am11:28 バグ1「コードブロックの中に罫線指定を入れると、罫線になってしまう」): 囲いの中は文字そのもの(v4.0.58 の約束)
             let _inFence = false; try { _inFence = meosFenceBlocks(doc).some(b => b.open < i && i < b.close); } catch (_) { }
-            if (!_inFence && !meosShowsRawLineStable(editor, i)) {
+            // ★v5.1.625(俊克 11.09 pm08:23 改良1「一時停止線を内部に書いた通常の膜を折り畳んだとき、1つ折り畳まれずに残る」): 見える範囲の下へ指定行を延ばす所(_tmSpans)が畳みの中へ入り、隠れた線にも絵を掛けていた→ Monaco が畳みの境目に描く(v5.1.2/v5.1.9 と同じ)。隠れた行には掛けない
+            if (!_inFence && !meosShowsRawLineStable(editor, i) && !meosRuleHidden(editor, i)) {
               badgeHide.push(new vscode.Range(i, 0, i, txt.length));
               items.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '\u200b',
                 textDecoration: 'none; display: inline-block; width: 60ch; height: ' + MEOS_STOP_SIGN_EM + 'em; vertical-align: middle; background: url(' + MEOS_STOP_SIGN_URL + ') left center / ' + MEOS_STOP_SIGN_EM + 'em ' + MEOS_STOP_SIGN_EM + 'em no-repeat, url(' + MEOS_STOP_SIGN_URL + ') right center / ' + MEOS_STOP_SIGN_EM + 'em ' + MEOS_STOP_SIGN_EM + 'em no-repeat, ' + meosStopLineCss(meosStopKindOf(txt), MEOS_STOP_SIGN_EM + 0.3, meosStopEdgeOf(doc, i)) + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
@@ -35791,7 +35792,7 @@ hPaint();}
    ①= ↺↻(1h)×2(起点なし= 今から)・タイトルに回数の器(# 1.)= 1つの行が繰返しと回数の札の見本になる。2つの①は同じ1つの口
    ★v5.1.120(俊克 pm05:28「理想を言えば、フルスペックの表記」): 周期は 0y0d1h0m0s= 年・日・時・分・秒の桁が全部見え、どこを直せばいいかが字で分かる */
 const __oneShot=ev=>{ev.preventDefault();ev.stopPropagation();
-vscode.postMessage({type:'pseudoTimerSet',when:'',add:true,fresh:true,rep:true,up:false,dual:true,cycle:'(0y0d1h0m0s)\u00d72',title:'Timer 1h dd # 1.',tags:null,lock:false,anchor:false});};   /* v5.1.152: fresh= どこで押しても新しい⏰の膜 */
+vscode.postMessage({type:'pseudoTimerSet',when:'',add:true,fresh:true,rep:true,up:false,dual:true,cycle:'(0y0d1h0m0s)\u00d72',title:'Time up at dd # 1.',tags:null,lock:false,anchor:false});};   /* v5.1.152: fresh= どこで押しても新しい⏰の膜 */
 ['clk-one','os-one'].forEach(id=>{const c1=document.getElementById(id);if(c1)c1.addEventListener('click',__oneShot);});
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset',dir:ev.shiftKey?-1:1});});
 /* ★v5.1.93: Format Me の⏰0y0d0h3m … = メニューバーの同じ名前と同じ= ⏰のデータベース膜へ */

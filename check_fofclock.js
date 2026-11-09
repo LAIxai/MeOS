@@ -159,6 +159,9 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
     ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // WT dd -->') === 'am08:30 1/5(T) am08:30', 'dd: WT と併用', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // WT dd -->'));
     ok(T.meosClockWtOf({ title: undefined, when: '2027-01-05 08:30', cycle: [] }) === undefined, 'dd: 題なしで undefined の字を作らない');
     const dr = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', '<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->']), cr = T.meosClockFcScan(dr)[0]; ok(cr && cr.titleRaw === 'Meet dd', 'dd: 本文の字は titleRaw に残す(焼き付けない)', cr); }
+  // 10c. v5.1.625 畳みの中の一時停止線には絵を掛けない
+  { const sr = fs.readFileSync(SRC, 'utf8'); ok(/!meosShowsRawLineStable\(editor, i\) && !meosRuleHidden\(editor, i\)\) \{\n\s*badgeHide\.push/.test(sr), '畳みの中の線は描かない');
+    ok(/title:'Time up at dd # 1\.'/.test(sr), '①の名前は長さを言わない'); }
   // 11. 音
   const f = T.meosPshPath(), b = fs.readFileSync(f); ok(b.slice(0, 4).toString() === 'RIFF' && b.length === 44 + Math.floor(22050 * 0.75) * 2, 'プシューのWAV', b.length); try { fs.unlinkSync(f); } catch (_) { }
   console.log(ng ? 'NG ' + ng + '件' : 'PASS'); process.exit(ng ? 1 : 0);
