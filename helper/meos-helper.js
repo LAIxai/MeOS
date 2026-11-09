@@ -1059,8 +1059,8 @@ function run(argv) {
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
           try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
-      } else if (menuUp && menuShrink(lastEntries, nw, (e) => e.clk ? 'C' + (e.far ? 'f' : '') : sk([e]))) {
-        const map = menuShrink(lastEntries, nw, (e) => e.clk ? 'C' + (e.far ? 'f' : '') : sk([e])), keep = [], pull = (arr, x) => { const k = arr.indexOf(x); if (k >= 0) arr.splice(k, 1); };
+      } else if (menuUp && menuShrink(lastEntries, nw, (e) => shrinkKey(e, sk))) {
+        const map = menuShrink(lastEntries, nw, (e) => shrinkKey(e, sk)), keep = [], pull = (arr, x) => { const k = arr.indexOf(x); if (k >= 0) arr.splice(k, 1); };
         for (let i = 0; i < lastEntries.length; i++) { const mi = lastItems[i], o = lastEntries[i], k = map[i];
           if (k < 0) { try { if (mi) { mi.hidden = true; pull(clockAll.rows, mi); pull(clockAll.seps, mi); pull(clockAll.far, mi); } } catch (x) {} continue; }
           keep.push(mi); const e = nw[k]; if (!mi || e.sep || e.sub) continue;
@@ -1136,7 +1136,9 @@ function run(argv) {
   let quitNow = false;
   // ★v5.1.614(俊克 11.09 am10:47 改良1「メニューバーのリストを表示したままにしてあったが…消滅後もゴミが残っているね。表示し直したら消滅した」): 開いている間は作り替えない(v4.2.333)ので、行が減ると一覧全体が止まっていた。
   //   行が減っただけ(⏰の行・区切り)なら、閉じずに隠して残りの字と行き先を差し替える。古い行 i → 新しい行の番号(隠すのは -1)。減っただけでなければ null= 今まで通り閉じるまで待つ
-  const menuShrink = (o, n, ek) => { const map = []; let j = 0; for (let i = 0; i < o.length; i++) { if (j < n.length && ek(o[i]) === ek(n[j])) map[i] = j++; else { if (!o[i].clk && !o[i].sep) return null; map[i] = -1; } } return (j === n.length && map.some(x => x < 0)) ? map : null; };
+  const menuShrink = (o, n, ek) => { const map = []; let j = 0; for (let i = 0; i < o.length; i++) { if (j < n.length && ek(o[i]) === ek(n[j])) map[i] = j++; else { if (!o[i].clk && !o[i].sep) return null; map[i] = -1; } } return j === n.length ? map : null; };
+  // ★v5.1.620(俊克 11.09 am11:57 バグ1「2回追加テストしたら、2回ともスクショのように駄目だった」): 実測= 成功した1回は「隠した」の1秒後に「作り替えない n=40 前=40」、失敗は最初から「作り替えない n=40 前=41」。付箋の行き先は fusen:印@行番号 なので、♥の行が消えて本文が詰まると付箋の群まで違って見え、隠す口に入れなかった(⏰の消滅と行番号の知らせが同じ回に届くと失敗)。→ 付箋の群は題で比べる。行番号は押す時の手がかりで、並びの違いではない
+  const shrinkKey = (e, sk) => e.clk ? 'C' + (e.far ? 'f' : '') : e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.star, (e.items || []).map(x => x.title)]) : sk([e]);
   const tracking = () => { try { return ObjC.unwrap($.NSRunLoop.currentRunLoop.currentMode) === 'NSEventTrackingRunLoopMode'; } catch (e) { return false; } };
   function step() {
     try { wakePoll(); } catch (e) {}   // v5.0.0-49

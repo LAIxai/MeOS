@@ -127,7 +127,10 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   const hs = fs.readFileSync(path.join(__dirname, 'helper', 'meos-helper.js'), 'utf8'), hm = /const menuShrink = (\(o, n, ek\) => \{.*?\});\n/.exec(hs), shr = eval(hm[1]), ek = (e) => e.clk ? 'C' + (e.far ? 'f' : '') : (e.sep ? '-' : e.id);
   const rows = (...a) => a.map(id => ({ clk: 1, id, title: id })), hd = [{ id: 'pass', title: 'p' }, { sep: 1 }], tl = [{ sep: 1 }, { id: 'db', title: 'd' }];
   ok(JSON.stringify(shr([...hd, ...rows('h:0', 'h:1', 'h:2'), ...tl], [...hd, ...rows('h:0', 'h:1'), ...tl], ek)) === JSON.stringify([0, 1, 2, 3, -1, 4, 5]), '⏰が1本減る= 最後の行を隠して字は詰める', 0);
-  ok(shr([...hd, ...rows('h:0'), ...tl], [...hd, ...rows('h:0'), ...tl], ek) === null, '減っていなければ何もしない', 0);
+  { const kk = eval(/const shrinkKey = (\(e, sk\) => .*?);\n/.exec(hs)[1]), sk = (a) => a.map(e => e.fusen ? 'F' + JSON.stringify([e.fusen, e.color, e.star, e.items]) : e.sep ? '-' : e.id).join('|'), fu = (l) => ({ fusen: 'CB', color: '#e', star: false, items: [{ id: 'fusen:c1@' + l, title: '付箋' }] }), key = (e) => kk(e, sk);
+    ok(JSON.stringify(shr([...hd, ...rows('h:0', 'h:1'), fu(178269), ...tl], [...hd, ...rows('h:0'), fu(178263), ...tl], key)) === JSON.stringify([0, 1, 2, -1, 3, 4, 5]), '⏰が消えて付箋の行番号が同時に変わっても隠せる(11:57 の実物)', 0);
+    ok(JSON.stringify(shr([...hd, ...rows('h:0'), fu(178269), ...tl], [...hd, ...rows('h:0'), fu(178263), ...tl], key)) === JSON.stringify([0, 1, 2, 3, 4, 5]), '行番号だけ変わった時は行を隠さず止めない', 0);
+    ok(shr([...hd, ...rows('h:0'), { fusen: 'CB', color: '#e', star: false, items: [{ id: 'x', title: '別' }] }, ...tl], [...hd, ...rows('h:0'), { fusen: 'CB', color: '#e', star: false, items: [{ id: 'x', title: '違う' }] }, ...tl], key) === null, '付箋の題が変わったら作り替えを待つ', 0); }
   ok(shr([...hd, ...rows('h:0', 'h:1'), ...tl], [...rows('h:0'), ...tl], ek) === null, '⏰と区切り以外が消えたら作り替えを待つ', 0);
   // 9f. 5秒前のシューーー+プシュッ
   const fp = T.meosFuseSamples(), rms = (a, b) => { let s = 0; for (let i = a; i < b; i++) s += fp.out[i] * fp.out[i]; return Math.sqrt(s / (b - a)); }, at = (x) => Math.floor(x * fp.rate);
