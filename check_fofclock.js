@@ -132,8 +132,8 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   // 9f. 5秒前のシューーー+プシュッ
   const fp = T.meosFuseSamples(), rms = (a, b) => { let s = 0; for (let i = a; i < b; i++) s += fp.out[i] * fp.out[i]; return Math.sqrt(s / (b - a)); }, at = (x) => Math.floor(x * fp.rate);
   let pk = 0; for (const v of fp.out) pk = Math.max(pk, Math.abs(v)); ok(pk <= 1 && pk > 0.8, '音が割れない', pk);
-  { let hp = 0; for (let i = at(0.5); i < at(4.9); i++) hp = Math.max(hp, Math.abs(fp.out[i])); ok(hp <= 0.127 && hp > 0.08, 'シューの音量は元の30%', hp); }
-  ok(rms(at(1), at(4.9)) > 0.01 && rms(at(5), at(5.1)) > rms(at(1), at(4.9)) * 1.3 && rms(at(5.33), at(5.39)) < 0.05, 'シューが5秒続きプシュッで強くなり静かに切れる', [rms(at(1), at(4.9)), rms(at(5), at(5.1)), rms(at(5.33), at(5.39))]);
+  { let hp = 0; for (let i = at(0.5); i < at(4.9); i++) hp = Math.max(hp, Math.abs(fp.out[i])); ok(hp <= 0.0635 && hp > 0.04, 'シューの音量は元の15%', hp); }
+  ok(rms(at(1), at(4.9)) > 0.005 && rms(at(5), at(5.1)) > rms(at(1), at(4.9)) * 1.3 && rms(at(5.33), at(5.39)) < 0.05, 'シューが5秒続きプシュッで強くなり静かに切れる', [rms(at(1), at(4.9)), rms(at(5), at(5.1)), rms(at(5.33), at(5.39))]);
   { const win = at(0.03); let lo = 9, hi = 0; for (let i = at(0.5); i + win < at(4.9); i += win) { const r = rms(i, i + win) / (0.62 + 0.38 * i / at(5)); lo = Math.min(lo, r); hi = Math.max(hi, r); } ok(hi / lo < 1.25, 'シューは切れ目なくつながる(30msごとの強さの揺れ)', [lo, hi, hi / lo]); }
   const d18 = doc([H1, R, '本文', '', R, H2, B, '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h0m9s)×1 // ♥️Timer dd -->']); T.meosPuzzleFSet(d18, 7, Fn); T.meosArmClockFcFor(d18); await settle();
   const k18 = d18.uri.toString() + ' ♥' + Fn; const f0 = T.fuse.get(k18); ok(f0 && !f0.played, '時間切れの5.3秒前に予約される', !!f0); T.fusePlan(k18, 5340); const f1 = T.fuse.get(k18); await new Promise(r => setTimeout(r, 90)); ok(f1 && f1.played, '時刻が来ると鳴り始める', f1 && f1.played);
