@@ -1058,6 +1058,13 @@ function run(argv) {
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
           try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
+      } else if (tracking() && menuShrink(lastEntries, nw, (e) => e.clk ? 'C' + (e.far ? 'f' : '') : sk([e]))) {
+        const map = menuShrink(lastEntries, nw, (e) => e.clk ? 'C' + (e.far ? 'f' : '') : sk([e])), keep = [], pull = (arr, x) => { const k = arr.indexOf(x); if (k >= 0) arr.splice(k, 1); };
+        for (let i = 0; i < lastEntries.length; i++) { const mi = lastItems[i], o = lastEntries[i], k = map[i];
+          if (k < 0) { try { if (mi) { mi.hidden = true; pull(clockAll.rows, mi); pull(clockAll.seps, mi); pull(clockAll.far, mi); } } catch (x) {} continue; }
+          keep.push(mi); const e = nw[k]; if (!mi || e.sep || e.sub) continue;
+          try { if (e.id && e.id !== o.id) mi.representedObject = $(e.id); if (e.title !== o.title || e.pill !== o.pill || e.box !== o.box) { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } } catch (x) {} }
+        lastItems = keep; lastEntries = nw; lastMenu = mj; try { hlog('[menu] 開いたまま行を隠した n=' + nw.length); } catch (e) {}
       } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.nb = null; clockAll.rows.length = 0; clockAll.seps.length = 0; clockAll.far.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; headSeps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
@@ -1125,6 +1132,9 @@ function run(argv) {
     fm.removeItemAtPathError(cp, null); if (Date.now() - Number(c.t) < 30000) { Object.assign(fired, c.fired || {}); Object.assign(preDone, c.preDone || {}); hlog('[menu] 鳴らした覚えを引き継いだ'); } } } catch (e) {}
   const MISSED_MS = 10 * 60000;   // 眠っていた間に過ぎた物は、10分以内なら鳴らす(それより古い朝の目覚ましは鳴らさない)
   let quitNow = false;
+  // ★v5.1.614(俊克 11.09 am10:47 改良1「メニューバーのリストを表示したままにしてあったが…消滅後もゴミが残っているね。表示し直したら消滅した」): 開いている間は作り替えない(v4.2.333)ので、行が減ると一覧全体が止まっていた。
+  //   行が減っただけ(⏰の行・区切り)なら、閉じずに隠して残りの字と行き先を差し替える。古い行 i → 新しい行の番号(隠すのは -1)。減っただけでなければ null= 今まで通り閉じるまで待つ
+  const menuShrink = (o, n, ek) => { const map = []; let j = 0; for (let i = 0; i < o.length; i++) { if (j < n.length && ek(o[i]) === ek(n[j])) map[i] = j++; else { if (!o[i].clk && !o[i].sep) return null; map[i] = -1; } } return (j === n.length && map.some(x => x < 0)) ? map : null; };
   const tracking = () => { try { return ObjC.unwrap($.NSRunLoop.currentRunLoop.currentMode) === 'NSEventTrackingRunLoopMode'; } catch (e) { return false; } };
   function step() {
     try { wakePoll(); } catch (e) {}   // v5.0.0-49

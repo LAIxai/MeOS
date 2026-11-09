@@ -123,6 +123,12 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   ok(onB.some(s => s.indexOf('♥️Timer') >= 0 && /\d+\/\d+\([SMTWtFs]\) [ap]m\d\d:\d\d/.test(s)) && !onB.some(s => /Timer dd/.test(s)), 'バッジの札の dd が消滅日時になる', onB);
   const c16 = T.meosClockFcScan(d16)[0]; await T.meosFofClockExpire(d16, c16, false); ok(!d16.L.includes(B) && clocks(d16).length === 0 && d16.L.includes(H1) && d16.L.includes('本文') && d16.L.includes('後'), '時間切れでバッジ行も消える', d16.L);
   const d17 = doc([H1, R, '本文', '', R, H2, B, far, '後']); T.meosPuzzleFSet(d17, 7, Fn); await T.meosPuzzleSweep(mkEd(d17), 7, 'f'); ok(badges(d17).length === 0 && clocks(d17).length === 0 && d17.L.includes('後'), 'Cmd+クリックで閉じ♥と一緒にバッジも', d17.L);
+  // 9e. 開いたメニューから行が減る(V-helper の本物の部品を切り出して試す)
+  const hs = fs.readFileSync(path.join(__dirname, 'helper', 'meos-helper.js'), 'utf8'), hm = /const menuShrink = (\(o, n, ek\) => \{.*?\});\n/.exec(hs), shr = eval(hm[1]), ek = (e) => e.clk ? 'C' + (e.far ? 'f' : '') : (e.sep ? '-' : e.id);
+  const rows = (...a) => a.map(id => ({ clk: 1, id, title: id })), hd = [{ id: 'pass', title: 'p' }, { sep: 1 }], tl = [{ sep: 1 }, { id: 'db', title: 'd' }];
+  ok(JSON.stringify(shr([...hd, ...rows('h:0', 'h:1', 'h:2'), ...tl], [...hd, ...rows('h:0', 'h:1'), ...tl], ek)) === JSON.stringify([0, 1, 2, 3, -1, 4, 5]), '⏰が1本減る= 最後の行を隠して字は詰める', 0);
+  ok(shr([...hd, ...rows('h:0'), ...tl], [...hd, ...rows('h:0'), ...tl], ek) === null, '減っていなければ何もしない', 0);
+  ok(shr([...hd, ...rows('h:0', 'h:1'), ...tl], [...rows('h:0'), ...tl], ek) === null, '⏰と区切り以外が消えたら作り替えを待つ', 0);
   // 10. ふつうの膜の⏰は今まで通り
   const d12 = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', far]); const s12 = T.meosClockFcScan(d12); ok(s12.length <= 1 && (!s12[0] || s12[0].key.charAt(0) !== '♥'), 'ふつうの膜の鍵は変わらない', s12);
   // 11. 音
