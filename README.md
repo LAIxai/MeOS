@@ -110,6 +110,8 @@ block it stays text. It is a UFC line (one that never folds), so it does not bre
 and the chains reach across it.
 
 **Every Me Dock letter is a membrane.** ♥ and the letters M e D o c k can each wrap a passage: select it and press the
+
+**♥ A membrane with a one-day fuse.** A new ♥ membrane gets a one-shot ⏰ for 24 hours — when you started, and how long you gave yourself. Delete the ⏰ line if you don't want it. When time is up there is one short *pssh*: the closing ♥, the ⏰ and the stop lines go, and the opening ♥ and all your text stay, so the ♥ on the menu bar still takes you there.
 letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Pressing the letter warps
 you back into the membrane, to the place you last were. Other marks of the same letter are relay points along the
 way — Opt-click the chip to visit them in turn. One membrane per letter; ▼ is green and ▲ blue, as with ♥, and the

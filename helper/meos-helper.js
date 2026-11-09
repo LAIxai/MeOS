@@ -1159,7 +1159,7 @@ function run(argv) {
       //   拡張と同じ先鐘= 1分前に3秒・30秒前に5秒・10秒前から時刻まで鳴り続ける。周期より遠い印は出さない(1分周期に1分前は無い)。
       for (const a of alarms) {
         if (fired[a.id + '@' + a.at] || a.at <= now) continue;
-        if (a.mute) continue;   // v5.0.0-58: 🌅LaunchD= 鳴らさない(Mac が起きるだけ)
+        if (a.mute || a.quiet) continue;   // v5.0.0-58: 🌅LaunchD= 鳴らさない(Mac が起きるだけ) / v5.1.609: ♥膜の⏰も
         const n = (Array.isArray(a.steps) && a.steps.length) ? a.steps.length : 0;
         let cyc = n ? a.steps[Math.max(0, (a.si || 0) - 1) % n] : 0;
         if (Array.isArray(a.chain) && a.chain[a.idx || 0]) { const r0 = a.chain[a.idx || 0]; cyc = (r0.steps && r0.steps.length) ? r0.steps[(a.done || 0) % r0.steps.length] : 0; }   // v4.2.340
@@ -1176,7 +1176,7 @@ function run(argv) {
         // v4.2.332: 周期の時計は、並びに沿って次の時刻へ進める(過ぎた分は飛ばして、今より先の最初の区切りへ)
         else if (Array.isArray(a.steps) && a.steps.length) { let at2 = a.at, si = a.si || 0; do { at2 += a.steps[si % a.steps.length]; si++; } while (at2 <= now); adv[a.id] = { at: at2, si }; }
         if (now - a.at > MISSED_MS) continue;
-        if (a.mute) continue;   // v5.0.0-58: 🌅LaunchD= 鳴らさない・飛ばない
+        if (a.mute || a.quiet) continue;   // v5.0.0-58: 🌅LaunchD= 鳴らさない・飛ばない / v5.1.609: ♥膜の⏰は次に開いた時に片付く
         const cyc0 = (Array.isArray(a.chain) && a.chain.length) || (Array.isArray(a.steps) && a.steps.length);   // v4.2.340: 連動も周期と同じく笛
         // ★v4.2.342(俊克「二本目がタイムアップした直後に「⏰⚓♬目薬2本目」が数秒表示された後、次に切り替わった。VSCmが起動している時は無い」):
         //   拡張は時刻ちょうどに鐘を止めて笛を1回鳴らすだけ(鳴っている扱いにしない)。こちらは笛の3秒を「鳴っている」にしていた→ 同じく鳴らすだけ

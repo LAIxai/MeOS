@@ -7367,9 +7367,11 @@ async function meosFofReconcile(ed, n) {
         const top = isR(o + 1) ? '' : ru, bot = isR(c - 1) ? '' : ((c - 1 === o || blank(c - 1) ? '' : ind + '\n') + ru);
         if (c === o + 1) rules = (top || bot) ? [{ line: c, text: top + ind + '\n' + '\n' + ru }] : null;
         else rules = [top ? { line: o + 1, text: top } : null, bot ? { line: c, text: bot } : null].filter(Boolean); } }
+    const _born7 = n === 7 && !!pr.m && jobs.some(j => !meosFofTwoPre(L[j.line].slice(j.a, j.b), n) && /[\u25bc\u25b2]/.test(j.to));   // v5.1.609: 組が今できた= 1d の⏰
+    const _orphan7 = n === 7 ? jobs.filter(j => L[j.line].slice(j.a, j.b).indexOf('\u25b2') >= 0 && !/[\u25bc\u25b2]/.test(j.to)).reduce((a, j) => a.concat(meosFofClockLinesBelow(doc, j.line)), []) : [];   // v5.1.609: 閉じ♥でなくなった印の下の⏰= 持ち主が居ない
     _meosFofBusy = true;
-    await ed.edit(eb => { for (const j of jobs) eb.replace(new vscode.Range(j.line, j.a, j.line, j.b), j.to); if (rules) for (const r of rules) eb.insert(new vscode.Position(r.line, 0), r.text); }, { undoStopBefore: false, undoStopAfter: false });
-    _meosFofWant = null; meosDbg('[puzzleTag] P' + n + 'の組を本文へ ' + jobs.length + '本'); try { refresh(ed); } catch (_) { }
+    await ed.edit(eb => { for (const j of jobs) eb.replace(new vscode.Range(j.line, j.a, j.line, j.b), j.to); if (rules) for (const r of rules) eb.insert(new vscode.Position(r.line, 0), r.text); for (const k of _orphan7) eb.delete(k + 1 < doc.lineCount ? new vscode.Range(k, 0, k + 1, 0) : new vscode.Range(k - 1, doc.lineAt(k - 1).text.length, k, doc.lineAt(k).text.length)); }, { undoStopBefore: false, undoStopAfter: false });
+    _meosFofWant = null; if (_born7) await meosFofClockWrite(ed.document); meosDbg('[puzzleTag] P' + n + 'の組を本文へ ' + jobs.length + '本'); try { refresh(ed); } catch (_) { }
   } catch (_) { } finally { _meosFofBusy = false; }
 }
 const _meosFofHints = new Map(), _meosFofHintSig = new Map(); let meosFofSkinDeco = null, meosFofSkinLoneDeco = null, _meosFofCaret = '';
@@ -7400,13 +7402,7 @@ function meosPuzzleShadowGet(ch) { try { return String((extensionContext.globalS
 function meosPuzzleShadowSet(ch, tip) { try { tip = String(tip || '').trim(); if (!tip || tip === MEOS_PUZZLE_WELCOME || tip === meosPuzzleShadowGet(ch)) return; const m = Object.assign({}, extensionContext.globalState.get('meosPuzzleShadow', {}) || {}); m[ch] = tip; extensionContext.globalState.update('meosPuzzleShadow', m); } catch (_) { } }
 // ★v5.1.546(俊克 11.06 pm07:19 改良1「いくつ貼ってあっても一括で削除する方法を」→「2段階で作る」): Cmd+クリック= 1回目は F 以外を全部・F だけになったら F も。F 無しは全部。
 //   1回の編集で消す= Cmd+Z 1回で全部戻る。確認の小窓は出さない。tip は影に残る。今のファイルだけ・囲いの中の引用は数えない(meosPuzzleTagsOf)
-async function meosPuzzleSweep(ed, n, ch) {
-  const doc = ed.document, hits = meosPuzzleTagsOf(doc, n); if (!hits.length) return;
-  const fn = meosPuzzleFGet(doc, n), f = hits.find(h => h.name === fn) || (hits.length === 1 ? hits[0] : null);
-  let kill = (f && hits.length > 1) ? hits.filter(h => h !== f) : hits;
-  // ★v5.1.562(俊克 11.07 pm01:47「cmdクリックの1段目は、中間♥だけをすべて消し、2段目は、閉じ♥を消し、最後に、開始ハートを消す」): ♥は3段= 組でない♥ → 相方 → F
-  { const pr = meosFofPair(doc, n); if (pr && pr.m) { const mid = hits.filter(h => h.name !== pr.f.name && h.name !== pr.m.name); kill = mid.length ? mid : [pr.m]; } }
-  if (f && hits.length === 1) meosPuzzleShadowSet(ch, f.desc);
+function meosPuzzleKillSpans(doc, n, kill, extra) {
   const byLine = new Map(); for (const h of kill) { if (!byLine.has(h.line)) byLine.set(h.line, []); byLine.get(h.line).push(h.name); }
   const spans = [], whole = [], last = doc.lineCount - 1;
   for (const [ln, names] of byLine) {
@@ -7420,9 +7416,22 @@ async function meosPuzzleSweep(ed, n, ch) {
   for (const ln of whole.slice()) { const t = doc.lineAt(ln).text, up = !/\u25bc\u25b6/.test(t), dn = !/\u25b2\u25b6/.test(t);   // v5.1.574: ♥に付いた罫線も一緒に(開始♥=下・閉じ♥=上・中間♥=両方)
     if (dn && ln + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(ln + 1).text) && !whole.includes(ln + 1) && (_edgeAt(ln + 2) !== -1 || whole.includes(ln + 2))) whole.push(ln + 1);
     if (up && ln > 0 && MEOS_RULE_LINE_RE.test(doc.lineAt(ln - 1).text) && !whole.includes(ln - 1) && (_edgeAt(ln - 2) !== 1 || whole.includes(ln - 2))) whole.push(ln - 1); }
+  // v5.1.609: 閉じ♥の⏰は印と一緒に(持ち主の無い字を残さない)。extra= 呼び手が足す行
+  if (n === 7) for (const ln of whole.slice()) if (/\u25b2\u25b6/.test(doc.lineAt(ln).text)) for (const k of meosFofClockLinesBelow(doc, ln)) if (!whole.includes(k)) whole.push(k);
+  for (const k of extra || []) if (!whole.includes(k)) whole.push(k);
   whole.sort((a, b) => a - b);
   for (let i = 0; i < whole.length;) { let j = i; while (j + 1 < whole.length && whole[j + 1] === whole[j] + 1) j++; const a = whole[i], b = whole[j];   // 隣り合う行は1塊に(範囲が重なると編集ごと断られる)
     spans.push(b < last ? new vscode.Range(a, 0, b + 1, 0) : a > 0 ? new vscode.Range(a - 1, doc.lineAt(a - 1).text.length, b, doc.lineAt(b).text.length) : new vscode.Range(0, 0, b, doc.lineAt(b).text.length)); i = j + 1; }
+  return spans;
+}
+async function meosPuzzleSweep(ed, n, ch) {
+  const doc = ed.document, hits = meosPuzzleTagsOf(doc, n); if (!hits.length) return;
+  const fn = meosPuzzleFGet(doc, n), f = hits.find(h => h.name === fn) || (hits.length === 1 ? hits[0] : null);
+  let kill = (f && hits.length > 1) ? hits.filter(h => h !== f) : hits;
+  // ★v5.1.562(俊克 11.07 pm01:47「cmdクリックの1段目は、中間♥だけをすべて消し、2段目は、閉じ♥を消し、最後に、開始ハートを消す」): ♥は3段= 組でない♥ → 相方 → F
+  { const pr = meosFofPair(doc, n); if (pr && pr.m) { const mid = hits.filter(h => h.name !== pr.f.name && h.name !== pr.m.name); kill = mid.length ? mid : [pr.m]; } }
+  if (f && hits.length === 1) meosPuzzleShadowSet(ch, f.desc);
+  const spans = meosPuzzleKillSpans(doc, n, kill);
   // ★v5.1.590(俊克 am10:22 バグ2「パズルcをCmdクリックして、c膜を削除したけど、🔴マークのままで、白マークにならない」): 膜(組の片方)か最後の1本を消したら、🔴(行き先)を1つ前の字へ返す
   //   ★v5.1.592(俊克 am11:03 バグ1「閉じ膜を消した段階で、白マークになってしまった…白マークにするのは、開始膜も消したとき」): F(開始膜)まで消した時だけ
   const _gone = kill.length === hits.length || (!!f && kill.some(h => h.name === f.name));
@@ -7439,6 +7448,52 @@ function meosFofRange(doc, n) {
   n = n || 7; const k = doc.uri.toString() + '|' + doc.version, c = _meosFofPairC.get(n); if (c && c.k === k) return c.r;
   let r = null; try { const p = meosFofPair(doc, n), L = meosDocLines(doc); if (p && p.m && meosFofIsTwo(L[p.f.line], n) && meosFofIsTwo(L[p.m.line], n)) { const o = p.f.line < p.m.line ? p.f : p.m; r = { start: o.line, end: (o === p.f ? p.m : p.f).line, key: '\u2665' + o.name }; } } catch (_) { }
   _meosFofPairC.set(n, { k, r }); return r;
+}
+// ★v5.1.609(俊克 11.09 am09:14「♥️膜にデフォルトで1dタイマーを付けるのはどうか…起点が分るし、どのくらいで終わらせるかと言う目標にもなる」「繰り返し⏰ではなく、1回で終わって、終わると同時に、♥️の開始膜だけ残して、自動消滅する。プシュー!」): ⏰付箋の持ち主を♥膜へ広げる(P1〜P6 は対象外)。
+//   ★書くのは組ができた瞬間だけ= 俊克が⏰を消せばタイマー無しの♥膜のまま(望む姿として毎回補わない)。本文は消さない・消すのは印だけ・1回の編集= Cmd+Z 1回で戻る。
+//   ★閉じている間に過ぎた分は、次に開いた時に本文の時刻を見て片付ける(meosArmClockFcFor)。V-helper は鳴らさない・起こさない(quiet)
+const MEOS_FOF_CLOCK_MS = 24 * 3600e3;
+function meosIsFofClockKey(k) { return String(k || '').charAt(0) === '♥'; }
+function meosFofClockOwner(doc, closeLine) {
+  try { const r = meosFofRange(doc, 7); if (!r || r.end !== closeLine) return null; const o = meosPuzzleTagsOf(doc, 7).find(h => h.line === r.start), d = o && String(o.desc || '').trim(); return { id: r.key, fofName: '♥️' + (d ? ' ' + d : ''), start: r.start, end: r.end }; } catch (_) { return null; }
+}
+function meosFofClockLinesBelow(doc, ln) {
+  const out = []; for (let k = ln + 1; k < doc.lineCount && meosIsSpecLine(doc.lineAt(k).text); k++) { const t = doc.lineAt(k).text; if (t.indexOf('⏰') >= 0 && meosClockFcParse(t)) out.push(k); } return out;
+}
+async function meosFofClockWrite(doc) {
+  try { if (wrapRefMark(doc, 'x').indexOf('<!--') < 0) return false; const r = meosFofRange(doc, 7); if (!r || meosClockFcScan(doc).some(c => c.key === r.key)) return false;
+    const ok = await meosClockFcSet(doc, r.key, { when: meosClockFcStamp(new Date(Date.now() + MEOS_FOF_CLOCK_MS)), bellSrc: '🔕/🔕', cycle: [], done: false });
+    meosDbg('[puzzleTag] ♥膜に1dの⏰ ok=' + ok); return ok; } catch (_) { return false; }
+}
+const _meosFofExpiring = new Set();
+async function meosFofClockExpire(doc, c, loud) {
+  const uri = doc.uri.toString(), lk = uri + ' ' + c.key; if (_meosFofExpiring.has(uri)) return false; _meosFofExpiring.add(uri);
+  try {
+    const r = meosFofRange(doc, 7); if (!r || r.key !== c.key) return false;
+    const openName = r.key.slice(1), kill = meosPuzzleTagsOf(doc, 7).filter(h => h.name !== openName), extra = (r.start + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(r.start + 1).text)) ? [r.start + 1] : [];
+    const spans = meosPuzzleKillSpans(doc, 7, kill, extra); if (!spans.length) return false;
+    meosPuzzleFSet(doc, 7, openName);
+    const we = new vscode.WorkspaceEdit(); for (const s of spans) we.delete(doc.uri, s); const ok = await vscode.workspace.applyEdit(we); if (!ok) return false;
+    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); meosClockForget(uri, c.key); } catch (_) { }
+    if (loud) meosPlayPsh();
+    meosPostPuzzleDots(true); try { meosUpdateTimerBar(); } catch (_) { }
+    vscode.window.setStatusBarMessage('MeOS: ♥️ time is up — the opening ♥️ stays', 5000); meosDbg('[puzzleTag] ♥膜が時間切れ 消した印=' + kill.length + ' loud=' + !!loud); return true;
+  } catch (_) { return false; } finally { _meosFofExpiring.delete(uri); }
+}
+let _meosPshFile = '';
+function meosPshPath() {
+  try { const fs = require('fs'), os = require('os'), path = require('path'); if (_meosPshFile && fs.existsSync(_meosPshFile)) return _meosPshFile;
+    const rate = 22050, n = Math.floor(rate * 0.75), buf = Buffer.alloc(44 + n * 2); buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVEfmt ', 8); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34); buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    let seed = 20261109, prev = 0, lp = 0; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2147483648 - 1; };
+    for (let i = 0; i < n; i++) { const t = i / rate, x = rnd(), a = 0.08 + 0.55 * Math.exp(-t * 3.4); lp += a * (x - lp); const hp = lp - prev * 0.72; prev = lp; const env = Math.min(1, t / 0.012) * Math.exp(-t * 5.2); buf.writeInt16LE(Math.max(-32767, Math.min(32767, Math.round(hp * env * 26000))), 44 + i * 2); }
+    const f = path.join(os.tmpdir(), 'meos-psh-' + process.pid + '.wav'); fs.writeFileSync(f, buf); _meosPshFile = f; return f; } catch (_) { return ''; }
+}
+function meosPlayPsh() {
+  try { if (!meosRealHost()) return; const f = meosPshPath(); if (!f) return; const { exec } = require('child_process'), q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
+    if (process.platform === 'darwin') exec('/usr/bin/afplay -v 2 ' + q(f), () => { });
+    else if (process.platform === 'win32') exec('powershell -NoProfile -c "(New-Object Media.SoundPlayer \'' + String(f).replace(/'/g, "''") + '\').PlaySync()"', () => { });
+    else exec('paplay ' + q(f) + ' || aplay -q ' + q(f), () => { });
+  } catch (_) { }
 }
 function meosFofNotePlace(ed) {
   if (_meosFofPlaceT) clearTimeout(_meosFofPlaceT);
@@ -7518,7 +7573,7 @@ async function meosFofWrap(ed, ch, n) {
   if (!ok) return;
   meosPuzzleFSet(doc, n, nameO); _meosFofWant = { uri: doc.uri.toString(), name: nameC, n };
   const _ln = b + (rule ? 2 : 1), _p = new vscode.Position(_ln, ed.document.lineAt(_ln).text.length); ed.selection = new vscode.Selection(_p, _p);   // ★v5.1.578(俊克 pm08:19 改良1「♥膜を作成した直後の文字カーソルの着地点を行末に」): 中身の最後の行の行末= そのまま続きを書ける
-  await meosFofReconcile(ed, n); meosPostPuzzleDots(true); meosDbg('[puzzleTag] P' + n + 'で包んだ 行=' + (a + 1) + '〜' + (b + 3));
+  await meosFofReconcile(ed, n); if (n === 7) await meosFofClockWrite(ed.document); meosPostPuzzleDots(true); meosDbg('[puzzleTag] P' + n + 'で包んだ 行=' + (a + 1) + '〜' + (b + 3));
 }
 async function meosPuzzleTag(ch, opt) {
   try {
@@ -7541,6 +7596,7 @@ async function meosPuzzleTag(ch, opt) {
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag + _tag2));
       { const _p = new vscode.Position(ln + (_rule7 ? 2 : 1), ind.length); ed.selection = new vscode.Selection(_p, _p); }
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
+      if (n === 7) await meosFofClockWrite(ed.document);   // v5.1.609
       if (_welcome) { try { extensionContext.globalState.update('meosPuzzleWelcomed', true); } catch (_) { } }
       meosPostPuzzleDots(true);
       meosDbg('[puzzleTag] ' + ch + '=P' + n + ' を書いた 行=' + (ln + 1));
@@ -11420,6 +11476,7 @@ function meosModeScope(editor) {
 function meosScopeRangeNow(doc, key) {
   try {
     if (!key) return { from: 0, to: Math.max(0, doc.lineCount - 1) };
+    if (meosIsFofClockKey(key)) { const _fr = meosFofRange(doc, 7); return (_fr && _fr.key === key) ? { from: _fr.start, to: _fr.end } : null; }   // v5.1.609
     const p = collectPairs(doc, { excludeIndex: false }).find(q => q.id === key);
     return p ? { from: p.start, to: p.end } : null;
   } catch (_) { return null; }
@@ -12139,13 +12196,13 @@ function meosClockFcScan(doc) {
     //     (その膜の⏰を1本しか数えていなかった)。
     //   ★★→ **直前の閉じ膜thatが無ければ、時計として読まない**。持ち主の無い⏰は、ただの字。
     //     ★これで「どこに書いてよいか」thatが1つに決まる= 迷う所thatが無くなる。
-    const owner = pairs.find(p => p.end === j) || null;
+    const owner = pairs.find(p => p.end === j) || meosFofClockOwner(doc, j);   // v5.1.609: ♥膜の閉じ♥も持ち主
     if (!owner) continue;                                              // v4.1.1120: 持ち主thatが無い⏰は読まない
     // v4.1.71: 札は**膜のコメント**から。⏰行に書いた物も足す(v4.1.70の分を置いていかない)。
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, chainBad: !!c.chainBad, /* v5.1.94 / v5.1.96 / v5.1.105 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? (owner.fofName || owner.id) : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, chainBad: !!c.chainBad, /* v5.1.94 / v5.1.96 / v5.1.105 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
     { const _o = out[out.length - 1]; if (_o && /^WT(?:\s|$)/.test(_o.title || '')) { _o.titleRaw = _o.title; _o.title = meosClockWtTitle(_o); } }   // v5.1.504: // WT
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
@@ -13122,6 +13179,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
     } else if (spec) {
       let at = -1, _pr = null;
       try { for (const p of collectPairs(doc, { excludeIndex: false })) if (p.id === key) { at = p.end; _pr = p; break; } } catch (_) { }
+      if (at < 0 && meosIsFofClockKey(key)) { const _fr = meosFofRange(doc, 7); if (_fr && _fr.key === key) at = _fr.end; }   // v5.1.609: ♥膜(バッジ行は足さない= 残り時間は⏰の行の右)
       if (at < 0) return false;                                    // 膜の外(ファイル全体)には書かない
       let ln = at + 1;
       while (ln < doc.lineCount && meosIsSpecLine(doc.lineAt(ln).text)) ln++;
@@ -13470,6 +13528,7 @@ function meosArmClockFcFor(doc) {
     for (const _c0 of meosClockFcScan(doc)) {
       const c = Object.assign({}, _c0);   // ★v4.2.62: 覚えの中の行を汚さない
       _seen++; _seenKeys.add(c.key);
+      if (meosIsFofClockKey(c.key) && c.ufc && !c.done && !c.off && !(Array.isArray(c.cycle) && c.cycle.length)) { const _w609 = meosParseStampLoose(c.when); if (_w609 && _w609.getTime() <= Date.now()) { meosFofClockExpire(doc, c, false); continue; } }   // v5.1.609: 閉じている間に過ぎた♥の⏰= 開いた時に片付ける
       // ★★v4.1.1112(俊克 9/5 am10:04「⏰ボタンを押して一時停止したり、⏰リストで✓を外しても、
       //   同様に実装してください」): ★★**席を譲るのは「済み」だけ。「休み」は席を保つ**＝
       //   一時停止は「また自分that動く」という意思so、順番を譲るのはおかしい。
@@ -14633,7 +14692,7 @@ function meosHelperAlarms() {
               name: r.title ? meosChainFillSlot(r.title, 1) : (sc.name || sc.key), title: r.title || '' }; });   // v4.2.341: 器(1.)に回数を入れるための元の字
           idx = Math.max(0, rows.findIndex(r => r.line === sc.line)); done = Math.max(0, (typeof sc.round === 'number' ? sc.round : 1) - 1);
         } } catch (_) { chain = null; }
-      out.push({ id: k + ' ' + until, at: until, name: meosIsLaunchDKey(sc.key) ? 'Wake' : (meosClockSayName(sc) || sc.name || sc.key), uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), mute: meosIsLaunchDKey(sc.key), steps, chain, idx, done });   // v5.0.0-58: mute= V-helper も鳴らさない   // v4.2.312: ⚓= 鳴らすだけ
+      out.push({ id: k + ' ' + until, at: until, name: meosIsLaunchDKey(sc.key) ? 'Wake' : (meosClockSayName(sc) || sc.name || sc.key), uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), mute: meosIsLaunchDKey(sc.key), quiet: meosIsFofClockKey(sc.key), steps, chain, idx, done });   // v5.0.0-58: mute= V-helper も鳴らさない   // v4.2.312: ⚓= 鳴らすだけ
     }
   } catch (_) { }
   return out.sort((a, b) => a.at - b.at);
@@ -17536,6 +17595,11 @@ async function meosClockUndoStop() {
 }
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
+  if (_sc0 && meosIsFofClockKey(_sc0.key) && !(Array.isArray(_sc0.cycle) && _sc0.cycle.length)) {   // v5.1.609: 鳴り続けない・飛ばない= プシューの1音で印だけ消える
+    _meosBellDone.delete(key); _meosPreBell.delete(key); meosClearPseudoTimer(key); _meosPseudoScopes.delete(key);
+    const _d609 = vscode.workspace.textDocuments.find(d => d.uri.toString() === _sc0.uri), _c609 = _d609 ? meosClockFcScan(_d609).find(x => x.key === _sc0.key && !x.done) : null;
+    if (_c609) await meosFofClockExpire(_d609, _c609, true); try { meosUpdateTimerBar(); } catch (_) { } return;
+  }
   // v4.1.44: 先に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
   const _pre = (_meosBellDone.get(key) || 0) > 0; _meosBellDone.delete(key); _meosPreBell.delete(key);
   const _cyc = meosCycleStepFor(key);
