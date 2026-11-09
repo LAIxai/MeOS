@@ -111,7 +111,7 @@ and the chains reach across it.
 
 **Every Me Dock letter is a membrane.** ♥ and the letters M e D o c k can each wrap a passage: select it and press the
 
-**♥ A membrane with a one-day fuse.** A new ♥ membrane gets a one-shot ⏰ for 24 hours — when you started, and how long you gave yourself. Delete the ⏰ line if you don't want it. When time is up there is one short *pssh*: the closing ♥, the ⏰ and the stop lines go, and the opening ♥ and all your text stay, so the ♥ on the menu bar still takes you there.
+**♥ A membrane with a one-day fuse.** A new ♥ membrane starts a one-shot ⏰ for 24 hours, written `↺↻(0y1d0h0m0s)×1` — change the digits for another length. The ⏰ list shows the moment it ends, and takes you back there. Delete the ⏰ line if you don't want it. When time is up there is one short *pssh*: the closing ♥, the ⏰ and the stop lines go, and the opening ♥ and all your text stay, so the ♥ on the menu bar still takes you there.
 letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Pressing the letter warps
 you back into the membrane, to the place you last were. Other marks of the same letter are relay points along the
 way — Opt-click the chip to visit them in turn. One membrane per letter; ▼ is green and ▲ blue, as with ♥, and the

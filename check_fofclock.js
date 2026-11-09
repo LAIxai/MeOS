@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosScopeRangeNow, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosScopeRangeNow, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -64,28 +64,31 @@ function mkEd(d, sel) {
   return ed;
 }
 const sel = (a, b) => ({ start: { line: a, character: 0 }, end: { line: b, character: 2 }, active: { line: b, character: 2 }, isEmpty: false });
-const R = '<!-- Mew!UFC --- -->', isClock = (t) => /^<!-- Mew!UFC ⏰ 🔕\/🔕 ↺ ?2\d{3}/.test(t), clocks = (d) => d.L.filter(t => t.indexOf('⏰') >= 0);
+const R = '<!-- Mew!UFC --- -->', isClock = (t) => /^<!-- Mew!UFC ⏰ 🔕\/🔕 ↺↻\(0y1d0h0m0s\)×1 v2\d{3}-\d\d-\d\d \d\d:\d\d[.:]\d\d \/\/ ♥️Timer dd -->$/.test(t), settle = () => new Promise(r => setTimeout(r, 40)), clocks = (d) => d.L.filter(t => t.indexOf('⏰') >= 0);
 const past = '<!-- Mew!UFC ⏰ 🔕/🔕 ↺ 2026-01-01 09:00 -->', far = '<!-- Mew!UFC ⏰ 🔕/🔕 ↺ 2099-01-01 09:00 -->', paused = '<!-- Mew!UFC ⏰⏸ 🔕/🔕 ↺ 2026-01-01 09:00 -->';
 const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲▶◀mP7=f_20261108S005814JST //  *} -->', Hm = '<!-- {* ♥️▶◀mP7=f_20261108S005900JST //  *} -->', Fn = 'f_20261108S005813JST';
 (async () => {
   // 1. 選択を包む(本物の meosFofWrap の出力)
   const d1 = doc(['x', '本文1', '本文2', 'y']); const e1 = mkEd(d1, sel(1, 2)); await T.meosFofWrap(e1, 'f', 7);
-  const r1 = T.meosFofRange(d1, 7); ok(r1 && isClock(d1.L[r1.end + 1]), '包むと閉じ♥の直下に一度きりの⏰', d1.L);
-  const s1 = T.meosClockFcScan(d1); ok(s1.length === 1 && s1[0].key === r1.key && s1[0].line === r1.end + 1 && s1[0].ufc && !(s1[0].cycle || []).length && s1[0].bellMainOn === false, '⏰を♥膜の時計として読む(UFC・周期なし・先鐘🔕)', s1);
-  ok(s1[0] && s1[0].name === '♥️', '一覧の名前は♥️', s1[0] && s1[0].name);
-  const whn = s1[0] && Date.parse(String(s1[0].when).replace(/\//g, '-').replace(' ', 'T').replace(/\.(\d\d)$/, ':$1')); ok(Math.abs(whn - Date.now() - 24 * 3600e3) < 120e3, '時刻はちょうど1日後', s1[0] && s1[0].when);
+  await settle(); const r1 = T.meosFofRange(d1, 7); ok(r1 && isClock(d1.L[r1.end + 1]), '包むと閉じ♥の直下に一度きりの⏰', d1.L);
+  const s1 = T.meosClockFcScan(d1); ok(s1.length === 1 && s1[0].key === r1.key && s1[0].line === r1.end + 1 && s1[0].ufc && s1[0].cycle.length === 1 && s1[0].rounds === 1 && s1[0].bellMainOn === false, '⏰を♥膜の時計として読む(UFC・1d×1・先鐘🔕)', s1);
+  ok(s1[0] && s1[0].name === '♥️', '名前は♥️', s1[0] && s1[0].name);
+  const lk1 = d1.uri.toString() + ' ' + r1.key, sc1 = T.scopes.get(lk1); ok(T.until.has(lk1) && sc1, '書いた瞬間に走り出す(自動起動)', [...T.until.keys()]);
+  const ex = new Date(s1[0].vAt + 24 * 3600e3), h = ex.getHours(), face = (ex.getMonth() + 1) + '/' + ex.getDate() + '(' + 'SMTWtFs'[ex.getDay()] + ') ' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(ex.getMinutes()).padStart(2, '0');
+  ok(sc1 && T.say(sc1) === '♥️Timer ' + face, '一覧の字= ♥️Timer+消滅日時', sc1 && T.say(sc1));
+  ok(Math.abs(s1[0].vAt - Date.now()) < 5000, '起点は今', s1[0].vAt);
   const rg = T.meosScopeRangeNow(d1, r1.key); ok(rg && rg.from === r1.start && rg.to === r1.end, '一覧からのワープ先の範囲', rg);
   ok(d1.L.includes('本文1') && d1.L.includes('本文2'), '本文はそのまま', d1.L);
   // 2. 最初の3行
-  const d2 = doc(['a', '']); const e2 = mkEd(d2, { start: { line: 1, character: 0 }, end: { line: 1, character: 0 }, active: { line: 1, character: 0 }, isEmpty: true }); stub.window.activeTextEditor = e2; await T.meosPuzzleTag('f', {});
+  const d2 = doc(['a', '']); const e2 = mkEd(d2, { start: { line: 1, character: 0 }, end: { line: 1, character: 0 }, active: { line: 1, character: 0 }, isEmpty: true }); stub.window.activeTextEditor = e2; await T.meosPuzzleTag('f', {}); await settle();
   ok(clocks(d2).length === 1 && T.meosClockFcScan(d2).length === 1, '最初の3行にも⏰が1本', d2.L);
   // 3. コピペで組ができる(今ある1点の♥×2)→ 1本だけ。もう一度読んでも増えない
-  const d3 = doc(['a', '<!-- {* ♥️▶◀mP7=f_1 //  *} -->', 'b', '<!-- {* ♥️▶◀mP7=f_2 //  *} -->', 'c']); T.meosPuzzleFSet(d3, 7, 'f_1'); const e3 = mkEd(d3); await T.meosFofReconcile(e3, 7);
+  const d3 = doc(['a', '<!-- {* ♥️▶◀mP7=f_1 //  *} -->', 'b', '<!-- {* ♥️▶◀mP7=f_2 //  *} -->', 'c']); T.meosPuzzleFSet(d3, 7, 'f_1'); const e3 = mkEd(d3); await T.meosFofReconcile(e3, 7); await settle();
   ok(clocks(d3).length === 1, '組が今できた= ⏰が1本', d3.L); await T.meosFofReconcile(e3, 7); await T.meosFofClockWrite(d3); ok(clocks(d3).length === 1, '読み直しても増えない', d3.L);
   // 4. 俊克が⏰を消す→ 戻らない
   d3.L = d3.L.filter(t => t.indexOf('⏰') < 0); d3.version++; await T.meosFofReconcile(e3, 7); ok(clocks(d3).length === 0, '消した⏰は復活しない', d3.L);
   // 5. もう一度包む= 前の閉じ♥は中継点・前の⏰は消える
-  const y = d1.L.indexOf('y'); await T.meosFofWrap(mkEd(d1, sel(y, y)), 'f', 7); ok(clocks(d1).length === 1 && T.meosClockFcScan(d1).length === 1, '包み直すと⏰は新しい組の1本だけ', d1.L);
+  const y = d1.L.indexOf('y'); await T.meosFofWrap(mkEd(d1, sel(y, y)), 'f', 7); await settle(); ok(clocks(d1).length === 1 && T.meosClockFcScan(d1).length === 1, '包み直すと⏰は新しい組の1本だけ', d1.L);
   // 6. 時間切れ= 開始♥だけ残る(実物の並び・中間♥あり・本文あり)
   const d6 = doc(['前', H1, R, '本文', Hm, '本文2', '', R, H2, far, '後']); T.meosPuzzleFSet(d6, 7, Fn); const c6 = T.meosClockFcScan(d6)[0]; ok(!!c6, '実物の行を時計と読む', d6.L);
   const x6 = await T.meosFofClockExpire(d6, c6, false); ok(x6 && JSON.stringify(d6.L) === JSON.stringify(['前', H1, '本文', '本文2', '', '後']), '時間切れ= 開始♥と本文だけ残る', d6.L); ok(T.meosPuzzleFGet(d6, 7) === Fn, 'Fは開始♥', T.meosPuzzleFGet(d6, 7));
@@ -100,6 +103,11 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   const d9 = doc([H1, R, '本文', '', R, H2, past]); T.meosPuzzleFSet(d9, 7, Fn); T.meosArmClockFcFor(d9); await new Promise(r => setTimeout(r, 30)); ok(JSON.stringify(d9.L) === JSON.stringify([H1, '本文', '']), '過ぎていれば開いた時に片付く', d9.L);
   const d10 = doc([H1, R, '本文', '', R, H2, paused]); T.meosPuzzleFSet(d10, 7, Fn); T.meosArmClockFcFor(d10); await new Promise(r => setTimeout(r, 30)); ok(d10.L.includes(H2), '⏸の⏰は片付けない', d10.L);
   const d11 = doc([H1, R, '本文', '', R, H2, far]); T.meosPuzzleFSet(d11, 7, Fn); T.meosArmClockFcFor(d11); await new Promise(r => setTimeout(r, 30)); ok(d11.L.includes(H2), 'まだ先なら触らない', d11.L);
+  const v3 = (m) => '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h' + m + 'm0s)×1 v2026-01-01 09:00.00 // ♥️Timer dd -->';
+  const d13 = doc([H1, R, '本文', '', R, H2, v3(3)]); T.meosPuzzleFSet(d13, 7, Fn); T.meosArmClockFcFor(d13); await settle(); ok(JSON.stringify(d13.L) === JSON.stringify([H1, '本文', '']), '0y0d0h3m0s に直して過ぎていれば消える', d13.L);
+  const fresh = '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h3m0s)×1 // ♥️Timer dd -->', d14 = doc([H1, R, '本文', '', R, H2, fresh]); T.meosPuzzleFSet(d14, 7, Fn); T.meosArmClockFcFor(d14); await settle();
+  const k14 = d14.uri.toString() + ' ♥' + Fn; ok(T.until.has(k14) && /\/\/ ♥️Timer dd -->$/.test(d14.L[6]) && / v2\d{3}-/.test(d14.L[6]), '3分でも自動起動・本文の dd はそのまま', d14.L[6]);
+  await T.meosPseudoTimeUp(k14); await settle(); ok(JSON.stringify(d14.L) === JSON.stringify([H1, '本文', '']) && !T.until.has(k14), '時間切れの口で開始♥と本文だけ残る', d14.L);
   // 10. ふつうの膜の⏰は今まで通り
   const d12 = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', far]); const s12 = T.meosClockFcScan(d12); ok(s12.length <= 1 && (!s12[0] || s12[0].key.charAt(0) !== '♥'), 'ふつうの膜の鍵は変わらない', s12);
   // 11. 音

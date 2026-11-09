@@ -7452,17 +7452,27 @@ function meosFofRange(doc, n) {
 // ★v5.1.609(俊克 11.09 am09:14「♥️膜にデフォルトで1dタイマーを付けるのはどうか…起点が分るし、どのくらいで終わらせるかと言う目標にもなる」「繰り返し⏰ではなく、1回で終わって、終わると同時に、♥️の開始膜だけ残して、自動消滅する。プシュー!」): ⏰付箋の持ち主を♥膜へ広げる(P1〜P6 は対象外)。
 //   ★書くのは組ができた瞬間だけ= 俊克が⏰を消せばタイマー無しの♥膜のまま(望む姿として毎回補わない)。本文は消さない・消すのは印だけ・1回の編集= Cmd+Z 1回で戻る。
 //   ★閉じている間に過ぎた分は、次に開いた時に本文の時刻を見て片付ける(meosArmClockFcFor)。V-helper は鳴らさない・起こさない(quiet)
-const MEOS_FOF_CLOCK_MS = 24 * 3600e3;
 function meosIsFofClockKey(k) { return String(k || '').charAt(0) === '♥'; }
 function meosFofClockOwner(doc, closeLine) {
   try { const r = meosFofRange(doc, 7); if (!r || r.end !== closeLine) return null; const o = meosPuzzleTagsOf(doc, 7).find(h => h.line === r.start), d = o && String(o.desc || '').trim(); return { id: r.key, fofName: '♥️' + (d ? ' ' + d : ''), start: r.start, end: r.end }; } catch (_) { return null; }
 }
+const MEOS_FOF_DD_RE = /(^|\s)dd(?=\s|$)/;
+function meosFofClockDdTitle(c) {   // v5.1.610: 本文は dd のまま・見せる時だけ消滅日時(WT と同じ作法)。「数字+.」は回数の器に読まれるので月/日
+  try { const at = c.vAt || (meosParseStampLoose(c.when) || { getTime: () => 0 }).getTime(); if (!at || !(Array.isArray(c.cycle) && c.cycle.length)) return c.title;
+    let ms = 0; for (const t of c.cycle) ms += meosCycleMs(t) || 0; if (!ms) return c.title; const d = new Date(at + ms * Math.max(1, Number(c.rounds) || 1)), h = d.getHours();
+    const face = (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ') ' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return String(c.title).replace(MEOS_FOF_DD_RE, (m, p) => p + face); } catch (_) { return c.title; }
+}
+function meosFofClockOneShot(c) { const n = Array.isArray(c && c.cycle) ? c.cycle.length : 0; return !n || (n === 1 && Number(c.rounds) === 1) || meosClockIsFinalStep(c); }
 function meosFofClockLinesBelow(doc, ln) {
   const out = []; for (let k = ln + 1; k < doc.lineCount && meosIsSpecLine(doc.lineAt(k).text); k++) { const t = doc.lineAt(k).text; if (t.indexOf('⏰') >= 0 && meosClockFcParse(t)) out.push(k); } return out;
 }
 async function meosFofClockWrite(doc) {
   try { if (wrapRefMark(doc, 'x').indexOf('<!--') < 0) return false; const r = meosFofRange(doc, 7); if (!r || meosClockFcScan(doc).some(c => c.key === r.key)) return false;
-    const ok = await meosClockFcSet(doc, r.key, { when: meosClockFcStamp(new Date(Date.now() + MEOS_FOF_CLOCK_MS)), bellSrc: '🔕/🔕', cycle: [], done: false });
+    // ★v5.1.610(俊克 am09:28 改良1「oneショットタイマーと同様に、1d指定で自動起動しようよ。現状では、3分後に消滅する記法がよく分からないよ」「dd部分には設定した値から計算した消滅日時を出して、それがタイマーリストに表示される」): 609 は絶対の時刻を書くだけで起動もしていなかった。
+    //   周期を字で見せる= 0y1d0h0m0s を直せば長さが変わる。起点は書かない→ 掛ける口が走り出した時に v起点 を書く(oneショットボタンと同じ道)
+    const ok = await meosClockFcSet(doc, r.key, { when: '', whenSrc: '', bellSrc: '\ud83d\udd15/\ud83d\udd15', cycle: ['0y1d0h0m0s'], cycleSrc: '(0y1d0h0m0s)\u00d71', rounds: 1, up: false, dual: true, title: '\u2665\ufe0fTimer dd', done: false });
+    if (ok) meosArmClockFcFor(doc);
     meosDbg('[puzzleTag] ♥膜に1dの⏰ ok=' + ok); return ok; } catch (_) { return false; }
 }
 const _meosFofExpiring = new Set();
@@ -12204,6 +12214,7 @@ function meosClockFcScan(doc) {
     _lines.add(i);
     out.push({ line: i, key: owner ? owner.id : '', name: owner ? (owner.fofName || owner.id) : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, chainBad: !!c.chainBad, /* v5.1.94 / v5.1.96 / v5.1.105 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
     { const _o = out[out.length - 1]; if (_o && /^WT(?:\s|$)/.test(_o.title || '')) { _o.titleRaw = _o.title; _o.title = meosClockWtTitle(_o); } }   // v5.1.504: // WT
+    { const _o = out[out.length - 1]; if (_o && meosIsFofClockKey(_o.key) && MEOS_FOF_DD_RE.test(_o.title || '')) { _o.titleRaw = _o.title; _o.title = meosFofClockDdTitle(_o); } }   // v5.1.610: // ♥️Timer dd
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -13059,7 +13070,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
     // ★v4.2.91: タイトルは呼び手が運ばなくても残る= 名指しの行に書いてある物を、そのまま書き戻す。
     try {
       if (spec && spec.title === undefined && typeof atLine === 'number') {
-        for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === atLine) { spec = Object.assign({}, spec, { title: x.title || '' }); break; }
+        for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === atLine) { spec = Object.assign({}, spec, { title: x.titleRaw || x.title || '' }); break; }   /* v5.1.610: 見せかけ(WT・dd)を本文へ焼き付けない */
       }
     } catch (_) { }
     // ★v4.2.347: 書き戻す前の `~日付` も運ぶ= 起点の p を書き足す等の書き直しで消えない(⚓と同じ作法)。
@@ -13625,6 +13636,7 @@ function meosArmClockFcFor(doc) {
           if (_rn && _rn.round > c.rounds) {
             meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk);
             meosDbg('[armClock] rounds done key=' + c.key + ' \u884c=' + (c.line + 1) + ' \u00d7' + c.rounds);
+            if (meosIsFofClockKey(c.key)) { meosFofClockExpire(doc, c, false); continue; }   // v5.1.610: ♥の⏰= ✓ にせず消える(閉じている間に過ぎた分もここ)
             // ★★★v4.2.50: **連なりの中なら、済みにせず次へ回す**= 輪。
             //   ★1本しか無い膜は今までどおり済み(✓)= 一度きりの時計の姿は変えない。
             let _chained50 = false;
@@ -13843,7 +13855,7 @@ function meosArmClockFcFor(doc) {
         line: c.line,                                  // ★v4.1.1118: 同じ時刻の2本thatが在り得るso、行でも見分ける
         armedAt: _open89 || _base53 || Date.now(),  // ★v4.1.136: 掛けた時刻 / ★v4.2.54: 覚えの上の起点と**同じ値** / ★v4.2.89: 過去の起点
         openFrom: _open89,                             // ★v4.2.89: 長さの無い過去起点のストップウォッチ(鐘なし・経過を出す)
-        title: c.title || '',                          // ★v4.2.91: その1本のタイトル(最下段で膜名の代わりに出す)
+        title: (meosIsFofClockKey(c.key) ? meosFofClockDdTitle(c) : c.title) || '',   /* v5.1.610: 走り出す1回目は v起点 を書く前= ここで起点が決まる */   // ★v4.2.91: その1本のタイトル(最下段で膜名の代わりに出す)
         synth: _synth53,                               // ★v4.2.61: 起点that本文に無い1本(行で見分ける)(ストップウォッチは、ここからの経過)
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
@@ -17595,7 +17607,7 @@ async function meosClockUndoStop() {
 }
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
-  if (_sc0 && meosIsFofClockKey(_sc0.key) && !(Array.isArray(_sc0.cycle) && _sc0.cycle.length)) {   // v5.1.609: 鳴り続けない・飛ばない= プシューの1音で印だけ消える
+  if (_sc0 && meosIsFofClockKey(_sc0.key) && meosFofClockOneShot(_sc0)) {   // v5.1.609: 鳴り続けない・飛ばない= プシューの1音で印だけ消える
     _meosBellDone.delete(key); _meosPreBell.delete(key); meosClearPseudoTimer(key); _meosPseudoScopes.delete(key);
     const _d609 = vscode.workspace.textDocuments.find(d => d.uri.toString() === _sc0.uri), _c609 = _d609 ? meosClockFcScan(_d609).find(x => x.key === _sc0.key && !x.done) : null;
     if (_c609) await meosFofClockExpire(_d609, _c609, true); try { meosUpdateTimerBar(); } catch (_) { } return;
