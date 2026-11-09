@@ -74,7 +74,7 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   const s1 = T.meosClockFcScan(d1); ok(s1.length === 1 && s1[0].key === r1.key && s1[0].line === r1.end + 2 && s1[0].ufc && s1[0].cycle.length === 1 && s1[0].rounds === 1 && s1[0].bellMainOn === false, '⏰を♥膜の時計として読む(UFC・1d×1・先鐘🔕)', s1);
   ok(s1[0] && s1[0].name === '♥️', '名前は♥️', s1[0] && s1[0].name);
   const lk1 = d1.uri.toString() + ' ' + r1.key, sc1 = T.scopes.get(lk1); ok(T.until.has(lk1) && sc1, '書いた瞬間に走り出す(自動起動)', [...T.until.keys()]);
-  const ex = new Date(s1[0].vAt + 24 * 3600e3), h = ex.getHours(), face = (ex.getMonth() + 1) + '/' + ex.getDate() + '(' + 'SMTWtFs'[ex.getDay()] + ') ' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(ex.getMinutes()).padStart(2, '0');
+  const ex = new Date(s1[0].vAt + 24 * 3600e3), h = ex.getHours(), face = (ex.getMonth() + 1) + '/' + ex.getDate() + '(' + 'SMTWtFs'[ex.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(ex.getMinutes()).padStart(2, '0');
   ok(sc1 && T.say(sc1) === '♥️Timer ' + face, '一覧の字= ♥️Timer+消滅日時', sc1 && T.say(sc1));
   ok(Math.abs(s1[0].vAt - Date.now()) < 5000, '起点は今', s1[0].vAt);
   const rg = T.meosScopeRangeNow(d1, r1.key); ok(rg && rg.from === r1.start && rg.to === r1.end, '一覧からのワープ先の範囲', rg);
@@ -120,7 +120,7 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   const calls2 = [], e16 = mkEd(d16, { start: { line: 9, character: 0 }, end: { line: 9, character: 0 }, active: { line: 9, character: 0 }, isEmpty: true }); e16.selections = [e16.selection]; e16.setDecorations = (deco, items) => calls2.push({ deco, items: items || [] }); stub.window.activeTextEditor = e16; stub.window.visibleTextEditors = [e16];
   T.meosApplyTimerLineDecorations(e16); const onB = calls2.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === 7).map(x => { const r = x.renderOptions || {}; return (r.before && r.before.contentText) || (r.after && r.after.contentText) || ''; });
   ok(onB.some(s => /\d+:\d\d/.test(s)), '残り時間がバッジ行に出る', onB);
-  ok(onB.some(s => s.indexOf('♥️Timer') >= 0 && /\d+\/\d+\([SMTWtFs]\) [ap]m\d\d:\d\d/.test(s)) && !onB.some(s => /Timer dd/.test(s)), 'バッジの札の dd が消滅日時になる', onB);
+  ok(onB.some(s => s.indexOf('♥️Timer') >= 0 && /\d+\/\d+\([SMTWtFs]\)[ap]m\d\d:\d\d/.test(s)) && !onB.some(s => /Timer dd/.test(s)), 'バッジの札の dd が消滅日時になる', onB);
   const c16 = T.meosClockFcScan(d16)[0]; await T.meosFofClockExpire(d16, c16, false); ok(!d16.L.includes(B) && clocks(d16).length === 0 && d16.L.includes(H1) && d16.L.includes('本文') && d16.L.includes('後'), '時間切れでバッジ行も消える', d16.L);
   const d17 = doc([H1, R, '本文', '', R, H2, B, far, '後']); T.meosPuzzleFSet(d17, 7, Fn); await T.meosPuzzleSweep(mkEd(d17), 7, 'f'); ok(badges(d17).length === 0 && clocks(d17).length === 0 && d17.L.includes('後'), 'Cmd+クリックで閉じ♥と一緒にバッジも', d17.L);
   // 9e. 開いたメニューから行が減る(V-helper の本物の部品を切り出して試す)
