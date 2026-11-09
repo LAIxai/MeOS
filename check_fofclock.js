@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -129,6 +129,15 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   ok(JSON.stringify(shr([...hd, ...rows('h:0', 'h:1', 'h:2'), ...tl], [...hd, ...rows('h:0', 'h:1'), ...tl], ek)) === JSON.stringify([0, 1, 2, 3, -1, 4, 5]), '⏰が1本減る= 最後の行を隠して字は詰める', 0);
   ok(shr([...hd, ...rows('h:0'), ...tl], [...hd, ...rows('h:0'), ...tl], ek) === null, '減っていなければ何もしない', 0);
   ok(shr([...hd, ...rows('h:0', 'h:1'), ...tl], [...rows('h:0'), ...tl], ek) === null, '⏰と区切り以外が消えたら作り替えを待つ', 0);
+  // 9f. 5秒前のシューーー+プシュッ
+  const fp = T.meosFuseSamples(), rms = (a, b) => { let s = 0; for (let i = a; i < b; i++) s += fp.out[i] * fp.out[i]; return Math.sqrt(s / (b - a)); }, at = (x) => Math.floor(x * fp.rate);
+  let pk = 0; for (const v of fp.out) pk = Math.max(pk, Math.abs(v)); ok(pk <= 1 && pk > 0.8, '音が割れない', pk);
+  ok(rms(at(1), at(4.9)) > 0.05 && rms(at(5), at(5.1)) > rms(at(1), at(4.9)) * 1.3 && rms(at(5.33), at(5.39)) < 0.05, 'シューが5秒続きプシュッで強くなり静かに切れる', [rms(at(1), at(4.9)), rms(at(5), at(5.1)), rms(at(5.33), at(5.39))]);
+  const d18 = doc([H1, R, '本文', '', R, H2, B, '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h0m9s)×1 // ♥️Timer dd -->']); T.meosPuzzleFSet(d18, 7, Fn); T.meosArmClockFcFor(d18); await settle();
+  const k18 = d18.uri.toString() + ' ♥' + Fn; const f0 = T.fuse.get(k18); ok(f0 && !f0.played, '時間切れの5.3秒前に予約される', !!f0); T.fusePlan(k18, 5340); const f1 = T.fuse.get(k18); await new Promise(r => setTimeout(r, 90)); ok(f1 && f1.played, '時刻が来ると鳴り始める', f1 && f1.played);
+  await T.meosPseudoTimeUp(k18); await settle(); ok(!T.fuse.has(k18) && d18.L.includes(H1) && !d18.L.includes(H2), '時間切れの後は片付いている', d18.L);
+  const d19 = doc([H1, R, '本文', '', R, H2, B, '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h0m9s)×1 // ♥️Timer dd -->']); T.meosPuzzleFSet(d19, 7, Fn); T.meosArmClockFcFor(d19); await settle(); const k19 = d19.uri.toString() + ' ♥' + Fn; T.clear(k19); ok(!T.fuse.has(k19), '止めたら導火線も消える', T.fuse.has(k19)); await settle();
+  const d20 = doc(['<!-- {* ▼mCN=a_2 // c *} -->', 'x', '<!-- {* ▲mCN=a_2 // c *} -->', '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d0h0m9s)×1 // t -->']); T.meosArmClockFcFor(d20); await settle(); ok(![...T.fuse.keys()].some(k => k.indexOf(d20.uri.toString()) === 0), 'ふつうの膜には導火線なし', [...T.fuse.keys()]); T.clear(d20.uri.toString() + ' a_2');
   // 10. ふつうの膜の⏰は今まで通り
   const d12 = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', far]); const s12 = T.meosClockFcScan(d12); ok(s12.length <= 1 && (!s12[0] || s12[0].key.charAt(0) !== '♥'), 'ふつうの膜の鍵は変わらない', s12);
   // 11. 音

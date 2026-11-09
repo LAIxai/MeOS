@@ -7498,6 +7498,39 @@ function meosPshPath() {
     for (let i = 0; i < n; i++) { const t = i / rate, x = rnd(), a = 0.08 + 0.55 * Math.exp(-t * 3.4); lp += a * (x - lp); const hp = lp - prev * 0.72; prev = lp; const env = Math.min(1, t / 0.012) * Math.exp(-t * 5.2); buf.writeInt16LE(Math.max(-32767, Math.min(32767, Math.round(hp * env * 26000))), 44 + i * 2); }
     const f = path.join(os.tmpdir(), 'meos-psh-' + process.pid + '.wav'); fs.writeFileSync(f, buf); _meosPshFile = f; return f; } catch (_) { return ''; }
 }
+// ★v5.1.615(俊克 11.09 am11:00「消滅する5秒前から、シューーーーープシュッのようにしよう」): 5秒の導火線+最後の一吹きを1つの音に。afplay の出だしの遅れ(0.3秒ほど)と時間切れの+0.25秒の分だけ早く鳴らし始め、プシュッが消える瞬間に合う
+const MEOS_FOF_FUSE_LEAD = 5300, _meosFofFuse = new Map();
+let _meosFuseFile = '';
+function meosFuseSamples() {
+  const rate = 22050, end = 5, n = Math.floor(rate * (end + 0.4)), hiss = new Float64Array(n), burst = new Float64Array(n);
+  let seed = 19660917, lp = 0, slow = 0, lb = 0, spark = 0; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2147483648 - 1; };
+  for (let i = 0; i < n; i++) { const t = i / rate, x = rnd();
+    if (t < end) { lp += 0.62 * (x - lp); slow += 0.035 * (lp - slow); if (rnd() > 0.9965) spark = 0.9; spark *= 0.93; const flutter = 0.74 + 0.26 * Math.sin(2 * Math.PI * (9.1 * t + 1.6 * Math.sin(1.7 * t))); hiss[i] = ((lp - slow) * flutter + spark * rnd() * 0.55) * Math.min(1, t / 0.18) * (0.62 + 0.38 * t / end) * Math.min(1, (end - t) / 0.015); }
+    else { const u = t - end; lb += 0.24 * (x - lb); burst[i] = lb * Math.min(1, u / 0.005) * Math.exp(-u * 10.5); } }
+  const norm = (a, to) => { let p = 0; for (const v of a) p = Math.max(p, Math.abs(v)); if (p) for (let i = 0; i < a.length; i++) a[i] *= to / p; };
+  norm(hiss, 0.42); norm(burst, 0.92); const out = new Float64Array(n); for (let i = 0; i < n; i++) out[i] = hiss[i] + burst[i]; return { rate, end, out };
+}
+function meosFusePath() {
+  try { const fs = require('fs'), os = require('os'), path = require('path'); if (_meosFuseFile && fs.existsSync(_meosFuseFile)) return _meosFuseFile; const { rate, out } = meosFuseSamples(), n = out.length, buf = Buffer.alloc(44 + n * 2);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVEfmt ', 8); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34); buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    for (let i = 0; i < n; i++) buf.writeInt16LE(Math.max(-32767, Math.min(32767, Math.round(out[i] * 32767))), 44 + i * 2);
+    const f = path.join(os.tmpdir(), 'meos-fuse-' + process.pid + '.wav'); fs.writeFileSync(f, buf); _meosFuseFile = f; return f; } catch (_) { return ''; }
+}
+function meosFofFusePlan(key, ms) {
+  try { const sc = _meosPseudoScopes.get(key); if (!sc || !meosIsFofClockKey(sc.key) || !meosFofClockOneShot(sc)) return;
+    const o = _meosFofFuse.get(key); if (o && o.played) return; if (o) { clearTimeout(o.t); _meosFofFuse.delete(key); }
+    if (ms <= MEOS_FOF_FUSE_LEAD || ms - MEOS_FOF_FUSE_LEAD > MEOS_TIMER_CHUNK) return;   // 間に合わない短い予定は最後の一吹きだけ/遠い間は次の継ぎで
+    const e = { played: false, proc: null, t: null }; e.t = setTimeout(() => { e.played = true; e.proc = meosPlaySoundFile(meosFusePath()); }, ms - MEOS_FOF_FUSE_LEAD); _meosFofFuse.set(key, e);
+  } catch (_) { }
+}
+function meosFofFuseStop(key) { const o = _meosFofFuse.get(key); if (!o) return; try { clearTimeout(o.t); if (o.proc) o.proc.kill(); } catch (_) { } _meosFofFuse.delete(key); }
+function meosPlaySoundFile(f) {
+  try { if (!f || !meosRealHost()) return null; const { exec } = require('child_process'), q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
+    if (process.platform === 'darwin') return exec('exec /usr/bin/afplay -v 2 ' + q(f), () => { });
+    if (process.platform === 'win32') return exec('powershell -NoProfile -c "(New-Object Media.SoundPlayer \'' + String(f).replace(/'/g, "''") + '\').PlaySync()"', () => { });
+    return exec('exec paplay ' + q(f), () => { });
+  } catch (_) { return null; }
+}
 function meosPlayPsh() {
   try { if (!meosRealHost()) return; const f = meosPshPath(); if (!f) return; const { exec } = require('child_process'), q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
     if (process.platform === 'darwin') exec('/usr/bin/afplay -v 2 ' + q(f), () => { });
@@ -16688,6 +16721,7 @@ function meosCycleStepFor(key) {
   } catch (_) { return 0; }
 }
 function meosArmPseudoTimer(key, ms) {
+  meosFofFusePlan(key, ms);   // v5.1.615
   const marks = meosBellMarksFor(meosCycleStepFor(key));
   let i = _meosBellDone.get(key) || 0;
   while (i < marks.length && ms <= marks[i][0]) i++;      // もう過ぎている印は出さない(短い予定など)
@@ -16726,6 +16760,7 @@ function meosArmPseudoTimer(key, ms) {
 }
 
 function meosClearPseudoTimer(key) {
+  meosFofFuseStop(key);   // v5.1.615: 止めたら導火線も消す(時間切れの口は先に受け取るので最後まで鳴る)
   _meosPreBell.delete(key); _meosBellDone.delete(key);    // v4.1.44 / v4.1.55
   const h = _meosPseudoTimers.get(key); if (h) clearTimeout(h);
   _meosPseudoTimers.delete(key); _meosPseudoUntil.delete(key);
@@ -17608,9 +17643,10 @@ async function meosClockUndoStop() {
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
   if (_sc0 && meosIsFofClockKey(_sc0.key) && meosFofClockOneShot(_sc0)) {   // v5.1.609: 鳴り続けない・飛ばない= プシューの1音で印だけ消える
+    const _fz615 = _meosFofFuse.get(key); _meosFofFuse.delete(key);
     _meosBellDone.delete(key); _meosPreBell.delete(key); meosClearPseudoTimer(key); _meosPseudoScopes.delete(key);
     const _d609 = vscode.workspace.textDocuments.find(d => d.uri.toString() === _sc0.uri), _c609 = _d609 ? meosClockFcScan(_d609).find(x => x.key === _sc0.key && !x.done) : null;
-    if (_c609) await meosFofClockExpire(_d609, _c609, true); try { meosUpdateTimerBar(); } catch (_) { } return;
+    if (_c609) await meosFofClockExpire(_d609, _c609, !(_fz615 && _fz615.played)); try { meosUpdateTimerBar(); } catch (_) { } return;
   }
   // v4.1.44: 先に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
   const _pre = (_meosBellDone.get(key) || 0) > 0; _meosBellDone.delete(key); _meosPreBell.delete(key);
