@@ -15805,7 +15805,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           }
           let j = i - 1;
           while (j >= 0 && meosIsSpecLine(doc.lineAt(j).text)) j--;
-          let owner = _pairs().find(p => p.end === j) || null;
+          let owner = _pairs().find(p => p.end === j) || meosFofClockOwner(doc, j);   // ★v5.1.611(俊克 11.09 am10:06 バグ1「自動起動しない」バグ2「▶️ボタンを押しても起動しない」): 走っていた(記録 走っている=true)= 描く側だけが♥膜を持ち主と読まず外側の日記の膜を引いていた→ ▶️のまま・数字なし
           if (!owner) for (const p of _pairs()) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
           // ★v4.2.347 Date&Count: カーソルが行を出たら `~日付` を `×N` に書き戻す。書けなければ ⚠️ を添えて残す。
           try {
