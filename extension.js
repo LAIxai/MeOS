@@ -7465,7 +7465,7 @@ function meosFofClockDdTitle(c) {   // v5.1.610: 本文は dd のまま・見せ
 }
 function meosFofClockOneShot(c) { const n = Array.isArray(c && c.cycle) ? c.cycle.length : 0; return !n || (n === 1 && Number(c.rounds) === 1) || meosClockIsFinalStep(c); }
 function meosFofClockLinesBelow(doc, ln) {
-  const out = []; for (let k = ln + 1; k < doc.lineCount && meosIsSpecLine(doc.lineAt(k).text); k++) { const t = doc.lineAt(k).text; if (t.indexOf('⏰') >= 0 && meosClockFcParse(t)) out.push(k); } return out;
+  const out = []; for (let k = ln + 1; k < doc.lineCount && meosIsSpecLine(doc.lineAt(k).text); k++) { const t = doc.lineAt(k).text; if ((t.indexOf('⏰') >= 0 && meosClockFcParse(t)) || meosIsPairBadgeSpec(t)) out.push(k); } return out;   // v5.1.612: バッジ行も♥の持ち物
 }
 async function meosFofClockWrite(doc) {
   try { if (wrapRefMark(doc, 'x').indexOf('<!--') < 0) return false; const r = meosFofRange(doc, 7); if (!r || meosClockFcScan(doc).some(c => c.key === r.key)) return false;
@@ -13190,7 +13190,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
     } else if (spec) {
       let at = -1, _pr = null;
       try { for (const p of collectPairs(doc, { excludeIndex: false })) if (p.id === key) { at = p.end; _pr = p; break; } } catch (_) { }
-      if (at < 0 && meosIsFofClockKey(key)) { const _fr = meosFofRange(doc, 7); if (_fr && _fr.key === key) at = _fr.end; }   // v5.1.609: ♥膜(バッジ行は足さない= 残り時間は⏰の行の右)
+      let _fofBg = false; if (at < 0 && meosIsFofClockKey(key)) { const _fr = meosFofRange(doc, 7); if (_fr && _fr.key === key) { at = _fr.end; _fofBg = !(at + 1 < doc.lineCount && meosIsPairBadgeSpec(doc.lineAt(at + 1).text)); } }   // v5.1.609: ♥膜 / ★v5.1.612(俊克 am10:23 改良1「バッジが無いので、本文に表示できないんだね。これがないと動いているように見えないんだよ。バッジも追加しようよ」): ふつうの膜と同じ▲の次のバッジ行= 残り時間の置き場
       if (at < 0) return false;                                    // 膜の外(ファイル全体)には書かない
       let ln = at + 1;
       while (ln < doc.lineCount && meosIsSpecLine(doc.lineAt(ln).text)) ln++;
@@ -13198,7 +13198,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       //   ▲の次に一緒に書く。無いと残り時間の置き場が無く、顔が▼の行の右へ逃げる(v4.1.147 の置き場= バッジ行)。
       //   形は新しい膜の閉じ膜と同じ口(meosPairBadgeLineText)から。旧形(▼行にバッジ)の膜には足さない= 二重にしない。
       let _bgText = '';
-      try { if (_pr && !meosPairBadgeAt(doc, _pr)) _bgText = meosPairBadgeLineText(key, lineIndent(doc, at), '(\ud83d\udcca\u22950+0)') + '\n'; } catch (_) { }
+      try { if ((_pr && !meosPairBadgeAt(doc, _pr)) || _fofBg) _bgText = meosPairBadgeLineText(key, lineIndent(doc, at), '(\ud83d\udcca\u22950+0)') + '\n'; } catch (_) { }
       if (_bgText && ln > at + 1 && at + 1 < doc.lineCount) { ed.insert(doc.uri, new vscode.Position(at + 1, 0), _bgText); _bgText = ''; }
       if (ln < doc.lineCount) ed.insert(doc.uri, new vscode.Position(ln, 0), _bgText + line + '\n');
       else ed.insert(doc.uri, doc.lineAt(doc.lineCount - 1).range.end, '\n' + _bgText + line);

@@ -64,14 +64,14 @@ function mkEd(d, sel) {
   return ed;
 }
 const sel = (a, b) => ({ start: { line: a, character: 0 }, end: { line: b, character: 2 }, active: { line: b, character: 2 }, isEmpty: false });
-const R = '<!-- Mew!UFC --- -->', isClock = (t) => /^<!-- Mew!UFC ⏰ 🔕\/🔕 ↺↻\(0y1d0h0m0s\)×1 v2\d{3}-\d\d-\d\d \d\d:\d\d[.:]\d\d \/\/ ♥️Timer dd -->$/.test(t), settle = () => new Promise(r => setTimeout(r, 40)), clocks = (d) => d.L.filter(t => t.indexOf('⏰') >= 0);
+const R = '<!-- Mew!UFC --- -->', isBadge = (t) => /Mew!U?FC mCN \(📊⊕0\+0\)/.test(t), badges = (d) => d.L.filter(isBadge), isClock = (t) => /^<!-- Mew!UFC ⏰ 🔕\/🔕 ↺↻\(0y1d0h0m0s\)×1 v2\d{3}-\d\d-\d\d \d\d:\d\d[.:]\d\d \/\/ ♥️Timer dd -->$/.test(t), settle = () => new Promise(r => setTimeout(r, 40)), clocks = (d) => d.L.filter(t => t.indexOf('⏰') >= 0);
 const past = '<!-- Mew!UFC ⏰ 🔕/🔕 ↺ 2026-01-01 09:00 -->', far = '<!-- Mew!UFC ⏰ 🔕/🔕 ↺ 2099-01-01 09:00 -->', paused = '<!-- Mew!UFC ⏰⏸ 🔕/🔕 ↺ 2026-01-01 09:00 -->';
 const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲▶◀mP7=f_20261108S005814JST //  *} -->', Hm = '<!-- {* ♥️▶◀mP7=f_20261108S005900JST //  *} -->', Fn = 'f_20261108S005813JST';
 (async () => {
   // 1. 選択を包む(本物の meosFofWrap の出力)
   const d1 = doc(['x', '本文1', '本文2', 'y']); const e1 = mkEd(d1, sel(1, 2)); await T.meosFofWrap(e1, 'f', 7);
-  await settle(); const r1 = T.meosFofRange(d1, 7); ok(r1 && isClock(d1.L[r1.end + 1]), '包むと閉じ♥の直下に一度きりの⏰', d1.L);
-  const s1 = T.meosClockFcScan(d1); ok(s1.length === 1 && s1[0].key === r1.key && s1[0].line === r1.end + 1 && s1[0].ufc && s1[0].cycle.length === 1 && s1[0].rounds === 1 && s1[0].bellMainOn === false, '⏰を♥膜の時計として読む(UFC・1d×1・先鐘🔕)', s1);
+  await settle(); const r1 = T.meosFofRange(d1, 7); ok(r1 && isBadge(d1.L[r1.end + 1]) && isClock(d1.L[r1.end + 2]), '閉じ♥の直下にバッジ行・その下に一度きりの⏰', d1.L);
+  const s1 = T.meosClockFcScan(d1); ok(s1.length === 1 && s1[0].key === r1.key && s1[0].line === r1.end + 2 && s1[0].ufc && s1[0].cycle.length === 1 && s1[0].rounds === 1 && s1[0].bellMainOn === false, '⏰を♥膜の時計として読む(UFC・1d×1・先鐘🔕)', s1);
   ok(s1[0] && s1[0].name === '♥️', '名前は♥️', s1[0] && s1[0].name);
   const lk1 = d1.uri.toString() + ' ' + r1.key, sc1 = T.scopes.get(lk1); ok(T.until.has(lk1) && sc1, '書いた瞬間に走り出す(自動起動)', [...T.until.keys()]);
   const ex = new Date(s1[0].vAt + 24 * 3600e3), h = ex.getHours(), face = (ex.getMonth() + 1) + '/' + ex.getDate() + '(' + 'SMTWtFs'[ex.getDay()] + ') ' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(ex.getMinutes()).padStart(2, '0');
@@ -88,7 +88,7 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   // 4. 俊克が⏰を消す→ 戻らない
   d3.L = d3.L.filter(t => t.indexOf('⏰') < 0); d3.version++; await T.meosFofReconcile(e3, 7); ok(clocks(d3).length === 0, '消した⏰は復活しない', d3.L);
   // 5. もう一度包む= 前の閉じ♥は中継点・前の⏰は消える
-  const y = d1.L.indexOf('y'); await T.meosFofWrap(mkEd(d1, sel(y, y)), 'f', 7); await settle(); ok(clocks(d1).length === 1 && T.meosClockFcScan(d1).length === 1, '包み直すと⏰は新しい組の1本だけ', d1.L);
+  const y = d1.L.indexOf('y'); await T.meosFofWrap(mkEd(d1, sel(y, y)), 'f', 7); await settle(); ok(clocks(d1).length === 1 && badges(d1).length === 1 && T.meosClockFcScan(d1).length === 1, '包み直すと⏰とバッジは新しい組の1本だけ', d1.L);
   // 6. 時間切れ= 開始♥だけ残る(実物の並び・中間♥あり・本文あり)
   const d6 = doc(['前', H1, R, '本文', Hm, '本文2', '', R, H2, far, '後']); T.meosPuzzleFSet(d6, 7, Fn); const c6 = T.meosClockFcScan(d6)[0]; ok(!!c6, '実物の行を時計と読む', d6.L);
   const x6 = await T.meosFofClockExpire(d6, c6, false); ok(x6 && JSON.stringify(d6.L) === JSON.stringify(['前', H1, '本文', '本文2', '', '後']), '時間切れ= 開始♥と本文だけ残る', d6.L); ok(T.meosPuzzleFGet(d6, 7) === Fn, 'Fは開始♥', T.meosPuzzleFGet(d6, 7));
@@ -115,6 +115,13 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   T.meosApplyTimerLineDecorations(e15); const on7 = calls.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === 7), texts = on7.map(x => { const r = x.renderOptions || {}; return (r.before && r.before.contentText) || (r.after && r.after.contentText) || ''; });
   ok(texts.some(s => s.indexOf('⏸') >= 0) && !texts.some(s => s.indexOf('▶') >= 0), '走っている♥の⏰は ⏸ を描く(▶️でない)', texts);
   ok(texts.some(s => /\d+:\d\d|\d+h|\d+d/.test(s) && s.indexOf('⏸') < 0), '残り時間を⏰の行に描く', texts);
+  // 9d. バッジ行= 残り時間の置き場・消える時は一緒
+  const B = '<!-- Mew!UFC mCN (📊⊕0+0) -->', big2 = ['<!-- {* ▼mCN=日記_1 // c *} -->', H1, R, '本文', '', R, H2, B, '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y1d0h0m0s)×1 // ♥️Timer dd -->', '後', '<!-- {* ▲mCN=日記_1 // c *} -->'], d16 = doc(big2); T.meosPuzzleFSet(d16, 7, Fn); T.meosArmClockFcFor(d16); await settle();
+  const calls2 = [], e16 = mkEd(d16, { start: { line: 9, character: 0 }, end: { line: 9, character: 0 }, active: { line: 9, character: 0 }, isEmpty: true }); e16.selections = [e16.selection]; e16.setDecorations = (deco, items) => calls2.push({ deco, items: items || [] }); stub.window.activeTextEditor = e16; stub.window.visibleTextEditors = [e16];
+  T.meosApplyTimerLineDecorations(e16); const onB = calls2.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === 7).map(x => { const r = x.renderOptions || {}; return (r.before && r.before.contentText) || (r.after && r.after.contentText) || ''; });
+  ok(onB.some(s => /\d+:\d\d/.test(s)), '残り時間がバッジ行に出る', onB);
+  const c16 = T.meosClockFcScan(d16)[0]; await T.meosFofClockExpire(d16, c16, false); ok(!d16.L.includes(B) && clocks(d16).length === 0 && d16.L.includes(H1) && d16.L.includes('本文') && d16.L.includes('後'), '時間切れでバッジ行も消える', d16.L);
+  const d17 = doc([H1, R, '本文', '', R, H2, B, far, '後']); T.meosPuzzleFSet(d17, 7, Fn); await T.meosPuzzleSweep(mkEd(d17), 7, 'f'); ok(badges(d17).length === 0 && clocks(d17).length === 0 && d17.L.includes('後'), 'Cmd+クリックで閉じ♥と一緒にバッジも', d17.L);
   // 10. ふつうの膜の⏰は今まで通り
   const d12 = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', far]); const s12 = T.meosClockFcScan(d12); ok(s12.length <= 1 && (!s12[0] || s12[0].key.charAt(0) !== '♥'), 'ふつうの膜の鍵は変わらない', s12);
   // 11. 音
