@@ -93,9 +93,9 @@ function makeEditor(lines) {
 
 let ng = 0; const ok = (c, l, g) => { console.log((c ? '  ok  ' : ' NG   ') + l + (c ? '' : '   ← ' + JSON.stringify(g))); if (!c) ng++; };
 const R = '<!-- Mew!UFC --- -->';
-const P1O = '<!-- {* ▼▶◀mP1=M_20261108S100001JST //  *} -->', P1C = '<!-- {* ▲▶◀mP1=M_20261108S100002JST //  *} -->';
+const P1O = '<!-- {* ▼mP1=M_20261108S100001JST //  *} -->', P1C = '<!-- {* ▲mP1=M_20261108S100002JST //  *} -->';
 const P1a = '<!-- {* ▶◀mP1=M_20261101S090000JST // 古い印 *} -->', P6a = '<!-- {* ▶◀mP6=k_20261101S090000JST //  *} -->';
-const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲▶◀mP7=f_20261108S005814JST //  *} -->';
+const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲mP7=f_20261108S005814JST //  *} -->';
 const lines = ['外0', P1O, R, '中', P1a, '', R, P1C, P6a, H1, R, 'h', '', R, H2, '終'];
 const ed = makeEditor(lines); T.makeDecorations();
 T.meosPuzzleFSet(ed.document, 1, 'M_20261108S100001JST'); T.meosPuzzleFSet(ed.document, 7, 'f_20261108S005813JST');

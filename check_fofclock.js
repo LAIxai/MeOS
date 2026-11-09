@@ -66,7 +66,7 @@ function mkEd(d, sel) {
 const sel = (a, b) => ({ start: { line: a, character: 0 }, end: { line: b, character: 2 }, active: { line: b, character: 2 }, isEmpty: false });
 const R = '<!-- Mew!UFC --- -->', isBadge = (t) => /Mew!U?FC mCN \(📊⊕0\+0\)/.test(t), badges = (d) => d.L.filter(isBadge), isClock = (t) => /^<!-- Mew!UFC ⏰ 🔕\/🔕 ↺↻\(0y1d0h0m0s\)×1 v2\d{3}-\d\d-\d\d \d\d:\d\d[.:]\d\d \/\/ ♥️Timer dd -->$/.test(t), settle = () => new Promise(r => setTimeout(r, 40)), clocks = (d) => d.L.filter(t => t.indexOf('⏰') >= 0);
 const past = '<!-- Mew!UFC ⏰ 🔕/🔕 ↺ 2026-01-01 09:00 -->', far = '<!-- Mew!UFC ⏰ 🔕/🔕 ↺ 2099-01-01 09:00 -->', paused = '<!-- Mew!UFC ⏰⏸ 🔕/🔕 ↺ 2026-01-01 09:00 -->';
-const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲▶◀mP7=f_20261108S005814JST //  *} -->', Hm = '<!-- {* ♥️▶◀mP7=f_20261108S005900JST //  *} -->', Fn = 'f_20261108S005813JST';
+const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲mP7=f_20261108S005814JST //  *} -->', Hm = '<!-- {* ♥️▶◀mP7=f_20261108S005900JST //  *} -->', Fn = 'f_20261108S005813JST';
 (async () => {
   // 1. 選択を包む(本物の meosFofWrap の出力)
   const d1 = doc(['x', '本文1', '本文2', 'y']); const e1 = mkEd(d1, sel(1, 2)); await T.meosFofWrap(e1, 'f', 7);
@@ -168,6 +168,11 @@ const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<
   { const clockDayEnds = eval('(' + /const clockDayEnds = (\(now\) => \{[^\n]*?\});/.exec(hs)[1] + ')'), hz = eval('(' + /const clockZone = (\(t, now\) => \{[^\n]*?return t < y\.getTime\(\) \? 4 : 5; \});/.exec(hs)[1] + ')'), hf = eval('(' + /const clockFar = (\(t, now\) => [^;]*);/.exec(hs)[1] + ')'), at = (m, d, h, mi) => new Date(2026, m - 1, d, h, mi || 0).getTime(), H = 36e5, am = at(11, 9, 9), pm = at(11, 9, 21, 13);
     for (const [zn, now, t, want] of [['昼: 23h59は今日', am, am + 23.98 * H, 0], ['昼: ちょうど24hは今日', am, am + 24 * H, 0], ['昼: 24h1分は明日', am, am + 24.02 * H, 1], ['昼: 明日は24:00まで', am, at(11, 10, 23, 59), 1], ['昼: 明後日0:01は1週間', am, at(11, 11, 0, 1), 2], ['pm5:59はまだ24h', at(11, 9, 17, 59), at(11, 10, 18), 1], ['pm6から明日の24:00まで今日', at(11, 9, 18), at(11, 10, 23, 59), 0], ['夜: 明晩pm10:39は今日(夜を切らない)', pm, at(11, 10, 22, 39), 0], ['夜: 明後日0:01は明日', pm, at(11, 11, 0, 1), 1], ['夜: 明後日23:59は明日', pm, at(11, 11, 23, 59), 1], ['夜: 3日後0:01は1週間', pm, at(11, 12, 0, 1), 2], ['夜: 6d先は1週間', pm, at(11, 16, 16, 10), 2], ['am1は24h', at(11, 10, 1), at(11, 11, 1, 1), 1]]) ok(T.meosClockZone(t, now) === want && hz(t, now) === want, '帯: ' + zn, [T.meosClockZone(t, now), hz(t, now)]);
     for (const [zn, now, t, want] of [['昼: 明日23:59は明日まで', am, at(11, 10, 23, 59), false], ['昼: 明後日0:01は先', am, at(11, 11, 0, 1), true], ['夜: 明後日23:59は明日まで', pm, at(11, 11, 23, 59), false], ['夜: 3日後0:01は先', pm, at(11, 12, 0, 1), true]]) ok(T.meosClockFar(t, now) === want && hf(t, now) === want, '先: ' + zn, [T.meosClockFar(t, now), hf(t, now)]); }
+  // 10e. v5.1.633 ▼mP/▲mP が新しい形・古い ▼▶◀/▲▶◀ も読む
+  { const oO = H1.replace('♥️▼mP', '♥️▼▶◀mP'), oC = H2.replace('♥️▲mP', '♥️▲▶◀mP'), od = doc(['前', oO, '本文', '', oC, far, '後']); T.meosPuzzleFSet(od, 7, 'f_20261108S005813JST'); const orr = T.meosFofRange(od, 7);
+    ok(orr && orr.start === 1 && orr.end === 4, '古い ▼▶◀ / ▲▶◀ も膜と読む', orr); const oc = T.meosClockFcScan(od)[0]; ok(!!oc, '古い形の閉じ♥の下の⏰も読む', od.L);
+    const ox = oc && await T.meosFofClockExpire(od, oc, false); ok(ox && JSON.stringify(od.L) === JSON.stringify(['前', oO, '本文', '', '後']), '古い形でも時間切れで片付く', od.L);
+    const d33 = doc(['a', '<!-- {* ♥️▶◀mP7=f_1 //  *} -->', 'b', '<!-- {* ♥️▶◀mP7=f_2 //  *} -->', 'c']); T.meosPuzzleFSet(d33, 7, 'f_1'); await T.meosFofReconcile(mkEd(d33), 7); await settle(); ok(d33.L.some(l => /♥️▼mP7=f_1/.test(l)) && d33.L.some(l => /♥️▲mP7=f_2/.test(l)) && !d33.L.some(l => /[▼▲]▶◀/.test(l)), '組になると ▶◀ を消して ▼▲ だけ書く', d33.L); }
   // 11. 音
   const f = T.meosPshPath(), b = fs.readFileSync(f); ok(b.slice(0, 4).toString() === 'RIFF' && b.length === 44 + Math.floor(22050 * 0.75) * 2, 'プシューのWAV', b.length); try { fs.unlinkSync(f); } catch (_) { }
   console.log(ng ? 'NG ' + ng + '件' : 'PASS'); process.exit(ng ? 1 : 0);

@@ -66,9 +66,9 @@ function mkEd(d, sel) {
 }
 // 実物の行の形(♥膜 v5.1.587 と同じ書式)
 const R = '<!-- Mew!UFC --- -->';
-const P1O = '<!-- {* ▼▶◀mP1=M_20261108S100001JST //  *} -->', P1C = '<!-- {* ▲▶◀mP1=M_20261108S100002JST //  *} -->';
+const P1O = '<!-- {* ▼mP1=M_20261108S100001JST //  *} -->', P1C = '<!-- {* ▲mP1=M_20261108S100002JST //  *} -->';
 const P1a = '<!-- {* ▶◀mP1=M_20261101S090000JST // 古い印 *} -->', P1b = '<!-- {* ▶◀mP1=M_20261102S090000JST //  *} -->';
-const H1 = '<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲▶◀mP7=f_20261108S005814JST //  *} -->';
+const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲mP7=f_20261108S005814JST //  *} -->';
 const S = (sel) => sel;
 (async () => {
   // 1. 膜の解析(mCN)は P の印を膜と読まない
@@ -92,12 +92,12 @@ const S = (sel) => sel;
   ok(T.meosFofRange(d2, 1) === null, '古いP1に範囲なし', T.meosFofRange(d2, 1));
   // ♥は今まで通り2本目が相方になる
   const d3 = mkDoc(['a', '<!-- {* ♥️▶◀mP7=f_1 //  *} -->', 'b', '<!-- {* ♥️▶◀mP7=f_2 //  *} -->']); T.meosPuzzleFSet(d3, 7, 'f_1');
-  await T.meosFofReconcile(mkEd(d3), 7); ok(/♥️▼▶◀mP7=f_1/.test(d3.L[1]) && d3.L[2] === R && d3.L[3] === 'b' && d3.L[4] === '' && d3.L[5] === R && /♥️▲▶◀mP7=f_2/.test(d3.L[6]), '♥の組は従来通り+罫線(591)', d3.L);
+  await T.meosFofReconcile(mkEd(d3), 7); ok(/♥️▼mP7=f_1/.test(d3.L[1]) && d3.L[2] === R && d3.L[3] === 'b' && d3.L[4] === '' && d3.L[5] === R && /♥️▲mP7=f_2/.test(d3.L[6]), '♥の組は従来通り+罫線(591)', d3.L);
   // 4. 選択を包む(P3=D)
   const d4 = mkDoc(['x', P1a, '本文1', '本文2', 'y']);
   const e4 = mkEd(d4, { start: { line: 2, character: 0 }, end: { line: 3, character: 3 }, active: { line: 3, character: 3 }, isEmpty: false });
   await T.meosFofWrap(e4, 'D', 3);
-  ok(/^<!-- \{\* ▼▶◀mP3=D_\d{8}\w\d{6}JST \/\/  \*\} -->$/.test(d4.L[2]) && d4.L[3] === R && d4.L[4] === '本文1' && d4.L[5] === '本文2' && d4.L[6] === '' && d4.L[7] === R && /▲▶◀mP3=D_/.test(d4.L[8]) && d4.L[9] === 'y', 'P3で包む= ▼P3・罫線・中身・空行・罫線・▲P3', d4.L);
+  ok(/^<!-- \{\* ▼mP3=D_\d{8}\w\d{6}JST \/\/  \*\} -->$/.test(d4.L[2]) && d4.L[3] === R && d4.L[4] === '本文1' && d4.L[5] === '本文2' && d4.L[6] === '' && d4.L[7] === R && /▲mP3=D_/.test(d4.L[8]) && d4.L[9] === 'y', 'P3で包む= ▼P3・罫線・中身・空行・罫線・▲P3', d4.L);
   ok(d4.L[1] === P1a, '包んでも他の字の印は触らない', d4.L[1]);
   const p4 = T.meosFofPair(d4, 3); ok(p4 && p4.m && p4.f.line === 2 && p4.m.line === 8, 'P3の組', p4 && [p4.f.line, p4.m && p4.m.line]);
   ok(e4.selection.active.line === 5, '包んだ後のカーソル= 中身の最後の行', e4.selection.active);
@@ -105,7 +105,7 @@ const S = (sel) => sel;
   const e5 = mkEd(d4, { start: { line: 4, character: 0 }, end: { line: 4, character: 3 }, active: { line: 4, character: 3 }, isEmpty: false });
   await new Promise(r => setTimeout(r, 1100));
   await T.meosFofWrap(e5, 'D', 3);
-  const tg = T.meosPuzzleTagsOf(d4, 3), two = tg.filter(h => /[▼▲]▶/.test(d4.L[h.line]));
+  const tg = T.meosPuzzleTagsOf(d4, 3), two = tg.filter(h => /[▼▲]mP/.test(d4.L[h.line]));
   ok(tg.length === 4 && two.length === 2, '新しい組だけ ▼▲・前の組は中継点', d4.L);
   // 6. 一括削除は中継点→相方→F の3段。膜の隣の中継点を消しても膜の罫線は残す
   const d6 = mkDoc(['a', P1O, R, '中', P1a, '', R, P1C, 'z']); T.meosPuzzleFSet(d6, 1, 'M_20261108S100001JST');
@@ -118,22 +118,22 @@ const S = (sel) => sel;
     T.meosPuzzleDupFollow({ document: d, contentChanges: [{ text: text + '\n', range: { start: { line: at, character: 0 } } }] }); await new Promise(r => setTimeout(r, 50)); };
   const d8 = mkDoc(['a', P1a, 'b', 'c']); T.meosPuzzleFSet(d8, 1, 'M_20261101S090000JST');
   await paste(d8, 3, P1a);
-  ok(/\{\* ▼▶◀mP1=M_20261101S090000JST/.test(d8.L[1]) && d8.L[2] === R && d8.L[3] === 'b' && d8.L[4] === '' && d8.L[5] === R && /\{\* ▲▶◀mP1=M_2026\d{4}\w\d{6}JST/.test(d8.L[6]) && !/090000/.test(d8.L[6]) && d8.L[7] === 'c', '古いP1を下へコピペ= 元が▼・複製が▲・罫線と空行', d8.L);
+  ok(/\{\* ▼mP1=M_20261101S090000JST/.test(d8.L[1]) && d8.L[2] === R && d8.L[3] === 'b' && d8.L[4] === '' && d8.L[5] === R && /\{\* ▲mP1=M_2026\d{4}\w\d{6}JST/.test(d8.L[6]) && !/090000/.test(d8.L[6]) && d8.L[7] === 'c', '古いP1を下へコピペ= 元が▼・複製が▲・罫線と空行', d8.L);
   const d9 = mkDoc(['a', 'b', P1a, 'c']); T.meosPuzzleFSet(d9, 1, 'M_20261101S090000JST');
   await paste(d9, 0, P1a);
-  ok(/\{\* ▼▶◀mP1=/.test(d9.L[0]) && d9.L[1] === R && d9.L[4] === '' && d9.L[5] === R && /\{\* ▲▶◀mP1=M_20261101S090000JST/.test(d9.L[6]), '上へコピペ= 複製が▼・元が▲・罫線', d9.L);
+  ok(/\{\* ▼mP1=/.test(d9.L[0]) && d9.L[1] === R && d9.L[4] === '' && d9.L[5] === R && /\{\* ▲mP1=M_20261101S090000JST/.test(d9.L[6]), '上へコピペ= 複製が▼・元が▲・罫線', d9.L);
   await paste(d9, 2, P1a.replace('▶◀', '▶◀'));
-  ok(/\{\* ▶◀mP1=/.test(d9.L[2]) && /▼▶/.test(d9.L[0]) && /▲▶/.test(d9.L[7]) && d9.filter === undefined && d9.L.filter(l => l === R).length === 2, '膜が在る時のコピペ= 中継点・罫線は増えない', d9.L);
+  ok(/\{\* ▶◀mP1=/.test(d9.L[2]) && /▼mP/.test(d9.L[0]) && /▲mP/.test(d9.L[7]) && d9.filter === undefined && d9.L.filter(l => l === R).length === 2, '膜が在る時のコピペ= 中継点・罫線は増えない', d9.L);
   const d10 = mkDoc(['a', P1O, R, '中', '', R, P1C, 'z']); T.meosPuzzleFSet(d10, 1, 'M_20261108S100001JST');
   await paste(d10, 4, P1O);
-  ok(/\{\* ▶◀mP1=/.test(d10.L[4]) && /▼▶/.test(d10.L[1]) && /▲▶/.test(d10.L[7]), '▼P1のコピペ= ▼を外して中継点', d10.L);
+  ok(/\{\* ▶◀mP1=/.test(d10.L[4]) && /▼mP/.test(d10.L[1]) && /▲mP/.test(d10.L[7]), '▼P1のコピペ= ▼を外して中継点', d10.L);
   // 9. v5.1.590 実機の形= 1本だけの字は F の控えが無い・元の行のすぐ上に貼る
   const d11 = mkDoc(['a', P1a, 'b']);
   await paste(d11, 1, P1a);
-  ok(/▼▶◀mP1=/.test(d11.L[1]) && d11.L[2] === R && d11.L[3] === '' && d11.L[4] === '' && d11.L[5] === R && /▲▶◀mP1=M_20261101S090000JST/.test(d11.L[6]) && d11.L[7] === 'b', 'Fの控え無し・元のすぐ上に貼る= 複製▼・元▲・新規と同じ形', d11.L);
+  ok(/▼mP1=/.test(d11.L[1]) && d11.L[2] === R && d11.L[3] === '' && d11.L[4] === '' && d11.L[5] === R && /▲mP1=M_20261101S090000JST/.test(d11.L[6]) && d11.L[7] === 'b', 'Fの控え無し・元のすぐ上に貼る= 複製▼・元▲・新規と同じ形', d11.L);
   const d12 = mkDoc(['a', P1a, 'b']);
   await paste(d12, 2, P1a);
-  ok(/▼▶◀mP1=M_20261101S090000JST/.test(d12.L[1]) && d12.L[2] === R && d12.L[5] === R && /▲▶◀mP1=/.test(d12.L[6]), 'Fの控え無し・すぐ下に貼る= 元▼・複製▲・罫線', d12.L);
+  ok(/▼mP1=M_20261101S090000JST/.test(d12.L[1]) && d12.L[2] === R && d12.L[5] === R && /▲mP1=/.test(d12.L[6]), 'Fの控え無し・すぐ下に貼る= 元▼・複製▲・罫線', d12.L);
   // 10. v5.1.590 膜を消したら🔴を1つ前の字へ
   gs.set('meosPuzzleLast', 'c'); gs.set('meosPuzzlePrev', 'D');
   const P5O = P1O.replace(/mP1=M_/, 'mP5=c_'), P5C = P1C.replace(/mP1=M_/, 'mP5=c_');
@@ -148,7 +148,7 @@ const S = (sel) => sel;
   ok(gs.get('meosPuzzleLast') === 'c', '中継点だけ消す1段目= 🔴は動かない', gs.get('meosPuzzleLast'));
   const d15 = mkDoc(['a', P1a, R, '中', '', R, 'z']); T.meosPuzzleFSet(d15, 1, 'M_20261101S090000JST');
   await paste(d15, 6, P1a);
-  ok(d15.L.filter(l => l === R).length === 2 && /▼▶/.test(d15.L[1]) && /▲▶/.test(d15.L[6]), '罫線が既に在れば足さない', d15.L);
+  ok(d15.L.filter(l => l === R).length === 2 && /▼mP/.test(d15.L[1]) && /▲mP/.test(d15.L[6]), '罫線が既に在れば足さない', d15.L);
   // 11. v5.1.591 画面が遅れて動く(34万行の実機)= AtTop が効いてから見えるかを確かめる
   { const d = mkDoc(Array.from({ length: 400 }, (_, i) => 'l' + i)); const log = [];
     const sh = mkEd(d); sh.visibleRanges = [{ start: { line: 180 }, end: { line: 220 } }];   // 古い画面= カーソル(200)を中央に見せた姿

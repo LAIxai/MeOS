@@ -52,9 +52,9 @@ const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + la
 //   **最初に読んだ台の行**を返し続ける。表の台のように「この台の行」を読む物だけ、別のファイル名を渡す
 //   (第3引数)= 台の作り全部を変えると、覚えに相乗りしていた他の項目that落ちる(実測)。
 
-const H1='<!-- {* ♥️▼▶◀mP7=f_20261108S005813JST //  *} -->',H2='<!-- {* ♥️▲▶◀mP7=f_20261108S005814JST //  *} -->',R='<!-- Mew!UFC --- -->';
+const H1='<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->',H2='<!-- {* ♥️▲mP7=f_20261108S005814JST //  *} -->',R='<!-- Mew!UFC --- -->';
 const O='<!-- {* ▼mCN=ハイライトと文字色_20260818T191336JST // comment2 *} -->',C='<!-- {* ▲mCN=ハイライトと文字色_20260818T191336JST // comment2 *} -->';
-const O2='<!-- {* ▼mCN=子_1 // c *} -->',C2='<!-- {* ▲mCN=子_1 // c *} -->',Q='`<!-- {* ♥️▼▶◀mP7=f_quoted // *} -->` の説明';
+const O2='<!-- {* ▼mCN=子_1 // c *} -->',C2='<!-- {* ▲mCN=子_1 // c *} -->',Q='`<!-- {* ♥️▼mP7=f_quoted // *} -->` の説明';
 const L=['out0',H1,R,'中1','中2',Q,'',R,H2,'out9', O,R,'a',O2,R,'子中','',R,C2,'b','',R,C,'out23', '```',H2,'```',O,'無し罫線',C,'end'];
 const doc={uri:{toString:()=>'file:///e.md',fsPath:'/e.md',scheme:'file'},languageId:'markdown',lineCount:L.length,lineAt:n=>({text:L[n]}),getText:()=>L.join('\n'),eol:1,fileName:'/e.md',isClosed:false,version:1};
 const t=(cur,down)=>T.meosMembraneRuleTarget(doc,cur,down);
