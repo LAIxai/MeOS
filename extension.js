@@ -7509,7 +7509,7 @@ function meosFuseSamples() {
     if (t < end) { lp += 0.62 * (x - lp); slow += 0.035 * (lp - slow); hiss[i] = (lp - slow) * Math.min(1, t / 0.18) * (0.62 + 0.38 * t / end) * Math.min(1, (end - t) / 0.015); }
     else { const u = t - end; lb += 0.24 * (x - lb); burst[i] = lb * Math.min(1, u / 0.005) * Math.exp(-u * 10.5); } }
   const norm = (a, to) => { let p = 0; for (const v of a) p = Math.max(p, Math.abs(v)); if (p) for (let i = 0; i < a.length; i++) a[i] *= to / p; };
-  norm(hiss, 0.42); norm(burst, 0.92); const out = new Float64Array(n); for (let i = 0; i < n; i++) out[i] = hiss[i] + burst[i]; return { rate, end, out };
+  norm(hiss, 0.42 * 0.3); norm(burst, 0.92);   /* v5.1.617(俊克 am11:20「シューーーーーの音量が大き過ぎるので、30%くらいに」): プシュッはそのまま */ const out = new Float64Array(n); for (let i = 0; i < n; i++) out[i] = hiss[i] + burst[i]; return { rate, end, out };
 }
 function meosFusePath() {
   try { const fs = require('fs'), os = require('os'), path = require('path'); if (_meosFuseFile && fs.existsSync(_meosFuseFile)) return _meosFuseFile; const { rate, out } = meosFuseSamples(), n = out.length, buf = Buffer.alloc(44 + n * 2);
