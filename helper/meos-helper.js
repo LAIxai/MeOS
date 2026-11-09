@@ -301,6 +301,7 @@ function run(argv) {
   // ★v5.0.0-58(俊克 pm07:23〜08:00「これもテキストデータにしよう… 膜名 🌅LaunchD_TS」): 起動の予定を決めるのは本文の 🌅LaunchD の膜(▶️で入る)。
   //   メニューは今の姿を見せるだけ(ここでも決められると、本文と macOS の2つの道が食い違う)。-50〜57 の □/時刻の仕掛けは使わない。
   const wakeEntries = () => [{ id: 'launchd', title: '\ud83c\udf05 Wake   ' + wakeLabel() }, { sep: true }];   // v5.0.0-59: 押すと 🌅LaunchD の膜へ(他の時計の行と同じ)
+  let menuUp = false, lastHoldN = -1;   // ★v5.1.619(俊克 am11:29 バグ1「メニューリストを表示したままにしてあると、やはり、まだゴミが残るよ。なぜ?」): 実測= 開いている間に events.log に「作り直す n=40 前=41」。wGATE は runUntilDate で回るので tracking() は開いていても偽= 作り替えが走り、画面の古いメニューは誰も更新しなくなっていた(614 の隠す口にも入らなかった)。開いているかは delegate の開閉で知る
   let menuOpenAt = 0, menuPickedAt = 0, menuOptAt = 0, reopenAt = 0, reopenTries = 0, renewItem = false, noRestartUntil = 0;   // v5.1.333〜335
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) { menuPickedAt = Date.now();
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
@@ -353,7 +354,7 @@ function run(argv) {
   // ★v5.1.330(俊克 10.30 am11:23 バグ1「スクショを macOS のプレビューの『削除』で捨てた後、メニューバーが開かなくなった・前の版も同じ所で」): 測る口= 開く/閉じる/Optで取り消した/作り直した を events.log へ([menu])
   ObjC.registerSubclass({ name: 'MeOSMenuDelH', protocols: ['NSMenuDelegate'], methods: { 'menuWillOpen:': { types: ['void', ['id']], implementation: function (m) {
     let fl = 0; try { fl = Number($.NSEvent.modifierFlags); } catch (e) {}
-    menuOpenAt = Date.now();
+    menuOpenAt = Date.now(); menuUp = true;   // v5.1.619
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
@@ -370,7 +371,7 @@ function run(argv) {
       try { if (!dockOut.shown) dockOutShow(); if (!dockOut.pin) dockOut.pin = 'piece'; dockOutPaint(); hlog('[dockOut] ピースで出しっぱなし'); } catch (x) {}   // v5.1.441: 札のピースでは(構えで出した時も)消さない   // v5.1.438 / ★v5.1.440(俊克 pm01:04「マウスをエディターのほうに移動すると、mGATEが閉じてしまう」→「出しっぱなしにして」): ピースを押したら出しっぱなし(pin='piece')= ワープでも字が変わっても消さない・消すのはメニューバーの地とメニュー
       openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(hc)); return; } } catch (e) {}   // v5.1.402
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
-  } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
+  } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { menuUp = false; const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
     try { hlog('[menu] close' + (quick ? ' (' + (now - menuOpenAt) + 'ms= 指を放した所で閉じた)' : '')); } catch (e) {} freshMenu = true;
     if (quick && now > noRestartUntil) { renewItem = true; reopenAt = now + 60; } } } } });   // v5.1.334〜335: すぐ閉じた= V-helper ごと起こし直す(起こし直した直後30秒はしない= 回り続けない)
 // {* ▲mCN=0650_MENU_OPEN // end [cGJF=h] *}
@@ -1058,14 +1059,15 @@ function run(argv) {
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
           try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
-      } else if (tracking() && menuShrink(lastEntries, nw, (e) => e.clk ? 'C' + (e.far ? 'f' : '') : sk([e]))) {
+      } else if (menuUp && menuShrink(lastEntries, nw, (e) => e.clk ? 'C' + (e.far ? 'f' : '') : sk([e]))) {
         const map = menuShrink(lastEntries, nw, (e) => e.clk ? 'C' + (e.far ? 'f' : '') : sk([e])), keep = [], pull = (arr, x) => { const k = arr.indexOf(x); if (k >= 0) arr.splice(k, 1); };
         for (let i = 0; i < lastEntries.length; i++) { const mi = lastItems[i], o = lastEntries[i], k = map[i];
           if (k < 0) { try { if (mi) { mi.hidden = true; pull(clockAll.rows, mi); pull(clockAll.seps, mi); pull(clockAll.far, mi); } } catch (x) {} continue; }
           keep.push(mi); const e = nw[k]; if (!mi || e.sep || e.sub) continue;
           try { if (e.id && e.id !== o.id) mi.representedObject = $(e.id); if (e.title !== o.title || e.pill !== o.pill || e.box !== o.box) { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } } catch (x) {} }
         lastItems = keep; lastEntries = nw; lastMenu = mj; try { hlog('[menu] 開いたまま行を隠した n=' + nw.length); } catch (e) {}
-      } else if (!tracking()) { lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.nb = null; clockAll.rows.length = 0; clockAll.seps.length = 0; clockAll.far.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; headSeps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
+      } else if (menuUp) { if (lastHoldN !== nw.length) { lastHoldN = nw.length; try { hlog('[menu] 開いている間は作り替えない n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} }
+      } else if (!tracking()) { lastHoldN = -1; lastMenu = mj; pagers.length = 0; clockAll.hb = null; clockAll.cyc = null; clockAll.nb = null; clockAll.rows.length = 0; clockAll.seps.length = 0; clockAll.far.length = 0; fusenAll.hb = null; fusenAll.seps.length = 0; headSeps.length = 0; tagAll.hb = null; tagAll.rows.length = 0; tagAll.slots.length = 0; tagAll.list = []; tagAll.pi = null; tagAll.hv = []; tagAll.vis = []; try { hlog('[menu] 作り直す n=' + nw.length + ' 前=' + lastEntries.length); } catch (e) {} const mm = build(nw, true); mm.delegate = mdel; item.menu = mm; tagTitle(); }
     }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (reopenNow) { try { $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, reopener, 'go:', $(), false); } catch (e) {} }   // v5.1.333: tick の外で開く(開いている間は tick がまた回るので、中で開かない)
     const pk = pzl.ch + pzl.lv + pzl.prev + (edRunning() ? 'Q' : '');   // v5.1.445: もう一方は見ない
