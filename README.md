@@ -118,8 +118,8 @@ jumps over the whole membrane. Step inside, and its own lines take over.
 
 **Switch a line off, without deleting it.** Click the 🛑 at the left end: the line disappears and a grey **OFF**
 sign stays in its place — in the text it is `<!-- Mew!UFC --- 🚫 -->`, and nothing stops there any more. Click OFF to
-turn it back on. On the line under an opening membrane, the 🛑 at the right end switches **every line inside** off or on
-at once; with that line itself off, the two signs sit side by side. Leave a membrane's edge off on one side and it
+turn it back on. On a membrane's edge lines — under the opening membrane or above the closing one — the 🛑 at the
+right end switches **every line inside** off or on at once; with the edge line itself off, the two signs sit side by side. Leave a membrane's edge off on one side and it
 becomes a one-way door: Cmd+↓ walks in, Cmd+↑ jumps over.
 
 Type it, or press it. A line holding only one of the eight marks becomes that stop line when you press Enter — no new

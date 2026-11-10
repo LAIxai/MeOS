@@ -15405,11 +15405,15 @@ const MEOS_RULE_LINE_RE = /^\s*<!--\s*Mew!UFC\s+(?:-{3,}|={3,}|-\.-(?:\.-)*\.?|-
 const MEOS_RULE_OFF_RE = new RegExp(MEOS_RULE_LINE_RE.source.replace('\\s*-->\\s*$', '\\s*\\ud83d\\udeab\\s*-->\\s*$'));
 function meosIsRuleAny(t) { t = String(t || ''); return MEOS_RULE_LINE_RE.test(t) || MEOS_RULE_OFF_RE.test(t); }
 function meosStopOffText(t, off) { return off ? String(t).replace(/\s*-->\s*$/, ' 🚫 -->') : String(t).replace(/\s*🚫\s*-->\s*$/, ' -->'); }
-function meosStopInnerLines(doc, i) {   // 開始膜の線(▼の次の行)なら、その膜の中の線 [{line, off}]。開始膜の線でなければ null
-  try { if (i < 1 || i >= doc.lineCount || meosMemEdgeAt(doc.lineAt(i - 1).text, false) !== 1) return null;
-    const close = meosMemJumpTarget(doc, i - 1, true); if (close < 0) return null;
+// ★v5.1.647(俊克 11.11 am01:20 💥💥「閉じ膜の右側の🛑も、開始膜同様に、一時停止線の一括オン/オフを可能にしよう。膜名の修正がどっちでもできるのと同じように」):
+//   閉じ膜の線(▲の前の行)も一括の札を持つ。中の線= 開始膜の線と閉じ膜の線の間(どちらの端から押しても同じ組・両端の線は数えない)
+function meosStopInnerLines(doc, i) {   // 膜の端の線(▼の次の行/▲の前の行)なら、その膜の中の線 [{line, off}]。端の線でなければ null
+  try { if (i < 0 || i >= doc.lineCount) return null; let lo, hi;
+    if (i >= 1 && meosMemEdgeAt(doc.lineAt(i - 1).text, false) === 1) { const close = meosMemJumpTarget(doc, i - 1, true); if (close < 0) return null; lo = i + 1; hi = close - 1; }
+    else if (i + 1 < doc.lineCount && meosMemEdgeAt(doc.lineAt(i + 1).text, false) === -1) { const open = meosMemJumpTarget(doc, i + 1, false); if (open < 0) return null; lo = open + 2; hi = i; }
+    else return null;
     const fence = meosFenceLines(doc), out = [];
-    for (let k = i + 1; k < close - 1; k++) {   // close-1= 閉じ膜の線の席(線なら数えない・線でなければ線ではないので数えるまでもない)
+    for (let k = lo; k < hi; k++) {   // close-1= 閉じ膜の線の席(線なら数えない・線でなければ線ではないので数えるまでもない)
       if (fence.has(k)) continue; const t = doc.lineAt(k).text; if (MEOS_RULE_LINE_RE.test(t)) out.push({ line: k, off: false }); else if (MEOS_RULE_OFF_RE.test(t)) out.push({ line: k, off: true }); }
     return out; } catch (_) { return null; }
 }
@@ -25119,7 +25123,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           // ★v5.1.179(俊克 am11:33 改良2「折り畳んだ状態で小さい🙈をクリックしても何も起きない。膜を展開して、中を丸見えにしたほうが良い」): 畳んでいたら▼と同じ口で開く(バッジの⊖/⊕も揃う)
           try { const _pv = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === _ln && p.id === _vbs.id); if (_pv && isPairFolded(editor, _pv)) await setPairFoldStateAndMstat(editor, _pv, false); } catch (_) { }
           meosCalmRefresh(editor); return; }
-        { const _sb = meosStopBtnSpots(editor.document, _ln, editor), _cc = editor.selection.active.character;   // ★v5.1.645: 一時停止線の🛑= 左は自分・開始膜の線の右は中を一括
+        { const _sb = meosStopBtnSpots(editor.document, _ln, editor), _cc = editor.selection.active.character;   // ★v5.1.645: 一時停止線の🛑= 左は自分・開始膜の線の右は中を一括 / v5.1.647: 閉じ膜の線の右も
           if (_sb && (_cc <= _sb.self || (_sb.bulk > 0 && _cc === _sb.bulk && _sb.inner && _sb.inner.length))) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln);
             if (_cc === _sb.bulk) await meosStopToggleInner(editor, _ln); else await meosStopToggleSelf(editor, _ln);
             setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; } }
@@ -47708,7 +47712,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
               const _ch = meosAwayChairSpot(document, ln, _ed89); if (_ch) out.push(new vscode.InlayHint(new vscode.Position(ln, _ch.col), '\u3000'));
               const _vb = meosVeilBtnSpot(document, ln, _ed89); if (_vb) out.push(new vscode.InlayHint(new vscode.Position(ln, _vb.col), '\u3000')); } }   // v5.1.175: 小さい🙈の札   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
             { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
-            { const _sb = meosStopBtnSpots(document, ln, _ed89); if (_sb) {   // v5.1.645: 一時停止線の🛑(左= 自分・開始膜の線の右= 中を一括)
+            { const _sb = meosStopBtnSpots(document, ln, _ed89); if (_sb) {   // v5.1.645: 一時停止線の🛑(左= 自分・開始膜の線の右= 中を一括) / v5.1.647: 閉じ膜の線の右も
                 const _bt = '\u00a0'.repeat(MEOS_STOP_BTN_CH), _h1 = new vscode.InlayHint(new vscode.Position(ln, 1), _bt);
                 _h1.tooltip = _sb.on ? 'Stop line | Click to turn it off (🚫): Cmd+↓/↑ and held arrows pass through. Click again to turn it on.' : 'Stop line — off | Click to turn it on again.'; out.push(_h1);
                 if (_sb.bulk > 0) { const _h3 = new vscode.InlayHint(new vscode.Position(ln, _sb.bulk), _bt); _h3.tooltip = !(_sb.inner && _sb.inner.length) ? 'All stop lines inside | There are no stop lines inside this membrane yet.' : _sb.bulkOff ? 'All stop lines inside — off | Click to turn them all on.' : 'All stop lines inside | Click to turn them all off at once.'; out.push(_h3); }
