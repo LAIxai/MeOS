@@ -5106,6 +5106,7 @@ function scheduleMstatMetadata(editor) {
 }
 async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
   if (!editor || !pair) return;
+  try { if (folded) _meosMemJustFolded.set(pair.start, Date.now()); else _meosMemJustFolded.delete(pair.start); } catch (_) { }   // v5.1.648: 膜を畳んだ時刻(FCの道が畳んだ膜を開け直さないため)
   // v0.9.345:
   // This function used to refresh 3 times and sync mSTAT via delayed timers for
   // every single membrane. On a real, membraneized extension.js that made Me all
@@ -43113,7 +43114,7 @@ async function meosSyncFcFoldForCursor(editor) {
     //     突き合わせ、違う所だけ打つ。2本の道that同じ答えを出すので、どちらthat先でも同じ所へ落ち着く。
     //   ★覚えは**打った後に揃えるだけ**(決めるのには使わない)。
     const _isOpenNow47 = (it) => _visible(it.end);                     // 終わりthat見えている= 開いている
-    const _toOpen47 = _shape.filter(it => it.hasRange && it.open && _visible(it.head) && !_isOpenNow47(it)).map(it => it.head);
+    const _toOpen47 = _shape.filter(it => it.hasRange && it.open && _visible(it.head) && !_isOpenNow47(it) && !(it.b.open != null && meosMemRecentlyFolded(it.b.open))).map(it => it.head);   // v5.1.648: 今しがた畳んだ膜のFCは開けない
     const _toFold47 = _shape.filter(it => it.hasRange && !it.open && _visible(it.head) && _isOpenNow47(it) && !meosFcRecentlyFolded(it.head)).map(it => it.head);
     if (_toOpen47.length) { try { meosDbg('[fcOne] 開ける ' + _toOpen47.map(x => x + 1).join(',')); } catch (_) { } try { for (const _h of _toOpen47) _meosFoldedAt48.delete(_h); } catch (_) { } await unfold(_toOpen47); }
     if (_toFold47.length) { try { meosDbg('[fcOne] 畳む ' + _toFold47.map(x => x + 1).join(',')); } catch (_) { } for (const h of _toFold47) meosFcNoteFolded(h); await fold(_toFold47); }
@@ -43186,6 +43187,14 @@ let _meosFcFolding = false; // 進行中(起動時の3連発が競合して二�
 //   「見えているか」では二度打ちを防げない。**自分thatが何を畳んだか**なら、その場で分かる。
 //   2つの道that同じこの1つに訊く= どちらthat先でも、同じ塊は1度しか畳まれない。
 const _meosFcJustFolded = new Map();   // 先頭行 → 畳んだ時刻(ms)
+// ★v5.1.648(俊克 11.11 am01:26 バグ1「閉じ膜の▲ボタンをクリックして折り畳むのに、直ぐに展開されてしまう」= ログで確定):
+//   01:27:59.254 [arrowToggle] fold by=close start=170182 end=170193 → 01:27:59.729 [fcOne] 開ける 170194(▲の行)。
+//   ★真因= ▲で畳むとカーソルは▼へ置かれ、▼は「膜に居る」なので▲の下のバッジFCを開けたくなる。畳んだ直後の visibleRanges はまだ古く
+//     (v4.0.466 と同じ穴)▲が見えていると読み、▲へ「開け」と打つ→ ▲は畳んだ膜の中なので**膜そのものが開いた**。
+//     バッジFCが畳まれた姿(カーソルが膜の外に居た)のまま▲を押した時だけ起きる。
+//   ★直し= 自分が畳んだ膜を覚え、その膜のFCの塊はしばらく開けに行かない(畳まれた膜のバッジを開ける意味は無い)。
+const _meosMemJustFolded = new Map();   // 膜の開始行 → 畳んだ時刻(ms)
+function meosMemRecentlyFolded(ln) { const t = _meosMemJustFolded.get(ln); if (!t) return false; if (Date.now() - t > MEOS_FC_JUST_MS) { _meosMemJustFolded.delete(ln); return false; } return true; }
 const MEOS_FC_JUST_MS = 2000;
 function meosFcNoteFolded(ln) { _meosFcJustFolded.set(ln, Date.now()); }
 function meosFcRecentlyFolded(ln) {

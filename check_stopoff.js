@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_RULE_LINE_RE, MEOS_RULE_OFF_RE, MEOS_STOP_OFF_URL, MEOS_STOP_SIGN_URL, meosIsRuleAny, meosStopOffText, meosStopInnerLines, meosStopBulkOff, meosStopBtnSpots, meosStopToggleSelf, meosStopToggleInner, meosStopKindOf, meosMembraneRuleTarget, meosStopLineNear, makeDecorations, meosApplyTimerLineDecorations, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMemRecentlyFolded, _meosMemJustFolded, MEOS_RULE_LINE_RE, MEOS_RULE_OFF_RE, MEOS_STOP_OFF_URL, MEOS_STOP_SIGN_URL, meosIsRuleAny, meosStopOffText, meosStopInnerLines, meosStopBulkOff, meosStopBtnSpots, meosStopToggleSelf, meosStopToggleInner, meosStopKindOf, meosMembraneRuleTarget, meosStopLineNear, makeDecorations, meosApplyTimerLineDecorations, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -108,6 +108,11 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
     e7.selections = [e7.selection]; e7.setDecorations = (deco, items) => c7.push({ deco, items: items || [] }); stub.window.activeTextEditor = e7; stub.window.visibleTextEditors = [e7]; T.meosApplyTimerLineDecorations(e7);
     const bx = c7.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === 2 && x.renderOptions && x.renderOptions.before && /background:/.test(x.renderOptions.before.textDecoration || ''));
     ok(bx.length === 1 && bx[0].range.start.character === 2 && /margin-left: -2ch; margin-right: -2ch/.test(bx[0].renderOptions.before.textDecoration) && !/absolute/.test(bx[0].renderOptions.before.textDecoration), 'v5.1.646 開始膜の線(オン)の箱は札の間(桁2)に置き負の余白= 右の札が右端の標識に重なる(詰め物の見積もりなし)', bx.map(x => [x.range.start.character, x.renderOptions.before.textDecoration.slice(0, 90)])); }
+  { // v5.1.648: ▲で畳んだ膜を FC の道が開け直さない
+    const SRC = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+    T._meosMemJustFolded.set(5, Date.now()); ok(T.meosMemRecentlyFolded(5) && !T.meosMemRecentlyFolded(6), 'v5.1.648 畳んだ膜を覚える(2秒)', 0);
+    T._meosMemJustFolded.set(7, Date.now() - 2500); ok(!T.meosMemRecentlyFolded(7), '2秒過ぎたら忘れる(その頃には visibleRanges が新しい)', 0);
+    ok(/if \(folded\) _meosMemJustFolded\.set\(pair\.start/.test(SRC) && /_toOpen47 = [^\n]*!\(it\.b\.open != null && meosMemRecentlyFolded\(it\.b\.open\)\)/.test(SRC), '畳む口で覚え・FC の開ける相手から今しがた畳んだ膜の塊を外す', 0); }
   const hid = (ln) => calls.flatMap(c => c.items.map(x => [c.deco, x])).map(p => [p[0], p[1] && p[1].range ? p[1].range : p[1]]).filter(p => p[1] && p[1].start && p[1].start.line === ln && p[0].__opts && /opacity: 0; font-size: 0;'?$/.test(p[0].__opts.textDecoration || '') && !/letter-spacing/.test(p[0].__opts.textDecoration)).map(p => [p[1].start.character, p[1].end.character, p[0]]).sort((a, b) => a[0] - b[0]);
   const h2 = hid(2); ok(h2.length === 3 && h2[0][1] === 1 && h2[1][1] === 2 && h2[0][2] !== h2[1][2] && h2[0][2] === h2[2][2], '開始膜の線(オフ)の字は札の桁1・2で割って2つの型で交互に隠す', h2.map(x => [x[0], x[1]]));
   const h9 = hid(9); ok(h9.length === 2 && h9[0][1] === 1 && h9[0][2] !== h9[1][2], 'ふつうの線は桁1で割る(札が幅0にならない)', h9.map(x => [x[0], x[1]]));
