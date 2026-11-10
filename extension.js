@@ -7064,11 +7064,11 @@ const REF_MARK_ACTIVE = '\u25b6\u25c0';   // ▶◀
 //   現在のLine位置にパズルタグが書き込まれる。消す時は、直接消す」「間抜けのときは制限。並べ直せば飛べる」):
 //   ★印= 点膜 {* ▶◀mP1=M_TS *}(参照符 mRn と同じ形の別の族)。字に結ぶ= M e D o c k → P1〜P6(並べ替えても行き先は字と一緒)。
 //   ★印が無い字= カーソルの行(の上)に印を書く / 有る字= そこへ飛ぶ(2つ以上なら、カーソルの次の印へ巡る)。間抜け/Deco の間は拡張が知らせを受けない(v4.2.500 の門)。
-const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*(?:\u25b6\u25c0|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=/;
+const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*(?:\u25b6\u25c0|\ud83d\udea5|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=/;
 const MEOS_PUZZLE_COL = { M: '#e53935', e: '#f57c00', D: '#2e9d3a', o: '#1e7fd6', c: '#8e24aa', k: '#c2185b' };   // v5.1.588: Me Dock の字の色= 本文の P1〜P6 の札も同じ色(1か所から引く)
 function meosPuzzleColor(ch, a) { const h = MEOS_PUZZLE_COL[ch]; if (!h) return 'rgba(124, 58, 237, ' + a + ')'; return 'rgba(' + parseInt(h.slice(1, 3), 16) + ', ' + parseInt(h.slice(3, 5), 16) + ', ' + parseInt(h.slice(5, 7), 16) + ', ' + a + ')'; }
 const MEOS_PUZZLE_LETTERS = 'MeDockf';   // ★v5.1.537(俊克 11.06 pm03:05 改良1「♥️ボタンは、他のパズルと基本は同じに」): 末尾の f= mGATE の♡(P7)。印・F・tip・削除は他の字と同じ。ただし🔴(最後の字)は動かさない= 🔴は「今いる場所」・♥はその中の作業の箇所
-const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*(?:\u25b6\u25c0|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)[^\r\n]*?\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;   // v4.2.565: 飾り用(殻ごと)
+const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*(?:\u25b6\u25c0|\ud83d\udea5|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)[^\r\n]*?\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;   // v4.2.565: 飾り用(殻ごと)
 // v2.0.4(俊克): Date Warp=暦の軸で日記膜へ相対/絶対ジャンプ。基準=今いる日付膜(無ければ今日)/完全一致のみ。v4.2.777-1: Me Dock の受け口から関数へ出した
 // ★v5.1.423(俊克 11.03 am04:55「日記を表す絵文字が無いのが不思議だね。そこで、🄳iaryをファイル全体を覆う膜の開始膜のコメント部分に書いてあるものを日記ファイルと定義しようか?膜名とかファイル名に入れると、見栄えも悪くなる」):
 //   日記帳= 外側の膜(他の膜に包まれていない膜)の開始膜の、膜名より後ろ(コメント)に 🄳iary(U+1F133)が在るファイル。Ⓣが今日の膜を作るのは日記帳だけ
@@ -7324,11 +7324,13 @@ async function meosDiaryTplMenu(ed) {
 // ★v5.1.588(俊克 11.08 am09:37「ライオン等で言えば、テリトリーが膜に相当する…基本は膜の中に中継点がある。時として、膜の外に進出して、マーキングする」): ♥膜の部品を P1〜P7 共通に。
 //   印= {* ▼mP1=… *} / {* ▲mP1=… *}(♥だけ字の頭に ♥️・v5.1.633 ▶◀ を書かない)。組は字ごとに F の1組。組の外の印は中継点(Opt で巡る)。
 //   ♥と違う所= P1〜P6 は今ある印を組へ引き込まない(俊克③「今のまま中継点として残す」)。組は新しく作る/選択を包む時だけ。コピペした ▼▲ の印は中継点に落とす
-const MEOS_FOF_MARK_RE = /\{\*[ \t]*((?:\u2665\ufe0f?|[\u25bc\u25b2])*)(?:\u25b6\u25c0|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=/, MEOS_FOF_MARK_G = /\{\*[ \t]*((?:\u2665\ufe0f?|[\u25bc\u25b2])*)(?:\u25b6\u25c0|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=/g;
+const MEOS_FOF_MARK_RE = /\{\*[ \t]*((?:\u2665\ufe0f?|[\u25bc\u25b2])*)(?:\u25b6\u25c0|\ud83d\udea5|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=/, MEOS_FOF_MARK_G = /\{\*[ \t]*((?:\u2665\ufe0f?|[\u25bc\u25b2])*)(?:\u25b6\u25c0|\ud83d\udea5|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=/g;
 function meosPzmPre(n) { return n === 7 ? '\u2665\ufe0f' : ''; }
 // ★v5.1.633(俊克 11.09 pm10:34「▶◀は当初、折り畳んだ膜を表わす意味で書いていた。今は開始膜と閉じ膜に分かれているので ▼mP5= / ▲mP5= と書き分けよう」): 膜の開始/閉じ= ▼▲だけ(▶◀を書かない)。中継点は今まで通り ▶◀。読む時は古い ▼▶◀ / ▲▶◀ も読む
-function meosPzmMarkAt(m) { const a = m.index + /^\{\*[ \t]*/.exec(m[0])[0].length, p = a + m[1].length; return { a, p, e: p + (m[0].substr(p - m.index, 2) === '\u25b6\u25c0' ? 2 : 0) }; }   // a〜p= 頭の印 / a〜e= ▶◀ まで
-function meosPzmWriteMark(to) { return /[\u25bc\u25b2]/.test(to) ? to : to + '\u25b6\u25c0'; }
+function meosPzmMarkAt(m) { const a = m.index + /^\{\*[ \t]*/.exec(m[0])[0].length, p = a + m[1].length; const _k = m[0].substr(p - m.index, 2); return { a, p, e: p + ((_k === '\u25b6\u25c0' || _k === '\ud83d\udea5') ? 2 : 0) }; }   // a〜p= 頭の印 / a〜e= ▶◀ まで
+// ★v5.1.636(俊克 11.10 am10:26 改良1「中継点もボタン化しよう…鉄道の中継信号機…🚥mP5=…ここを押すと、次の中継点あるいは ▼mP5= / ▲mP5= にワープする」):
+//   P1〜P6 の中継点= 🚥mP5=(新しく書く物)。古い ▶◀mP5= も中継点として読む(書き換えない)。♥の中間は ♥️▶◀ のまま(♥そのものが押す絵)
+function meosPzmWriteMark(to) { return /[\u25bc\u25b2]/.test(to) ? to : to + (to ? '\u25b6\u25c0' : '\ud83d\udea5'); }
 function meosPzmO(n) { return meosPzmPre(n) + '\u25bc'; }
 function meosPzmC(n) { return meosPzmPre(n) + '\u25b2'; }
 function meosPzmMark(t, n) { const s = meosRefScanText(t || ''); MEOS_FOF_MARK_G.lastIndex = 0; let m; while ((m = MEOS_FOF_MARK_G.exec(s)) !== null) if (!n || +m[2] === n) return m; return null; }   // その字の最初の印
@@ -7390,6 +7392,7 @@ function meosFofChipClick(e) {
     // ★v5.1.564(俊克 11.07 pm02:16「▼/▲を押せると、折り畳めるように思ってしまう…文字カーソルのままにして、♥ボタンの上だけで選択指に」): ワープは♥で押す。▼▲は印= 押しても飛ばない。組の♥は F の付け替えをしない(中間♥を押すと今まで通り F が移る)
     { const _n = +fm[1], pr = meosFofPair(doc, _n), me = pr && pr.m && (pr.f.name === fm[2] ? pr.f : (pr.m.name === fm[2] ? pr.m : null)); if (me && col !== fm.index + 1) return;   /* v5.1.571: ▼▲を押した */ if (me) { if (_prev !== doc.uri.toString() + '#' + ln) { const to = me === pr.f ? pr.m : pr.f; meosDbg('[puzzleTag] P' + _n + '膜 ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } return; }
       // ★v5.1.565(俊克 pm02:21「中間の♥を押して新しい相方になるのはおかしい…飽くまで中継点…次の中間♥へのワープかな」): 組がある時の中間♥= 次の中間♥へ(最後は最初へ)。F も相方も動かさない
+      if (pr && pr.m && _n !== 7) { if (_prev !== doc.uri.toString() + '#' + ln) { const all = meosPuzzleTagsOf(doc, _n).filter(h => h.name !== fm[2]).sort((p, q) => p.line - q.line), to = all.find(h => h.line > ln) || all[0]; if (to) { meosDbg('[puzzleTag] 🚥中継点 P' + _n + ' ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } } return; }   // v5.1.636: 🚥= 次の中継点か ▼/▲ へ(最後は先頭へ)
       if (pr && pr.m) { if (_prev !== doc.uri.toString() + '#' + ln) { const mids = meosPuzzleTagsOf(doc, _n).filter(h => h.name !== pr.f.name && h.name !== pr.m.name); if (mids.length >= 2) { const to = mids.find(h => h.line > ln) || mids[0]; meosDbg('[puzzleTag] 中継点 P' + _n + ' ' + (ln + 1) + '→' + (to.line + 1)); meosFofWarpTo(ed, ln, to.line); } } return; } }
     const n = +fm[1], hits = meosPuzzleTagsOf(doc, n); if (meosPuzzleFGet(doc, n) === fm[2] || hits.length < 2) return;
     if (n === 7) _meosFofWant = { uri: doc.uri.toString(), name: meosPuzzleFGet(doc, 7), n: 7 };   // v5.1.559: 元の F が相方になる= 組の2か所は変わらない
@@ -7672,7 +7675,7 @@ async function meosPuzzleTag(ch, opt) {
   } catch (e) { meosDbg('[puzzleTag] ' + (e && e.message)); }
 }
 // 1つの字の印を全部= {line, n, name}
-const MEOS_PUZZLE_TAG_NAME_RE = /\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*(?:\u25b6\u25c0|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)/;
+const MEOS_PUZZLE_TAG_NAME_RE = /\{\*[ \t]*(?:\u2665\ufe0f?|[\u25bc\u25b2])*(?:\u25b6\u25c0|\ud83d\udea5|(?<=[\u25bc\u25b2]))[ \t]*mP([1-7])[ \t]*=[ \t]*([^\s*]+)/;
 // ★v4.2.564(俊克 改良2「MをOptクリックしたら、貴方がコードブロックに書いた所に飛んでしまった」): 引用した記法は本物にならない
 //   ([[feedback_quoted_notation_must_be_inert]])= 囲い(```)の中の行と、`…` の中は数えない(参照符と同じ meosFenceLines / meosRefScanText)
 function meosPuzzleTagLine(doc, i, raw) {
@@ -7751,7 +7754,7 @@ function meosPuzzleDupFollow(e) {
           eb.replace(new vscode.Range(h.line, i, h.line, i + h.name.length), nm);
           // ★v5.1.588(俊克 am09:37「その他のマーキングP1は、Optクリックで循環できる中継点という意味だけ」): P1〜P6 の複製は中継点= ▼▲ を写しても外す(組を奪わない)
           if (h.n !== 7 && !_pzHasPair[h.n]) { _pzHasPair[h.n] = true; _pzWant.push({ uri: doc.uri.toString(), name: nm, n: h.n }); continue; }   // v5.1.589: 最初の複製1本だけが相方
-          if (h.n !== 7) { const pm = meosPzmMark(t, h.n); if (pm && pm[1] && meosFofTwoPre(pm[1], h.n)) { const s = meosPzmMarkAt(pm); if (s.e <= i) eb.replace(new vscode.Range(h.line, s.a, h.line, s.e), meosPzmWriteMark('')); } }
+          if (h.n !== 7) { const pm = meosPzmMark(t, h.n); if (pm && (pm[1] ? meosFofTwoPre(pm[1], h.n) : t.substr(meosPzmMarkAt(pm).p, 2) === '\u25b6\u25c0')) { const s = meosPzmMarkAt(pm); if (s.e <= i) eb.replace(new vscode.Range(h.line, s.a, h.line, s.e), meosPzmWriteMark('')); } }   // v5.1.636: 古い ▶◀ を写した複製も 🚥 に
         }
       }, { undoStopBefore: false, undoStopAfter: false });
       meosDbg('[puzzleTag] 複製を打ち直した ' + fix.length + '本'); if (_meosFofWant) await meosFofReconcile(ed);
@@ -8578,7 +8581,7 @@ function applyPrettyLabels(editor) {
     // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
     // v0.9.99981: ▷◁=無効化符は灰色チップ(番号なし)・採番/Fガターから除外(俊克改良3)。
     // ★v4.2.565(俊克「P1タグは、文字カーソルがその外に出れば、参照グループのように、P1のような記号のみに」): 生データを隠して「P1」のチップ
-    if (text.indexOf('mP') >= 0 && (lineHasRefMark(text) || /[\u25bc\u25b2][ \t]*mP/.test(text))) {
+    if (text.indexOf('mP') >= 0 && (lineHasRefMark(text) || text.indexOf('\ud83d\udea5') >= 0 || /[\u25bc\u25b2][ \t]*mP/.test(text))) {
       const _pzText = meosRefScanText(text); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; let mPz;
       while ((mPz = MEOS_PUZZLE_TAG_FULL_RE.exec(_pzText)) !== null) {
         puzzlePtAll.push({ line, start: mPz.index, n: +mPz[1], name: mPz[2] });
@@ -8595,7 +8598,7 @@ function applyPrettyLabels(editor) {
              ★v5.1.571(俊克 pm07:01「やはり、▼/▲は押せないようにしよう」): クリックは2つの桁の位置の中点で分かれる(台で実測)。▼は場所を取らず(幅=負の余白)、♥の箱の左に同じ幅の余白= 桁0は左端・桁1は♥の右端→ 中点がちょうど♥の左端。▼=印の頭の桁・♥=次の桁に分かれる */
           refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index), renderOptions: { before: { contentText: (_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '\u25b2' : '\u25bc', color: membraneCssColorForCode((_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? 'B' : 'G') || undefined, textDecoration: 'none; opacity: ' + (_pr.m ? '1' : '0.35') + '; font-size: 90%; display: inline-block; width: 1.556em; margin-right: -1.556em; text-align: right; pointer-events: none; transform: translateX(' + ((_pr.m && line === Math.max(_pr.f.line, _pr.m.line)) ? '0.4' : '0.2') + 'em);' } } }); }   /* ★v5.1.578(俊克 pm08:19 改良2「▼と♥の間をもう少し詰めよう。▲と♥は斜辺がほぼ同じ角度なので、さらに近づけられる」): 絵だけ寄せる(transform= 桁の境は動かない) */
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index + (_rev ? 1 : 0), line, mPz.index + (_rev ? 1 : 0)),
-          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : 'P' + mPz[1], color: mPz[1] === '7' ? '#e53935' : meosPuzzleColor(_letter, 0.95), backgroundColor: mPz[1] === '7' ? undefined : meosPuzzleColor(_letter, 0.14), textDecoration: 'none; ' + (_rev ? (_pn === 7 ? 'font-size: 140%; display: inline-block; width: 1.2em; margin-left: 1.2em; text-align: left; clip-path: polygon(0 0, 0.615em 0, 0.615em calc(50% - 0.082em), 0.308em calc(50% + 0.297em), 0.291em calc(50% + 0.297em), 0 calc(50% - 0.06em)); ' : 'display: inline-block; width: 1.68em; margin-left: 1.68em; text-align: center; border-radius: 3px; ') : mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : ((_pzPairGet(_pn) && _pzPairGet(_pn).m) ? (meosPuzzleTagsOf(editor.document, _pn).length >= 4 ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()))) + ';', margin: _rev ? undefined : '0 2px 0 2px', fontWeight: '600' } } });   /* ★v5.1.588(俊克 am09:54「P1〜P6の色を、MeDockⓉの文字色に合わせよう…P1などの数字で判別できる」): 紫をやめ字の色(MEOS_PUZZLE_COL)。組の札は♥と同じ幅の箱= 桁の境の中点が札の左端 */   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
+          renderOptions: { before: { contentText: mPz[1] === '7' ? '\u2665' : ((!_rev && _pzPairGet(_pn) && _pzPairGet(_pn).m) ? '\ud83d\udea5' : '') + 'P' + mPz[1],   /* v5.1.636: 組のある字の中継点= 🚥P5 */ color: mPz[1] === '7' ? '#e53935' : meosPuzzleColor(_letter, 0.95), backgroundColor: mPz[1] === '7' ? undefined : meosPuzzleColor(_letter, 0.14), textDecoration: 'none; ' + (_rev ? (_pn === 7 ? 'font-size: 140%; display: inline-block; width: 1.2em; margin-left: 1.2em; text-align: left; clip-path: polygon(0 0, 0.615em 0, 0.615em calc(50% - 0.082em), 0.308em calc(50% + 0.297em), 0.291em calc(50% + 0.297em), 0 calc(50% - 0.06em)); ' : 'display: inline-block; width: 1.68em; margin-left: 1.68em; text-align: center; border-radius: 3px; ') : mPz[1] === '7' ? 'font-size: 140%; ' : '') + 'cursor: ' + (_rev ? (_pr.m ? meosHandCursor() : 'text') : ((_pzPairGet(_pn) && _pzPairGet(_pn).m) ? (_pn !== 7 || meosPuzzleTagsOf(editor.document, _pn).length >= 4 ? meosHandCursor() : 'text') : (_pzIsF(+mPz[1], mPz[2]) ? 'text' : meosHandCursor()))) + ';', margin: _rev ? undefined : '0 2px 0 2px', fontWeight: '600' } } });   /* ★v5.1.588(俊克 am09:54「P1〜P6の色を、MeDockⓉの文字色に合わせよう…P1などの数字で判別できる」): 紫をやめ字の色(MEOS_PUZZLE_COL)。組の札は♥と同じ幅の箱= 桁の境の中点が札の左端 */   // ★v5.1.540(俊克 改良1「♥が少し小さいので1.4倍」改良2「回りの薄い赤の四角はなぜ?」= 538 で P の紫の地を赤にして残していた)→ ♥は地なし・140%
       }
     }
     if (lineHasRefMark(text)) {

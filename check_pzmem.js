@@ -44,7 +44,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosRuleStopAt, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleSweep, parseOpenLine, parseCloseLine, meosPuzzleColor, meosPuzzleDupFollow, meosPuzzleLand, meosStopLineNear, meosStopLineToggle, meosStopKindOf, meosRuleStep, meosStopEdgeOf, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosFofChipClick, meosMembraneRuleTarget, meosMemEdgeAt, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosRuleStopAt, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleSweep, parseOpenLine, parseCloseLine, meosPuzzleColor, meosPuzzleDupFollow, meosPuzzleLand, meosStopLineNear, meosStopLineToggle, meosStopKindOf, meosRuleStep, meosStopEdgeOf, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -123,10 +123,10 @@ const S = (sel) => sel;
   await paste(d9, 0, P1a);
   ok(/\{\* ▼mP1=/.test(d9.L[0]) && d9.L[1] === R && d9.L[4] === '' && d9.L[5] === R && /\{\* ▲mP1=M_20261101S090000JST/.test(d9.L[6]), '上へコピペ= 複製が▼・元が▲・罫線', d9.L);
   await paste(d9, 2, P1a.replace('▶◀', '▶◀'));
-  ok(/\{\* ▶◀mP1=/.test(d9.L[2]) && /▼mP/.test(d9.L[0]) && /▲mP/.test(d9.L[7]) && d9.filter === undefined && d9.L.filter(l => l === R).length === 2, '膜が在る時のコピペ= 中継点・罫線は増えない', d9.L);
+  ok(/\{\* 🚥mP1=/.test(d9.L[2]) && /▼mP/.test(d9.L[0]) && /▲mP/.test(d9.L[7]) && d9.filter === undefined && d9.L.filter(l => l === R).length === 2, '膜が在る時のコピペ= 中継点・罫線は増えない', d9.L);
   const d10 = mkDoc(['a', P1O, R, '中', '', R, P1C, 'z']); T.meosPuzzleFSet(d10, 1, 'M_20261108S100001JST');
   await paste(d10, 4, P1O);
-  ok(/\{\* ▶◀mP1=/.test(d10.L[4]) && /▼mP/.test(d10.L[1]) && /▲mP/.test(d10.L[7]), '▼P1のコピペ= ▼を外して中継点', d10.L);
+  ok(/\{\* 🚥mP1=/.test(d10.L[4]) && /▼mP/.test(d10.L[1]) && /▲mP/.test(d10.L[7]), '▼P1のコピペ= ▼を外して中継点', d10.L);
   // 9. v5.1.590 実機の形= 1本だけの字は F の控えが無い・元の行のすぐ上に貼る
   const d11 = mkDoc(['a', P1a, 'b']);
   await paste(d11, 1, P1a);
@@ -186,6 +186,17 @@ const S = (sel) => sel;
   { const d = mkDoc([P1O, R, '中', R, '中2', '', R, P1C, H1, R, 'x', '', R, H2, '<!-- {* ▼mCN=親_1 // c *} -->', R, 'y', R, '<!-- {* ▲mCN=親_1 // c *} -->']);
     const g = [1, 3, 6, 9, 12, 15, 17].map(i => T.meosStopEdgeOf(d, i));
     ok(g.join(',') === '1,0,-1,1,-1,1,-1', '膜の境= P1・♥・mCN 膜とも開始の下=1/閉じの上=-1・中の線=0', g); }
+  // 15. v5.1.636 🚥中継点を押す= 同じ字の次の印(中継点か ▼/▲)・最後は先頭へ
+  { const P1t = '<!-- {* 🚥mP1=M_20261109S090000JST //  *} -->', P1u = '<!-- {* 🚥mP1=M_20261109S090001JST //  *} -->';
+    const d = mkDoc([P1O, R, P1a, '中', P1t, '', R, P1C, 'z', P1u]); T.meosPuzzleFSet(d, 1, 'M_20261108S100001JST');
+    const ed = mkEd(d); let shownAt = -1; ed.revealRange = (r) => { shownAt = r.start.line; }; stub.window.activeTextEditor = ed; stub.window.visibleTextEditors = [ed];
+    stub.window.showTextDocument = async (doc, o) => { ed.selection = o.selection; return ed; };
+    const click = async (ln) => { T.meosFofChipClick({ kind: 2, textEditor: ed, selections: [{ active: { line: 8, character: 0 }, isEmpty: true }] });   // 先に別の行に居た
+      const p = { line: ln, character: 0 }; ed.selection = { start: p, end: p, active: p, anchor: p, isEmpty: true };
+      T.meosFofChipClick({ kind: 2, textEditor: ed, selections: [{ active: p, isEmpty: true }] }); await new Promise(r => setTimeout(r, 600)); return shownAt; };
+    let l = await click(2); ok(l === 4, '★古い▶◀の中継点(2)→ 次の中継点(4)', l);
+    l = await click(4); ok(l === 7, '★最後の中の中継点(4)→ ▲(7)', l);
+    l = await click(9); ok(l === 0, '★膜の外の最後の中継点(9)→ 先頭の▼(0)', l); }
   // 7. 色
   ok(T.meosPuzzleColor('M', 0.95) === 'rgba(229, 57, 53, 0.95)' && T.meosPuzzleColor('k', 0.14) === 'rgba(194, 24, 91, 0.14)', '札の色= Me Dock の字の色', [T.meosPuzzleColor('M', 0.95), T.meosPuzzleColor('k', 0.14)]);
   console.log(ng ? ('NG ' + ng) : '全項目 PASS');
