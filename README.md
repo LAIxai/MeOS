@@ -102,7 +102,7 @@ or press a key, and you are back under the everyday blind — no passphrase. It 
 behind you, a shared screen or a screenshot. The 🪑 is the lock.
 
 **🛑 Stop lines.** `<!-- Mew!UFC --- -->` — three dashes or more, as in Markdown's own `---` — is drawn as a stop line:
-a rule with an octagonal STOP sign at each end. There are eight lines in all:
+a rule with an octagonal STOP sign at each end. Dashes and dots, read like Morse code, give eight lines in all:
 
 | Type | Line | Type | Line |
 |---|---|---|---|
@@ -111,24 +111,31 @@ a rule with an octagonal STOP sign at each end. There are eight lines in all:
 | `-.-` | dash-dot | `-..-` | two-dot |
 | `〜〜〜` | wavy | `≈≈≈` | double wavy |
 
-Hold ↓ or ↑ and the
-cursor pauses at the line; let go within 20 lines of one, and it glides the rest of the way and stops there.
-**Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Fold a membrane to
-jump over the lines inside it. The 🛑 button in **Format Me** puts a stop line under the cursor (↻ goes solid → dashed → dotted →
-wavy; hold Opt over 🛑 for double or double wavy) and turns into 🚫 to take it off when the cursor is on or next to one.
-Or just type it: a line holding only one of the eight marks becomes that stop line when you press Enter (Cmd+Z keeps
-the plain text), so a list item such as `- - item` or a line starting with `...` stays as you typed it. On a membrane boundary the line
-turns green under the opening membrane and blue above the closing one. Two dashes are not enough, and inside a code
-block it stays text. It is a UFC line (one that never folds), so it does not break a list of clocks — the badge line
-and the chains reach across it.
+Hold ↓ or ↑ and the cursor pauses at the line; let go within 20 lines of one, and it glides the rest of the way and
+stops there. **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Fold a
+membrane to jump over the lines inside it.
+
+Type it, or press it. A line holding only one of the eight marks becomes that stop line when you press Enter — no new
+line is added, and Cmd+Z gives back the plain text. A list item such as `- - item`, or a line that starts with `...`,
+stays as you typed it. In Japanese input, `~` three times gives `〜〜〜` (`～～～` works too). The 🛑 button in
+**Format Me** puts a stop line under the cursor: its ↻ goes solid → dashed → dotted → wavy and remembers your choice,
+and holding Opt over 🛑 turns solid into double and wavy into double wavy. With the cursor on or next to a stop line,
+🛑 turns into 🚫 and takes it off.
+
+On a membrane boundary the line turns green under the opening membrane and blue above the closing one. Two dashes
+are not enough, and inside a code block it stays text. It is a UFC line (one that never folds), so it does not break
+a list of clocks — the badge line and the chains reach across it.
 
 **Every Me Dock letter is a membrane.** ♥ and the letters M e D o c k can each wrap a passage: select it and press the
+letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Pressing the letter warps
+you back into the membrane, to the place you last were. One membrane per letter; ▼ is green and ▲ blue, as with ♥,
+and the chips wear the letter's colour from Me Dock.
+
+**🚥 Relay points.** Other marks of the same letter are relay points, inside the membrane or out — written `🚥mP1=`
+and shown as 🚥 P1 (`♥️🚥mP7=` and 🚥 ♥ for ♥). Click 🚥 to go round the relay points; click P1 or ♥ beside it to go
+back into the membrane. Copy a mark and paste it elsewhere to make one.
 
 **♥ A membrane with a one-day fuse.** A new ♥ membrane starts a one-shot ⏰ for 24 hours, written `↺↻(0y1d0h0m0s)×1` — change the digits for another length. The ⏰ list shows the moment it ends, and takes you back there. Delete the ⏰ line if you don't want it. Five seconds before the end a fuse starts to hiss. On the final *pssh* the closing ♥, the ⏰ and the stop lines go, and the opening ♥ and all your text stay, so the ♥ on the menu bar still takes you there.
-letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Pressing the letter warps
-you back into the membrane, to the place you last were. Other marks of the same letter are relay points along the
-way, written `🚥mP1=` and shown as 🚥 P1 (`♥️🚥mP7=` and 🚥 ♥ for ♥). Click 🚥 to go round the relay points; click P1 or ♥ to go back into the membrane. One membrane per letter; ▼ is green and ▲ blue, as with ♥, and the
-chips wear the letter's colour from Me Dock.
 
 **Opt+↑/↓ — Jump to M-🛑.** In VSCodium, Opt+↑/↓ moves a line up or down. On the Mac it has always meant "to the start
 or end of the paragraph" — and in MeOS a membrane is a paragraph. Press **Opt+↑/↓** in Format Me and it becomes
