@@ -105,11 +105,11 @@ const at = (ln) => { const out = []; for (const c of ed.__calls) for (const it o
 const show = (ln) => at(ln).map(o => o.col + ':' + o.contentText + ' ' + (o.color || '') + ' / ' + (o.backgroundColor || '') + ' / ' + String(o.textDecoration || '').slice(0, 110)).join('\n      ');
 for (const ln of [1, 4, 7, 8, 9, 14]) console.log('  [' + ln + '] ' + show(ln));
 const o1 = at(1), c1 = at(7), r4 = at(4), k8 = at(8), h9 = at(9), t3 = at(3), m11 = at(11);
-ok(m11.some(o => o.contentText === '🚥♥' && /cursor: image-set/.test(o.textDecoration)) && !m11.some(o => o.contentText === '▼' || o.contentText === '▲'), '★♥️🚥mP7= 🚥♥の札・手(v5.1.637)', m11);
+ok(m11.some(o => o.contentText === '🚥' && o.col === 0 && /cursor: text/.test(o.textDecoration)) && m11.some(o => o.contentText === '♥' && o.col === 1 && /cursor: image-set/.test(o.textDecoration)) && !m11.some(o => o.contentText === '▼' || o.contentText === '▲'), '★♥️🚥mP7= 🚥(中継点1つ= 手にしない)＋♥(手)', m11);
 ok(o1.some(o => o.contentText === '▼' && o.col === 0) && o1.some(o => o.contentText === 'P1' && o.col === 1 && /rgba\(229, 57, 53/.test(o.color) && /width: 1\.68em; margin-left: 1\.68em/.test(o.textDecoration)), '開始 P1= 緑▼(桁0)＋赤い札(桁1・♥と同じ幅)', o1);
 ok(c1.some(o => o.contentText === '▲') && c1.some(o => o.contentText === 'P1' && o.col === 1), '閉じ P1= 青▲＋札', c1);
-ok(!r4.some(o => o.contentText === '▼' || o.contentText === '▲') && r4.some(o => o.contentText === '🚥P1' && o.col === 0 && /rgba\(229, 57, 53/.test(o.color)), '★古い▶◀の中継点 P1= ▼▲なし・🚥P1の赤い札(v5.1.636)', r4);
-ok(!t3.some(o => o.contentText === '▼' || o.contentText === '▲') && t3.some(o => o.contentText === '🚥P1' && o.col === 0 && /cursor: image-set/.test(o.textDecoration)), '★🚥mP1= 🚥P1の札・手(押せる)', t3);
+ok(!r4.some(o => o.contentText === '▼' || o.contentText === '▲') && r4.some(o => o.contentText === '🚥' && o.col === 0) && r4.some(o => o.contentText === 'P1' && o.col === 1 && /rgba\(229, 57, 53/.test(o.color) && /width: 1\.68em; margin-left: 1\.68em/.test(o.textDecoration)), '★古い▶◀の中継点= 🚥(桁0)＋赤い札P1(桁1・膜の札と同じ箱)(v5.1.638)', r4);
+ok(!t3.some(o => o.contentText === '▼' || o.contentText === '▲') && t3.some(o => o.contentText === '🚥' && o.col === 0 && /cursor: image-set/.test(o.textDecoration)) && t3.some(o => o.contentText === 'P1' && o.col === 1 && /cursor: image-set/.test(o.textDecoration)), '★🚥mP1= 🚥も札も手(中継点が2つ= 巡れる)', t3);
 ok(k8.some(o => o.contentText === 'P6' && /rgba\(194, 24, 91/.test(o.color)) && !k8.some(o => o.contentText === '▼'), '古いP6(1本)= 桃の札・▼なし', k8);
 ok(h9.some(o => o.contentText === '▼') && h9.some(o => o.contentText === '♥' && /clip-path/.test(o.textDecoration)), '♥膜は今まで通り', h9);
 const gG = o1.find(o => o.contentText === '▼').color, gB = c1.find(o => o.contentText === '▲').color, hG = h9.find(o => o.contentText === '▼').color;
