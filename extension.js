@@ -15457,8 +15457,9 @@ function meosMaybeRuleTyped(e) {
     if (!/^\r?\n[ \t]*$/.test(c.text) || c.range.start.line !== c.range.end.line || !ed || ed.document !== doc || ed.selections.length !== 1 || doc.languageId !== 'markdown') return false;
     const line = c.range.start.line, t = doc.lineAt(line).text;
     if (c.range.start.character !== t.length || !MEOS_RULE_TYPED.has(t) || meosFenceLines(doc).has(line) || meosInFrontMatter(doc, line)) return false;
-    const k = t.replace(/\uff5e/g, '\u301c');
-    (async () => { try { if (await ed.edit(eb => eb.replace(new vscode.Range(line, 0, line, t.length), '<!-- Mew!UFC ' + k + ' -->'))) meosDbg('[stopLine] 打って入れた 行=' + (line + 1)); } catch (_) { } })();
+    const k = t.replace(/\uff5e/g, '\u301c'), ind = c.text.replace(/^\r?\n/, '');
+    // ★v5.1.640(俊克 11.10「改行キーを押して変換したとき、改行はしないようにしよう」): Enter の改行は取り消す(線に変えるだけ)。カーソルは 🛑 ボタンと同じ= 線の次の行の行末
+    (async () => { try { if (line + 1 < doc.lineCount && await ed.edit(eb => eb.replace(new vscode.Range(line, 0, line + 1, ind.length), '<!-- Mew!UFC ' + k + ' -->'))) { meosStopLineLand(ed, line); meosDbg('[stopLine] 打って入れた 行=' + (line + 1)); } } catch (_) { } })();
     return true;
   } catch (_) { return false; }
 }

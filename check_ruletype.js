@@ -14,7 +14,7 @@ const tick=()=>new Promise(r=>setTimeout(r,0));
 let _n=0;
 function mk(L,lang){const _id=++_n;const doc={uri:{toString:()=>'file:///f'+_id+'.md',fsPath:'/f'+_id+'.md',scheme:'file'},languageId:lang||'markdown',get lineCount(){return L.length;},
   lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/f.md',isClosed:false,version:_id};
- const ed={document:doc,selection:null,selections:[{}],edit:async f=>{f({replace:(r,t)=>{L[r.start.line]=t;}});return true;}};
+ const ed={document:doc,selection:null,selections:[{}],edit:async f=>{f({replace:(r,t)=>{const a=r.start.line,b=r.end.line;L.splice(a,b-a+1,L[a].slice(0,r.start.character)+t+L[b].slice(r.end.character));}});return true;}};
  stub.window.activeTextEditor=ed;return {doc,ed,L};}
 // Enter= 行末に改行が入った後の文書で、改行の変更が届く
 const enter=(d,line,extra,col)=>{const c=col==null?d.L[line].length:col;return X.meosMaybeRuleTyped(Object.assign({document:d.doc,contentChanges:[{text:'\n',range:new stub.Range(line,c,line,c)}]},extra||{}));};
@@ -22,7 +22,10 @@ const type=(d,line,ch)=>{const col=d.L[line].length-ch.length;return X.meosMaybe
 (async()=>{
  for(const [t,k,n] of [['---','---','実線'],['===','===','二重線'],['-.-','-.-','一点鎖線'],['-..-','-..-','二点鎖線'],['- -','- -','破線'],['...','...','点線'],['〜〜〜','〜〜〜','波線'],['～～～','〜〜〜','波線(全角チルダ)'],['≈≈≈','≈≈≈','二重波線']]){
   const d=mk(['本文',t,'','次']);const f=enter(d,1);await tick();
-  ok(f&&d.L[1]==='<!-- Mew!UFC '+k+' -->'&&X.MEOS_RULE_LINE_RE.test(d.L[1])&&d.L[2]===''&&d.L[3]==='次','★'+t+' + Enter → '+n,d.L);}
+  ok(f&&d.L[1]==='<!-- Mew!UFC '+k+' -->'&&X.MEOS_RULE_LINE_RE.test(d.L[1])&&d.L[2]==='次'&&d.L.length===3,'★'+t+' + Enter → '+n+'・改行は残さない',d.L);
+  ok(d.ed.selection&&d.ed.selection.active.line===2&&d.ed.selection.active.character===1,'★カーソルは線の次の行の行末(🛑ボタンと同じ)',d.ed.selection&&d.ed.selection.active);}
+ {const d=mk(['本文','---','']);enter(d,1);await tick();ok(d.L.join('|')==='本文|<!-- Mew!UFC --- -->'&&d.ed.selection.active.line===1,'★最後の行で Enter= 線だけ・カーソルは線の行',d.L);}
+ {const d=mk(['本文','---','  ']);X.meosMaybeRuleTyped({document:d.doc,contentChanges:[{text:'\n  ',range:new stub.Range(1,3,1,3)}]});await tick();ok(d.L.join('|')==='本文|<!-- Mew!UFC --- -->','自動の字下げが入った改行も取り消す',d.L);}
  let d;
  d=mk(['本文','..']);type(d,1,'.');await tick();ok(d.L[1]==='..'&&!type(mk(['本文','...']),1,'.'),'★... を打っただけでは変換しない(...そしての打ち始め)',d.L);
  d=mk(['本文','- - 項目','']);enter(d,1);await tick();ok(d.L[1]==='- - 項目','★箇条書きの入れ子 - - 項目 + Enter は変換しない',d.L);
