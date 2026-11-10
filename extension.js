@@ -43365,7 +43365,7 @@ async function meosAutoFoldSpecLines(editor, force) {
     //   ★畳むのは「開いていると分かっている物」だけ= 既に畳まれた物へ fold を打たない
     //     (v4.0.188 の「内側that無いと外側=膜を畳む」事故を原理的に起こさない)。
     _shape46 = meosFcFoldShape(editor.document, _cur).filter(it => it.hasRange && it.b.fc);
-    _open46 = _shape46.filter(it => it.open && _vis(it.head) && !_vis(it.end)).map(it => it.head);   // 開けるべきなのに畳んである
+    _open46 = _shape46.filter(it => it.open && _vis(it.head) && !_vis(it.end) && !(it.b.open != null && meosMemRecentlyFolded(it.b.open))).map(it => it.head);   // 開けるべきなのに畳んである / ★v5.1.650(俊克 am02:23「▲で閉じようとすると、まだ直ぐに展開される」= ログ [fcOpen] 170167 を開ける): 648 は個別の道(fcOne)だけ塞いだ。一括の道も今しがた畳んだ膜のFCは開けない(門番は両側に・v4.0.466 と同じ教訓)
     heads = _shape46
       .filter(it => !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))     // 畳むべきなのに開いている
       .map(it => { _headEnd43.set(it.head, it.end); return it.head; });
