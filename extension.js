@@ -15620,8 +15620,11 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _bg45 = _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ((_sb45 && _sb45.head) ? ', ' + _sign(_bulkU, (MEOS_STOP_BTN_CH + 0.3) + 'ch') : '')   // オフ= 線は消して左端に OFF / 開始膜の線は隣に一括の標識
                 : _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + _sign((_sb45 && _sb45.head) ? _bulkU : MEOS_STOP_SIGN_URL, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
-              items.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; position: absolute; top: 50%; transform: translateY(-50%); display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
+              // ★v5.1.646(俊克 pm09:48 バグ1「開始膜の線がオンのときに、右の🛑上で選択指に変わらない。オフにすれば押せる」): 645 は右端の札の位置を詰め物の札(空白56個)の幅で見積もった= 札の字の幅と箱の ch がずれ、札が標識の下に来ていなかった。
+              //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
+              const _mid46 = !!(_sb45 && _sb45.pad > 0);
+              items.push({ range: new vscode.Range(i, _mid46 ? _sb45.pad : 0, i, _mid46 ? _sb45.pad : 0), renderOptions: { before: { contentText: '\u200b',
+                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + MEOS_STOP_BTN_CH + 'ch; margin-right: -' + MEOS_STOP_BTN_CH + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
             }
             continue;
           }
@@ -47708,7 +47711,6 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
             { const _sb = meosStopBtnSpots(document, ln, _ed89); if (_sb) {   // v5.1.645: 一時停止線の🛑(左= 自分・開始膜の線の右= 中を一括)
                 const _bt = '\u00a0'.repeat(MEOS_STOP_BTN_CH), _h1 = new vscode.InlayHint(new vscode.Position(ln, 1), _bt);
                 _h1.tooltip = _sb.on ? 'Stop line | Click to turn it off (🚫): Cmd+↓/↑ and held arrows pass through. Click again to turn it on.' : 'Stop line — off | Click to turn it on again.'; out.push(_h1);
-                if (_sb.pad > 0) out.push(new vscode.InlayHint(new vscode.Position(ln, _sb.pad), '\u00a0'.repeat(MEOS_STOP_BOX_CH - 2 * MEOS_STOP_BTN_CH)));
                 if (_sb.bulk > 0) { const _h3 = new vscode.InlayHint(new vscode.Position(ln, _sb.bulk), _bt); _h3.tooltip = !(_sb.inner && _sb.inner.length) ? 'All stop lines inside | There are no stop lines inside this membrane yet.' : _sb.bulkOff ? 'All stop lines inside — off | Click to turn them all on.' : 'All stop lines inside | Click to turn them all off at once.'; out.push(_h3); }
               } }
           }

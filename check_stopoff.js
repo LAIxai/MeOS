@@ -101,6 +101,10 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
   ok(nOff(bg(4)) === 1 && nStop(bg(4)) === 0 && !/gradient/.test(bg(4)), '中の線オフ= 左端の OFF 1つだけ・線は描かない', bg(4).slice(0, 80));
   ok(nStop(bg(6)) === 2 && /gradient/.test(bg(6)), '閉じ膜の線オン= 左右の STOP と線', [nStop(bg(6))]);
   ok(/position: absolute/.test(bg(9)), '箱は浮かせて札に重ねる', bg(9).slice(0, 60));
+  { const d7 = doc(['top', H1, R, 'a3', R, 'a5', R, H2]), c7 = [], e7 = mkEd(d7, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0, character: 0 }, isEmpty: true });
+    e7.selections = [e7.selection]; e7.setDecorations = (deco, items) => c7.push({ deco, items: items || [] }); stub.window.activeTextEditor = e7; stub.window.visibleTextEditors = [e7]; T.meosApplyTimerLineDecorations(e7);
+    const bx = c7.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === 2 && x.renderOptions && x.renderOptions.before && /background:/.test(x.renderOptions.before.textDecoration || ''));
+    ok(bx.length === 1 && bx[0].range.start.character === 2 && /margin-left: -2ch; margin-right: -2ch/.test(bx[0].renderOptions.before.textDecoration) && !/absolute/.test(bx[0].renderOptions.before.textDecoration), 'v5.1.646 開始膜の線(オン)の箱は札の間(桁2)に置き負の余白= 右の札が右端の標識に重なる(詰め物の見積もりなし)', bx.map(x => [x.range.start.character, x.renderOptions.before.textDecoration.slice(0, 90)])); }
   const hid = (ln) => calls.flatMap(c => c.items.map(x => [c.deco, x])).map(p => [p[0], p[1] && p[1].range ? p[1].range : p[1]]).filter(p => p[1] && p[1].start && p[1].start.line === ln && p[0].__opts && /opacity: 0; font-size: 0;'?$/.test(p[0].__opts.textDecoration || '') && !/letter-spacing/.test(p[0].__opts.textDecoration)).map(p => [p[1].start.character, p[1].end.character, p[0]]).sort((a, b) => a[0] - b[0]);
   const h2 = hid(2); ok(h2.length === 3 && h2[0][1] === 1 && h2[1][1] === 2 && h2[0][2] !== h2[1][2] && h2[0][2] === h2[2][2], '開始膜の線(オフ)の字は札の桁1・2で割って2つの型で交互に隠す', h2.map(x => [x[0], x[1]]));
   const h9 = hid(9); ok(h9.length === 2 && h9[0][1] === 1 && h9[0][2] !== h9[1][2], 'ふつうの線は桁1で割る(札が幅0にならない)', h9.map(x => [x[0], x[1]]));
