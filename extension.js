@@ -40975,6 +40975,15 @@ function meosMembraneRuleTarget(doc, cur, down, ed) {
   //   着地が膜の行(↓で開始膜・↑で閉じ膜)になる線は、長押しと同じく膜の行へ入る手前で止まる(Rawの膜の行には着地しない)
   const L = meosDocLines(doc), fence = meosFenceLines(doc), dir = down ? 1 : -1, beyond = l => l >= 0 && l < L.length && (down ? l > cur : l < cur);
   for (let i = cur + dir; i >= 0 && i < L.length; i += dir) {
+    // ★v5.1.644(俊克 11.10 pm09:02 バグ1「膜の外で Cmd+↓/↑ を打つと、膜で一時停止したあと、膜の内部の一時停止線にダイブしてしまう」「外からは膜だけに立ち止まって、膜の外に引いた線があればそこには停止する」):
+    //   境に罫線のある膜(▼の次/▲の前が罫線= 線を引いて囲んだ膜)へ外から入る時は、膜の手前で1度止まり、中は丸ごと飛ばして相方の向こうへ。
+    //   罫線の無い膜(生涯日記を包む「日記」膜など)は今までどおり素通り= v5.1.602 の「外から↑で日記ごと飛んで先頭へ」は起きない。中に居る時は今までどおり中の線で止まる
+    { const e = fence.has(i) ? 0 : meosMemEdgeAt(L[i], false), nx = i + dir;
+      if (e === dir && nx >= 0 && nx < L.length && !fence.has(nx) && MEOS_RULE_LINE_RE.test(L[nx]) && !(ed && meosRuleHidden(ed, nx))) {
+        const to = i - dir; if (beyond(to) && !meosMemEdgeAt(L[to], fence.has(to))) return to;
+        let depth = 0, k = nx; for (; k >= 0 && k < L.length; k += dir) { const e2 = fence.has(k) ? 0 : meosMemEdgeAt(L[k], false); if (e2 === dir) depth++; else if (e2 === -dir) { if (depth === 0) break; depth--; } }
+        if (k >= 0 && k < L.length) { i = k; continue; }
+      } }
     if (fence.has(i) || !MEOS_RULE_LINE_RE.test(L[i]) || (ed && meosRuleHidden(ed, i))) continue;
     let to = i - dir; if (to >= 0 && to < L.length && meosMemEdgeAt(L[to], fence.has(to))) to -= dir;
     if (beyond(to) && !meosMemEdgeAt(L[to], fence.has(to))) return to;

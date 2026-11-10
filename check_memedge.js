@@ -62,10 +62,10 @@ ok(t(3,true)===6,'♥膜の中 ↓=閉じ罫線の1行上',t(3,true));
 ok(t(4,false)===3,'♥膜の中 ↑=開始罫線の次の行',t(4,false));
 ok(t(6,true)===9,'もう下端=次の膜の手前(v5.1.602)',t(6,true));
 ok(t(3,false)===-1,'もう上端=本来の先頭へ',t(3,false));
-ok(t(0,true)===6,'開始膜の手前から ↓=膜の中の閉じ罫線の上(v5.1.602)',t(0,true));
-ok(t(9,false)===3,'閉じ膜の直下から ↑=膜の中の開始罫線の下(v5.1.602)',t(9,false));
-ok(t(12,true)===16,'親の中 ↓=開いた子の中の線でも止まる(v5.1.602)',t(12,true));
-ok(t(19,false)===15,'親の中 ↑=開いた子の中の線でも止まる(v5.1.602)',t(19,false));
+ok(t(0,true)===9,'開始膜の手前から ↓=中へ潜らず膜を飛ばして次の膜の手前(v5.1.644)',t(0,true));
+ok(t(9,false)===-1,'閉じ膜の直下から ↑=中へ潜らず、外に線が無ければ本来の先頭へ(v5.1.644)',t(9,false));
+ok(t(12,true)===20,'親の中 ↓=子の膜(罫線つき)は外から潜らず飛ばす(v5.1.644)',t(12,true));
+ok(t(19,false)===12,'親の中 ↑=子の膜は飛ばして親の開始罫線の下(v5.1.644)',t(19,false));
 ok(t(15,true)===16,'子の中 ↓',t(15,true));
 ok(t(15,false)===12,'子の中 ↑ もう上端=子の膜を出て親の開始罫線の下(v5.1.602)',t(15,false));
 ok(t(16,false)===15,'子の中 ↑',t(16,false));
@@ -89,6 +89,13 @@ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,
   ok(u(15,false)===12,'膜の外 ↑=閉じ膜の直下で止まる(膜の行に着地しない)',u(15,false));
   ok(u(2,false)===-1&&u(0,true)===2,'線のすぐ隣: 越えた先に線が無ければ本来/膜を飛ばして次の線',[u(2,false),u(0,true)]);
 }
+{ const W=['top','x1',H1,R,'in4','',R,'in7',R,H2,'after10',R,'y12'];   // v5.1.644 俊克の見え方= 外→膜の手前→中へ潜らず外の線へ
+  const dw={...doc,uri:{toString:()=>'file:///w.md',fsPath:'/w.md',scheme:'file'},fileName:'/w.md',lineCount:W.length,lineAt:n=>({text:W[n]}),getText:()=>W.join('\n')};
+  const w=(c,d)=>T.meosMembraneRuleTarget(dw,c,d);
+  ok(w(0,true)===1&&w(1,true)===10&&w(12,false)===10&&w(10,false)===-1,'v5.1.644 外から↓↑= 膜の手前で止まり、もう1回で膜を飛ばして外の線(中の線にダイブしない)',[w(0,true),w(1,true),w(12,false),w(10,false)]);
+  const G=[O.replace('ハイライトと文字色','日記'),'a1',R,'a3','b4',C.replace('ハイライトと文字色','日記'),'meta'];
+  const dg={...doc,uri:{toString:()=>'file:///g.md',fsPath:'/g.md',scheme:'file'},fileName:'/g.md',lineCount:G.length,lineAt:n=>({text:G[n]}),getText:()=>G.join('\n')};
+  ok(T.meosMembraneRuleTarget(dg,6,false)===3,'v5.1.644 罫線の無い膜(日記)は外からでも素通り= 中の線で止まる(v5.1.602 を守る)',T.meosMembraneRuleTarget(dg,6,false)); }
 // ★v5.1.603: Opt+↑/↓(Jump to M-🛑)= 膜の端へ・膜の行なら相方・もう一度で外側・子は飛ばす・囲いは数えない
 { const j=(c,d)=>T.meosMemJumpTarget(doc,c,d);
   ok(j(3,true)===8&&j(3,false)===1,'♥膜の中 Opt+↓=閉じ膜/Opt+↑=開始膜',[j(3,true),j(3,false)]);

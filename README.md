@@ -112,8 +112,9 @@ a rule with an octagonal STOP sign at each end. Dashes and dots, read like Morse
 | `〜〜〜` | wavy | `≈≈≈` | double wavy |
 
 Hold ↓ or ↑ and the cursor pauses at the line; let go within 20 lines of one, and it glides the rest of the way and
-stops there. **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Fold a
-membrane to jump over the lines inside it.
+stops there. **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Seen
+from outside, a membrane edged with stop lines is a single stop: Cmd+↓/↑ halts in front of it, and the next press
+jumps over the whole membrane. Step inside, and its own lines take over.
 
 Type it, or press it. A line holding only one of the eight marks becomes that stop line when you press Enter — no new
 line is added, and Cmd+Z gives back the plain text. A list item such as `- - item`, or a line that starts with `...`,
