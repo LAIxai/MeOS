@@ -116,6 +116,12 @@ stops there. **Cmd+↓/↑** jumps from stop line to stop line, so one long file
 from outside, a membrane edged with stop lines is a single stop: Cmd+↓/↑ halts in front of it, and the next press
 jumps over the whole membrane. Step inside, and its own lines take over.
 
+**Switch a line off, without deleting it.** Click the 🛑 at the left end: the line disappears and a grey **OFF**
+sign stays in its place — in the text it is `<!-- Mew!UFC --- 🚫 -->`, and nothing stops there any more. Click OFF to
+turn it back on. On the line under an opening membrane, the 🛑 at the right end switches **every line inside** off or on
+at once; with that line itself off, the two signs sit side by side. Leave a membrane's edge off on one side and it
+becomes a one-way door: Cmd+↓ walks in, Cmd+↑ jumps over.
+
 Type it, or press it. A line holding only one of the eight marks becomes that stop line when you press Enter — no new
 line is added, and Cmd+Z gives back the plain text. A list item such as `- - item`, or a line that starts with `...`,
 stays as you typed it. In Japanese input, `~` three times gives `〜〜〜` (`～～～` works too). The 🛑 button in

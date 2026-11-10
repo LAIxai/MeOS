@@ -7369,7 +7369,7 @@ async function meosFofReconcile(ed, n) {
     let rules = null;
     if (pr.m && jobs.some(j => !meosFofTwoPre(L[j.line].slice(j.a, j.b), n) && /[\u25bc\u25b2]/.test(j.to))) {
       const o = Math.min(pr.f.line, pr.m.line), c = Math.max(pr.f.line, pr.m.line), ind = (L[o].match(/^[ \t]*/) || [''])[0], ru = meosFofRule(doc, ind);
-      if (ru) { const isR = (l) => l >= 0 && l < L.length && MEOS_RULE_LINE_RE.test(L[l]), blank = (l) => l >= 0 && l < L.length && !L[l].trim();
+      if (ru) { const isR = (l) => l >= 0 && l < L.length && meosIsRuleAny(L[l]), blank = (l) => l >= 0 && l < L.length && !L[l].trim();
         const top = isR(o + 1) ? '' : ru, bot = isR(c - 1) ? '' : ((c - 1 === o || blank(c - 1) ? '' : ind + '\n') + ru);
         if (c === o + 1) rules = (top || bot) ? [{ line: c, text: top + ind + '\n' + '\n' + ru }] : null;
         else rules = [top ? { line: o + 1, text: top } : null, bot ? { line: c, text: bot } : null].filter(Boolean); } }
@@ -7423,8 +7423,8 @@ function meosPuzzleKillSpans(doc, n, kill, extra) {
   // v5.1.588: どの字も印に付いた罫線を一緒に消す。ただし罫線の向こうが別の膜の行なら、その膜の罫線= 残す(膜の境のすぐ隣に貼った中継点)
   const _edgeAt = (l) => l >= 0 && l < doc.lineCount ? meosMemEdgeAt(doc.lineAt(l).text, false) : 0;
   for (const ln of whole.slice()) { const t = doc.lineAt(ln).text, up = !/\u25bc(?:\u25b6|[ \t]*mP)/.test(t), dn = !/\u25b2(?:\u25b6|[ \t]*mP)/.test(t);   // v5.1.574: ♥に付いた罫線も一緒に(開始♥=下・閉じ♥=上・中間♥=両方)
-    if (dn && ln + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(ln + 1).text) && !whole.includes(ln + 1) && (_edgeAt(ln + 2) !== -1 || whole.includes(ln + 2))) whole.push(ln + 1);
-    if (up && ln > 0 && MEOS_RULE_LINE_RE.test(doc.lineAt(ln - 1).text) && !whole.includes(ln - 1) && (_edgeAt(ln - 2) !== 1 || whole.includes(ln - 2))) whole.push(ln - 1); }
+    if (dn && ln + 1 < doc.lineCount && meosIsRuleAny(doc.lineAt(ln + 1).text) && !whole.includes(ln + 1) && (_edgeAt(ln + 2) !== -1 || whole.includes(ln + 2))) whole.push(ln + 1);
+    if (up && ln > 0 && meosIsRuleAny(doc.lineAt(ln - 1).text) && !whole.includes(ln - 1) && (_edgeAt(ln - 2) !== 1 || whole.includes(ln - 2))) whole.push(ln - 1); }
   // v5.1.609: 閉じ♥の⏰は印と一緒に(持ち主の無い字を残さない)。extra= 呼び手が足す行
   if (n === 7) for (const ln of whole.slice()) if (/\u25b2(?:\u25b6|[ \t]*mP)/.test(doc.lineAt(ln).text)) for (const k of meosFofClockLinesBelow(doc, ln)) if (!whole.includes(k)) whole.push(k);
   for (const k of extra || []) if (!whole.includes(k)) whole.push(k);
@@ -7493,7 +7493,7 @@ async function meosFofClockExpire(doc, c, loud) {
   const uri = doc.uri.toString(), lk = uri + ' ' + c.key; if (_meosFofExpiring.has(uri)) return false; _meosFofExpiring.add(uri);
   try {
     const r = meosFofRange(doc, 7); if (!r || r.key !== c.key) return false;
-    const openName = r.key.slice(1), kill = meosPuzzleTagsOf(doc, 7).filter(h => h.name !== openName), extra = (r.start + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(r.start + 1).text)) ? [r.start + 1] : [];
+    const openName = r.key.slice(1), kill = meosPuzzleTagsOf(doc, 7).filter(h => h.name !== openName), extra = (r.start + 1 < doc.lineCount && meosIsRuleAny(doc.lineAt(r.start + 1).text)) ? [r.start + 1] : [];
     const spans = meosPuzzleKillSpans(doc, 7, kill, extra); if (!spans.length) return false;
     meosPuzzleFSet(doc, 7, openName);
     const we = new vscode.WorkspaceEdit(); for (const s of spans) we.delete(doc.uri, s); const ok = await vscode.workspace.applyEdit(we); if (!ok) return false;
@@ -7556,7 +7556,7 @@ function meosFofNotePlace(ed) {
   if (_meosFofPlaceT) clearTimeout(_meosFofPlaceT);
   _meosFofPlaceT = setTimeout(() => { _meosFofPlaceT = null; try {
     const doc = ed.document; if (!meosIsProseDoc(doc) || doc.isClosed) return;
-    const a = ed.selection.active; if (MEOS_RULE_LINE_RE.test(doc.lineAt(a.line).text)) return;
+    const a = ed.selection.active; if (meosIsRuleAny(doc.lineAt(a.line).text)) return;
     const rs = []; for (let n = 1; n <= 7; n++) { const r = meosFofRange(doc, n); if (r && a.line > r.start && a.line < r.end) rs.push(r); } if (!rs.length) return;   // v5.1.588: 居る膜(P1〜P7)ぜんぶ= 入れ子でもそれぞれの膜の最後の場所
     const m = getMeCursorMap(doc), cols = (m.__col && typeof m.__col === 'object') ? m.__col : (m.__col = {}); for (const r of rs) { m[r.key] = a.line - r.start; cols[r.key] = a.character; }
     if (extensionContext) extensionContext.globalState.update(meCursorKey(doc), m);
@@ -7569,7 +7569,7 @@ async function meosPuzzleLand(ed, line, onRow, at) {
   const doc = ed.document;
   // ★v4.2.589(俊克「パズルワープでは、P1〜6の行の次の行に着陸しよう。紫のP1〜6を見せるため」): 印の行に立つと生データに戻って紫のチップが消える→ 1行下へ
   let land = Math.min(line + 1, doc.lineCount - 1);
-  if (onRow && land + 1 < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(land).text)) land++;   // v5.1.574: 罫線の行に立つと生の字に戻る= 中身の1行目へ
+  if (onRow && land + 1 < doc.lineCount && meosIsRuleAny(doc.lineAt(land).text)) land++;   // v5.1.574: 罫線の行に立つと生の字に戻る= 中身の1行目へ
   const pos = at || new vscode.Position(land, 0);
   const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
   // ★v5.1.568(俊克 pm06:16 バグ1「最初に任意の位置だと大きく外れる…5行目の位置に表示すれば」): 567 の真ん中置きをやめる。♥の行を AtTop で置く= 実機では1段目に来る(俊克 pm06:29「1行目の方がいいね」)。折り返しに左右されない
@@ -15213,7 +15213,7 @@ function meosClockUnitSpans(txt, c) {   // ⏰行の周期の中の「数＋単�
 let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
-let meosClockBadgeHideDeco = null;
+let meosClockBadgeHideDeco = null, meosStopHide2Deco = null;
 let meosClockGap3Deco = null;
 let meosClockGapNDeco = null;   // ★v4.2.483: ±1s の札の前の隙間(6px/9px)
 const _meosNudgeHints = new Map();   // ★v4.2.483: uri -> [{line, col, label}]= ⏰行のボタンの札(v4.2.487: 全部のボタン)
@@ -15398,6 +15398,35 @@ function meosClockLineHints(editor, doc, i) {
   return out;
 }
 const MEOS_RULE_LINE_RE = /^\s*<!--\s*Mew!UFC\s+(?:-{3,}|={3,}|-\.-(?:\.-)*\.?|-\.\.-(?:\.\.-)*|-(?: -)+|\.{3,}|[\u301c\uff5e]{3,}|\u2248{3,})\s*-->\s*$/;   // v5.1.112: 罫線の行(`<!-- Mew!UFC --- -->`) / v5.1.597: === 二重線・-.- 一点鎖線も   // v5.1.639: - - 破線・... 点線・〜〜〜 波線・≈≈≈ 二重波線も
+// ★v5.1.645(俊克 11.10 pm09:22〜09:34「停止線の🛑ボタンでオンオフをできるようにしよう。膜の停止線は、左側の🛑で自分自身のオンオフ、右側の🛑で膜内部の線を一括オンオフ」
+//   「線は消して、左端の🛑のSTOP表示をOFFに変える」「開始膜の線はOFFにしたときに🛑🛑と2つ並べて、左はOFF、右は一括OFFならOFF・オンならSTOP」「閉じ膜の線は内部の線と同様。右側はボタンにしない」):
+//   オフ= 本文に `<!-- Mew!UFC --- 🚫 -->`(Format Me の取消🚫と同じ印・コピペしてもオフのまま)。オフの線は止まらない(Cmd+↓/↑・長押し・膜の関所の判定は MEOS_RULE_LINE_RE= オンだけ)。
+//   一括の状態は覚えで持たず、本文から読む= 中の線が全部オフなら OFF、1本でもオンなら STOP([[feedback_reconcile_dont_remember]])。中の線= 開始膜の線と閉じ膜の線の間(閉じ膜の線は数えない・囲いの中は数えない)
+const MEOS_RULE_OFF_RE = new RegExp(MEOS_RULE_LINE_RE.source.replace('\\s*-->\\s*$', '\\s*\\ud83d\\udeab\\s*-->\\s*$'));
+function meosIsRuleAny(t) { t = String(t || ''); return MEOS_RULE_LINE_RE.test(t) || MEOS_RULE_OFF_RE.test(t); }
+function meosStopOffText(t, off) { return off ? String(t).replace(/\s*-->\s*$/, ' 🚫 -->') : String(t).replace(/\s*🚫\s*-->\s*$/, ' -->'); }
+function meosStopInnerLines(doc, i) {   // 開始膜の線(▼の次の行)なら、その膜の中の線 [{line, off}]。開始膜の線でなければ null
+  try { if (i < 1 || i >= doc.lineCount || meosMemEdgeAt(doc.lineAt(i - 1).text, false) !== 1) return null;
+    const close = meosMemJumpTarget(doc, i - 1, true); if (close < 0) return null;
+    const fence = meosFenceLines(doc), out = [];
+    for (let k = i + 1; k < close - 1; k++) {   // close-1= 閉じ膜の線の席(線なら数えない・線でなければ線ではないので数えるまでもない)
+      if (fence.has(k)) continue; const t = doc.lineAt(k).text; if (MEOS_RULE_LINE_RE.test(t)) out.push({ line: k, off: false }); else if (MEOS_RULE_OFF_RE.test(t)) out.push({ line: k, off: true }); }
+    return out; } catch (_) { return null; }
+}
+function meosStopBulkOff(inner) { return !!(inner && inner.length && inner.every(x => x.off)); }
+const MEOS_STOP_BOX_CH = 60, MEOS_STOP_BTN_CH = 2;   // 線の箱の幅(ch)・札1つの幅(ch)= 標識 1.3em ≈ 2.2ch
+function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑) / 一括= オンなら 3(右端・2 は間の詰め物)・オフなら 2(左の隣)
+  try { const t = doc.lineAt(i).text || ''; const on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return null; if (t.length < 8) return null;
+    try { if (meosModeAtLine(doc, i) === 'raw') return null; } catch (_) { }
+    if (meosFenceLines(doc).has(i)) return null;
+    if (editor) { try { if (meosShowsRawLineStable(editor, i) || meosRuleHidden(editor, i)) return null; } catch (_) { } }
+    const inner = meosStopInnerLines(doc, i), head = !!inner;
+    return { on, head, inner, bulkOff: meosStopBulkOff(inner), self: 1, bulk: head ? (on ? 3 : 2) : -1, pad: (head && on) ? 2 : -1 };
+  } catch (_) { return null; }
+}
+async function meosStopToggleSelf(ed, i) { const doc = ed.document, t = doc.lineAt(i).text, on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return false; return ed.edit(eb => eb.replace(new vscode.Range(i, 0, i, t.length), meosStopOffText(t, on))); }
+async function meosStopToggleInner(ed, i) { const doc = ed.document, inner = meosStopInnerLines(doc, i); if (!inner || !inner.length) return false; const toOff = !meosStopBulkOff(inner);
+  return ed.edit(eb => { for (const x of inner) { if (x.off === toOff) continue; const t = doc.lineAt(x.line).text; eb.replace(new vscode.Range(x.line, 0, x.line, t.length), meosStopOffText(t, toOff)); } }); }
 // ★v5.1.593(俊克 11.08 am11:27「罫線 <!-- Mew!UFC --- --> を一時停止線と命名しよう。区別する為に、頭に見かけ上の標識を作って付けよう。世界的な一時停止標識は正八角形なので、オーストリアを参考に」):
 //   名前= 一時停止線(↑↓の押しっぱなしが止まる線・v5.1.579)。行頭に正八角形の STOP(黒の外枠・白の縁・赤の地・白い字)を絵で重ねる(本文の字は変えない= 見かけだけ)
 // ★v5.1.597(俊克 pm00:45 改良1「右肩に↻ボタンを付けて、罫線の種類を3つ切り替えることができるようにしよう。実線、二重線、一点鎖線の3つ」・「今まで ----- と ===== の二種類の線を引いて区別していた」):
@@ -15406,7 +15435,8 @@ const MEOS_RULE_LINE_RE = /^\s*<!--\s*Mew!UFC\s+(?:-{3,}|={3,}|-\.-(?:\.-)*\.?|-
 // ★v5.1.639(俊克 11.10 am11:43「もう少し停止線の種類を追加しよう。- - 破線 / ... 点線 / 〜〜〜 波線 / ≈≈≈ 二重波線」・「Me Dockのボタンは 実線→破線→点線→波線 で循環…Optを押しつつホーバーで二重線/二重波線」): 8種類
 const MEOS_STOP_KINDS = ['---', '===', '-.-', '-..-', '- -', '...', '\u301c\u301c\u301c', '\u2248\u2248\u2248'], MEOS_STOP_KIND_NAMES = ['solid', 'double', 'dash-dot', 'two-dot', 'dashed', 'dotted', 'wavy', 'double wavy'];
 function meosStopEdgeOf(doc, i) { try { if (i > 0 && meosMemEdgeAt(doc.lineAt(i - 1).text, false) === 1) return 1; if (i + 1 < doc.lineCount && meosMemEdgeAt(doc.lineAt(i + 1).text, false) === -1) return -1; } catch (_) { } return 0; }   // v5.1.600: 膜の境= 上が開始膜(1)・下が閉じ膜(-1)
-function meosStopKindOf(t) { const m = /Mew!UFC\s+(.*?)\s*-->/.exec(String(t || '')), k = m ? m[1] : ''; return k[0] === '=' ? 1 : k.indexOf('\u2248') >= 0 ? 7 : /[\u301c\uff5e]/.test(k) ? 6 : k[0] === '.' ? 5 : k.indexOf(' ') >= 0 ? 4 : k.indexOf('..') >= 0 ? 3 : k.indexOf('.') >= 0 ? 2 : 0; }
+function meosStopKindOf(t) { const m = /Mew!UFC\s+(.*?)\s*-->/.exec(String(t || '')), k = m ? m[1].replace(/\s*\ud83d\udeab$/, '') : '';   // v5.1.645: オフの🚫は種類に数えない
+  return k[0] === '=' ? 1 : k.indexOf('\u2248') >= 0 ? 7 : /[\u301c\uff5e]/.test(k) ? 6 : k[0] === '.' ? 5 : k.indexOf(' ') >= 0 ? 4 : k.indexOf('..') >= 0 ? 3 : k.indexOf('.') >= 0 ? 2 : 0; }
 // ★v5.1.600(俊克 pm01:29 改良2「膜の境界線を…色も変えて、区別しよう」→ pm01:36「膜の境界線は実線のままにして、膜の境界にボタンを使って引いたときには、自動で色を変えるようにしよう」):
 //   線の形は本文の字のまま(--- / === / -.-)・色だけ位置で変える= 開始膜のすぐ下=緑・閉じ膜のすぐ上=青(♥膜の▼▲と同じ色)。ボタンで境に引いても、手で書いても同じ
 // v5.1.639: 波線= SVG の模様(12px で1つの波)。幅は背景の大きさ= 伸ばさずに並べる
@@ -15423,12 +15453,13 @@ function meosStopLineCss(kind, x, edge) { const c = edge === 1 ? 'rgba(22, 163, 
   if (kind === 6 || kind === 7) return 'url(' + meosStopWaveUrl(c, kind === 7) + ') ' + x + 'em center / ' + w + ' ' + (kind === 7 ? 10 : 6) + 'px no-repeat';
   return 'linear-gradient(' + c + ', ' + c + ') ' + x + 'em center / ' + w + ' 1px no-repeat'; }
 const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjI5LjI5LDAuMDAgNzAuNzEsMC4wMCAxMDAuMDAsMjkuMjkgMTAwLjAwLDcwLjcxIDcwLjcxLDEwMC4wMCAyOS4yOSwxMDAuMDAgMC4wMCw3MC43MSAwLjAwLDI5LjI5IiBmaWxsPSIjMWExYTFhIi8+PHBvbHlnb24gcG9pbnRzPSIzMC43NCwzLjUwIDY5LjI2LDMuNTAgOTYuNTAsMzAuNzQgOTYuNTAsNjkuMjYgNjkuMjYsOTYuNTAgMzAuNzQsOTYuNTAgMy41MCw2OS4yNiAzLjUwLDMwLjc0IiBmaWxsPSIjZmZmIi8+PHBvbHlnb24gcG9pbnRzPSIzMi4xOSw3LjAwIDY3LjgxLDcuMDAgOTMuMDAsMzIuMTkgOTMuMDAsNjcuODEgNjcuODEsOTMuMDAgMzIuMTksOTMuMDAgNy4wMCw2Ny44MSA3LjAwLDMyLjE5IiBmaWxsPSIjZGMzYjMwIi8+PHRleHQgeD0iNTAiIHk9IjYyLjUiIGZvbnQtZmFtaWx5PSJBcmlhbCBOYXJyb3csSGVsdmV0aWNhIE5ldWUsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIzMyIgdGV4dExlbmd0aD0iNjYiIGxlbmd0aEFkanVzdD0ic3BhY2luZ0FuZEdseXBocyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+U1RPUDwvdGV4dD48L3N2Zz4=', MEOS_STOP_SIGN_EM = 1.3;
+const MEOS_STOP_OFF_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjI5LjI5LDAuMDAgNzAuNzEsMC4wMCAxMDAuMDAsMjkuMjkgMTAwLjAwLDcwLjcxIDcwLjcxLDEwMC4wMCAyOS4yOSwxMDAuMDAgMC4wMCw3MC43MSAwLjAwLDI5LjI5IiBmaWxsPSIjMWExYTFhIi8+PHBvbHlnb24gcG9pbnRzPSIzMC43NCwzLjUwIDY5LjI2LDMuNTAgOTYuNTAsMzAuNzQgOTYuNTAsNjkuMjYgNjkuMjYsOTYuNTAgMzAuNzQsOTYuNTAgMy41MCw2OS4yNiAzLjUwLDMwLjc0IiBmaWxsPSIjZmZmIi8+PHBvbHlnb24gcG9pbnRzPSIzMi4xOSw3LjAwIDY3LjgxLDcuMDAgOTMuMDAsMzIuMTkgOTMuMDAsNjcuODEgNjcuODEsOTMuMDAgMzIuMTksOTMuMDAgNy4wMCw2Ny44MSA3LjAwLDMyLjE5IiBmaWxsPSIjNmI3MjgwIi8+PHRleHQgeD0iNTAiIHk9IjYyLjUiIGZvbnQtZmFtaWx5PSJBcmlhbCBOYXJyb3csSGVsdmV0aWNhIE5ldWUsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIzMyIgdGV4dExlbmd0aD0iNTYiIGxlbmd0aEFkanVzdD0ic3BhY2luZ0FuZEdseXBocyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+T0ZGPC90ZXh0Pjwvc3ZnPg==';   // v5.1.645: オフの標識= 同じ正八角形・灰色の地に OFF
 // ★v5.1.595(俊克 11.08 pm00:27「Cmd+↑/↓で一時停止線までジャンプできることは、エディターを使っている人が歓喜する機能だよ。なので、一時停止線を入れるボタンをFormat Meに追加しよう。
 //   一時停止線の上、あるいは、前後の行に文字カーソルがあるときは、他のボタン同様に、🚫ボタンにして、取消もできるようにする。キーボード派は、直接コピペすればいいしね」):
 //   探す= カーソルの行→上の行→下の行の順(囲いの中は文字そのもの)。入れる= 今の行の下に一時停止線だけ(v5.1.630 空行は足さない)。外す= 線と、その分の空行1つ
 function meosStopLineNear(doc, line) {
   try { if (!doc || line < 0 || line >= doc.lineCount) return -1; let fence = null;
-    for (const l of [line, line - 1, line + 1]) { if (l < 0 || l >= doc.lineCount || !MEOS_RULE_LINE_RE.test(doc.lineAt(l).text)) continue; if (!fence) { try { fence = meosFenceLines(doc); } catch (_) { fence = new Set(); } } if (!fence.has(l)) return l; }
+    for (const l of [line, line - 1, line + 1]) { if (l < 0 || l >= doc.lineCount || !meosIsRuleAny(doc.lineAt(l).text)) continue; if (!fence) { try { fence = meosFenceLines(doc); } catch (_) { fence = new Set(); } } if (!fence.has(l)) return l; }
   } catch (_) { } return -1;
 }
 function meosStopKindNow() { try { const v = Number(extensionContext.globalState.get('fmtStopKind')); return v >= 0 && v <= 7 ? v : 0; } catch (_) { return 0; } }
@@ -15487,7 +15518,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];
     const unitCols = [[], [], []];   // v5.1.122: 周期の単位の色(MEOS_STAMP_COLORS の順)
     const _badgeLent = new Set();   // v4.2.346: 最終日に貸したバッジ行(1膜1つ)   // v4.1.148 / v4.1.176
-    const gap3 = [], gap6 = [], gap9 = [], nudgeHints = [], hintSkins = [], hintMasks = [];   // ★v4.2.481 / v4.2.483 / v4.2.487
+    const gap3 = [], gap6 = [], gap9 = [], nudgeHints = [], hintSkins = [], hintMasks = [], stopHide2 = [];   // v5.1.645: stopHide2= 一時停止線の札の向こう側を隠す2つ目の型   // ★v4.2.481 / v4.2.483 / v4.2.487
     // ★★★v4.2.487(俊克「他のボタンもインレイヒント上書き方式にしましょう。そして、今後追加するボタンも同様にすればいいよね」):
     //   ★⏰行のボタンは1つの作り= **札(インレイヒント)が押す物・上に重ねた絵が見える物**。札の上をどこで押しても、カーソルは札の桁 col に落ちる。
     //   ★札の字は空白 n 字(= n ch)。絵は札の直後(装飾の頭は差し込んだ字の右に立つ)に、幅 n ch の箱で置き、左へ n ch 戻す(字の並び= 基準線揃え)。
@@ -15574,14 +15605,23 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           // ★v5.1.112(俊克 10.21 am10:23 改良1「⏰FCが並んでいるとどこが区切りか読み難い。Zennのように --- と短く書く記法で罫線を引こう」):
           //   `<!-- Mew!UFC --- -->`(- が3つ以上)= 罫線。畳まない指定行(UFC)なので並びは途切れない(バッジ行も鎖もそのまま届く)。
           //   字は幅ごと畳んで線だけ描く。カーソル行/Raw では字のまま(直すための窓)。
-          if (MEOS_RULE_LINE_RE.test(txt)) {
+          if (MEOS_RULE_LINE_RE.test(txt) || MEOS_RULE_OFF_RE.test(txt)) {   // v5.1.645: オフの線(🚫)も
             // ★v5.1.113(俊克 10.21 am11:28 バグ1「コードブロックの中に罫線指定を入れると、罫線になってしまう」): 囲いの中は文字そのもの(v4.0.58 の約束)
             let _inFence = false; try { _inFence = meosFenceBlocks(doc).some(b => b.open < i && i < b.close); } catch (_) { }
             // ★v5.1.625(俊克 11.09 pm08:23 改良1「一時停止線を内部に書いた通常の膜を折り畳んだとき、1つ折り畳まれずに残る」): 見える範囲の下へ指定行を延ばす所(_tmSpans)が畳みの中へ入り、隠れた線にも絵を掛けていた→ Monaco が畳みの境目に描く(v5.1.2/v5.1.9 と同じ)。隠れた行には掛けない
             if (!_inFence && !meosShowsRawLineStable(editor, i) && !meosRuleHidden(editor, i)) {
-              badgeHide.push(new vscode.Range(i, 0, i, txt.length));
+              // ★v5.1.645: 🛑を押せる札(見えない字)にする= 札の桁で隠す範囲を割り、2つの型で交互に隠す(1つの範囲の内側に立てた札は字と一緒に幅0= v5.1.40 の穴)。
+              //   箱は浮かせて(absolute)札の上に重ねる= 札が場所を取っても絵は行頭から。押す当たりは札・絵は pointer-events: none
+              const _sb45 = meosStopBtnSpots(doc, i, editor), _off45 = !MEOS_RULE_LINE_RE.test(txt), _S = MEOS_STOP_SIGN_EM;
+              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } _cuts.push(txt.length);
+                for (let _k = 0; _k + 1 < _cuts.length; _k++) if (_cuts[_k + 1] > _cuts[_k]) (_k % 2 ? stopHide2 : badgeHide).push(new vscode.Range(i, _cuts[_k], i, _cuts[_k + 1]));
+                if (_sb45) { hintSkins.push({ range: new vscode.Range(i, 0, i, 2) }); if (_sb45.bulk > 0 && _sb45.inner && _sb45.inner.length) hintSkins.push({ range: new vscode.Range(i, _sb45.bulk - 1, i, _sb45.bulk + 1) }); } }
+              const _sign = (u, pos) => 'url(' + u + ') ' + pos + ' center / ' + _S + 'em ' + _S + 'em no-repeat', _bulkU = (_sb45 && _sb45.bulkOff) ? MEOS_STOP_OFF_URL : MEOS_STOP_SIGN_URL;
+              const _bg45 = _off45
+                ? _sign(MEOS_STOP_OFF_URL, 'left') + ((_sb45 && _sb45.head) ? ', ' + _sign(_bulkU, (MEOS_STOP_BTN_CH + 0.3) + 'ch') : '')   // オフ= 線は消して左端に OFF / 開始膜の線は隣に一括の標識
+                : _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + _sign((_sb45 && _sb45.head) ? _bulkU : MEOS_STOP_SIGN_URL, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
               items.push({ range: new vscode.Range(i, 0, i, 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; display: inline-block; width: 60ch; height: ' + MEOS_STOP_SIGN_EM + 'em; vertical-align: middle; background: url(' + MEOS_STOP_SIGN_URL + ') left center / ' + MEOS_STOP_SIGN_EM + 'em ' + MEOS_STOP_SIGN_EM + 'em no-repeat, url(' + MEOS_STOP_SIGN_URL + ') right center / ' + MEOS_STOP_SIGN_EM + 'em ' + MEOS_STOP_SIGN_EM + 'em no-repeat, ' + meosStopLineCss(meosStopKindOf(txt), MEOS_STOP_SIGN_EM + 0.3, meosStopEdgeOf(doc, i)) + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
+                textDecoration: 'none; position: absolute; top: 50%; transform: translateY(-50%); display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
             }
             continue;
           }
@@ -16373,6 +16413,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (reps.length && !meosClockRepDeco) meosClockRepDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
+    if (stopHide2.length && !meosStopHide2Deco) meosStopHide2Deco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosStopHide2Deco) editor.setDecorations(meosStopHide2Deco, stopHide2);   // v5.1.645
     if (gap3.length && !meosClockGap3Deco) meosClockGap3Deco = vscode.window.createTextEditorDecorationType({
       textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 3px;', rangeBehavior: vscode.DecorationRangeBehavior.OpenOpen });   // v4.2.498: 端で広がらない
     if (meosClockGap3Deco) editor.setDecorations(meosClockGap3Deco, gap3);   // v4.2.481
@@ -25074,6 +25116,10 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           // ★v5.1.179(俊克 am11:33 改良2「折り畳んだ状態で小さい🙈をクリックしても何も起きない。膜を展開して、中を丸見えにしたほうが良い」): 畳んでいたら▼と同じ口で開く(バッジの⊖/⊕も揃う)
           try { const _pv = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === _ln && p.id === _vbs.id); if (_pv && isPairFolded(editor, _pv)) await setPairFoldStateAndMstat(editor, _pv, false); } catch (_) { }
           meosCalmRefresh(editor); return; }
+        { const _sb = meosStopBtnSpots(editor.document, _ln, editor), _cc = editor.selection.active.character;   // ★v5.1.645: 一時停止線の🛑= 左は自分・開始膜の線の右は中を一括
+          if (_sb && (_cc <= _sb.self || (_sb.bulk > 0 && _cc === _sb.bulk && _sb.inner && _sb.inner.length))) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln);
+            if (_cc === _sb.bulk) await meosStopToggleInner(editor, _ln); else await meosStopToggleSelf(editor, _ln);
+            setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; } }
         const _lb = meosLegacyBtnSpot(editor.document, _ln, editor);   // v5.1.38: 🏦 遺産膜の🔄= 長さを選んで延長
         if (_lb && editor.selection.active.character === _lb.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosLegacyContinueAsk(_lb.name, editor); return; } }   // ★v5.1.31(俊克「🪑をクリックするとRawに切り替わってしまう」): ⏰のボタンと同じ= 抑止を掛けて行頭へ寄せる
       // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
@@ -41694,7 +41740,7 @@ function meosSpecLinePayloads(text) {
 function meosSpecLinePayload(text) { const a = meosSpecLinePayloads(text); return a ? a.join(' ') : null; }
 function meosIsSpecLine(text) { return meosSpecLinePayloads(text) !== null; }
 // ★v5.1.577(俊克 pm08:12「最後の行と罫線を1行と見なさないようにできないのか?」): 罫線は上の本文の説明ではない= 本文に付く指定行に数えない(Enter が越えない・本文に居ても罫線が生にならない・本文が橙にならない)
-function meosIsBoundSpecLine(text) { return meosIsSpecLine(text) && !MEOS_RULE_LINE_RE.test(String(text || '')); }
+function meosIsBoundSpecLine(text) { return meosIsSpecLine(text) && !meosIsRuleAny(text); }
 // ★v5.1.380(俊克 11.01 pm05:47 改良1「見出しのH2をH1に変えた時、頭の##を#に変更しようよ。これはソースを1mmも変えないという原則には矛盾しないよ」)
 // ★v5.1.381(pm05:50「同様に、頭の##を直接#に変更したら、H2をH1に変更しようよ。既存のマークダウンエディターを使っていた人は、その方が慣れている」)
 // ★v5.1.382(pm05:56「データで不一致を見つけた時は、ソースを信じてH1の部分を修正するということが原則」)
@@ -46002,7 +46048,7 @@ function meosFenceCaption(lines, b) {
     const i = b.close + 1, t = lines[i];
     if (t == null || b.close <= b.open) return null;
     const m = /^(\s*<!--\s*Mew!UFC\s+)(.*?)(\s*-->\s*)$/.exec(t);
-    if (!m || !m[2] || m[2].indexOf('\u23f0') >= 0 || MEOS_RULE_LINE_RE.test(t)) return null;
+    if (!m || !m[2] || m[2].indexOf('\u23f0') >= 0 || meosIsRuleAny(t)) return null;
     // ★v5.1.304(俊克 pm03:46「堂々と FUSEN と名乗る・付箋で検索できるようにコメントに FUSEN_TS を付けよう」): 先頭の FUSEN_<日時> は印= 紙には出さない
     const f = /^FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+|$)/.exec(m[2]); const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
     // v5.1.315: 印の後ろの色 (/pink) も紙には出さない
@@ -47659,6 +47705,12 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
               const _ch = meosAwayChairSpot(document, ln, _ed89); if (_ch) out.push(new vscode.InlayHint(new vscode.Position(ln, _ch.col), '\u3000'));
               const _vb = meosVeilBtnSpot(document, ln, _ed89); if (_vb) out.push(new vscode.InlayHint(new vscode.Position(ln, _vb.col), '\u3000')); } }   // v5.1.175: 小さい🙈の札   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
             { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
+            { const _sb = meosStopBtnSpots(document, ln, _ed89); if (_sb) {   // v5.1.645: 一時停止線の🛑(左= 自分・開始膜の線の右= 中を一括)
+                const _bt = '\u00a0'.repeat(MEOS_STOP_BTN_CH), _h1 = new vscode.InlayHint(new vscode.Position(ln, 1), _bt);
+                _h1.tooltip = _sb.on ? 'Stop line | Click to turn it off (🚫): Cmd+↓/↑ and held arrows pass through. Click again to turn it on.' : 'Stop line — off | Click to turn it on again.'; out.push(_h1);
+                if (_sb.pad > 0) out.push(new vscode.InlayHint(new vscode.Position(ln, _sb.pad), '\u00a0'.repeat(MEOS_STOP_BOX_CH - 2 * MEOS_STOP_BTN_CH)));
+                if (_sb.bulk > 0) { const _h3 = new vscode.InlayHint(new vscode.Position(ln, _sb.bulk), _bt); _h3.tooltip = !(_sb.inner && _sb.inner.length) ? 'All stop lines inside | There are no stop lines inside this membrane yet.' : _sb.bulkOff ? 'All stop lines inside — off | Click to turn them all on.' : 'All stop lines inside | Click to turn them all off at once.'; out.push(_h3); }
+              } }
           }
 
         } catch (_) { }

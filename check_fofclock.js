@@ -164,7 +164,7 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
     ok(T.meosClockWtOf({ title: undefined, when: '2027-01-05 08:30', cycle: [] }) === undefined, 'dd: 題なしで undefined の字を作らない');
     const dr = doc(['<!-- {* ▼mCN=a_1 *} -->', 'x', '<!-- {* ▲mCN=a_1 *} -->', '<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->']), cr = T.meosClockFcScan(dr)[0]; ok(cr && cr.titleRaw === 'Meet dd', 'dd: 本文の字は titleRaw に残す(焼き付けない)', cr); }
   // 10c. v5.1.625 畳みの中の一時停止線には絵を掛けない
-  { const sr = fs.readFileSync(SRC, 'utf8'); ok(/!meosShowsRawLineStable\(editor, i\) && !meosRuleHidden\(editor, i\)\) \{\n\s*badgeHide\.push/.test(sr), '畳みの中の線は描かない');
+  { const sr = fs.readFileSync(SRC, 'utf8'); ok(/!meosShowsRawLineStable\(editor, i\) && !meosRuleHidden\(editor, i\)\) \{\n(?:\s*\/\/[^\n]*\n)*\s*const _sb45 = meosStopBtnSpots/.test(sr), '畳みの中の線は描かない');   // v5.1.645: 描く前に札の桁を訊く形
     ok(/title:'Time up at dd # 1\.'/.test(sr), '①の名前は長さを言わない'); }
   // 10d. v5.1.632 今日/明日の境(拡張とヘルパーで同じ答え)
   { const clockDayEnds = eval('(' + /const clockDayEnds = (\(now\) => \{[^\n]*?\});/.exec(hs)[1] + ')'), hz = eval('(' + /const clockZone = (\(t, now\) => \{[^\n]*?return t < y\.getTime\(\) \? 4 : 5; \});/.exec(hs)[1] + ')'), hf = eval('(' + /const clockFar = (\(t, now\) => [^;]*);/.exec(hs)[1] + ')'), at = (m, d, h, mi) => new Date(2026, m - 1, d, h, mi || 0).getTime(), H = 36e5, am = at(11, 9, 9), pm = at(11, 9, 21, 13);
