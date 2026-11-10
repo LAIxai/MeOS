@@ -4,7 +4,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
-### v5.1.636 (2026-11-10) — the first public v5.1
+### v5.1.637 (2026-11-10) — the first public v5.1
 - **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
 - **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.
 - **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE.
@@ -12,7 +12,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - **⏰ The ⏰ database.** `⏰0y0d0h3m …` on the menu bar or in Format Me warps to a membrane of everyday timers, one per line. ▶️ runs just that line; copy a line into any membrane and it works there.
 - **⛓️ Clocks on a chain.** `⛓️⤵️2` runs this line and the next one after the other, `⛓️⤴️2)×8` goes back and repeats 8 times, `⛓️‍💥` cuts the chain. Write `1.` in a title and the round number is filled in.
 - **🛑 Stop lines.** `<!-- Mew!UFC --- -->` is drawn as a stop line, with an octagonal STOP sign at each end; `===` makes a double line, `-.-` a dash-dot one and `-..-` a two-dot one. Typing any of these on an empty line writes the rest for you. Holding ↓/↑ pauses at it; let go within 20 lines and the cursor glides on to it. **Cmd+↓/↑** jumps from stop line to stop line. The 🛑 button in Format Me puts one in and takes it off (🚫). On a membrane boundary the line turns green under the opening membrane and blue above the closing one.
-- **Every Me Dock letter is a membrane.** ♥ and M e D o c k can each wrap a passage: `▼P1` … `▲P1`, with stop lines inside the edges. Other marks of the same letter are relay points, `🚥mP1=`: click 🚥 to go on to the next one, or to ▼ / ▲. ▼ is green and ▲ blue; the chips wear the letter's colour from Me Dock.
+- **Every Me Dock letter is a membrane.** ♥ and M e D o c k can each wrap a passage: `▼P1` … `▲P1`, with stop lines inside the edges. Other marks of the same letter are relay points, `🚥mP1=` (`♥️🚥mP7=` for ♥): click 🚥 to go on to the next one, or to ▼ / ▲. ▼ is green and ▲ blue; the chips wear the letter's colour from Me Dock.
 - **♥ A membrane with a one-day fuse.** A new ♥ membrane starts a one-shot ⏰ for 24 hours: `↺↻(0y1d0h0m0s)×1`. Change the digits for another length, and the ⏰ list shows the moment it ends — one more way to warp back. Don't want it? Delete the ⏰ line. Five seconds before the end a fuse starts to hiss; on the final *pssh* the closing ♥, the ⏰ and the stop lines go; the opening ♥ and all your text stay, so the ♥ on the menu bar still takes you there. Cmd+Z brings it back. If the file was closed, it tidies up the next time you open it.
 - **`dd` in a ⏰ title shows its next bell.** Write `// Tea dd` and the ⏰ list and badge show when it next rings; the text keeps `dd`. The ① button and the ⏰ database come with it.
 - **mGATE stays behind other apps.** When another app's window covers mGATE, clicks no longer go through to it, and its tips and hand pointer stay away.

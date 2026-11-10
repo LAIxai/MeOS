@@ -117,7 +117,7 @@ and the chains reach across it.
 **♥ A membrane with a one-day fuse.** A new ♥ membrane starts a one-shot ⏰ for 24 hours, written `↺↻(0y1d0h0m0s)×1` — change the digits for another length. The ⏰ list shows the moment it ends, and takes you back there. Delete the ⏰ line if you don't want it. Five seconds before the end a fuse starts to hiss. On the final *pssh* the closing ♥, the ⏰ and the stop lines go, and the opening ♥ and all your text stay, so the ♥ on the menu bar still takes you there.
 letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Pressing the letter warps
 you back into the membrane, to the place you last were. Other marks of the same letter are relay points along the
-way, written `🚥mP1=` and shown as 🚥P1 — click 🚥 to go on to the next relay point, or to ▼ / ▲. Opt-click the chip to visit them in turn. One membrane per letter; ▼ is green and ▲ blue, as with ♥, and the
+way, written `🚥mP1=` and shown as 🚥P1 (`♥️🚥mP7=` and 🚥♥ for ♥) — click 🚥 to go on to the next relay point, or to ▼ / ▲. Opt-click the chip to visit them in turn. One membrane per letter; ▼ is green and ▲ blue, as with ♥, and the
 chips wear the letter's colour from Me Dock.
 
 **Opt+↑/↓ — Jump to M-🛑.** In VSCodium, Opt+↑/↓ moves a line up or down. On the Mac it has always meant "to the start

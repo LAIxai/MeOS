@@ -197,6 +197,20 @@ const S = (sel) => sel;
     let l = await click(2); ok(l === 4, '★古い▶◀の中継点(2)→ 次の中継点(4)', l);
     l = await click(4); ok(l === 7, '★最後の中の中継点(4)→ ▲(7)', l);
     l = await click(9); ok(l === 0, '★膜の外の最後の中継点(9)→ 先頭の▼(0)', l); }
+  // 16. v5.1.637 ♥の中間も 🚥= 押すと次の中継点か ▼/▲・組の間へ写した古い ♥️▶◀ は ♥️🚥 に
+  { const M1 = '<!-- {* ♥️▶◀mP7=f_20261109S000001JST //  *} -->', M2 = '<!-- {* ♥️🚥mP7=f_20261109S000002JST //  *} -->';
+    const d = mkDoc([H1, R, M1, 'x', M2, '', R, H2, 'z']); T.meosPuzzleFSet(d, 7, 'f_20261108S005813JST');
+    const ed = mkEd(d); let shownAt = -1; ed.revealRange = (r) => { shownAt = r.start.line; }; stub.window.activeTextEditor = ed; stub.window.visibleTextEditors = [ed];
+    stub.window.showTextDocument = async (doc, o) => { ed.selection = o.selection; return ed; };
+    const click = async (ln, col) => { T.meosFofChipClick({ kind: 2, textEditor: ed, selections: [{ active: { line: 8, character: 0 }, isEmpty: true }] });
+      const p = { line: ln, character: col || 0 }; ed.selection = { start: p, end: p, active: p, anchor: p, isEmpty: true };
+      T.meosFofChipClick({ kind: 2, textEditor: ed, selections: [{ active: p, isEmpty: true }] }); await new Promise(r => setTimeout(r, 600)); return shownAt; };
+    let l = await click(2); ok(l === 4, '★古い♥️▶◀の中間(2)→ 次の中間(4)', l);
+    shownAt = -1; l = await click(4); ok(l === 7, '★最後の中間(4)→ 閉じ♥(7)', l);
+    const d2 = mkDoc([H1, R, M1, 'x', '', R, H2]); T.meosPuzzleFSet(d2, 7, 'f_20261108S005813JST');
+    const pe = mkEd(d2); stub.window.visibleTextEditors = [pe]; d2.L.splice(4, 0, M1); d2.version++;
+    T.meosPuzzleDupFollow({ document: d2, contentChanges: [{ text: M1 + '\n', range: { start: { line: 4, character: 0 } } }] }); await new Promise(r => setTimeout(r, 80));
+    ok(/\{\* ♥️🚥mP7=f_2026\d{4}\w\d{6}JST/.test(d2.L[4]) && d2.L[2] === M1 && /♥️▼mP7/.test(d2.L[0]) && /♥️▲mP7/.test(d2.L[7]), '★組の間へ写した古い♥️▶◀= ♥️🚥・組はそのまま', d2.L); }
   // 7. 色
   ok(T.meosPuzzleColor('M', 0.95) === 'rgba(229, 57, 53, 0.95)' && T.meosPuzzleColor('k', 0.14) === 'rgba(194, 24, 91, 0.14)', '札の色= Me Dock の字の色', [T.meosPuzzleColor('M', 0.95), T.meosPuzzleColor('k', 0.14)]);
   console.log(ng ? ('NG ' + ng) : '全項目 PASS');

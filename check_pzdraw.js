@@ -97,14 +97,15 @@ const P1O = '<!-- {* ▼mP1=M_20261108S100001JST //  *} -->', P1C = '<!-- {* ▲
 const P1a = '<!-- {* ▶◀mP1=M_20261101S090000JST // 古い印 *} -->', P6a = '<!-- {* ▶◀mP6=k_20261101S090000JST //  *} -->';
 const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {* ♥️▲mP7=f_20261108S005814JST //  *} -->';
 const P1t = '<!-- {* 🚥mP1=M_20261109S090000JST //  *} -->';   // v5.1.636: 新しい中継点
-const lines = ['外0', P1O, R, P1t, P1a, '', R, P1C, P6a, H1, R, 'h', '', R, H2, '終'];
+const lines = ['外0', P1O, R, P1t, P1a, '', R, P1C, P6a, H1, R, '<!-- {* ♥️🚥mP7=f_20261109S000001JST //  *} -->', '', R, H2, '終'];   // v5.1.637: 11= ♥の中間
 const ed = makeEditor(lines); T.makeDecorations();
 T.meosPuzzleFSet(ed.document, 1, 'M_20261108S100001JST'); T.meosPuzzleFSet(ed.document, 7, 'f_20261108S005813JST');
 T.applyPrettyLabels(ed);
 const at = (ln) => { const out = []; for (const c of ed.__calls) for (const it of c.items) { const r = it && it.range; if (r && r.start && r.start.line === ln && it.renderOptions && it.renderOptions.before && it.renderOptions.before.contentText) out.push({ col: r.start.character, ...it.renderOptions.before }); } return out; };
 const show = (ln) => at(ln).map(o => o.col + ':' + o.contentText + ' ' + (o.color || '') + ' / ' + (o.backgroundColor || '') + ' / ' + String(o.textDecoration || '').slice(0, 110)).join('\n      ');
 for (const ln of [1, 4, 7, 8, 9, 14]) console.log('  [' + ln + '] ' + show(ln));
-const o1 = at(1), c1 = at(7), r4 = at(4), k8 = at(8), h9 = at(9), t3 = at(3);
+const o1 = at(1), c1 = at(7), r4 = at(4), k8 = at(8), h9 = at(9), t3 = at(3), m11 = at(11);
+ok(m11.some(o => o.contentText === '🚥♥' && /cursor: image-set/.test(o.textDecoration)) && !m11.some(o => o.contentText === '▼' || o.contentText === '▲'), '★♥️🚥mP7= 🚥♥の札・手(v5.1.637)', m11);
 ok(o1.some(o => o.contentText === '▼' && o.col === 0) && o1.some(o => o.contentText === 'P1' && o.col === 1 && /rgba\(229, 57, 53/.test(o.color) && /width: 1\.68em; margin-left: 1\.68em/.test(o.textDecoration)), '開始 P1= 緑▼(桁0)＋赤い札(桁1・♥と同じ幅)', o1);
 ok(c1.some(o => o.contentText === '▲') && c1.some(o => o.contentText === 'P1' && o.col === 1), '閉じ P1= 青▲＋札', c1);
 ok(!r4.some(o => o.contentText === '▼' || o.contentText === '▲') && r4.some(o => o.contentText === '🚥P1' && o.col === 0 && /rgba\(229, 57, 53/.test(o.color)), '★古い▶◀の中継点 P1= ▼▲なし・🚥P1の赤い札(v5.1.636)', r4);
