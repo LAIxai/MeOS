@@ -102,12 +102,22 @@ or press a key, and you are back under the everyday blind — no passphrase. It 
 behind you, a shared screen or a screenshot. The 🪑 is the lock.
 
 **🛑 Stop lines.** `<!-- Mew!UFC --- -->` — three dashes or more, as in Markdown's own `---` — is drawn as a stop line:
-a rule with an octagonal STOP sign at each end. `===` makes a double line, `-.-` a dash-dot one and `-..-` a two-dot one. Hold ↓ or ↑ and the
+a rule with an octagonal STOP sign at each end. There are eight lines in all:
+
+| Type | Line | Type | Line |
+|---|---|---|---|
+| `---` | solid | `===` | double |
+| `- -` | dashed | `...` | dotted |
+| `-.-` | dash-dot | `-..-` | two-dot |
+| `〜〜〜` | wavy | `≈≈≈` | double wavy |
+
+Hold ↓ or ↑ and the
 cursor pauses at the line; let go within 20 lines of one, and it glides the rest of the way and stops there.
 **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Fold a membrane to
-jump over the lines inside it. The 🛑 button in **Format Me** puts a stop line under the cursor (↻ picks solid, double,
-dash-dot or two-dot) and turns into 🚫 to take it off when the cursor is on or next to one. Or just type it: on an empty line,
-type the same `---`, `===`, `-.-` or `-..-` and it becomes that line (Cmd+Z keeps the plain text). On a membrane boundary the line
+jump over the lines inside it. The 🛑 button in **Format Me** puts a stop line under the cursor (↻ goes solid → dashed → dotted →
+wavy; hold Opt over 🛑 for double or double wavy) and turns into 🚫 to take it off when the cursor is on or next to one.
+Or just type it: a line holding only one of the eight marks becomes that stop line when you press Enter (Cmd+Z keeps
+the plain text), so a list item such as `- - item` or a line starting with `...` stays as you typed it. On a membrane boundary the line
 turns green under the opening membrane and blue above the closing one. Two dashes are not enough, and inside a code
 block it stays text. It is a UFC line (one that never folds), so it does not break a list of clocks — the badge line
 and the chains reach across it.
