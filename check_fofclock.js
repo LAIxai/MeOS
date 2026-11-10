@@ -88,7 +88,9 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
   // 4. 俊克が⏰を消す→ 戻らない
   d3.L = d3.L.filter(t => t.indexOf('⏰') < 0); d3.version++; await T.meosFofReconcile(e3, 7); ok(clocks(d3).length === 0, '消した⏰は復活しない', d3.L);
   // 5. もう一度包む= 前の閉じ♥は中継点・前の⏰は消える
+  const _ae643 = stub.workspace.applyEdit, _w643 = []; stub.workspace.applyEdit = (w) => { for (const o of w.ops) if (/mCN \(/.test(o[3])) _w643.push(o[3]); return _ae643(w); };
   const y = d1.L.indexOf('y'); await T.meosFofWrap(mkEd(d1, sel(y, y)), 'f', 7); await settle(); ok(clocks(d1).length === 1 && badges(d1).length === 1 && T.meosClockFcScan(d1).length === 1, '包み直すと⏰とバッジは新しい組の1本だけ', d1.L);
+  stub.workspace.applyEdit = _ae643; ok(_w643.length > 0 && _w643.every(t => /Mew!UFC mCN/.test(t)), 'v5.1.643 ♥のバッジ行は最初から UFC で書く(FC で書くと畳まれ、札が数字の前へ漏れる)', _w643);
   // 6. 時間切れ= 開始♥だけ残る(実物の並び・中間♥あり・本文あり)
   const d6 = doc(['前', H1, R, '本文', Hm, '本文2', '', R, H2, far, '後']); T.meosPuzzleFSet(d6, 7, Fn); const c6 = T.meosClockFcScan(d6)[0]; ok(!!c6, '実物の行を時計と読む', d6.L);
   const x6 = await T.meosFofClockExpire(d6, c6, false); ok(x6 && JSON.stringify(d6.L) === JSON.stringify(['前', H1, '本文', '本文2', '', '後']), '時間切れ= 開始♥と本文だけ残る', d6.L); ok(T.meosPuzzleFGet(d6, 7) === Fn, 'Fは開始♥', T.meosPuzzleFGet(d6, 7));

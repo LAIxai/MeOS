@@ -13250,6 +13250,11 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       //   形は新しい膜の閉じ膜と同じ口(meosPairBadgeLineText)から。旧形(▼行にバッジ)の膜には足さない= 二重にしない。
       let _bgText = '';
       try { if ((_pr && !meosPairBadgeAt(doc, _pr)) || _fofBg) _bgText = meosPairBadgeLineText(key, lineIndent(doc, at), '(\ud83d\udcca\u22950+0)') + '\n'; } catch (_) { }
+      // ★v5.1.643(俊克 11.10 pm04:26「♥️膜のタイマー表示が逆になっている。普通のタイマーは『残時間/経過時間 コメント』の順」):
+      //   真因= ♥膜のバッジ行を FC で書いていた→ FC の塊として▲♥の行の下に畳まれ(ログ [fcOne] 畳む)、直後に UFC へ書き換わっても畳みだけ残った。
+      //   隠れたバッジ行の飾りは上の行の ⋯ の手前に漏れて並ぶ(Monaco の近道)ので、札が数字の前に出た。
+      //   → ♥膜の⏰は書いた瞬間から走る= バッジ行は最初から UFC(畳まない名前)で書く。畳む塊が一瞬も生まれない。
+      if (_bgText && _fofBg) _bgText = _bgText.replace(MEOS_MEW_SIG + 'FC ', MEOS_MEW_SIG + 'UFC ');
       if (_bgText && ln > at + 1 && at + 1 < doc.lineCount) { ed.insert(doc.uri, new vscode.Position(at + 1, 0), _bgText); _bgText = ''; }
       if (ln < doc.lineCount) ed.insert(doc.uri, new vscode.Position(ln, 0), _bgText + line + '\n');
       else ed.insert(doc.uri, doc.lineAt(doc.lineCount - 1).range.end, '\n' + _bgText + line);
