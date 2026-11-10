@@ -113,6 +113,8 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
     T._meosMemJustFolded.set(5, Date.now()); ok(T.meosMemRecentlyFolded(5) && !T.meosMemRecentlyFolded(6), 'v5.1.648 畳んだ膜を覚える(2秒)', 0);
     T._meosMemJustFolded.set(7, Date.now() - 2500); ok(!T.meosMemRecentlyFolded(7), '2秒過ぎたら忘れる(その頃には visibleRanges が新しい)', 0);
     ok(/if \(folded\) _meosMemJustFolded\.set\(pair\.start/.test(SRC) && /_toOpen47 = [^\n]*!\(it\.b\.open != null && meosMemRecentlyFolded\(it\.b\.open\)\)/.test(SRC), '畳む口で覚え・FC の開ける相手から今しがた畳んだ膜の塊を外す', 0); }
+  { const SRC = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8'), i = SRC.indexOf("[noRaw] マウスで同じ行を押し直した"), seg = SRC.slice(i, i + 1500);
+    ok(i > 0 && /_refNoRawPrevLine = _refNoRawLine;[^\n]*\n\s*_refNoRawLine = -1/.test(seg), 'v5.1.649 押し直しで抑止を解く時も控えを残す(▲で開いた直後の▲が捨てられない)', 0); }
   const hid = (ln) => calls.flatMap(c => c.items.map(x => [c.deco, x])).map(p => [p[0], p[1] && p[1].range ? p[1].range : p[1]]).filter(p => p[1] && p[1].start && p[1].start.line === ln && p[0].__opts && /opacity: 0; font-size: 0;'?$/.test(p[0].__opts.textDecoration || '') && !/letter-spacing/.test(p[0].__opts.textDecoration)).map(p => [p[1].start.character, p[1].end.character, p[0]]).sort((a, b) => a[0] - b[0]);
   const h2 = hid(2); ok(h2.length === 3 && h2[0][1] === 1 && h2[1][1] === 2 && h2[0][2] !== h2[1][2] && h2[0][2] === h2[2][2], '開始膜の線(オフ)の字は札の桁1・2で割って2つの型で交互に隠す', h2.map(x => [x[0], x[1]]));
   const h9 = hid(9); ok(h9.length === 2 && h9[0][1] === 1 && h9[0][2] !== h9[1][2], 'ふつうの線は桁1で割る(札が幅0にならない)', h9.map(x => [x[0], x[1]]));

@@ -46808,6 +46808,11 @@ function activate(context) {
         try {
           if (ed && sel && _refNoRawLine === sel.active.line && _refNoRawUri === ed.document.uri.toString() && Date.now() - _refNoRawAt > 400) {
             meosDbg('[noRaw] マウスで同じ行を押し直した 行=' + (sel.active.line + 1) + ' → 着地の抑止を解く');
+            // ★v5.1.649(俊克 11.11 am01:42 バグ1「閉じ膜の▲で展開した直後、カーソルがその左で点滅している状態で再度▲をクリックすると、閉じずに閉じ膜がRaw化」= ログで確定):
+            //   01:42:54.149 [noRaw] 押し直した → 着地の抑止を解く / 01:42:54.151 [arrow] hit=true なのに [arrowToggle] が無い。
+            //   ★真因= ここが▲の道より2ms先に抑止を解き、**控え(Prev)を残さなかった**ので、▲の道(meosArrowPressBlocked)が「押す直前は生だった」と読んで1回目を捨てた(v4.2.759 と同じ形の別の入口)。
+            //   ★直し= 描画の道(8495行目付近)と同じく、解く時に控えを残す= 「押す直前にまだ効いていた」が後から訊ける
+            _refNoRawPrevUri = _refNoRawUri; _refNoRawPrevLine = _refNoRawLine; _refNoRawPrevAt = Date.now();
             _refNoRawLine = -1; _refNoRawUri = '';
             setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0);
           }
