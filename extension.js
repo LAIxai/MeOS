@@ -24213,6 +24213,12 @@ async function toggleMembraneFromArrowHit(editor, info) {
   try {
     await setPairFoldStateAndMstat(editor, matched.pair, !_wasFolded);
     meosParkCaretAfterPress(editor, matched.pair.start);   // ★v4.2.76: 次のクリックが必ず届く所へ
+    // ★v5.1.651(俊克 11.11 am02:32「直ってないよ」→「1秒以内」に開く= ログで確定):
+    //   02:33:57.170 [arrowToggle] fold by=close → 02:33:58.110 [fold] fold → 02:33:59.636 [park] 行頭に残ったカーソルを押す前の所へ戻す 170146 → 170157:12(▲の行)。
+    //   ★真因= 押す前のカーソルは▲の行(閉じ膜を押した所)= 畳んだ膜の中。1.2秒後の「戻す」がカーソルを隠れた行へ置き、VS Code がカーソルを見せるために膜を開いた。
+    //     648/650 の FC の道ではなかった(推測で2版外した)。
+    //   ★直し= 畳んだ時、戻し先が畳んだ膜の中(▼の次〜バッジ行)なら戻さない= カーソルは▼の行頭に残る(▼で畳んだ時と同じ姿)
+    try { if (!_wasFolded && _meosParkBack && _meosParkBack.editor === editor && _meosParkBack.back) { const _bl = _meosParkBack.back.line; if (_bl > matched.pair.start && _bl <= meosPairBlockEnd(editor.document, matched.pair)) _meosParkBack.back = null; } } catch (_) { }
     try {
       if (_wasFolded && _topBefore >= 0) editor.revealRange(new vscode.Range(_topBefore, 0, _topBefore, 0), vscode.TextEditorRevealType.AtTop);   // 開始行は押した所のまま
       if (_byClose) {

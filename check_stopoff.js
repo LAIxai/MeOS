@@ -116,6 +116,8 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
     ok(/_open46 = _shape46\.filter\([^\n]*!\(it\.b\.open != null && meosMemRecentlyFolded\(it\.b\.open\)\)/.test(SRC), 'v5.1.650 一括の道(fcOpen)も今しがた畳んだ膜のFCは開けない', 0); }
   { const SRC = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8'), i = SRC.indexOf("[noRaw] マウスで同じ行を押し直した"), seg = SRC.slice(i, i + 1500);
     ok(i > 0 && /_refNoRawPrevLine = _refNoRawLine;[^\n]*\n\s*_refNoRawLine = -1/.test(seg), 'v5.1.649 押し直しで抑止を解く時も控えを残す(▲で開いた直後の▲が捨てられない)', 0); }
+  { const SRC = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+    ok(/meosParkCaretAfterPress\(editor, matched\.pair\.start\);[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*try \{ if \(!_wasFolded && _meosParkBack[^\n]*_bl > matched\.pair\.start && _bl <= meosPairBlockEnd\(editor\.document, matched\.pair\)\) _meosParkBack\.back = null/.test(SRC), 'v5.1.651 ▲で畳んだ時、カーソルを畳んだ膜の中(押す前の▲の行)へ戻さない(戻すと VS Code が膜を開く)', 0); }
   const hid = (ln) => calls.flatMap(c => c.items.map(x => [c.deco, x])).map(p => [p[0], p[1] && p[1].range ? p[1].range : p[1]]).filter(p => p[1] && p[1].start && p[1].start.line === ln && p[0].__opts && /opacity: 0; font-size: 0;'?$/.test(p[0].__opts.textDecoration || '') && !/letter-spacing/.test(p[0].__opts.textDecoration)).map(p => [p[1].start.character, p[1].end.character, p[0]]).sort((a, b) => a[0] - b[0]);
   const h2 = hid(2); ok(h2.length === 3 && h2[0][1] === 1 && h2[1][1] === 2 && h2[0][2] !== h2[1][2] && h2[0][2] === h2[2][2], '開始膜の線(オフ)の字は札の桁1・2で割って2つの型で交互に隠す', h2.map(x => [x[0], x[1]]));
   const h9 = hid(9); ok(h9.length === 2 && h9[0][1] === 1 && h9[0][2] !== h9[1][2], 'ふつうの線は桁1で割る(札が幅0にならない)', h9.map(x => [x[0], x[1]]));
