@@ -7,7 +7,7 @@ const stubSrc=H.slice(H.indexOf('const stub = {'), H.indexOf('const origLoad'));
 const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')+')');
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mrt_'+process.pid+'.js';
-fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosMaybeRuleTyped,MEOS_RULE_LINE_RE,meosStopKindOf,meosStopLineCss};');
+fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosRuleOnEnter,meosMaybeRuleTyped,MEOS_RULE_LINE_RE,meosStopKindOf,meosStopLineCss};');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const tick=()=>new Promise(r=>setTimeout(r,0));
@@ -49,5 +49,11 @@ const type=(d,line,ch)=>{const col=d.L[line].length-ch.length;return X.meosMaybe
  ok(/<pattern/.test(dec(w1))&&(dec(w1).match(/<path/g)||[]).length===1&&/ 6px no-repeat$/.test(w1),'★波線= SVGの模様・波1本・高さ6px',w1.slice(-40));
  ok((dec(w2).match(/<path/g)||[]).length===2&&/ 10px no-repeat$/.test(w2),'★二重波線= 波2本・高さ10px',w2.slice(-40));
  ok(/rgba\(22, 163, 74/.test(dec(X.meosStopLineCss(6,1,1))),'膜の境の波線は緑');
+ // v5.1.641: MeOS の Enter(箇条書きの継続より先)
+ const at=(d,l,c)=>{const p={line:l,character:c};d.ed.selection={active:p,anchor:p,start:p,end:p,isEmpty:true};d.ed.selections=[d.ed.selection];};
+ {const d=mk(['本文','- -','次']);at(d,1,3);const r=await X.meosRuleOnEnter(d.ed);ok(r&&d.L.join('|')==='本文|<!-- Mew!UFC - - -->|次'&&d.ed.selection.active.line===2,'★MeOSのEnter: - - = 破線(箇条書きにしない・改行なし)',d.L);}
+ {const d=mk(['本文','～～～','次']);at(d,1,3);await X.meosRuleOnEnter(d.ed);ok(d.L[1]==='<!-- Mew!UFC 〜〜〜 -->','★MeOSのEnter: ～～～ = 〜〜〜',d.L);}
+ {const d=mk(['本文','- - 項目','次']);at(d,1,6);const r=await X.meosRuleOnEnter(d.ed);ok(!r&&d.L[1]==='- - 項目','MeOSのEnter: - - 項目 は箇条書きのまま(任せる)',d.L);}
+ {const d=mk(['本文','---','次']);at(d,1,1);const r=await X.meosRuleOnEnter(d.ed);ok(!r&&d.L[1]==='---','MeOSのEnter: 行の途中は任せる',d.L);}
  console.log(ng?('NG '+ng):'ALL OK');process.exit(ng?1:0);
 })();
