@@ -24231,6 +24231,7 @@ async function toggleMembraneFromArrowHit(editor, info) {
     meosDbg('[arrowToggle] rows=' + _rowsAt + ' ' + (_wasFolded ? 'open' : 'fold') + ' by=' + (_byClose ? 'close' : 'open') + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
   } catch (_) { }
   setRefNoRaw(editor.document, matched.pair.start);
+  _meosViewPlacedAt = Date.now();   // v5.1.656: 開閉が始まった= この前に控えた上端へは戻さない(置き終わりでもう一度押す)
   _meosArrowToggling = true;
   try {
     await setPairFoldStateAndMstat(editor, matched.pair, !_wasFolded);
@@ -24252,6 +24253,7 @@ async function toggleMembraneFromArrowHit(editor, info) {
         // ★v5.0.0-9(俊克「▲で開いた時は、文字カーソルも末尾へ移動すべき」) / v5.0.0-10(俊克「▼の時は殻を見せず▼の左で点滅する。▲も同じに」):
         //   ▼と同じ= 閉じ膜の行の頭(▲の左)へ置き、その行の生の殻は着地の抑止(setRefNoRaw)で見せない(画面は上で決めたまま)
         if (_wasFolded) editor.selection = new vscode.Selection(matched.pair.end, 0, matched.pair.end, 0);
+        _meosViewPlacedAt = Date.now();   // v5.1.656: ▲が画面を置いた= FC の道は、これより前に控えた上端へ戻さない
         // ★v5.1.655(俊克 11.11 am02:40 改良1「▲で開閉を繰り返すと、段々位置が下へずれる」): 測る口= ▲で置いた後の画面の上端を、すぐ・0.3秒・1秒・2秒後に残す。
         //   ログでは 12段目で押した▲が次は16段目に居た(rows=12→16)。誰が上端を動かしたかを、同じ時刻の [fcFold]/[fcOpen]/[fcSync] と並べて読む
         try { const _top55 = () => (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1, _tag55 = (_wasFolded ? 'open' : 'fold') + ' rows=' + _rowsAt + ' 目標=' + (_to + 1);
@@ -42987,9 +42989,15 @@ function meosScheduleFcCursorSync(editor) {
 // ★区別の付け方は**時間**だった= `strict=false`(畳むコマンドの**直後**に呼ぶ)なら、間に人thatキーを押す隙は無いso
 //   **選択ごと戻してよい**。`strict=true`(150/300/450msの待ちを挟む一括畳み)だけ、選択that変わっていたら**降りる**
 //   (そこthatワープを打ち消していた本当の場所)。**同じ関数に2つの立場を持たせるなら、区別を引数で明示する**。
-function meosRestoreView(editor, topLine, sel, strict) {
+// ★v5.1.656(俊克 11.11 am02:40 改良1「▲で開閉を繰り返すと、段々位置が下へずれる」= 655 の測る口で確定):
+//   22:59:22.741 [arrowPos] fold 置いた直後 上端=170164 → 23.215 [fcFold] 一括で畳んだ 170172→170164 → 23.747 [arrowPos] 1000ms後 上端=170172。
+//   ★真因= FC を畳む道は走り始めに画面の上端を控え、終わりにそこへ戻す(v4.0.176/326/327)。▲/▼の開閉と重なると、▲が置いた画面を**開閉の前の古い上端**へ戻していた。
+//   ★直し= ▲/▼が画面を置いた時刻を残し、控えた後に置き直されていたら戻さない(新しい方= 人が押した結果が勝つ)
+let _meosViewPlacedAt = 0;
+function meosRestoreView(editor, topLine, sel, strict, capturedAt) {
   try {
     if (!editor || topLine < 0) return;
+    if (capturedAt && _meosViewPlacedAt >= capturedAt) return;   // v5.1.656: 控えた後に▲/▼が画面を置いた= 古い上端へ戻さない
     if (editor !== vscode.window.activeTextEditor) return;         // もう別のエディタ=触らない
     if (strict && sel && !editor.selection.isEqual(sel)) return;   // 待ちを挟む道だけ: 誰かthat動かした=何もしない
     const now = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
@@ -43022,7 +43030,7 @@ async function meosSyncFcFoldForCursor(editor) {
   //     editor.visibleRanges thatまだ古い**から(VS Codeは次の描画で更新する)。目で確かめる物は、
   //     2msでは間に合わない。→ **自分thatが何を畳んだかを覚える**方に替える(下の _meosFcJustFolded)。
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy || _meosFcFolding) return;
-  let _topBefore = -1;
+  let _topBefore = -1; const _topAt56 = Date.now();   // v5.1.656: 控えた時刻
   try {
     if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
     if (!meosIsRealFileDoc(editor.document)) return; // v4.0.151: 出力チャネル等では走らせない
@@ -43049,7 +43057,7 @@ async function meosSyncFcFoldForCursor(editor) {
     //   ★★直し＝ **控えるのは、畳む/開くを打つ直前**。その1コマンドの間に動いたのなら畳みのせいと言えるが、
     //     それより前は人の物。→ [[project_last_specified_wins]] と同じ筋＝ **人が最後に置いた所を勝たせる**。
     //   ★出る時(finally)は**画面の上端だけ**戻す＝ カーソルには触らない。
-    const _keep = () => meosRestoreView(editor, _topBefore, null, false);       // 画面だけ戻す(カーソルは人の物)
+    const _keep = () => meosRestoreView(editor, _topBefore, null, false, _topAt56);       // 画面だけ戻す(カーソルは人の物)
     // v4.0.187: **畳む/開くを実際に打った時だけ**1行出す(推測をやめ、犯人に名乗らせる)。
     const _top = () => { try { return (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; } catch (_) { return -1; } };
     // v4.0.311: **選択が始まったら、その場で降りる**。畳む/開くは待ちが長いので、動く前に必ず確かめる。
@@ -43156,7 +43164,7 @@ async function meosSyncFcFoldForCursor(editor) {
     //   Pseudoの膜の中は、**誰が開けた物でも**畳む(貼り付けで増えた分もここで閉じる)。
     for (const b of blocks) if (meosModeAtLine(editor.document, b.start) === 'pseudo') await foldIfVisible(b.start);
     return;
-  } catch (_) { } finally { meosRestoreView(editor, _topBefore, null, false); _meosFcBusy = false; } // v4.0.326: 出る時はカーソルに触らない
+  } catch (_) { } finally { meosRestoreView(editor, _topBefore, null, false, _topAt56); _meosFcBusy = false; } // v4.0.326: 出る時はカーソルに触らない
 }
 // v4.0.449: Pseudoの膜の中で開いてしまった塊を、その場で畳み直す(『⋯』を押した時の1秒を消すため)。
 //   畳むのは**見えていて、かつ開いている物だけ**(v4.0.188)＝ 畳まれた塊を畳むと膜に化ける。
@@ -43432,7 +43440,7 @@ async function meosAutoFoldSpecLines(editor, force) {
   //   → 畳んだ物は、覚えからも外す。
   try { for (const _h of heads) { meosFcNoteFolded(_h); _meosFcOpenSet.delete(_h); } } catch (_) { }   // v4.0.466/4.1.21
   // v4.0.176: **一括で畳むのthat一番画面を動かす**so、ここでも上の行を控えて戻す(俊克「矢印で飛ぶ」の兄弟)。
-  const _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
+  const _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1, _topAt56 = Date.now();   // v5.1.656: 控えた時刻
   try {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -43514,7 +43522,7 @@ async function meosAutoFoldSpecLines(editor, force) {
     }
   }
   try { meosDbg('[fcFold] gave up after 3 attempts (' + heads.length + ' blocks)'); } catch (_) { }
-  } finally { meosRestoreView(editor, _topBefore, null, false); _meosFcFolding = false; } // v4.0.327: 画面だけ戻す(カーソルは人の物)
+  } finally { meosRestoreView(editor, _topBefore, null, false, _topAt56); _meosFcFolding = false; } // v4.0.327: 画面だけ戻す(カーソルは人の物)
 }
 // v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
 // 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
