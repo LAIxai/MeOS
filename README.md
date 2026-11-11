@@ -116,11 +116,16 @@ stops there. **Cmd+↓/↑** jumps from stop line to stop line, so one long file
 from outside, a membrane edged with stop lines is a single stop: Cmd+↓/↑ halts in front of it, and the next press
 jumps over the whole membrane. Step inside, and its own lines take over.
 
-**Switch a line off, without deleting it.** Click the 🛑 at the left end: the line disappears and a grey **OFF**
+**Switch a line off, without deleting it.** Click the 🛑 at the left end: the line disappears and a blue **OFF**
 sign stays in its place — in the text it is `<!-- Mew!UFC --- 🚫 -->`, and nothing stops there any more. Click OFF to
-turn it back on. On a membrane's edge lines — under the opening membrane or above the closing one — the 🛑 at the
-right end switches **every line inside** off or on at once; with the edge line itself off, the two signs sit side by side. Leave a membrane's edge off on one side and it
-becomes a one-way door: Cmd+↓ walks in, Cmd+↑ jumps over.
+turn it back on. Leave a membrane's edge off on one side and it becomes a one-way door: Cmd+↓ walks in, Cmd+↑ jumps over.
+
+**The right 🛑 is a signal for the lines ahead.** The left sign tells you about this line; the right one tells you about
+the next stop lines below it, however far away they are — up to the end of the membrane it sits in (on a closing edge,
+the lines outside, up to the end of the membrane around it). Red **STOP**: all of them are on. Yellow **STOP**: the next
+one is on, some after it are off. Blue **OFF**: the next one is off, so Cmd+↓ passes it. Click the right sign to go
+round red → blue (all off) → yellow (only the next one on) → red (all on). With no line ahead it shows a black
+**NONE**. The colours are read from the text, so a line you switch by hand changes them too.
 
 Type it, or press it. A line holding only one of the eight marks becomes that stop line when you press Enter — no new
 line is added, and Cmd+Z gives back the plain text. A list item such as `- - item`, or a line that starts with `...`,

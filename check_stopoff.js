@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMemRecentlyFolded, _meosMemJustFolded, MEOS_RULE_LINE_RE, MEOS_RULE_OFF_RE, MEOS_STOP_OFF_URL, MEOS_STOP_SIGN_URL, meosIsRuleAny, meosStopOffText, meosStopInnerLines, meosStopBulkOff, meosStopBtnSpots, meosStopToggleSelf, meosStopToggleInner, meosStopKindOf, meosMembraneRuleTarget, meosStopLineNear, makeDecorations, meosApplyTimerLineDecorations, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMemRecentlyFolded, _meosMemJustFolded, MEOS_RULE_LINE_RE, MEOS_RULE_OFF_RE, MEOS_STOP_OFF_URL, MEOS_STOP_SIGN_URL, meosIsRuleAny, meosStopOffText, meosStopNextLines, meosStopSignal, MEOS_STOP_YELLOW_URL, MEOS_STOP_NONE_URL, meosStopBtnSpots, meosStopToggleSelf, meosStopCycleNext, meosStopKindOf, meosMembraneRuleTarget, meosStopLineNear, makeDecorations, meosApplyTimerLineDecorations, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -75,24 +75,33 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
   // 2. オフの線では止まらない
   const d1 = doc(['a0', RO, 'a2', R, 'a4']); ok(T.meosMembraneRuleTarget(d1, 0, true) === 2, 'オフの線は Cmd+↓ で素通り(次のオンの線で止まる)', T.meosMembraneRuleTarget(d1, 0, true));
   const d2 = doc(['top', H1, RO, 'in3', R, 'in5', R, H2, 'end']); ok(T.meosMembraneRuleTarget(d2, 0, true) === 3, '開始膜の線をオフ= 外から↓で膜の中へ入れる(一方通行)', T.meosMembraneRuleTarget(d2, 0, true));
-  // 3. 中の線と一括の状態(閉じ膜の線は数えない)
-  const d3 = doc(['top', H1, R, 'a3', R, 'a5', RO, 'a7', '```', R, '```', R, H2, 'end']);
-  const in3 = T.meosStopInnerLines(d3, 2); ok(in3 && JSON.stringify(in3.map(x => [x.line, x.off])) === JSON.stringify([[4, false], [6, true]]), '中の線= 開始と閉じの間・囲いの中と閉じ膜の線は数えない', in3);
-  ok(T.meosStopInnerLines(d3, 4) === null, '中の線は一括を持たない', 0);
-  { const c11 = T.meosStopInnerLines(d3, 11); ok(c11 && JSON.stringify(c11.map(x => [x.line, x.off])) === JSON.stringify([[4, false], [6, true]]), 'v5.1.647 閉じ膜の線も一括を持つ= 開始膜の線から見たのと同じ組(両端の線は数えない)', c11); }
-  ok(!T.meosStopBulkOff(in3) && T.meosStopBulkOff([{ off: true }, { off: true }]) && !T.meosStopBulkOff([]), '一括の状態= 全部オフの時だけ OFF', 0);
-  // 4. 札の桁
-  const s2 = T.meosStopBtnSpots(d3, 2, null), s4 = T.meosStopBtnSpots(d3, 4, null), s11 = T.meosStopBtnSpots(d3, 11, null), s9 = T.meosStopBtnSpots(d3, 9, null);
-  ok(s2 && s2.self === 1 && s2.pad === 2 && s2.bulk === 3 && s4 && s4.bulk === -1 && s11 && s11.bulk === 3 && s11.pad === 2 && s9 === null, '札= 左は桁1・開始膜/閉じ膜の線のオンは右端(桁3)・中は左だけ・囲いの中は無し', [s2, s4 && s4.bulk, s11 && s11.bulk, s9]);
-  const d4 = doc(['top', H1, RO, 'a3', R, 'a5', R, H2]); const s42 = T.meosStopBtnSpots(d4, 2, null); ok(s42 && !s42.on && s42.bulk === 2 && s42.pad === -1, '開始膜の線がオフ= 一括は左の隣(桁2)', s42);
-  // 5. 押す
-  const d5 = doc(['top', H1, R, 'a3', R, 'a5', R, 'a7', R, H2]); const e5 = mkEd(d5);
+  // 3. 次の線とその先(v5.1.652)= 包む膜の閉じ膜の線の手前まで・囲いの中は数えない
+  const d3 = doc(['top', H1, R, 'a3', R, 'a5', RO, 'a7', '```', R, '```', R, H2, 'x13', R, 'end']);
+  const J = (a) => a ? JSON.stringify(a.map(x => [x.line, x.off])) : String(a);
+  ok(J(T.meosStopNextLines(d3, 2)) === '[[4,false],[6,true]]', '開始膜の線= 膜の中(閉じ膜の線と囲いの中は数えない)', J(T.meosStopNextLines(d3, 2)));
+  ok(J(T.meosStopNextLines(d3, 4)) === '[[6,true]]', '中の線= 自分の下から閉じ膜の線の手前まで', J(T.meosStopNextLines(d3, 4)));
+  ok(J(T.meosStopNextLines(d3, 11)) === '[[14,false]]', '閉じ膜の線= 膜の外(下)', J(T.meosStopNextLines(d3, 11)));
+  { const dn = doc(['top', H1, R, 'a', H1.replace('テスト', 'x').replace('mP7', 'mP6'), R, 'b', R, H2.replace('mP7', 'mP6'), R, 'c', R, H2, 'end']);
+    ok(J(T.meosStopNextLines(dn, 7)) === '[[9,false]]', '入れ子の閉じ膜の線= 外側の膜の閉じ膜の線の手前まで', J(T.meosStopNextLines(dn, 7))); }
+  ok(T.meosStopNextLines(d3, 3) === null && J(T.meosStopNextLines(d3, 14)) === '[]', '線でなければ null・下に線が無ければ空', 0);
+  ok(T.meosStopSignal([]) === 'none' && T.meosStopSignal([{ off: false }, { off: false }]) === 'red' && T.meosStopSignal([{ off: false }, { off: true }]) === 'yellow' && T.meosStopSignal([{ off: true }, { off: false }]) === 'blue' && T.meosStopSignal([{ off: true }]) === 'blue', '信号= 次以降すべてオン赤・次オンで先にオフ黄・次オフ青(先は問わない)・無し黒', 0);
+  // 4. 札の桁= どの線も 左1・右(オン3/オフ2)。次が無い線は右の札なし
+  const s2 = T.meosStopBtnSpots(d3, 2, null), s4 = T.meosStopBtnSpots(d3, 4, null), s14 = T.meosStopBtnSpots(d3, 14, null), s9 = T.meosStopBtnSpots(d3, 9, null), s6 = T.meosStopBtnSpots(d3, 6, null);
+  ok(s2 && s2.self === 1 && s2.pad === 2 && s2.bulk === 3 && s2.sig === 'yellow' && s4 && s4.bulk === 3 && s4.sig === 'blue' && s14 && s14.bulk === -1 && s14.sig === 'none' && s6 && s6.bulk === -1 && s6.sig === 'none' && s9 === null, '札= 左は桁1・右はオン3/オフ2・中の線も押せる・次が無い線は札なし・囲いの中は無し', [s2, s4 && s4.sig, s14 && s14.bulk, s6 && s6.bulk, s9]);
+  { const d4 = doc(['top', H1, RO, 'a3', R, 'a5', R, H2]); const s42 = T.meosStopBtnSpots(d4, 2, null); ok(s42 && !s42.on && s42.bulk === 2 && s42.pad === -1 && s42.sig === 'red', 'オフの線= 右の札は左の隣(桁2)', s42); }
+  // 5. 押す= 赤→青→黄→赤
+  const d5 = doc(['top', H1, R, 'a3', R, 'a5', R, 'a7', R, 'a9', R, H2, 'x', R, 'end']); const e5 = mkEd(d5);
   await T.meosStopToggleSelf(e5, 4); ok(d5.L[4] === RO, '左の🛑= 自分をオフ', d5.L[4]); await T.meosStopToggleSelf(e5, 4); ok(d5.L[4] === R, 'もう1回でオン', d5.L[4]);
-  await T.meosStopToggleInner(e5, 2); ok(d5.L[4] === RO && d5.L[6] === RO && d5.L[2] === R && d5.L[8] === R, '右の🛑= 中を一括オフ(自分と閉じ膜の線はそのまま)', d5.L);
-  await T.meosStopToggleInner(e5, 2); ok(d5.L[4] === R && d5.L[6] === R, '全部オフならもう1回で一括オン', d5.L);
-  await T.meosStopToggleInner(e5, 8); ok(d5.L[4] === RO && d5.L[6] === RO && d5.L[2] === R && d5.L[8] === R, 'v5.1.647 閉じ膜の線の右の🛑でも中を一括(両端の線はそのまま)', d5.L);
-  await T.meosStopToggleInner(e5, 8); ok(d5.L[4] === R && d5.L[6] === R, '閉じ膜の側から一括オン', d5.L);
-  d5.L[4] = RO; d5.version++; await T.meosStopToggleInner(e5, 2); ok(d5.L[4] === RO && d5.L[6] === RO, '1本でもオンなら一括はオフへ揃える', d5.L);
+  const st = (ln) => T.meosStopSignal(T.meosStopNextLines(d5, ln));
+  ok(st(2) === 'red', '開始膜の線= 中がすべてオンなら赤', st(2));
+  await T.meosStopCycleNext(e5, 2); ok(d5.L[4] === RO && d5.L[6] === RO && d5.L[8] === RO && d5.L[2] === R && d5.L[10] === R && st(2) === 'blue', '赤→青= 次以降すべてオフ(自分と閉じ膜の線はそのまま)', d5.L);
+  await T.meosStopCycleNext(e5, 2); ok(d5.L[4] === R && d5.L[6] === RO && d5.L[8] === RO && st(2) === 'yellow', '青→黄= 次だけオン・その先はオフ', d5.L);
+  await T.meosStopCycleNext(e5, 2); ok(d5.L[4] === R && d5.L[6] === R && d5.L[8] === R && st(2) === 'red', '黄→赤= 次以降すべてオン', d5.L);
+  await T.meosStopCycleNext(e5, 4); ok(d5.L[4] === R && d5.L[6] === RO && d5.L[8] === RO && st(4) === 'blue', '中の線の右= 自分の下だけを回す', d5.L);
+  await T.meosStopCycleNext(e5, 10); ok(d5.L[13] === RO && d5.L[10] === R, '閉じ膜の線の右= 膜の外(下)の線を回す', d5.L);
+  d5.L[6] = R; d5.L[8] = RO; d5.version++; ok(st(4) === 'yellow', '手で次だけオンにしても黄', st(4));
+  d5.L[6] = RO; d5.L[8] = R; d5.version++; ok(st(4) === 'blue', '次がオフなら先にオンが混じっても青', st(4));
+  ok(await T.meosStopCycleNext(e5, 13) === false, '次が無い線(黒NONE)は押しても何もしない', 0);
   ok(T.meosStopLineNear(doc(['x', RO, 'y']), 0) === 1, 'Format Me の🛑/🚫 はオフの線も見つける(消せる)', 0);
   // 6. 描く= オフは線を消して左に OFF・開始膜のオフは2つ・隠す範囲は札の桁で割る
   T.makeDecorations(); const d6 = doc(['top', H1, RO, 'a3', RO, 'a5', R, H2, 'x8', R, 'end']), calls = [], e6 = mkEd(d6, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0, character: 0 }, isEmpty: true });
@@ -100,10 +109,12 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
   T.meosApplyTimerLineDecorations(e6);
   const bg = (ln) => calls.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === ln && x.renderOptions && x.renderOptions.before && /background:/.test(x.renderOptions.before.textDecoration || '')).map(x => x.renderOptions.before.textDecoration)[0] || '';
   const nOff = (t) => t.split(T.MEOS_STOP_OFF_URL).length - 1, nStop = (t) => t.split(T.MEOS_STOP_SIGN_URL).length - 1;
-  ok(nOff(bg(2)) === 2 && nStop(bg(2)) === 0, '開始膜の線オフ・中も全部オフ= OFF が2つ並ぶ', [nOff(bg(2)), nStop(bg(2))]);
-  ok(nOff(bg(4)) === 1 && nStop(bg(4)) === 0 && !/gradient/.test(bg(4)), '中の線オフ= 左端の OFF 1つだけ・線は描かない', bg(4).slice(0, 80));
-  ok(nStop(bg(6)) === 1 && nOff(bg(6)) === 1 && /gradient/.test(bg(6)), 'v5.1.647 閉じ膜の線オン・中が全部オフ= 左 STOP・右 OFF と線', [nStop(bg(6)), nOff(bg(6))]);
-  ok(/position: absolute/.test(bg(9)), '箱は浮かせて札に重ねる', bg(9).slice(0, 60));
+  const nY = (t) => t.split(T.MEOS_STOP_YELLOW_URL).length - 1, nN = (t) => t.split(T.MEOS_STOP_NONE_URL).length - 1;
+  ok(nOff(bg(2)) === 2 && nStop(bg(2)) === 0, '開始膜の線オフ・次もオフ= 青OFF が2つ並ぶ', [nOff(bg(2)), nStop(bg(2))]);
+  ok(nOff(bg(4)) === 1 && nN(bg(4)) === 1 && nStop(bg(4)) === 0 && !/gradient/.test(bg(4)), '中の線オフ・次が無い= 左に青OFF・隣に黒NONE・線は描かない', [nOff(bg(4)), nN(bg(4))]);
+  ok(nStop(bg(6)) === 2 && nOff(bg(6)) === 0 && /gradient/.test(bg(6)), 'v5.1.652 閉じ膜の線オン・外の線がすべてオン= 左右とも赤STOP と線', [nStop(bg(6)), nOff(bg(6))]);
+  ok(nStop(bg(9)) === 1 && nN(bg(9)) === 1, '次が無い線= 右は黒NONE', [nStop(bg(9)), nN(bg(9))]);
+  ok(/position: absolute/.test(bg(4)) && /position: relative/.test(bg(9)), 'オフの線は箱を浮かせる・オンの線は札の間に置く', [bg(4).slice(0, 40), bg(9).slice(0, 40)]);
   { const d7 = doc(['top', H1, R, 'a3', R, 'a5', R, H2]), c7 = [], e7 = mkEd(d7, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0, character: 0 }, isEmpty: true });
     e7.selections = [e7.selection]; e7.setDecorations = (deco, items) => c7.push({ deco, items: items || [] }); stub.window.activeTextEditor = e7; stub.window.visibleTextEditors = [e7]; T.meosApplyTimerLineDecorations(e7);
     const bx = c7.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === 2 && x.renderOptions && x.renderOptions.before && /background:/.test(x.renderOptions.before.textDecoration || ''));
@@ -120,6 +131,6 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
     ok(/meosParkCaretAfterPress\(editor, matched\.pair\.start\);[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*try \{ if \(!_wasFolded && _meosParkBack[^\n]*_bl > matched\.pair\.start && _bl <= meosPairBlockEnd\(editor\.document, matched\.pair\)\) _meosParkBack\.back = null/.test(SRC), 'v5.1.651 ▲で畳んだ時、カーソルを畳んだ膜の中(押す前の▲の行)へ戻さない(戻すと VS Code が膜を開く)', 0); }
   const hid = (ln) => calls.flatMap(c => c.items.map(x => [c.deco, x])).map(p => [p[0], p[1] && p[1].range ? p[1].range : p[1]]).filter(p => p[1] && p[1].start && p[1].start.line === ln && p[0].__opts && /opacity: 0; font-size: 0;'?$/.test(p[0].__opts.textDecoration || '') && !/letter-spacing/.test(p[0].__opts.textDecoration)).map(p => [p[1].start.character, p[1].end.character, p[0]]).sort((a, b) => a[0] - b[0]);
   const h2 = hid(2); ok(h2.length === 3 && h2[0][1] === 1 && h2[1][1] === 2 && h2[0][2] !== h2[1][2] && h2[0][2] === h2[2][2], '開始膜の線(オフ)の字は札の桁1・2で割って2つの型で交互に隠す', h2.map(x => [x[0], x[1]]));
-  const h9 = hid(9); ok(h9.length === 2 && h9[0][1] === 1 && h9[0][2] !== h9[1][2], 'ふつうの線は桁1で割る(札が幅0にならない)', h9.map(x => [x[0], x[1]]));
+  const h9 = hid(9); ok(h9.length === 3 && h9[0][1] === 1 && h9[1][1] === 2 && h9[0][2] !== h9[1][2], 'オンの線は桁1・2で割る(札が幅0にならない)', h9.map(x => [x[0], x[1]]));
   console.log(ng ? 'NG ' + ng + '件' : 'ALL OK'); process.exit(ng ? 1 : 0);
 })();
