@@ -15432,7 +15432,9 @@ function meosStopNextLines(doc, i) {   // 次の線とその先 [{line, off}](�
     for (let k = _meosStopLowerBound(X.rules, i + 1); k < X.rules.length && X.rules[k].line < hi; k++) out.push({ line: X.rules[k].line, off: X.rules[k].off });
     X.map.set(i, out); return out; } catch (_) { return null; }
 }
-function meosStopSignal(next) { if (!next || !next.length) return 'none'; if (next[0].off) return 'blue'; return next.every(x => !x.off) ? 'red' : 'yellow'; }
+// ★v5.1.653(俊克 pm03:59「赤STOP(すべてオン)→青OFF(すべてOFF)→黄STOP(次のみオン)→黄OFF(次のみオフ)→赤STOP。こうすれば、手動でどっちも作れるので、余計な説明が要らない」):
+//   字= 次の線(STOP= オン / OFF= オフ)・色= その先(次と同じなら 赤STOP/青OFF・次と違う物が混じれば 黄)。手で作った混ざり方も、この4つのどれかに読める
+function meosStopSignal(next) { if (!next || !next.length) return 'none'; const n = !next[0].off, same = next.every(x => !x.off === n); return n ? (same ? 'red' : 'yellow') : (same ? 'blue' : 'yellowOff'); }
 const MEOS_STOP_BOX_CH = 60, MEOS_STOP_BTN_CH = 2;   // 線の箱の幅(ch)・札1つの幅(ch)= 標識 1.3em ≈ 2.2ch
 function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑) / 次= オンなら 3(右端・2 は間の詰め物)・オフなら 2(左の隣)。次が無い(黒NONE)線は札なし
   try { const t = doc.lineAt(i).text || ''; const on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return null; if (t.length < 8) return null;
@@ -15445,7 +15447,7 @@ function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑
 }
 async function meosStopToggleSelf(ed, i) { const doc = ed.document, t = doc.lineAt(i).text, on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return false; return ed.edit(eb => eb.replace(new vscode.Range(i, 0, i, t.length), meosStopOffText(t, on))); }
 async function meosStopCycleNext(ed, i) { const doc = ed.document, next = meosStopNextLines(doc, i); if (!next || !next.length) return false;
-  const sig = meosStopSignal(next), wantOff = (k) => sig === 'red' ? true : sig === 'blue' ? k > 0 : false;   // 赤→青(すべてオフ) / 青→黄(次だけオン) / 黄→赤(すべてオン)
+  const sig = meosStopSignal(next), wantOff = (k) => sig === 'red' ? true : sig === 'blue' ? k > 0 : sig === 'yellow' ? k === 0 : false;   // 赤→青(すべてオフ) / 青→黄STOP(次だけオン) / 黄STOP→黄OFF(次だけオフ) / 黄OFF→赤(すべてオン)
   return ed.edit(eb => { next.forEach((x, k) => { const w = wantOff(k); if (x.off === w) return; const t = doc.lineAt(x.line).text; eb.replace(new vscode.Range(x.line, 0, x.line, t.length), meosStopOffText(t, w)); }); }); }
 function meosStopSignSvg(fill, text, ink, len) { return 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="29.29,0.00 70.71,0.00 100.00,29.29 100.00,70.71 70.71,100.00 29.29,100.00 0.00,70.71 0.00,29.29" fill="#1a1a1a"/><polygon points="30.74,3.50 69.26,3.50 96.50,30.74 96.50,69.26 69.26,96.50 30.74,96.50 3.50,69.26 3.50,30.74" fill="#fff"/><polygon points="32.19,7.00 67.81,7.00 93.00,32.19 93.00,67.81 67.81,93.00 32.19,93.00 7.00,67.81 7.00,32.19" fill="' + fill + '"/><text x="50" y="62.5" font-family="Arial Narrow,Helvetica Neue,Arial,sans-serif" font-weight="700" font-size="33" textLength="' + len + '" lengthAdjust="spacingAndGlyphs" text-anchor="middle" fill="' + ink + '">' + text + '</text></svg>').toString('base64'); }
 // ★v5.1.593(俊克 11.08 am11:27「罫線 <!-- Mew!UFC --- --> を一時停止線と命名しよう。区別する為に、頭に見かけ上の標識を作って付けよう。世界的な一時停止標識は正八角形なので、オーストリアを参考に」):
@@ -15476,6 +15478,7 @@ function meosStopLineCss(kind, x, edge) { const c = edge === 1 ? 'rgba(22, 163, 
 const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjI5LjI5LDAuMDAgNzAuNzEsMC4wMCAxMDAuMDAsMjkuMjkgMTAwLjAwLDcwLjcxIDcwLjcxLDEwMC4wMCAyOS4yOSwxMDAuMDAgMC4wMCw3MC43MSAwLjAwLDI5LjI5IiBmaWxsPSIjMWExYTFhIi8+PHBvbHlnb24gcG9pbnRzPSIzMC43NCwzLjUwIDY5LjI2LDMuNTAgOTYuNTAsMzAuNzQgOTYuNTAsNjkuMjYgNjkuMjYsOTYuNTAgMzAuNzQsOTYuNTAgMy41MCw2OS4yNiAzLjUwLDMwLjc0IiBmaWxsPSIjZmZmIi8+PHBvbHlnb24gcG9pbnRzPSIzMi4xOSw3LjAwIDY3LjgxLDcuMDAgOTMuMDAsMzIuMTkgOTMuMDAsNjcuODEgNjcuODEsOTMuMDAgMzIuMTksOTMuMDAgNy4wMCw2Ny44MSA3LjAwLDMyLjE5IiBmaWxsPSIjZGMzYjMwIi8+PHRleHQgeD0iNTAiIHk9IjYyLjUiIGZvbnQtZmFtaWx5PSJBcmlhbCBOYXJyb3csSGVsdmV0aWNhIE5ldWUsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIzMyIgdGV4dExlbmd0aD0iNjYiIGxlbmd0aEFkanVzdD0ic3BhY2luZ0FuZEdseXBocyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+U1RPUDwvdGV4dD48L3N2Zz4=', MEOS_STOP_SIGN_EM = 1.3;
 const MEOS_STOP_OFF_URL = meosStopSignSvg('#1e88e5', 'OFF', '#fff', 56);   // v5.1.645: オフの標識(灰) / ★v5.1.652: 青OFF= 通過してよい(信号の青)
 const MEOS_STOP_YELLOW_URL = meosStopSignSvg('#f2b705', 'STOP', '#1a1a1a', 66);   // v5.1.652: 黄STOP= 次はオン・その先にオフ
+const MEOS_STOP_YELLOW_OFF_URL = meosStopSignSvg('#f2b705', 'OFF', '#1a1a1a', 56);   // v5.1.653: 黄OFF= 次はオフ・その先にオン
 const MEOS_STOP_NONE_URL = meosStopSignSvg('#1a1a1a', 'NONE', '#fff', 66);   // v5.1.652: 黒NONE= 次の線が無い(押せない)
 // ★v5.1.595(俊克 11.08 pm00:27「Cmd+↑/↓で一時停止線までジャンプできることは、エディターを使っている人が歓喜する機能だよ。なので、一時停止線を入れるボタンをFormat Meに追加しよう。
 //   一時停止線の上、あるいは、前後の行に文字カーソルがあるときは、他のボタン同様に、🚫ボタンにして、取消もできるようにする。キーボード派は、直接コピペすればいいしね」):
@@ -15640,7 +15643,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
                 for (let _k = 0; _k + 1 < _cuts.length; _k++) if (_cuts[_k + 1] > _cuts[_k]) (_k % 2 ? stopHide2 : badgeHide).push(new vscode.Range(i, _cuts[_k], i, _cuts[_k + 1]));
                 if (_sb45) { hintSkins.push({ range: new vscode.Range(i, 0, i, 2) }); if (_sb45.bulk > 0) hintSkins.push({ range: new vscode.Range(i, _sb45.bulk - 1, i, _sb45.bulk + 1) }); } }
               const _sign = (u, pos) => 'url(' + u + ') ' + pos + ' center / ' + _S + 'em ' + _S + 'em no-repeat';
-              const _nextU = !_sb45 ? MEOS_STOP_SIGN_URL : ({ red: MEOS_STOP_SIGN_URL, yellow: MEOS_STOP_YELLOW_URL, blue: MEOS_STOP_OFF_URL, none: MEOS_STOP_NONE_URL })[_sb45.sig] || MEOS_STOP_SIGN_URL;   // v5.1.652: 右= 次の線の信号
+              const _nextU = !_sb45 ? MEOS_STOP_SIGN_URL : ({ red: MEOS_STOP_SIGN_URL, yellow: MEOS_STOP_YELLOW_URL, yellowOff: MEOS_STOP_YELLOW_OFF_URL, blue: MEOS_STOP_OFF_URL, none: MEOS_STOP_NONE_URL })[_sb45.sig] || MEOS_STOP_SIGN_URL;   // v5.1.652: 右= 次の線の信号
               const _bg45 = _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
@@ -47754,7 +47757,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
             { const _sb = meosStopBtnSpots(document, ln, _ed89); if (_sb) {   // v5.1.645: 一時停止線の🛑(左= 自分) / v5.1.652: 右= 次の線の信号(赤→青→黄)
                 const _bt = '\u00a0'.repeat(MEOS_STOP_BTN_CH), _h1 = new vscode.InlayHint(new vscode.Position(ln, 1), _bt);
                 _h1.tooltip = _sb.on ? 'Stop line | Click to turn it off (🚫): Cmd+↓/↑ and held arrows pass through. Click again to turn it on.' : 'Stop line — off | Click to turn it on again.'; out.push(_h1);
-                if (_sb.bulk > 0) { const _h3 = new vscode.InlayHint(new vscode.Position(ln, _sb.bulk), _bt); _h3.tooltip = ({ red: 'Next stop lines — red STOP: all on | Click to turn them all off (blue OFF).', blue: 'Next stop line — blue OFF: off, so Cmd+↓ passes it | Click to turn only the next one on (yellow STOP).', yellow: 'Next stop line — yellow STOP: on, some after it off | Click to turn them all on (red STOP).' })[_sb.sig] || ''; out.push(_h3); }   // v5.1.652: 右= 次の線の信号
+                if (_sb.bulk > 0) { const _h3 = new vscode.InlayHint(new vscode.Position(ln, _sb.bulk), _bt); _h3.tooltip = ({ red: 'Next stop lines — red STOP: all on | Click to turn them all off (blue OFF).', blue: 'Next stop lines — blue OFF: all off, so Cmd+↓ passes them | Click to turn only the next one on (yellow STOP).', yellow: 'Next stop line — yellow STOP: on, some after it off | Click to turn only the next one off (yellow OFF).', yellowOff: 'Next stop line — yellow OFF: off, so Cmd+↓ passes it; some after it on | Click to turn them all on (red STOP).' })[_sb.sig] || ''; out.push(_h3); }   // v5.1.652: 右= 次の線の信号
               } }
           }
 

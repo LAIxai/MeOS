@@ -122,10 +122,11 @@ turn it back on. Leave a membrane's edge off on one side and it becomes a one-wa
 
 **The right 🛑 is a signal for the lines ahead.** The left sign tells you about this line; the right one tells you about
 the next stop lines below it, however far away they are — up to the end of the membrane it sits in (on a closing edge,
-the lines outside, up to the end of the membrane around it). Red **STOP**: all of them are on. Yellow **STOP**: the next
-one is on, some after it are off. Blue **OFF**: the next one is off, so Cmd+↓ passes it. Click the right sign to go
-round red → blue (all off) → yellow (only the next one on) → red (all on). With no line ahead it shows a black
-**NONE**. The colours are read from the text, so a line you switch by hand changes them too.
+the lines outside, up to the end of the membrane around it). The word is the next line — **STOP** if it is on, **OFF**
+if it is off, so Cmd+↓ passes it. The colour is the rest: red **STOP** all on, blue **OFF** all off, yellow when the
+lines after the next one differ from it. Click the right sign to go round red STOP (all on) → blue OFF (all off) →
+yellow STOP (only the next one on) → yellow OFF (only the next one off) → red STOP. With no line ahead it shows a black
+**NONE**. The signs are read from the text, so a line you switch by hand changes them too.
 
 Type it, or press it. A line holding only one of the eight marks becomes that stop line when you press Enter — no new
 line is added, and Cmd+Z gives back the plain text. A list item such as `- - item`, or a line that starts with `...`,
