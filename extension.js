@@ -24252,6 +24252,11 @@ async function toggleMembraneFromArrowHit(editor, info) {
         // ★v5.0.0-9(俊克「▲で開いた時は、文字カーソルも末尾へ移動すべき」) / v5.0.0-10(俊克「▼の時は殻を見せず▼の左で点滅する。▲も同じに」):
         //   ▼と同じ= 閉じ膜の行の頭(▲の左)へ置き、その行の生の殻は着地の抑止(setRefNoRaw)で見せない(画面は上で決めたまま)
         if (_wasFolded) editor.selection = new vscode.Selection(matched.pair.end, 0, matched.pair.end, 0);
+        // ★v5.1.655(俊克 11.11 am02:40 改良1「▲で開閉を繰り返すと、段々位置が下へずれる」): 測る口= ▲で置いた後の画面の上端を、すぐ・0.3秒・1秒・2秒後に残す。
+        //   ログでは 12段目で押した▲が次は16段目に居た(rows=12→16)。誰が上端を動かしたかを、同じ時刻の [fcFold]/[fcOpen]/[fcSync] と並べて読む
+        try { const _top55 = () => (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1, _tag55 = (_wasFolded ? 'open' : 'fold') + ' rows=' + _rowsAt + ' 目標=' + (_to + 1);
+          meosDbg('[arrowPos] ' + _tag55 + ' 置いた直後 上端=' + _top55());
+          for (const _ms of [300, 1000, 2000]) setTimeout(() => { try { meosDbg('[arrowPos] ' + _tag55 + ' ' + _ms + 'ms後 上端=' + _top55() + ' カーソル=' + (editor.selection.active.line + 1)); } catch (_) { } }, _ms); } catch (_) { }
       }
     } catch (_) { }
   } finally { _meosArrowToggling = false; }
