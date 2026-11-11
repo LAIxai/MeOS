@@ -24254,6 +24254,7 @@ async function toggleMembraneFromArrowHit(editor, info) {
         //   ▼と同じ= 閉じ膜の行の頭(▲の左)へ置き、その行の生の殻は着地の抑止(setRefNoRaw)で見せない(画面は上で決めたまま)
         if (_wasFolded) editor.selection = new vscode.Selection(matched.pair.end, 0, matched.pair.end, 0);
         _meosViewPlacedAt = Date.now();   // v5.1.656: ▲が画面を置いた= FC の道は、これより前に控えた上端へ戻さない
+        if (_rowsAt >= 0) _meosViewAnchor = { editor, line: _to, rows: _rowsAt, at: Date.now() };   // v5.1.657: 守る段
         // ★v5.1.655(俊克 11.11 am02:40 改良1「▲で開閉を繰り返すと、段々位置が下へずれる」): 測る口= ▲で置いた後の画面の上端を、すぐ・0.3秒・1秒・2秒後に残す。
         //   ログでは 12段目で押した▲が次は16段目に居た(rows=12→16)。誰が上端を動かしたかを、同じ時刻の [fcFold]/[fcOpen]/[fcSync] と並べて読む
         try { const _top55 = () => (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1, _tag55 = (_wasFolded ? 'open' : 'fold') + ' rows=' + _rowsAt + ' 目標=' + (_to + 1);
@@ -42994,10 +42995,29 @@ function meosScheduleFcCursorSync(editor) {
 //   ★真因= FC を畳む道は走り始めに画面の上端を控え、終わりにそこへ戻す(v4.0.176/326/327)。▲/▼の開閉と重なると、▲が置いた画面を**開閉の前の古い上端**へ戻していた。
 //   ★直し= ▲/▼が画面を置いた時刻を残し、控えた後に置き直されていたら戻さない(新しい方= 人が押した結果が勝つ)
 let _meosViewPlacedAt = 0;
+// ★v5.1.657(俊克 pm11:10「まだ少し上下に動く」= 656 の [arrowPos] で確定): 置いた後の上端は動かなくなったが、置いた後に**膜より上の FC が開く/畳まれる**
+//   (カーソルが膜に出入りする)と、その2行ぶん膜が上下した(閉じ= 20段目に置いて次は18段目・開き= 18段目に置いて次は20段目)。
+//   ★直し= FC の道が▲の置いた後に動いたら、上端ではなく**▲の段**を守る= 今の段を数え直し、違えば差の段だけ送る(1回の送りなので画面は跳ねない)
+let _meosViewAnchor = null;   // { editor, line, rows, at }= ▲で置いた行と、置いた段
+let _meosReanchoring = false;
+async function meosReanchorView(editor) {
+  const a = _meosViewAnchor;
+  if (_meosReanchoring || !a || a.editor !== editor || Date.now() - a.at > 4000 || !(a.rows >= 0)) return;
+  _meosReanchoring = true;
+  try {
+    const sel = editor.selection;
+    const now = await meosRowsAboveByCaret(editor, a.line);
+    try { editor.selection = sel; } catch (_) { }
+    if (now >= 0 && now !== a.rows) {
+      await vscode.commands.executeCommand('editorScroll', { to: now > a.rows ? 'down' : 'up', by: 'wrappedLine', value: Math.abs(now - a.rows), revealCursor: false });
+      meosDbg('[arrowPos] FC の開閉で段がずれた ' + now + '→' + a.rows + ' 段へ戻す 行=' + (a.line + 1));
+    }
+  } catch (_) { } finally { _meosReanchoring = false; }
+}
 function meosRestoreView(editor, topLine, sel, strict, capturedAt) {
   try {
     if (!editor || topLine < 0) return;
-    if (capturedAt && _meosViewPlacedAt >= capturedAt) return;   // v5.1.656: 控えた後に▲/▼が画面を置いた= 古い上端へ戻さない
+    if (capturedAt && _meosViewPlacedAt >= capturedAt) { meosReanchorView(editor); return; }   // v5.1.656: 控えた後に▲/▼が画面を置いた= 古い上端へ戻さない / v5.1.657: ▲の段を守る
     if (editor !== vscode.window.activeTextEditor) return;         // もう別のエディタ=触らない
     if (strict && sel && !editor.selection.isEqual(sel)) return;   // 待ちを挟む道だけ: 誰かthat動かした=何もしない
     const now = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
