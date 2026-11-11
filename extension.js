@@ -24232,6 +24232,7 @@ async function toggleMembraneFromArrowHit(editor, info) {
   } catch (_) { }
   setRefNoRaw(editor.document, matched.pair.start);
   _meosViewPlacedAt = Date.now();   // v5.1.656: 開閉が始まった= この前に控えた上端へは戻さない(置き終わりでもう一度押す)
+  _meosArrowHoldUntil = Date.now() + 3000;   // v5.1.658
   _meosArrowToggling = true;
   try {
     await setPairFoldStateAndMstat(editor, matched.pair, !_wasFolded);
@@ -24262,7 +24263,7 @@ async function toggleMembraneFromArrowHit(editor, info) {
           for (const _ms of [300, 1000, 2000]) setTimeout(() => { try { meosDbg('[arrowPos] ' + _tag55 + ' ' + _ms + 'ms後 上端=' + _top55() + ' カーソル=' + (editor.selection.active.line + 1)); } catch (_) { } }, _ms); } catch (_) { }
       }
     } catch (_) { }
-  } finally { _meosArrowToggling = false; }
+  } finally { _meosArrowToggling = false; _meosArrowHoldUntil = 0; }   // v5.1.658: 置き終わった= FC の開け閉めを戻す
   setRefNoRaw(editor.document, (_wasFolded && _byClose) ? matched.pair.end : matched.pair.start);   // トグル中の refresh で解けていても張り直す(v5.0.0-10: ▲で開いた時は閉じ膜の行)
   refresh(editor);
   nameJumpSuppressUntil = Date.now() + 250;
@@ -25105,6 +25106,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         + ' emptySel=' + editor.selection.isEmpty
         + ' suppressed=' + (now < nameJumpSuppressUntil)
         + ' at=' + JSON.stringify((editor.document.lineAt(_i.line).text || '').substr(editor.selection.active.character, 8)));
+      if (_i && editor.selection.isEmpty && meosArrowHitAt(editor.document, _i.line, editor.selection.active.character)) _meosArrowHoldUntil = Date.now() + 3000;   // v5.1.658: 置き終わるまで FC を止める(最長3秒)
     } catch (_) { }
   }
   // ★★★v4.2.64: `▶️` を押した= その1本に席を回す。▼と同じ「マウスの時だけ」の道に乗せる。
@@ -42995,6 +42997,11 @@ function meosScheduleFcCursorSync(editor) {
 //   ★真因= FC を畳む道は走り始めに画面の上端を控え、終わりにそこへ戻す(v4.0.176/326/327)。▲/▼の開閉と重なると、▲が置いた画面を**開閉の前の古い上端**へ戻していた。
 //   ★直し= ▲/▼が画面を置いた時刻を残し、控えた後に置き直されていたら戻さない(新しい方= 人が押した結果が勝つ)
 let _meosViewPlacedAt = 0;
+// ★v5.1.658(俊克 pm11:20「やはりまだ上下に移動する。▼は最初3、4回は移動したが、その後静止」= 657 のログ):
+//   押してから開閉が始まるまで約1秒あり、その間に FC の道がカーソルの移動に応えて膜の上の FC を開け閉めしていた
+//   (14:22:46.517 押す → 47.437 [fcFold] → 47.746 [arrowToggle] rows=5。置いた時は rows=4)= **押した段を数える前に、画面が2段ほど動いていた**。
+//   ★直し= ▲▼に当たったら、置き終わるまで FC の開け閉めを止める(数えるのは押した時の画面)。置き終わったら解く
+let _meosArrowHoldUntil = 0;
 // ★v5.1.657(俊克 pm11:10「まだ少し上下に動く」= 656 の [arrowPos] で確定): 置いた後の上端は動かなくなったが、置いた後に**膜より上の FC が開く/畳まれる**
 //   (カーソルが膜に出入りする)と、その2行ぶん膜が上下した(閉じ= 20段目に置いて次は18段目・開き= 18段目に置いて次は20段目)。
 //   ★直し= FC の道が▲の置いた後に動いたら、上端ではなく**▲の段**を守る= 今の段を数え直し、違えば差の段だけ送る(1回の送りなので画面は跳ねない)
@@ -43050,6 +43057,7 @@ async function meosSyncFcFoldForCursor(editor) {
   //     editor.visibleRanges thatまだ古い**から(VS Codeは次の描画で更新する)。目で確かめる物は、
   //     2msでは間に合わない。→ **自分thatが何を畳んだかを覚える**方に替える(下の _meosFcJustFolded)。
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy || _meosFcFolding) return;
+  if (Date.now() < _meosArrowHoldUntil) return;   // v5.1.658: ▲を押してから置き終わるまでは FC を開け閉めしない
   let _topBefore = -1; const _topAt56 = Date.now();   // v5.1.656: 控えた時刻
   try {
     if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
@@ -43190,6 +43198,7 @@ async function meosSyncFcFoldForCursor(editor) {
 //   畳むのは**見えていて、かつ開いている物だけ**(v4.0.188)＝ 畳まれた塊を畳むと膜に化ける。
 async function meosFoldPseudoOpened(editor) {
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy || _meosFcFolding) return;
+  if (Date.now() < _meosArrowHoldUntil) return;   // v5.1.658: ▲を押してから置き終わるまでは FC を開け閉めしない
   try {
     if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
     if (!meosDocModes(editor.document)) return;                       // 設定that1つも無いファイル= 何もしない
@@ -43308,6 +43317,7 @@ function meosFoldWhy(reason) {
 async function meosAutoFoldSpecLines(editor, force) {
   if (!MEOS_SPEC_LINE_AUTOFOLD) { meosFoldWhy('autofold=off'); return; }
   if (_meosFcFolding || _meosFcBusy) { meosFoldWhy('別の道that動いている (folding=' + _meosFcFolding + ' busy=' + _meosFcBusy + ')'); return; }   // v4.0.328
+  if (Date.now() < _meosArrowHoldUntil) { meosFoldWhy('▲を押してから置き終わるまで待つ'); return; }   // v5.1.658
   // ★★v4.0.396(俊克 8/23 pm09:17「bs連打→fs連打→bs連打のとき1、2秒止まる。**そもそも、なぜbs、fsキーに
   //   遅延の処理を残す必要があるのか?**」):
   //   ★★**俊克が正しい。残す必要は無い**。bs/fs は **FCの塊を1つも作らない**ので、畳む仕事を打鍵に
