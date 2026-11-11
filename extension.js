@@ -46193,7 +46193,10 @@ function meosApplyCodeFenceDecorations(editor) {
           {
             const _kind = (ln === b.open) ? 'head' : ((ln === _last) ? 'foot' : 'body');
             // v4.2.280: その行that何段に折り返るか= 段の数だけ紙を高くする(折り返した段にも紙that続く)
-            const _rows = _wrapCol ? Math.max(1, Math.min(20, Math.ceil(meosRenderCols(t) / _wrapCol))) : 1;
+            // ★v5.1.654(俊克 11.11 am02:52「さっき書いたコードブロックがスクショのように表示されていた」= 3段に折れた行の3段目が紙の外):
+            //   真因= 段の数を「幅÷折り返し幅」で見積もっていた。Monaco は空白や記号の後で折るので、空白の多い行は見積もりより1段多く折れる
+            //   (台で実物の4行を数えた= 旧 2,2,2,2 / 実際 3,2,3,3)。→ 表のセル折り返しで写した Monaco の折り返し(meosTcwRowsOf)で数える= 物差しを1本に
+            const _rows = _wrapCol ? Math.max(1, Math.min(20, meosTcwRowsOf(t, _wrapCol))) : 1;
             const ty = meosFencePaperCapType(_w, _kind, _rows, _fcol);
             if (!paper.has(ty)) paper.set(ty, []);
             paper.get(ty).push(L(ln));
@@ -46239,7 +46242,7 @@ function meosApplyCodeFenceDecorations(editor) {
         // v5.1.114: 説明の行= 紙の足。1行目に出した分と包みは幅ごと畳み、残りを青の斜体で見せる
         if (_cap && _cap.line >= vr[0] && _cap.line <= vr[1]) {
           const ct = lines[_cap.line] || '';
-          const _rows = _wrapCol ? Math.max(1, Math.min(20, Math.ceil(meosRenderCols(ct) / _wrapCol))) : 1;
+          const _rows = _wrapCol ? Math.max(1, Math.min(20, meosTcwRowsOf(ct, _wrapCol))) : 1;   // v5.1.654: 説明の行も Monaco の折り返しで数える
           const ty = meosFencePaperCapType(_w, 'foot', _rows, _fcol);
           if (!paper.has(ty)) paper.set(ty, []);
           paper.get(ty).push(L(_cap.line)); indents.push(L(_cap.line));
