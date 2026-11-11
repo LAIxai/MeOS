@@ -82,6 +82,12 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
   // 2. 最初の3行
   const d2 = doc(['a', '']); const e2 = mkEd(d2, { start: { line: 1, character: 0 }, end: { line: 1, character: 0 }, active: { line: 1, character: 0 }, isEmpty: true }); stub.window.activeTextEditor = e2; await T.meosPuzzleTag('f', {}); await settle();
   ok(clocks(d2).length === 1 && T.meosClockFcScan(d2).length === 1, '最初の3行にも⏰が1本', d2.L);
+  // 2b. v5.1.659: ♥が在る時(♥)は選択が残っていても包まない= 飛ぶだけ。包むのは印が無い時(♡)だけ
+  { const d9 = doc(['x', '本文1', '本文2', 'y', 'z']); await T.meosFofWrap(mkEd(d9, sel(1, 2)), 'f', 7); await settle(); const n0 = T.meosPuzzleTagsOf(d9, 7).length, L0 = d9.L.slice();
+    const zi = d9.L.indexOf('z'), e9 = mkEd(d9, sel(zi, zi)); e9.selection.isEmpty = false; stub.window.activeTextEditor = e9; await T.meosPuzzleTag('f', { gate: true }); await settle();
+    ok(n0 === 2 && T.meosPuzzleTagsOf(d9, 7).length === 2 && d9.L.length === L0.length, 'v5.1.659 ♥が在る時は選択があっても包まない(前の♥膜を壊さない)', d9.L);
+    const da = doc(['a', 'b', 'c']), ea = mkEd(da, sel(1, 1)); ea.selection.isEmpty = false; stub.window.activeTextEditor = ea; await T.meosPuzzleTag('f', {}); await settle();
+    ok(T.meosPuzzleTagsOf(da, 7).length === 2 && da.L.includes('b'), 'v5.1.659 印が無い時(♡)は選択を包む', da.L); }
   // 3. コピペで組ができる(今ある1点の♥×2)→ 1本だけ。もう一度読んでも増えない
   const d3 = doc(['a', '<!-- {* ♥️▶◀mP7=f_1 //  *} -->', 'b', '<!-- {* ♥️▶◀mP7=f_2 //  *} -->', 'c']); T.meosPuzzleFSet(d3, 7, 'f_1'); const e3 = mkEd(d3); await T.meosFofReconcile(e3, 7); await settle();
   ok(clocks(d3).length === 1, '組が今できた= ⏰が1本', d3.L); await T.meosFofReconcile(e3, 7); await T.meosFofClockWrite(d3); ok(clocks(d3).length === 1, '読み直しても増えない', d3.L);

@@ -7640,8 +7640,10 @@ async function meosPuzzleTag(ch, opt) {
     const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
     const doc = ed.document;
     if (opt && opt.sweep) { await meosPuzzleSweep(ed, n, String(ch)); return; }
-    if (!ed.selection.isEmpty && !(opt && opt.cycle)) { await meosFofWrap(ed, String(ch), n); return; }   // v5.1.570 / v5.1.588: どの字も選択を包む
     const hits = meosPuzzleTagsOf(doc, n);
+    // ★v5.1.659(俊克 11.12 am00:51「選択範囲を♥️膜で包むのは、♡ボタンを押したときだけだよね?」「Cmdクリックで消す以外に、消す方法が発動するのはおかしい」):
+    //   包むのは印がまだ1本も無い時(♡)だけ。在る時(♥)は選択が残っていても飛ぶだけ= 包むと F が新しい組へ移り、前の膜が組から外れてタイマーごと消えていた(11.11 に2回)
+    if (!hits.length && !ed.selection.isEmpty && !(opt && opt.cycle)) { await meosFofWrap(ed, String(ch), n); return; }   // v5.1.570 / v5.1.588: どの字も選択を包む
     if (!hits.length) {
       const ln = ed.selection.active.line, ind = (doc.lineAt(ln).text.match(/^[ \t]*/) || [''])[0];
       // ★v4.2.631(俊克「初めてクリックしたパズルボタンには、tipとして「Welcome to Puzzle Dock!!」と入れよう。これで tip の使い方を理解できるはず」):
