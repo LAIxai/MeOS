@@ -41033,7 +41033,9 @@ async function meosRuleStep(down) {
     const cur = ed ? ed.selection.active.line : -1;
     if (_meosRuleKey.hold) {
       if (gap < 150 && now - (_meosRuleKey.holdAt || now) >= MEOS_RULE_HOLD_JUMP_MS) {   // v5.1.665: 止まったまま押し続けた= Cmd+↓/↑ と同じ所へ
-        _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(down ? 'laiMembrane.membraneEdgeDown' : 'laiMembrane.membraneEdgeUp'); } finally { _meosRuleKey.busy = false; }
+        // ★v5.1.668(俊克 am11:25 バグ1「停止線の手前が空行の場合に、停止した後に押しっ放しだと、さらに次の停止線に飛んでしまう」): 空行は着いた時に既に着地点(桁0)= Cmd を打つと線を越える。もう着地点なら打たない
+        let _there = false; try { const d = ed.document, nx = cur + (down ? 1 : -1); _there = nx >= 0 && nx < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(nx).text) && ed.selection.active.character === (down ? d.lineAt(cur).text.length : 0); } catch (_) { }
+        if (!_there) { _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(down ? 'laiMembrane.membraneEdgeDown' : 'laiMembrane.membraneEdgeUp'); } finally { _meosRuleKey.busy = false; } }
         _meosRuleKey.holdAt = Infinity; _meosRuleKey.moved = Date.now(); meosDbg('[ruleHold] 押し続けた→ Cmd+' + (down ? '↓' : '↑')); return;
       }
       if (gap >= 150) setTimeout(() => setImmediate(() => { if (_meosRuleKey.at !== now || !_meosRuleKey.hold) return; _meosRuleKey.hold = false; _meosRuleKey.pass = cur; meosRuleGo(cmd, down, false); }), 120);

@@ -187,6 +187,13 @@ const S = (sel) => sel;
       const ed = stub.window.activeTextEditor, ex0 = stub.commands.executeCommand; stub.commands.executeCommand = async (c, ...r) => { if (c === 'laiMembrane.membraneEdgeDown') { jumped++; return; } return ex0(c, ...r); };
       for (let i = 0; i < 70; i++) { T.meosRuleStep(true); await new Promise(r => setTimeout(r, 30)); }
       ok(jumped === 1 && ed.selection.active.line === 39 && ed.selection.active.character === 1, 'v5.1.665 手前の行に入った所(桁はそのまま)で止まり、1秒以上押し続けると Cmd+↓ を1回だけ打ってそこで止まる', [jumped, ed.selection.active.line, ed.selection.active.character]); stub.commands.executeCommand = _ex; await new Promise(r => setTimeout(r, 400)); } }
+  // 13a. v5.1.668: 手前が空行= 着いた時に既に着地点→ 押し続けても Cmd を打たない(線を越えない)
+  { const mk2 = () => { const L = []; for (let i = 0; i < 60; i++) L.push('行' + i); L[39] = ''; L[40] = R; return mkDoc(L); };
+    const ex0 = stub.commands.executeCommand; let jumped = 0;
+    const d = mk2(), ed = mkEd(d, { start: { line: 30, character: 0 }, end: { line: 30, character: 0 }, active: { line: 30, character: 0 }, isEmpty: true }); ed.selections = [ed.selection]; stub.window.activeTextEditor = ed;
+    stub.commands.executeCommand = async (c) => { if (c === 'laiMembrane.membraneEdgeDown') { jumped++; return; } const a = ed.selection.active, l = Math.max(0, Math.min(d.lineCount - 1, a.line + (c === 'cursorDown' ? 1 : c === 'cursorUp' ? -1 : 0))); const p = new stub.Position(l, Math.min(a.character, d.lineAt(l).text.length)); ed.selection = { start: p, end: p, active: p, anchor: p, isEmpty: true }; ed.selections = [ed.selection]; };
+    await new Promise(r => setTimeout(r, 400)); T.meosRuleStep(true); await new Promise(r => setTimeout(r, 300)); for (let i = 0; i < 80; i++) { T.meosRuleStep(true); await new Promise(r => setTimeout(r, 30)); }
+    ok(ed.selection.active.line === 39 && jumped === 0, 'v5.1.668 手前が空行なら、止まって押し続けても Cmd+↓ を打たない(線を越えない)', [ed.selection.active.line, jumped]); stub.commands.executeCommand = ex0; await new Promise(r => setTimeout(r, 400)); }
   // 13b. v5.1.666(俊克 11.12): 停止線のすぐ手前の行で Cmd+↓/↑= まず行末/行頭へ(線を越えない)。着いていればいつも通り
   { const L = ['上の文', R, '中の文のながい行', R, '下']; const d = mkDoc(L);
     const at = (ln, ch) => { const ed = mkEd(d, { start: { line: ln, character: ch }, end: { line: ln, character: ch }, active: { line: ln, character: ch }, isEmpty: true }); ed.selections = [ed.selection]; ed.revealRange = () => { }; stub.window.activeTextEditor = ed; return ed; };
