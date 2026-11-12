@@ -42532,7 +42532,7 @@ function meosFcIcPairRanges(doc, line, ch) {
     if (meosIsFcIcLine(t0) && (line < P.s || line >= P.e)) return null;
     const codes = []; for (let k = P.top; k <= P.bot; k++) { const re = /(?<!`)(`+)(?!`)([^`]|[^`][^\n]*?[^`])(?<!`)\1(?!`)/g; let c; while ((c = re.exec(lines[k] || '')) !== null) codes.push({ line: k, start: c.index, end: c.index + c[0].length }); }
     const boxes = []; for (let k = P.s; k < P.e; k++) { const re = /<!--\s*Mew!FC-ic\s+(.*?)\s*-->/gi; let b; while ((b = re.exec(lines[k] || '')) !== null) boxes.push({ line: k, start: b.index, end: b.index + b[0].length, pay: b[1] }); }
-    const pairs = []; boxes.forEach((bx, k) => { if (codes[k] && !/^not\b/i.test(String(bx.pay || '').trim())) pairs.push({ mk: codes[k], bx }); });
+    const pairs = []; boxes.forEach((bx, k) => { if (codes[k]) pairs.push({ mk: codes[k], bx }); });   // ★v5.1.683(俊克 11.13 am02:23 バグ1「not指定のICが橙で対応して見えない」): IC の not は置き石でなく「k番目のコードは付箋でない」と名乗る箱= そのコードと組で橙にする(ハイライトの置き石とは別物)
     const hit = meosIsFcIcLine(t0) ? pairs.find(p => p.bx.line === line && ch >= p.bx.start && ch <= p.bx.end) : pairs.find(p => p.mk.line === line && ch > p.mk.start && ch < p.mk.end);
     if (!hit) return [];
     return [new vscode.Range(hit.mk.line, hit.mk.start, hit.mk.line, hit.mk.end), new vscode.Range(hit.bx.line, hit.bx.start, hit.bx.line, hit.bx.end)];
