@@ -192,6 +192,28 @@ only the code — the note is a comment. Use UFC, not FC: an FC line folds under
 row would be gone. A ⏰ line or a `---` line is never taken as a note. Clocks and other MeOS notation you quote
 inside a code block stay plain text — they never run, and they do not flicker while you type outside the block.
 
+**CB and IC evolve into sticky notes (FUSEN).** Put a FUSEN comment after a code block (CB) or an inline code
+(IC), and it becomes a sticky note. The sticky-note button in Format Me writes the comment for you:
+
+````md
+```
+Call the bank before Friday.
+```
+<!-- Mew!UFC FUSEN_20261112t094702JST (/YRB黄赤青) -->
+
+Buy `oat milk` and `coffee filters` on the way home.
+<!-- Mew!FC-ic FUSEN-ic_20261112t094702JST (/YRB黄赤青) --><!-- Mew!FC-ic FUSEN-ic_20261112t094723JST (/YRB黄赤青) -->
+````
+
+A code block makes a square note; an inline code makes a long one. Several inline codes on one line pair with the
+FUSEN comments after the paragraph in order. The first letter after `/` is the colour — **Y**ellow, **R**ed or
+**B**lue — so reorder `YRB` to recolour a note. Delete the FUSEN comment, and it is a plain code block or inline code
+again. Either way the cream label stands out, as a note and as code.
+
+Stick one anywhere. The menu bar sorts them by kind and colour, and from there you warp to any of them at any time.
+The newest come first, so old notes slowly fade from the list — the name keeps its time stamp, so a search for
+`FUSEN` still finds them all. This is what a sticky note should be in the digital age.
+
 ### NEW in v5.0 — clocks that hand over to each other, and keep ringing after you close the editor
 
 v4.1 put one clock on a membrane. **v5.0 lets a membrane carry a whole routine** — several clocks, one after

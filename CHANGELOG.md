@@ -4,7 +4,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
-### v5.1.660 (2026-11-12) — the first public v5.1
+### v5.1.661 (2026-11-12) — the first public v5.1
 - **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
 - **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.
 - **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE.
@@ -21,7 +21,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - **▲ opens and closes in place.** Click ▲ on a closing line and the membrane folds and unfolds without the page drifting, and a membrane you folded with ▲ stays folded.
 - **Long lines in a code block stay on the sheet.** A line that wraps into a third row no longer spills out under the sheet.
 - **Tables wrap in their cells.** Long cells wrap on screen without touching the source.
-- **Sticky notes (FUSEN) and 🏷️ TAG on the menu bar.** Square and long sticky notes in yellow, red and blue, listed on the menu bar beside your ⏰ and tags.
+- **CB and IC evolve into sticky notes (FUSEN).** A FUSEN comment after a code block makes a square note, after an inline code a long one, in yellow, red or blue. Stick them anywhere; the menu bar lists them by kind and colour, newest first, beside your ⏰ and 🏷️ TAG, and warps you to any of them. Delete the comment and it is plain code again.
 - **The ` button in Format Me.** One button for inline code, a code block, and their red forms (the backticks themselves as code); ↻ cycles them.
 - **Notice: H-IDX will be retired around v6.** Sticky notes and the Me Dock letters now do its work.
 

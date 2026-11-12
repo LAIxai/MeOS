@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner, meosMoveSpecsOutOfLine, warningHoverMessage, selectDisplayedWarnings, meosWarningEnds };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcIcPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner, meosMoveSpecsOutOfLine, warningHoverMessage, selectDisplayedWarnings, meosWarningEnds };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -514,6 +514,16 @@ console.log('㉜ 段落は「印1つ ⇄ FC1個」で橙(v4.0.401 俊克)');
   // 表は今までどおり「横一列どうし」= 細かくしない
   const TB = ['| 品目 | 備考 |', '| --- | --- |', '| **りんご** | みかん |', '<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC **not (白/黄) -->'];
   ok(T.meosFcMarkPairRanges(makeDoc(TB, null, true), 2, 4) === null, '★表は横一列どうしのまま(俊克「表としては良い」)', true);
+}
+{ // v5.1.661(俊克 11.12 改良1): 1行に IC付箋が2つ= ICの中に居る時は対応する FC-ic だけ橙(実物の行)
+  const P = ['(改良1)1行の中に複数の`IC付箋`があるとき、1つのICの中に文字カーソルがある時、`それに対応`するFCコメントが橙色の字になるはずなのに、そうなってない。',
+    '<!-- Mew!FC-ic FUSEN-ic_20261112t094702JST (/YRB黄赤青) --><!-- Mew!FC-ic FUSEN-ic_20261112t094723JST (/YRB黄赤青) -->'];
+  const d = makeDoc(P), seg = (r, i) => P[r[i].start.line].slice(r[i].start.character, r[i].end.character), at = (ln, ch) => T.meosFcIcPairRanges(d, ln, ch);
+  const a1 = at(0, P[0].indexOf('IC付箋') + 1), a2 = at(0, P[0].indexOf('それに対応') + 1);
+  ok(!!a1 && a1.length === 2 && seg(a1, 0) === '`IC付箋`' && /094702/.test(seg(a1, 1)) && !/094723/.test(seg(a1, 1)), 'v5.1.661 1つ目のIC ⇄ 1つ目の FC-ic だけ', a1 && a1.map((_, i) => seg(a1, i)));
+  ok(!!a2 && a2.length === 2 && seg(a2, 0) === '`それに対応`' && /094723/.test(seg(a2, 1)) && !/094702/.test(seg(a2, 1)), 'v5.1.661 2つ目のIC ⇄ 2つ目の FC-ic だけ', a2 && a2.map((_, i) => seg(a2, i)));
+  const o1 = at(0, P[0].indexOf('するFC') + 1); ok(Array.isArray(o1) && o1.length === 0, 'v5.1.661 ICの外では何も橙にしない', o1);
+  const b2 = at(1, P[1].lastIndexOf('FUSEN') + 2); ok(!!b2 && seg(b2, 0) === '`それに対応`', 'v5.1.661 FC-ic 側から本文の IC へも', b2 && seg(b2, 0));
 }
 
 console.log('㉝ 段落のFC群は「1つの修飾＝1行」(v4.0.402 俊克)');

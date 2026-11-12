@@ -42501,6 +42501,25 @@ function meosFcMarkPairRanges(doc, line, ch) {
             new vscode.Range(hit.bx.line, hit.bx.start, hit.bx.line, hit.bx.end)];
   } catch (_) { return null; }
 }
+// ★v5.1.661(俊克 11.12 am09:59 改良1「1行の中に複数のIC付箋があるとき、1つのICの中に文字カーソルがある時、それに対応するFCコメントが橙色の字になるはず…ハイライトなどと同様の仕組みに」):
+//   IC付箋も印1つ ⇄ 箱1個。組み方は書く口と同じ meosFcIcPara= 段落のインラインコードの順 ⇄ FC-ic の箱の順(付箋でないコードは not の箱)。
+//   返す物は meosFcMarkPairRanges と同じ約束= null は IC付箋の段落でない / [] は段落だが対の上に居ない(何も塗らない)
+function meosFcIcPairRanges(doc, line, ch) {
+  try {
+    const lines = meosDocLines(doc), t0 = lines[line] || '';
+    let L = line;
+    if (meosIsFcIcLine(t0)) { L = line; while (L - 1 >= 0 && (meosIsFcIcLine(lines[L - 1]) || meosIsSpecLine(lines[L - 1] || ''))) L--; L--; if (L < 0 || !String(lines[L] || '').trim()) return null; }
+    else if (!String(t0).trim() || meosIsSpecLine(t0)) return null;
+    const P = meosFcIcPara(lines, L); if (!P.boxes.length) return null;
+    if (meosIsFcIcLine(t0) && (line < P.s || line >= P.e)) return null;
+    const codes = []; for (let k = P.top; k <= P.bot; k++) { const re = /(?<!`)(`+)(?!`)([^`]|[^`][^\n]*?[^`])(?<!`)\1(?!`)/g; let c; while ((c = re.exec(lines[k] || '')) !== null) codes.push({ line: k, start: c.index, end: c.index + c[0].length }); }
+    const boxes = []; for (let k = P.s; k < P.e; k++) { const re = /<!--\s*Mew!FC-ic\s+(.*?)\s*-->/gi; let b; while ((b = re.exec(lines[k] || '')) !== null) boxes.push({ line: k, start: b.index, end: b.index + b[0].length, pay: b[1] }); }
+    const pairs = []; boxes.forEach((bx, k) => { if (codes[k] && !/^not\b/i.test(String(bx.pay || '').trim())) pairs.push({ mk: codes[k], bx }); });
+    const hit = meosIsFcIcLine(t0) ? pairs.find(p => p.bx.line === line && ch >= p.bx.start && ch <= p.bx.end) : pairs.find(p => p.mk.line === line && ch > p.mk.start && ch < p.mk.end);
+    if (!hit) return [];
+    return [new vscode.Range(hit.mk.line, hit.mk.start, hit.mk.line, hit.mk.end), new vscode.Range(hit.bx.line, hit.bx.start, hit.bx.line, hit.bx.end)];
+  } catch (_) { return null; }
+}
 let meosFcRowDeco = null;   // 橙に染める2行(カーソルの行と、その相手)
 // ★★v4.0.325(俊克 8/21 am08:45 改良2「橙色は、**メイン行とそれに対応するFCコメントの両方を同時に**橙色に
 //   するってことだよ。今回は、文字カーソルがある方だけ橙色になったけどね」):
@@ -42738,7 +42757,9 @@ function meosApplyFcRowDecorations(editor) {
       // ★v4.0.401(俊克): 段落なら**印1つ ⇄ FC1個**で細かく染める。出来ない時だけ行ぜんぶ。
       // ★v4.0.411: 段落なら**印1つ ⇄ FC1個**。対が無ければ**何も塗らない**(空配列)。
       //   null(=段落と分からない=表/箇条書き/膜)の時だけ、今までどおり行ぜんぶ。
-      const _fine = meosFcMarkPairRanges(doc, editor.selection.active.line, editor.selection.active.character);
+      const _ic61 = meosFcIcPairRanges(doc, editor.selection.active.line, editor.selection.active.character);   // v5.1.661: IC付箋も印1つ ⇄ 箱1個
+      let _fine = meosFcMarkPairRanges(doc, editor.selection.active.line, editor.selection.active.character);
+      if (_ic61 && (_ic61.length || !(_fine && _fine.length))) _fine = _ic61;
       if (_fine) { for (const r of _fine) out.push(r); }
       const m = _fine ? null : meosFcMate(doc, editor.selection.active.line);   // 全文を走らず、カーソルの周りだけ
       // ★★★v4.0.367(俊克 pm07:34 質問1「やはり、**橙色文字表示の所は、無理なのか?**」):
