@@ -41118,6 +41118,11 @@ async function meosMembraneEdge(down) {
   try {
     if (ed && meosIsProseDoc(ed.document) && ed.selections.length === 1) {
       const doc = ed.document, cur = ed.selection.active.line, edge = meosMemEdgeAt(doc.lineAt(cur).text, false), head = down ? 1 : -1;
+      // ★v5.1.666(俊克 11.12 am11:03 改良1「1つ手前の行から Cmd+↓/↑ を実行すると、その停止線を飛び越えて次の停止線にワープしてしまう…行頭以外にいるときは一旦行頭に飛ぶ。入力枠で↑/↓キーで頭と最後に移動するのと同じ」):
+      //   停止線のすぐ手前の行に居て、まだ着地点(下へは行末・上へは行頭= Cmd+↓/↑ が着く所)でなければ、先にそこへ。もう一度押すと線を越える
+      { const nx = cur + head, col = down ? doc.lineAt(cur).text.length : 0;
+        if (nx >= 0 && nx < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(nx).text) && !meosRuleHidden(ed, nx) && ed.selection.isEmpty && ed.selection.active.character !== col) {
+          const p = new vscode.Position(cur, col); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport); return; } }
       if (!(edge === head && meosRuleHidden(ed, cur + head))) {   // 畳んだ膜の見出しから中へは入らない
         const to = meosMembraneRuleTarget(doc, cur, down, ed);
         if (to >= 0) { const p = new vscode.Position(to, down ? doc.lineAt(to).text.length : 0); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport); return; }
