@@ -45930,8 +45930,8 @@ function meosApplyCodeSpanDecorations(editor) {
           if (isFile0) files.push(R(ln, s, cs));
           heads300.push(R(ln, cs - 1, cs)); headsMid.push(R(ln, cs, ce)); headsEnd.push(R(ln, ce, ce + 1));
         }
-        else if (isFile) { if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); } else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); creamPush(ln, cs, ce); } }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
-        else if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); }
+        else if (isFile) { if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, cs, ce); ghosts.push(R(ln, s, cs), R(ln, ce, e)); } else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); creamPush(ln, cs, ce); } }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
+        else if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, cs, ce); ghosts.push(R(ln, s, cs), R(ln, ce, e)); }   // ★v5.1.682(俊克 11.13 am01:33 バグ1「整形前の表で ` が見える」): 表の行は ` を消さずに透明に= 列の幅はそのまま(v4.2.223の約束)・記号だけ見えない(板の両端の空きになる)
         else { const _ic = text.indexOf('`') >= 0 ? icColorAt(ln, s) : null; (_ic ? icCol[_ic] : clocks).push(R(ln, cs - 1, ce + 1)); creamPush(ln, cs, ce); }   // v5.1.315: 色の付箋は桃/青の板   // v4.2.241(俊克「基本的に全てクリーム色で出すことを想定していた。インラインコードとして目立たせるため」): ダークでは全部クリーム(ライトは灰色)
         if (!_head299) { MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
           while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length)); }
