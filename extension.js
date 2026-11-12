@@ -41016,7 +41016,7 @@ function meosRuleStopAt(ed, cur, down) {
 //   押しっぱなしで動いた直後、着いた行が止まる点なら、その場で止める(次のキーの間隔に頼らない)。1回ずつ押して着いた時は止めない
 // ★v5.1.664→665(俊克 11.12 am10:52「さっきの実装に戻して、そこで停止した時に手を離したら、そこで停止し、さらに0.5秒以上押し続けたら、自動でCmd+↓/↑を実行するようにしよう…そのあとも、直ぐに手を離せばそこで停止し、0.5秒以上押し続けていれば、次に進む」):
 //   止まる所は 663 のまま(手前の行に入った所)。止まってから押しっぱなしが0.5秒続いたら Cmd+↓/↑(membraneEdgeDown/Up)を1回打ち、そこで止まる(am10:59「そこで停止するってことだよ」= 手を離して押し直すまで次は打たない)
-const MEOS_RULE_HOLD_JUMP_MS = 500;
+const MEOS_RULE_HOLD_JUMP_MS = 1000;   // v5.1.667(俊克 am11:19「0.5秒だと早過ぎるので、1秒に」)
 function meosRuleHoldAt(ed, l, down) { _meosRuleKey.hold = true; _meosRuleKey.holdAt = Date.now(); }
 async function meosRuleGo(cmd, down, run) {
   _meosRuleKey.moved = Date.now(); _meosRuleKey.busy = true;

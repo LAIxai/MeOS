@@ -185,8 +185,8 @@ const S = (sel) => sel;
     { const L2 = []; for (let i = 0; i < 60; i++) L2.push('行' + i + 'のながい文'); L2[40] = R; const dd = mkDoc(L2); const _ex = stub.commands.executeCommand; let jumped = 0;
       await run(dd, 30, 8);
       const ed = stub.window.activeTextEditor, ex0 = stub.commands.executeCommand; stub.commands.executeCommand = async (c, ...r) => { if (c === 'laiMembrane.membraneEdgeDown') { jumped++; return; } return ex0(c, ...r); };
-      for (let i = 0; i < 45; i++) { T.meosRuleStep(true); await new Promise(r => setTimeout(r, 30)); }
-      ok(jumped === 1 && ed.selection.active.line === 39 && ed.selection.active.character === 1, 'v5.1.665 手前の行に入った所(桁はそのまま)で止まり、0.5秒以上押し続けると Cmd+↓ を1回だけ打ってそこで止まる', [jumped, ed.selection.active.line, ed.selection.active.character]); stub.commands.executeCommand = _ex; await new Promise(r => setTimeout(r, 400)); } }
+      for (let i = 0; i < 70; i++) { T.meosRuleStep(true); await new Promise(r => setTimeout(r, 30)); }
+      ok(jumped === 1 && ed.selection.active.line === 39 && ed.selection.active.character === 1, 'v5.1.665 手前の行に入った所(桁はそのまま)で止まり、1秒以上押し続けると Cmd+↓ を1回だけ打ってそこで止まる', [jumped, ed.selection.active.line, ed.selection.active.character]); stub.commands.executeCommand = _ex; await new Promise(r => setTimeout(r, 400)); } }
   // 13b. v5.1.666(俊克 11.12): 停止線のすぐ手前の行で Cmd+↓/↑= まず行末/行頭へ(線を越えない)。着いていればいつも通り
   { const L = ['上の文', R, '中の文のながい行', R, '下']; const d = mkDoc(L);
     const at = (ln, ch) => { const ed = mkEd(d, { start: { line: ln, character: ch }, end: { line: ln, character: ch }, active: { line: ln, character: ch }, isEmpty: true }); ed.selections = [ed.selection]; ed.revealRange = () => { }; stub.window.activeTextEditor = ed; return ed; };
