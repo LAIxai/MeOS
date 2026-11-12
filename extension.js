@@ -41014,10 +41014,16 @@ function meosRuleStopAt(ed, cur, down) {
 //   setImmediate= タイマーが溜まったキーより先に走っても、届いているキーを読んでから決める
 // ★v5.1.584(俊克 am00:08 バグ1「外から近づくと、♥️膜の中に入ってしまう」): 止める判定は次のキーが来た時で、間隔0.4秒以上だと押し直しと見て素通りしていた→ 減速でできた隙に拡張が詰まると膜へ入る(台で再現)。
 //   押しっぱなしで動いた直後、着いた行が止まる点なら、その場で止める(次のキーの間隔に頼らない)。1回ずつ押して着いた時は止めない
+// ★v5.1.664(俊克 11.12 am10:40 改良1「Cmd+↓/↑では停止線の手前にワープする。↓/↑押しっ放しでは、停止線の前の行に入るとそこで停止してしまう…停止線の手前まで進めよう」):
+//   止まる時は Cmd+↓/↑ と同じ所へ= 下へは手前の行の末尾(折り返しの最後の段)・上へは手前の行の頭
+function meosRuleHoldAt(ed, l, down) {
+  _meosRuleKey.hold = true;
+  try { if (!ed.selection.isEmpty || ed.selections.length > 1) return; const p = new vscode.Position(l, down ? ed.document.lineAt(l).text.length : 0); if (ed.selection.active.line !== l || ed.selection.active.character !== p.character) ed.selection = new vscode.Selection(p, p); } catch (_) { }
+}
 async function meosRuleGo(cmd, down, run) {
   _meosRuleKey.moved = Date.now(); _meosRuleKey.busy = true;
   try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
-  if (run) try { const ed = vscode.window.activeTextEditor, l = ed && ed.selection.active.line; if (ed && l !== _meosRuleKey.pass && meosRuleStopAt(ed, l, down)) _meosRuleKey.hold = true; } catch (_) { }
+  if (run) try { const ed = vscode.window.activeTextEditor, l = ed && ed.selection.active.line; if (ed && l !== _meosRuleKey.pass && meosRuleStopAt(ed, l, down)) meosRuleHoldAt(ed, l, down); } catch (_) { }
 }
 // ★v5.1.585: 実機の手前の行は折り返しが多い= 押し直しの1打が同じ行の2段目に動くだけだと、もう一度止まっていた→ 押し直した行では止めない(pass)
 // ★v5.1.663(俊克 11.12 am10:23 改良1「Cmd+↓/↑で停止線にjumpできるようになったので、↓/↑での20行以内の仕組みが邪魔に思えてきた。押し続けた時に停止すると言う事だけを残して、他の機能を削除しよう」):
@@ -41032,7 +41038,7 @@ async function meosRuleStep(down) {
       return;
     }
     if (cur !== _meosRuleKey.pass) _meosRuleKey.pass = -1;
-    if (ed && gap < 400 && cur !== _meosRuleKey.pass && meosRuleStopAt(ed, cur, down)) { _meosRuleKey.hold = true; return; }
+    if (ed && gap < 400 && cur !== _meosRuleKey.pass && meosRuleStopAt(ed, cur, down)) { meosRuleHoldAt(ed, cur, down); return; }
   } catch (_) { }
   meosRuleGo(cmd, down, gap < 400);
 }
