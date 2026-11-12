@@ -47011,6 +47011,11 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.launchdAllow', async () => { const ok = await meosLaunchDPermission(true); vscode.window.showInformationMessage(ok ? '\ud83c\udf05 Done \u2014 MeOS can change the start-up schedule without your password.' : '\ud83c\udf05 Not changed.'); }));   // v5.1.497
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.launchdDisallow', async () => { const ok = await meosLaunchDPermission(false); vscode.window.showInformationMessage(ok ? '\ud83c\udf05 Removed \u2014 MeOS will ask for your password again.' : '\ud83c\udf05 Not changed.'); }));   // v5.1.497
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.diaryTplRegister', () => meosDiaryTplMenu(vscode.window.activeTextEditor)));   // v4.2.777-2 / -3: ▾ と同じ口
+  // ★v5.1.671(俊克 11.12 pm01:22 改良1「最初に消えた状態で出てくるのが美しくない。最初からすべてが出るように」): 670 は描き直しの頼みが次の refresh まで遅れ、
+  //   札の無い姿が一瞬見えた→ カーソルが停止線から出た(入った)その時に、札の控えを突き合わせて VS Code へすぐ頼む
+  { const _stopPrev = new Map(); const _isStop = (d, l) => { try { const t = l >= 0 && l < d.lineCount ? d.lineAt(l).text : ''; return t.indexOf('Mew!UFC') >= 0 && (MEOS_RULE_LINE_RE.test(t) || MEOS_RULE_OFF_RE.test(t)); } catch (_) { return false; } };
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try { if (_meosCaretProbing) return; const ed = e.textEditor, d = ed.document, k = d.uri.toString(), l = ed.selection.active.line, p = _stopPrev.get(k); _stopPrev.set(k, l);
+      if (p !== l && (_isStop(d, p) || _isStop(d, l))) meosApplyTimerLineDecorations(ed); } catch (_) { } })); }
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosFofChipClick));   // ★v5.1.542: 本文の♥= ボタン
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpNth', async (arg) => {   // v4.2.776-26: 構えている間の Cmd+1〜7= 今の並びの左から n 番目
     try {
