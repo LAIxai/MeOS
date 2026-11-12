@@ -31667,7 +31667,7 @@ header.title:has(.md-tiles.md-armed),header.title:has(.md-tiles .md-tile:hover),
 .md-tiles.md-gold .md-tile.md-dot.md-last::after{width:6px;height:6px;margin-left:-3px;bottom:-7px;background:#ffc400;box-shadow:0 0 0 .5px rgba(120,80,0,.8),0 0 3px #ffd54f}   /* v4.2.776-12(俊克「一回り大きく。金メダルのように重く価値がある」): 4px→6px */   /* v4.2.776-11: コンプリートしたら金(以後ずっと) */   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
 .title-row-dock .md-tiles{margin:0 0 -2px -5px}
 .md-tile.md-fof{color:#e53935;font-weight:400;flex:0 0 auto;margin:0 0 -2px 3px;translate:var(--fof-x,0px) 0;transition:transform .15s ease,translate .15s ease}   /* ★v5.1.549: mGATE の♡♥と同じ= 白い地に赤・🔴と白い点は持たない(塗りで言う) */
-.title-ver-dock{margin-left:auto;align-self:flex-end;position:relative;top:-8px;left:-3px}   /* v5.1.258(俊克 pm07:53「?をもう少し角に。バージョン表示を北北西に進路を取れ!」): 版を上へ8・左へ3(?と重ならない) */
+.title-ver-dock{margin-left:auto;align-self:flex-end;position:relative;top:-8px;left:-1px}   /* v5.1.681(俊克 pm10:48「右に2pt移動しよう」): -3→-1 */   /* v5.1.258(俊克 pm07:53「?をもう少し角に。バージョン表示を北北西に進路を取れ!」): 版を上へ8・左へ3(?と重ならない) */
 /* v5.1.256(俊克 pm07:14「tipを表示/非表示するボタンを付けよう。最初から非表示にしておいて、知りたい時だけ押せばいい」): ? = 押すと tip が出る(青)・もう一度で出ない(灰)。既定は出ない
    v5.1.257(俊克 pm07:34「最小幅の③で版の左端が▼の下に隠れる。?はヘッダーの四角枠の右下角ギリギリに」): 行から外し、ヘッダー(.title= relative)の右下角に置く */
 .tips-btn{position:absolute;right:1px;bottom:1px;width:16px;height:16px;border-radius:50%;border:1px solid var(--meos-frame);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;line-height:1;color:var(--vscode-foreground);opacity:.45;cursor:var(--meos-hand);user-select:none;flex:none}
