@@ -40992,7 +40992,7 @@ function meosFcKeysNeeded(editor) {
 }
 let _meosInTableCtx = false;
 // v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
-let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, moved: 0, hold: false, busy: false, pass: -1 };
+let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, moved: 0, hold: false, busy: false, pass: -1, holdAt: 0 };
 // ★v5.1.579(俊克 pm08:37 改良1「罫線のところで↓/↑キーが一時停止するようにできないか? 一時停止したあと、再度↓/↑キーを押すと、進める」): キーの離れは拡張に見えない→ 間隔で読む。
 // ★v5.1.580(俊克 pm11:14 バグ1「罫線のところで、↓/↑キーが一時停止しない」): 実機の連打は30ms間隔(KeyRepeat 2)・初回だけ225ms(InitialKeyRepeat 15)。
 //   ①拡張ホストが1回の移動に30ms以上かかると、見ているカーソルが実物より遅れる→ 文脈キーが着いた時には本物が罫線を過ぎていた(台で再現)→ 預かる範囲を上下200行へ
@@ -41014,12 +41014,10 @@ function meosRuleStopAt(ed, cur, down) {
 //   setImmediate= タイマーが溜まったキーより先に走っても、届いているキーを読んでから決める
 // ★v5.1.584(俊克 am00:08 バグ1「外から近づくと、♥️膜の中に入ってしまう」): 止める判定は次のキーが来た時で、間隔0.4秒以上だと押し直しと見て素通りしていた→ 減速でできた隙に拡張が詰まると膜へ入る(台で再現)。
 //   押しっぱなしで動いた直後、着いた行が止まる点なら、その場で止める(次のキーの間隔に頼らない)。1回ずつ押して着いた時は止めない
-// ★v5.1.664(俊克 11.12 am10:40 改良1「Cmd+↓/↑では停止線の手前にワープする。↓/↑押しっ放しでは、停止線の前の行に入るとそこで停止してしまう…停止線の手前まで進めよう」):
-//   止まる時は Cmd+↓/↑ と同じ所へ= 下へは手前の行の末尾(折り返しの最後の段)・上へは手前の行の頭
-function meosRuleHoldAt(ed, l, down) {
-  _meosRuleKey.hold = true;
-  try { if (!ed.selection.isEmpty || ed.selections.length > 1) return; const p = new vscode.Position(l, down ? ed.document.lineAt(l).text.length : 0); if (ed.selection.active.line !== l || ed.selection.active.character !== p.character) ed.selection = new vscode.Selection(p, p); } catch (_) { }
-}
+// ★v5.1.664→665(俊克 11.12 am10:52「さっきの実装に戻して、そこで停止した時に手を離したら、そこで停止し、さらに0.5秒以上押し続けたら、自動でCmd+↓/↑を実行するようにしよう…そのあとも、直ぐに手を離せばそこで停止し、0.5秒以上押し続けていれば、次に進む」):
+//   止まる所は 663 のまま(手前の行に入った所)。止まってから押しっぱなしが0.5秒続いたら Cmd+↓/↑(membraneEdgeDown/Up)を1回打ち、そこで止まる(am10:59「そこで停止するってことだよ」= 手を離して押し直すまで次は打たない)
+const MEOS_RULE_HOLD_JUMP_MS = 500;
+function meosRuleHoldAt(ed, l, down) { _meosRuleKey.hold = true; _meosRuleKey.holdAt = Date.now(); }
 async function meosRuleGo(cmd, down, run) {
   _meosRuleKey.moved = Date.now(); _meosRuleKey.busy = true;
   try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
@@ -41034,6 +41032,10 @@ async function meosRuleStep(down) {
   try {
     const cur = ed ? ed.selection.active.line : -1;
     if (_meosRuleKey.hold) {
+      if (gap < 150 && now - (_meosRuleKey.holdAt || now) >= MEOS_RULE_HOLD_JUMP_MS) {   // v5.1.665: 止まったまま押し続けた= Cmd+↓/↑ と同じ所へ
+        _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(down ? 'laiMembrane.membraneEdgeDown' : 'laiMembrane.membraneEdgeUp'); } finally { _meosRuleKey.busy = false; }
+        _meosRuleKey.holdAt = Infinity; _meosRuleKey.moved = Date.now(); meosDbg('[ruleHold] 押し続けた→ Cmd+' + (down ? '↓' : '↑')); return;
+      }
       if (gap >= 150) setTimeout(() => setImmediate(() => { if (_meosRuleKey.at !== now || !_meosRuleKey.hold) return; _meosRuleKey.hold = false; _meosRuleKey.pass = cur; meosRuleGo(cmd, down, false); }), 120);
       return;
     }

@@ -182,8 +182,11 @@ const S = (sel) => sel;
     let l = await run(mk(), 15, 8); ok(l === 23, 'v5.1.663 押しっぱなし(8回)で離す= 運ばない(離した所のまま)', l);
     l = await run(mk(), 5, 8); ok(l === 13, '止まる点が20行より先= 運ばない(離した所のまま)', l);
     l = await run(mk(), 30, 1); ok(l === 31, '1回押しただけ= 運ばない', l);
-    { const L2 = []; for (let i = 0; i < 60; i++) L2.push('行' + i + 'のながい文'); L2[40] = R; const dd = mkDoc(L2);
-      const ln = await run(dd, 30, 14); const a = stub.window.activeTextEditor.selection.active; ok(ln === 39 && a.character === L2[39].length, 'v5.1.664 押しっぱなしの↓は停止線の手前の行の末尾で止まる(Cmd+↓と同じ所)', [ln, a.character]); } }
+    { const L2 = []; for (let i = 0; i < 60; i++) L2.push('行' + i + 'のながい文'); L2[40] = R; const dd = mkDoc(L2); const _ex = stub.commands.executeCommand; let jumped = 0;
+      await run(dd, 30, 8);
+      const ed = stub.window.activeTextEditor, ex0 = stub.commands.executeCommand; stub.commands.executeCommand = async (c, ...r) => { if (c === 'laiMembrane.membraneEdgeDown') { jumped++; return; } return ex0(c, ...r); };
+      for (let i = 0; i < 45; i++) { T.meosRuleStep(true); await new Promise(r => setTimeout(r, 30)); }
+      ok(jumped === 1 && ed.selection.active.line === 39 && ed.selection.active.character === 1, 'v5.1.665 手前の行に入った所(桁はそのまま)で止まり、0.5秒以上押し続けると Cmd+↓ を1回だけ打ってそこで止まる', [jumped, ed.selection.active.line, ed.selection.active.character]); stub.commands.executeCommand = _ex; await new Promise(r => setTimeout(r, 400)); } }
   // 14. v5.1.600 膜の境の一時停止線= 開始膜の下(1)・閉じ膜の上(-1)・中(0)
   { const d = mkDoc([P1O, R, '中', R, '中2', '', R, P1C, H1, R, 'x', '', R, H2, '<!-- {* ▼mCN=親_1 // c *} -->', R, 'y', R, '<!-- {* ▲mCN=親_1 // c *} -->']);
     const g = [1, 3, 6, 9, 12, 15, 17].map(i => T.meosStopEdgeOf(d, i));

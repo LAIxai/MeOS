@@ -111,7 +111,8 @@ a rule with an octagonal STOP sign at each end. Dashes and dots, read like Morse
 | `-.-` | dash-dot | `-..-` | two-dot |
 | `〜〜〜` | wavy | `≈≈≈` | double wavy |
 
-Hold ↓ or ↑ and the cursor pauses just before the line, where Cmd+↓/↑ lands; press again to go on. **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Seen
+Hold ↓ or ↑ and the cursor pauses on the line before it. Let go, and it stays there; keep holding for half a
+second, and it jumps on as Cmd+↓/↑ does and stops there. **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Seen
 from outside, a membrane edged with stop lines is a single stop: Cmd+↓/↑ halts in front of it, and the next press
 jumps over the whole membrane. Step inside, and its own lines take over.
 
