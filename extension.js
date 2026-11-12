@@ -42625,6 +42625,9 @@ function meosRawLines(editor, skipCaret, caretAt) {
     for (const ln of Array.from(out)) {
       const m = meosFcMate(editor.document, ln);
       if (m) for (const l of (m.lines || [])) if (l >= 0) out.add(l);
+      // ★v5.1.662(俊克 11.12 am10:10 改良1「FCコメントの1つの中に文字カーソルがあるときにも、対応するICを橙色で表示するように。これはFCコメントの基本ルール」):
+      //   FC-ic の行に居る時も本文の段落を生で見せる= IC の ` が見え、対の橙が本文に乗る(ハイライトの FC 行と同じ)
+      try { const L = meosDocLines(editor.document); if (meosIsFcIcLine(L[ln] || '')) { let a = ln; while (a - 1 >= 0 && (meosIsFcIcLine(L[a - 1]) || meosIsSpecLine(L[a - 1] || ''))) a--; a--; if (a >= 0 && String(L[a] || '').trim()) { const P = meosFcIcPara(L, a); if (ln >= P.s && ln < P.e) { for (let k = P.top; k <= P.bot; k++) out.add(k); for (let k = P.s; k < P.e; k++) out.add(k); } } } } catch (_) { }
     }
   } catch (_) { }
   return out;
