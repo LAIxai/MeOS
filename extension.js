@@ -15444,7 +15444,7 @@ function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑
     if (meosFenceLines(doc).has(i)) return null;
     if (editor) { try { if (meosShowsRawLineStable(editor, i) || meosRuleHidden(editor, i)) return null; } catch (_) { } }
     const next = meosStopNextLines(doc, i) || [], sig = meosStopSignal(next);
-    return { on, next, sig, self: 1, bulk: sig === 'none' ? -1 : (on ? 3 : 2), pad: on ? 2 : -1 };
+    return { on, next, sig, self: 1, bulk: sig === 'none' ? -1 : (on ? 4 : 2), pad: on ? 2 : -1, gap: on ? 3 : -1 };   // ★v5.1.672: オンの線は桁3を「押しても何もしない桁」に= 右の札は桁4
   } catch (_) { return null; }
 }
 async function meosStopToggleSelf(ed, i) { const doc = ed.document, t = doc.lineAt(i).text, on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return false; return ed.edit(eb => eb.replace(new vscode.Range(i, 0, i, t.length), meosStopOffText(t, on))); }
@@ -15641,7 +15641,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v5.1.645: 🛑を押せる札(見えない字)にする= 札の桁で隠す範囲を割り、2つの型で交互に隠す(1つの範囲の内側に立てた札は字と一緒に幅0= v5.1.40 の穴)。
               //   箱は浮かせて(absolute)札の上に重ねる= 札が場所を取っても絵は行頭から。押す当たりは札・絵は pointer-events: none
               const _sb45 = meosStopBtnSpots(doc, i, editor), _off45 = !MEOS_RULE_LINE_RE.test(txt), _S = MEOS_STOP_SIGN_EM;
-              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } _cuts.push(txt.length);
+              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.gap > 0) _cuts.push(_sb45.gap); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } _cuts.push(txt.length);
                 for (let _k = 0; _k + 1 < _cuts.length; _k++) if (_cuts[_k + 1] > _cuts[_k]) (_k % 2 ? stopHide2 : badgeHide).push(new vscode.Range(i, _cuts[_k], i, _cuts[_k + 1]));
                 if (_sb45) { hintSkins.push({ range: new vscode.Range(i, 0, i, 2) }); if (_sb45.bulk > 0) hintSkins.push({ range: new vscode.Range(i, _sb45.bulk - 1, i, _sb45.bulk + 1) }); } }
               const _sign = (u, pos) => 'url(' + u + ') ' + pos + ' center / ' + _S + 'em ' + _S + 'em no-repeat';
@@ -15653,7 +15653,10 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
               const _mid46 = !!(_sb45 && _sb45.pad > 0);
               items.push({ range: new vscode.Range(i, _mid46 ? _sb45.pad : 0, i, _mid46 ? _sb45.pad : 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + MEOS_STOP_BTN_CH + 'ch; margin-right: -' + MEOS_STOP_BTN_CH + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
+                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + MEOS_STOP_BTN_CH + 'ch; margin-right: -' + (MEOS_STOP_BTN_CH + 1) + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
+              // ★v5.1.672(俊克 11.12 pm01:33 バグ1「停止線の線のところをクリックすると、OFFになってしまう。ここはRawにするべき」): 桁は隣り合う桁の位置の中点で分かれる(v5.1.571)= 線の右半分を押すと桁3(右の札)に落ちて信号が回っていた。
+              //   箱を1ch縮め、桁3に幅1chの詰め物を置いて右の札を桁4へ= 線のどこを押しても桁2か3(何もしない→ ふつうに生になる)。右の札の手前0.5chだけが札
+              if (_mid46 && _sb45.gap > 0) items.push({ range: new vscode.Range(i, _sb45.gap, i, _sb45.gap), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; display: inline-block; width: 1ch; pointer-events: none;' } } });
             }
             continue;
           }
