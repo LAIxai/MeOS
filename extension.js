@@ -40992,7 +40992,7 @@ function meosFcKeysNeeded(editor) {
 }
 let _meosInTableCtx = false;
 // v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
-let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, moved: 0, hold: false, busy: false, pass: -1, run: 0, relT: null };
+let _meosRuleNearCtx = false; const _meosRuleKey = { at: 0, moved: 0, hold: false, busy: false, pass: -1 };
 // ★v5.1.579(俊克 pm08:37 改良1「罫線のところで↓/↑キーが一時停止するようにできないか? 一時停止したあと、再度↓/↑キーを押すと、進める」): キーの離れは拡張に見えない→ 間隔で読む。
 // ★v5.1.580(俊克 pm11:14 バグ1「罫線のところで、↓/↑キーが一時停止しない」): 実機の連打は30ms間隔(KeyRepeat 2)・初回だけ225ms(InitialKeyRepeat 15)。
 //   ①拡張ホストが1回の移動に30ms以上かかると、見ているカーソルが実物より遅れる→ 文脈キーが着いた時には本物が罫線を過ぎていた(台で再現)→ 預かる範囲を上下200行へ
@@ -41009,10 +41009,6 @@ function meosRuleStopAt(ed, cur, down) {
   if (isRule(to)) return !edge(cur) && !meosRuleHidden(ed, to);
   return isRule(to + dir) && !!edge(to) && !meosRuleHidden(ed, to) && !meosRuleHidden(ed, to + dir);
 }
-// ★v5.1.582(俊克 pm11:53「停止点の前後10行の範囲では減速して、近づけば良いんじゃないか?」→「入れて」): 止まる点まで10行以内で、そこへ向かう押しっぱなしだけ1行80msに間引く。
-//   離れる向きは止まる点が前に無いので遅くならない。距離と速さは下の2つの数字で調整
-const MEOS_RULE_SLOW_LINES = 10, MEOS_RULE_SLOW_MS = 80;
-function meosRuleApproaching(ed, cur, down) { for (let k = 0, dir = down ? 1 : -1; k < MEOS_RULE_SLOW_LINES; k++) { if (meosRuleStopAt(ed, cur + k * dir, down)) return true; } return false; }
 // ★v5.1.583(俊克 am00:00 バグ1「少し止まったあと動き出してしまう。一旦停止したあとのキー入力と勘違いしている」): 止まった直後は拡張の遅い片付けが動く→ 0.2秒詰まると、その空きを押し直しと読んでいた(台で再現)。
 //   間隔だけでは「詰まり」と「押し直し」を見分けられない→ 空いた直後のキーは70ms待つ。リピート(詰まって溜まった分も)が続けば押しっぱなしのまま、続かなければ本当の押し直し。
 //   setImmediate= タイマーが溜まったキーより先に走っても、届いているキーを読んでから決める
@@ -41024,21 +41020,10 @@ async function meosRuleGo(cmd, down, run) {
   if (run) try { const ed = vscode.window.activeTextEditor, l = ed && ed.selection.active.line; if (ed && l !== _meosRuleKey.pass && meosRuleStopAt(ed, l, down)) _meosRuleKey.hold = true; } catch (_) { }
 }
 // ★v5.1.585: 実機の手前の行は折り返しが多い= 押し直しの1打が同じ行の2段目に動くだけだと、もう一度止まっていた→ 押し直した行では止めない(pass)
-// ★v5.1.599(俊克 11.08 pm01:20 改良1「一時停止線の20前後の範囲内で、↑/↓押しっぱなしにしたとき、キーから手を離したあとも、一時停止線まで進めて止めるようにしよう…手を離したあとは、一気に進めても良い」):
-//   キーの離れは見えない→ 押しっぱなし(間隔150ms未満が3回以上)の後に0.2秒キーが来なければ離したと読む。進む向きの20行以内に止まる点があれば、そこへ一気に運ぶ(桁は保つ)
-const MEOS_RULE_COAST_LINES = 20, MEOS_RULE_COAST_MS = 200;
-function meosRuleCoast(down, stamp) {
-  try { if (_meosRuleKey.at !== stamp || _meosRuleKey.hold) return; if (_meosRuleKey.busy) { _meosRuleKey.relT = setTimeout(() => meosRuleCoast(down, stamp), 40); return; }
-    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty || ed.selections.length > 1) return; const d = ed.document, cur = ed.selection.active.line, dir = down ? 1 : -1;
-    for (let k = 0; k <= MEOS_RULE_COAST_LINES; k++) { const l = cur + k * dir; if (l < 0 || l >= d.lineCount) return; if (!meosRuleStopAt(ed, l, down)) continue; if (k === 0) return;
-      const p = new vscode.Position(l, Math.min(ed.selection.active.character, d.lineAt(l).text.length)); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-      _meosRuleKey.pass = -1; meosDbg('[ruleCoast] 離した後に一時停止線まで ' + (cur + 1) + '→' + (l + 1)); return; }
-  } catch (_) { }
-}
+// ★v5.1.663(俊克 11.12 am10:23 改良1「Cmd+↓/↑で停止線にjumpできるようになったので、↓/↑での20行以内の仕組みが邪魔に思えてきた。押し続けた時に停止すると言う事だけを残して、他の機能を削除しよう」):
+//   離した後に線まで運ぶ(599)と、近づくと遅くなる(582)をやめた。残すのは押しっぱなしの一時停止だけ
 async function meosRuleStep(down) {
   const cmd = down ? 'cursorDown' : 'cursorUp', ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
-  _meosRuleKey.run = gap < 150 ? _meosRuleKey.run + 1 : 0; if (_meosRuleKey.relT) { clearTimeout(_meosRuleKey.relT); _meosRuleKey.relT = null; }
-  if (_meosRuleKey.run >= 3 && !_meosRuleKey.hold) _meosRuleKey.relT = setTimeout(() => meosRuleCoast(down, now), MEOS_RULE_COAST_MS);   // v5.1.599
   if (_meosRuleKey.busy) return;
   try {
     const cur = ed ? ed.selection.active.line : -1;
@@ -41048,7 +41033,6 @@ async function meosRuleStep(down) {
     }
     if (cur !== _meosRuleKey.pass) _meosRuleKey.pass = -1;
     if (ed && gap < 400 && cur !== _meosRuleKey.pass && meosRuleStopAt(ed, cur, down)) { _meosRuleKey.hold = true; return; }
-    if (ed && gap < 150 && now - _meosRuleKey.moved < MEOS_RULE_SLOW_MS && meosRuleApproaching(ed, cur, down)) return;
   } catch (_) { }
   meosRuleGo(cmd, down, gap < 400);
 }

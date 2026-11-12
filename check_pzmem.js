@@ -174,12 +174,12 @@ const S = (sel) => sel;
     gs.set('fmtStopKind', 1); [d, e] = at(['本文'], 0); await T.meosStopLineToggle(e, false); gs.set('fmtStopKind', 0);
     ok(d.L[1] === '<!-- Mew!UFC === -->', '↻で二重線を選ぶと === を書く', d.L);
     [d, e] = at(['```', R, '```', 'x'], 3); ok(T.meosStopLineNear(d, 2) === -1, '囲いの中の線は数えない', T.meosStopLineNear(d, 2)); }
-  // 13. v5.1.599 押しっぱなしの↓を離した後、20行以内の一時停止線まで運ぶ
+  // 13. v5.1.663(俊克 11.12): 離した後に運ぶ(599)はやめた= 離した所のまま
   { const mk = () => { const L = []; for (let i = 0; i < 60; i++) L.push('行' + i); L[40] = R; return mkDoc(L); };
     const run = async (d, from, presses) => { const ed = mkEd(d, { start: { line: from, character: 1 }, end: { line: from, character: 1 }, active: { line: from, character: 1 }, isEmpty: true }); ed.selections = [ed.selection];
       stub.window.activeTextEditor = ed; stub.commands.executeCommand = async (c) => { const a = ed.selection.active, l = Math.max(0, Math.min(d.lineCount - 1, a.line + (c === 'cursorDown' ? 1 : c === 'cursorUp' ? -1 : 0))); const p = new stub.Position(l, a.character); ed.selection = { start: p, end: p, active: p, anchor: p, isEmpty: true }; ed.selections = [ed.selection]; };
       for (let i = 0; i < presses; i++) { T.meosRuleStep(true); await new Promise(r => setTimeout(r, 30)); } await new Promise(r => setTimeout(r, 400)); return ed.selection.active.line; };
-    let l = await run(mk(), 15, 8); ok(l === 39, '押しっぱなし(8回)で離す= 一時停止線の手前(39)まで運ぶ', l);
+    let l = await run(mk(), 15, 8); ok(l === 23, 'v5.1.663 押しっぱなし(8回)で離す= 運ばない(離した所のまま)', l);
     l = await run(mk(), 5, 8); ok(l === 13, '止まる点が20行より先= 運ばない(離した所のまま)', l);
     l = await run(mk(), 30, 1); ok(l === 31, '1回押しただけ= 運ばない', l); }
   // 14. v5.1.600 膜の境の一時停止線= 開始膜の下(1)・閉じ膜の上(-1)・中(0)
