@@ -140,8 +140,9 @@ are not enough, and inside a code block it stays text. It is a UFC line (one tha
 a list of clocks — the badge line and the chains reach across it.
 
 **Every Me Dock letter is a membrane.** ♥ and the letters M e D o c k can each wrap a passage: select it and press the
-letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Pressing the letter warps
-you back into the membrane, to the place you last were. One membrane per letter; ▼ is green and ▲ blue, as with ♥,
+letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Only a letter with no
+membrane yet wraps; once it has one, pressing the letter warps you back into it, to the place you last were — even
+with text still selected. One membrane per letter; ▼ is green and ▲ blue, as with ♥,
 and the chips wear the letter's colour from Me Dock.
 
 **🚥 Relay points.** Other marks of the same letter are relay points, inside the membrane or out — written `🚥mP1=`
