@@ -14996,6 +14996,7 @@ function meosHelperEnsure() {
     const js = path.join(dir, 'meos-helper.js');
     let old = ''; try { old = fs.readFileSync(js, 'utf8'); } catch (_) { }
     if (old !== src) fs.writeFileSync(js, src);
+    try { const vf = path.join(dir, 'meos-version'), v = String(extensionContext.extension.packageJSON.version || ''); let ov = ''; try { ov = fs.readFileSync(vf, 'utf8'); } catch (_) { } if (v && ov !== v) fs.writeFileSync(vf, v); } catch (_) { }   // ★v5.1.674: mGATEの♥の下に出す版(MeOSが閉じていても読める所に)
     meosGateLogoCopy(dir);   // v5.1.367
     const plist = path.join(require('os').homedir(), 'Library', 'LaunchAgents', meosHelperLabel() + '.plist');
     const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
