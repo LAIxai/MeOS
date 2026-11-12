@@ -115,6 +115,8 @@ Hold ↓ or ↑ and the cursor pauses on the line before it. Let go, and it stay
 second, and it jumps on as Cmd+↓/↑ does and stops there. **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Seen
 from outside, a membrane edged with stop lines is a single stop: Cmd+↓/↑ halts in front of it, and the next press
 jumps over the whole membrane. Step inside, and its own lines take over.
+A heading made with the heading button gets a solid stop line under it, after its FC line: Cmd+↓ lands on its
+FC line, one more ↓ takes you into the text, and Cmd+↑ from below lands at the start of the text.
 
 **Switch a line off, without deleting it.** Click the 🛑 at the left end: the line disappears and a blue **OFF**
 sign stays in its place — in the text it is `<!-- Mew!UFC --- 🚫 -->`, and nothing stops there any more. Click OFF to

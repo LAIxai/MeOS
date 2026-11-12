@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosClockZone, meosClockFar, meosClockDdTitle, meosClockWtOf, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { insertFormatTemplate, meosClockZone, meosClockFar, meosClockDdTitle, meosClockWtOf, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -88,6 +88,13 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
     ok(n0 === 2 && T.meosPuzzleTagsOf(d9, 7).length === 2 && d9.L.length === L0.length, 'v5.1.659 ♥が在る時は選択があっても包まない(前の♥膜を壊さない)', d9.L);
     const da = doc(['a', 'b', 'c']), ea = mkEd(da, sel(1, 1)); ea.selection.isEmpty = false; stub.window.activeTextEditor = ea; await T.meosPuzzleTag('f', {}); await settle();
     ok(T.meosPuzzleTagsOf(da, 7).length === 2 && da.L.includes('b'), 'v5.1.659 印が無い時(♡)は選択を包む', da.L); }
+  // 2c. v5.1.669: 見出しボタン= 見出しの FC の後ろに一時停止線(実線)。押し直しても積まない
+  { const dh = doc(['見出しの字', '本文']), eh = mkEd(dh, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0, character: 0 }, isEmpty: true }); stub.window.activeTextEditor = eh;
+    try { await T.insertFormatTemplate('heading', eh, '白', 'Green', 2, { head: true }); } catch (e) { console.log('ERR', e && e.stack); } await settle();
+    ok(/^## 見出しの字/.test(dh.L[0]) && /Mew!FC H2_/.test(dh.L[1]) && dh.L[2] === '<!-- Mew!UFC --- -->' && dh.L[3] === '本文', 'v5.1.669 見出しボタン= FC 行の後ろに停止線(実線)', dh.L);
+    const eh2 = mkEd(dh, { start: { line: 0, character: 3 }, end: { line: 0, character: 3 }, active: { line: 0, character: 3 }, isEmpty: true }); stub.window.activeTextEditor = eh2;
+    try { await T.insertFormatTemplate('heading', eh2, '白', 'Green', 2, { head: true }); } catch (_) { } await settle();
+    ok(dh.L.filter(t => t === '<!-- Mew!UFC --- -->').length === 1, 'v5.1.669 押し直しても停止線は1本', dh.L); }
   // 3. コピペで組ができる(今ある1点の♥×2)→ 1本だけ。もう一度読んでも増えない
   const d3 = doc(['a', '<!-- {* ♥️▶◀mP7=f_1 //  *} -->', 'b', '<!-- {* ♥️▶◀mP7=f_2 //  *} -->', 'c']); T.meosPuzzleFSet(d3, 7, 'f_1'); const e3 = mkEd(d3); await T.meosFofReconcile(e3, 7); await settle();
   ok(clocks(d3).length === 1, '組が今できた= ⏰が1本', d3.L); await T.meosFofReconcile(e3, 7); await T.meosFofClockWrite(d3); ok(clocks(d3).length === 1, '読み直しても増えない', d3.L);

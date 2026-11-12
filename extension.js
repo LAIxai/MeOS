@@ -28239,6 +28239,11 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     //   → 同じ口(`meosApplySpecEdit`)を通す。文書には**最終形しか現れない**。
     await meosApplySpecEdit(editor, doc.lineAt(ln).range, newText);
     _fcWritten = true;                                     // 1回の編集で書いたので、後の引っ越しは要らない
+    // ★v5.1.669(俊克 11.12 pm00:44「見出しボタンを押した時、停止線(実線)を最後に付けよう。これで、呪文とCmdジャンプも使えて、両刀遣いができる」/ pm00:52「FC行の後が良い…Cmd+↓では一番下のFC行に着地するので↓1つで本文に進める。Cmd+↑では本文の先頭に着地する。これは本文の境界なんだよ」):
+    //   見出しの FC 群の後ろに一時停止線(実線)。既に線があれば足さない(押し直しで積まない)
+    if (_prose) try { const d2 = editor.document, L2 = meosDocLines(d2); let e2 = ln; while (e2 + 1 < L2.length && meosIsBoundSpecLine(L2[e2 + 1] || '')) e2++;
+      const rule = meosFofRule(d2, _indent);
+      if (rule && !(e2 + 1 < L2.length && MEOS_RULE_LINE_RE.test(L2[e2 + 1] || ''))) { const we = new vscode.WorkspaceEdit(); we.insert(d2.uri, new vscode.Position(e2 + 1 < d2.lineCount ? e2 + 1 : e2, e2 + 1 < d2.lineCount ? 0 : d2.lineAt(e2).text.length), e2 + 1 < d2.lineCount ? rule : '\n' + rule.replace(/\n$/, '')); await vscode.workspace.applyEdit(we); meosDbg('[heading] 見出しの FC の後ろに停止線 行=' + (e2 + 2)); } } catch (_) { }
     const b = _prose ? (_indent.length + _blt.length + hashes.length + 1) : (_indent.length + cOpen.length + hashes.length + 1); // 本文の先頭 // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
     bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b)); // v0.9.999132: 見出しは選択しない(適用後カーソルが見出し内→⊘##表示)は残る
   } else {
