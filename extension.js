@@ -16459,7 +16459,11 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (meosClockHintSkinDeco) editor.setDecorations(meosClockHintSkinDeco, hintSkins);   // v4.2.487
 
     try {   // ★v4.2.483: ±1s の札の場所が変わった時だけ VS Code に描き直しを頼む
-      const _sig83 = nudgeHints.map(h => h.line + ':' + h.col + ':' + h.label).join(',');
+      let _sig83 = nudgeHints.map(h => h.line + ':' + h.col + ':' + h.label).join(',');
+      // ★v5.1.670(俊克 11.12 pm01:06 バグ1「停止線の中から↓キーで出たときに、左端のSTOPボタンが見えなくなる。文字を入力すると元に戻る」):
+      //   停止線の🛑の札はカーソルが線の上に居る間は出さない(生の線)。カーソルが出ても札の場所の控え(±1s の札だけ)が変わらないので VS Code に描き直しを頼まず、
+      //   札が無いまま残っていた→ 見えている停止線の札の有無も控えに入れる
+      try { for (const r of (editor.visibleRanges || [])) for (let i = r.start.line; i <= r.end.line && i < doc.lineCount; i++) { const t = doc.lineAt(i).text; if (t.indexOf('Mew!UFC') < 0 || !(MEOS_RULE_LINE_RE.test(t) || MEOS_RULE_OFF_RE.test(t))) continue; const sb = meosStopBtnSpots(doc, i, editor); _sig83 += '|s' + i + ':' + (sb ? (sb.on ? 1 : 0) + sb.sig : 'x'); } } catch (_) { }
       if (_meosNudgeHintsVer.get(uri) !== doc.version && nudgeHints.length) meosDbg('[tl] 絵を描いた 版=' + doc.version + ' 札=' + _sig83.slice(0, 120));   // v4.2.495: 時刻の突き合わせ
       _meosNudgeHintsVer.set(uri, doc.version);
       if (_meosNudgeHintsSig.get(uri) !== _sig83) { _meosNudgeHintsSig.set(uri, _sig83); _meosNudgeHints.set(uri, nudgeHints); _meosNudgeHintsEv.fire(); }
