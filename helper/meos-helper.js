@@ -963,8 +963,11 @@ function run(argv) {
   //   前の版と頭から比べて違う字から後ろ / none(初めて・v5.0 から)は最初の . の後ろ(5. を除く)。点滅を始めたら2行目を消す= 1つの版につき1回
   const dockOutVerBlink = () => { const now = Date.now();
     if (!dockOut.vb && now - (dockOut.vAt || 0) > 2000) { dockOut.vAt = now; try { const vf = dir + '/meos-version', raw = String(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(vf, $.NSUTF8StringEncoding, null)) || ''), ls = raw.split('\n'), cur = String(ls[0] || '').trim(), prev = String(ls[1] || '').trim();
-        if (cur && prev) { $(cur).writeToFileAtomicallyEncodingError(vf, true, $.NSUTF8StringEncoding, null); const v = 'v' + cur; let i;
+        const hm = /^hold (\d+) (\d+)$/.exec(prev);   // ★v5.1.692(俊克 am10:10 バグ1「🛟でオフ・オンしたら赤い字が元に戻った・1時間は残すはず」): 赤の1時間を係の覚えだけで持っていた→ meos-version の2行目に hold <位置> <終わる時刻> と書いて残す= 係が起こし直されても続く
+        if (hm) { const until = Number(hm[2]); if (until <= now) { $(cur).writeToFileAtomicallyEncodingError(vf, true, $.NSUTF8StringEncoding, null); if (dockOut.vh) { dockOut.vh = null; dockOutPaint(); } } else if (!dockOut.vh) { dockOut.vh = { from: Number(hm[1]), until: until }; dockOutPaint(); } }
+        else if (cur && prev) { const v = 'v' + cur; let i;
           if (prev === 'none') i = v.indexOf('.') + 1; else { const p = 'v' + prev; i = 0; while (i < v.length && v[i] === p[i]) i++; }
+          $(cur + (i > 0 && i < v.length ? '\nhold ' + i + ' ' + (now + 3600000) : '')).writeToFileAtomicallyEncodingError(vf, true, $.NSUTF8StringEncoding, null);
           if (i > 0 && i < v.length) { dockOut.vh = null; dockOut.vb = { from: i, t0: now, ph: -1 }; hlog('[dockOut] 版が変わった ' + prev + '→' + cur + ' 点滅'); } } } catch (e) {} }
     // v5.1.686(俊克 am09:11「拡大0.5秒→元に0.2秒を3回・2回目3回目はもう少し素早く・減り張り」): 大 500 / 元 200 / 大 350 / 元 150 / 大 250 で終わり(偶数の相が大)
     if (dockOut.vh && now > dockOut.vh.until) { dockOut.vh = null; dockOutPaint(); }   // v5.1.690: 赤の1時間が過ぎたら ふつうに
