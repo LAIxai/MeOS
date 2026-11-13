@@ -38337,9 +38337,9 @@ function toggleMeDock(editorOverride) {
       //   設定は入なのに係が居ない時、1回目の押下は「切る」になっていた。→ 設定が入で係が走っていなければ、切らずに起こし直す
       if (meosVHelperOn() && meosHelperOn()) {
         const running = await new Promise(res => { try { require('child_process').execFile('launchctl', ['print', 'gui/' + process.getuid() + '/' + meosHelperLabel()], (e, out) => res(!e && /state = running/.test(String(out || '')))); } catch (_) { res(false); } });
-        if (!running) { meosDbg('[helper] 設定は入なのに居ない→ 起こし直す'); _meosHelper.ensured = false; _meosHelper.last = null; _meosHelper.forceRestart = true; meosHelperEnsure(); try { meosMenuBarSet(null); } catch (_) { } return; }
+        if (!running) { meosDbg('[helper] 設定は入なのに居ない→ 起こし直す'); _meosHelper.ensured = false; _meosHelper.last = null; _meosHelper.forceRestart = true; meosHelperEnsure(); meosMgateShowSoon(); try { meosMenuBarSet(null); } catch (_) { } return; }
       }
-      try { await meosVHelperSet(!meosVHelperOn(), true); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切 / ★v4.2.374(俊克 バグ1「[V-helper]をオン/オフすると2つとも消える。自分自身のhelperだけに」): パネルは自分の分だけ(知らせは出さない)
+      try { await meosVHelperSet(!meosVHelperOn(), true); if (meosVHelperOn()) meosMgateShowSoon(); } catch (_) { }   /* ★v5.1.691(俊克 am09:58「🛟でオフ・オンしたらmGATEが表示しない」): 起動の時と同じく、入れたら mGATE を出す */   // v4.2.364: メニューバーの ⏰ ごと入/切 / ★v4.2.374(俊克 バグ1「[V-helper]をオン/オフすると2つとも消える。自分自身のhelperだけに」): パネルは自分の分だけ(知らせは出さない)
       return;
     }
     // ★v4.2.601: Me Dock が VSCodium の最小幅(約220)まで縮んだら、1回だけ少し広げる(最小ぴったりのグループは焦点が移ると VSCodium が最大へ広げるので)
