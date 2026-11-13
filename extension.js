@@ -7317,6 +7317,7 @@ async function meosDiaryTplMenu(ed) {
   if (pk.act === 'reg') {
     const doc = ed.document, e = Math.min(meosBlockEndForCarry(doc, pair), doc.lineCount - 1), lines = [];
     for (let i = pair.start; i <= e; i++) lines.push(doc.lineAt(i).text);
+    if (lines.length > MEOS_DIARY_TPL_LINES) { vscode.window.showWarningMessage('MeOS: This membrane has ' + lines.length + ' lines. A diary template can be up to ' + MEOS_DIARY_TPL_LINES + ' lines.'); return; }   // v5.1.696: 原型を登録するもう1つの口(QuickPick)にも上限
     tpls[pk.i] = { id: pair.id, lines };
   } else tpls[pk.i] = null;
   try { await extensionContext.globalState.update('meosDiaryTpls', tpls); } catch (_) { }
