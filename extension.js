@@ -14996,7 +14996,7 @@ function meosHelperEnsure() {
     const js = path.join(dir, 'meos-helper.js');
     let old = ''; try { old = fs.readFileSync(js, 'utf8'); } catch (_) { }
     if (old !== src) fs.writeFileSync(js, src);
-    try { const vf = path.join(dir, 'meos-version'), v = String(extensionContext.extension.packageJSON.version || ''); let ov = ''; try { ov = fs.readFileSync(vf, 'utf8'); } catch (_) { } if (v && ov !== v) fs.writeFileSync(vf, v); } catch (_) { }   // ★v5.1.674: mGATEの♥の下に出す版(MeOSが閉じていても読める所に)
+    try { const vf = path.join(dir, 'meos-version'), v = String(extensionContext.extension.packageJSON.version || ''); let ov = null; try { ov = fs.readFileSync(vf, 'utf8'); } catch (_) { } const o1 = ov == null ? '' : String(ov).split('\n')[0].trim(); if (v && o1 !== v) fs.writeFileSync(vf, v + '\n' + (o1 || 'none')); } catch (_) { }   /* ★v5.1.685(俊克 am09:06「meos-version-seenを別枠で作らなくても、それを見ればいい・初期値は none」): 版が変わった時だけ、2行目に前の版(無ければ none)を添える= mGATE の係が点滅に使い、点滅したら2行目を消す */   // ★v5.1.674: mGATEの♥の下に出す版(MeOSが閉じていても読める所に)
     meosGateLogoCopy(dir);   // v5.1.367
     const plist = path.join(require('os').homedir(), 'Library', 'LaunchAgents', meosHelperLabel() + '.plist');
     const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
