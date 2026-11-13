@@ -216,6 +216,11 @@ Stick one anywhere. The menu bar sorts them by kind and colour, and from there y
 The newest come first, so old notes slowly fade from the list — the name keeps its time stamp, so a search for
 `FUSEN` still finds them all. This is what a sticky note should be in the digital age.
 
+**The version tells you what changed.** Most apps show a version number, and when it goes up you have to remember
+the old one to see which digit moved. After MeOS updates itself, the digits that changed blink in the version under
+♥ in mGATE (macOS) and in the Me Dock header — big and red three times — and then stay red for an hour. Look away
+during the blink, and you still see that something is new when you come back.
+
 ### NEW in v5.0 — clocks that hand over to each other, and keep ringing after you close the editor
 
 v4.1 put one clock on a membrane. **v5.0 lets a membrane carry a whole routine** — several clocks, one after
