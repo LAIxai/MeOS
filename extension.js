@@ -7144,7 +7144,7 @@ function meosDiaryRename(name, dt, copied) {
   const lead = (core && core.test(str.slice(m.index))) ? 0 : 1;
   return str.slice(0, m.index + lead) + today + str.slice(m.index + m[0].length).replace(/^ copied\b/, '');
 }
-function meosDiaryTpls() { try { const a = extensionContext.globalState.get('meosDiaryTpls'); const o = [null, null, null]; if (Array.isArray(a)) a.slice(0, MEOS_DIARY_TPL_MAX).forEach((t, i) => { if (t && t.id && Array.isArray(t.lines)) o[i] = t; }); return o; } catch (_) { return [null, null, null]; } }
+function meosDiaryTpls() { try { const a = extensionContext.globalState.get('meosDiaryTpls'); const o = [null, null, null]; if (Array.isArray(a)) a.slice(0, MEOS_DIARY_TPL_MAX).forEach((t, i) => { if (meosDiaryTplOk(t)) o[i] = t; }); return o; } catch (_) { return [null, null, null]; } }
 // ★v4.2.777-3(俊克 改良1「Ⓣの右肩に⓪〜③・右に▼で原型膜を登録・日によって使い分ける・見出しボタンと同じパターン」): 作り方は選んである番号で黙って作る(一覧は出さない)
 function meosDiaryMode() { let m = 0; try { m = Number(extensionContext.globalState.get('meosDiaryMode')) || 0; } catch (_) { } return Math.max(0, Math.min(3, m)); }   // v4.2.777-4: 空の番号も選べる(作る時に⓪へ回す)
 function meosPostDiaryMode() { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'diaryMode', mode: meosDiaryMode(), have: meosDiaryTpls().map(Boolean) }); } catch (_) { } }
@@ -7247,7 +7247,17 @@ function meosPostCaretDay(now) {
   };
   if (now) go(); else _meosCaretDayT = setTimeout(go, 150);
 }
-function meosDiaryTplHist() { try { const a = extensionContext.globalState.get('meosDiaryTplHist'); return Array.isArray(a) ? a.filter(t => t && t.id && Array.isArray(t.lines)).slice(0, 5) : []; } catch (_) { return []; } }
+// ★v5.1.695(俊克 11.13 pm11:40 バグ1「Shift+→で選択を広げると6文字くらいで止まり、10秒以上どこをクリックしても動かない」):
+//   真因= 原型の履歴に147,168行の膜(DL数の戦略)が丸ごと入り globalState が6MB→ 1回書くたびに全体を書き直す(選択のたびに書く口がある)= 窓が固まる(renderer.log の large extension state・11.12 21:46から)。
+//   原型は2000行まで。超える物は登録しない・起動時に履歴と①②③から捨てる
+const MEOS_DIARY_TPL_LINES = 2000;
+function meosDiaryTplOk(t) { return !!(t && t.id && Array.isArray(t.lines) && t.lines.length <= MEOS_DIARY_TPL_LINES); }
+function meosDiaryTplPrune() {
+  try { const gs = extensionContext.globalState, h = gs.get('meosDiaryTplHist'), a = gs.get('meosDiaryTpls');
+    if (Array.isArray(h) && h.some(t => t && !meosDiaryTplOk(t))) gs.update('meosDiaryTplHist', h.filter(meosDiaryTplOk));
+    if (Array.isArray(a) && a.some(t => t && !meosDiaryTplOk(t))) gs.update('meosDiaryTpls', a.map(t => meosDiaryTplOk(t) ? t : null)); } catch (_) { }
+}
+function meosDiaryTplHist() { try { const a = extensionContext.globalState.get('meosDiaryTplHist'); return Array.isArray(a) ? a.filter(meosDiaryTplOk).slice(0, 5) : []; } catch (_) { return []; } }
 function meosPostDiaryTplState() {
   try {
     if (!meDockPanel) return;
@@ -7282,6 +7292,7 @@ async function meosDiaryTplSet(msg) {
       t = { id, lines: [open, '', ...close.split('\n')] };
     }
     if (!t) return;
+    if (!meosDiaryTplOk(t)) { vscode.window.showWarningMessage('MeOS: This membrane has ' + t.lines.length + ' lines. A diary template can be up to ' + MEOS_DIARY_TPL_LINES + ' lines.'); return; }   // v5.1.695
     const old = tpls[mode - 1];
     tpls[mode - 1] = t;
     hist = [t].concat(old && old.id !== t.id ? [old] : []).concat(hist.filter(h => h.id !== t.id && (!old || h.id !== old.id)));
@@ -46820,6 +46831,7 @@ function activate(context) {
   // ★v4.2.58: 元栓の覚えは globalState= 「止めて」は一度言えば足りる(開き直しても閉じたまま)。
   try { _meosGlobalState = context.globalState; _meosClocksOff = !!context.globalState.get(MEOS_CLOCKS_OFF_KEY, false); } catch (_) { }
   extensionContext = context;
+  meosDiaryTplPrune();   // v5.1.695: 大き過ぎる原型を捨てる(globalState が膨れて窓が固まる)
   try { meosRememberFolders(); context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(() => { try { meosRememberFolders(); meosPostReopenFolder(vscode.window.activeTextEditor); } catch (_) { } })); } catch (_) { }   // v4.2.684: ふだんのフォルダーを覚える
   try { meosStartLagWatch(); context.subscriptions.push({ dispose() { try { clearInterval(_meosLagWatch); } catch (_) {} _meosLagWatch = null; } }); } catch (_) {}
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
