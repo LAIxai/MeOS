@@ -46210,7 +46210,7 @@ function meosFusenFakeLayout(lines, b, wrapCol) {
     let bodyMax = 0; for (let i = b.open + 1; i < b.close; i++) bodyMax = Math.max(bodyMax, meosRenderCols(lines[i] || ''));
     const size = meosFusenSizeOf(ct), W = Math.min(wrapCol, Math.max(7, size || bodyMax));
     let last = capLn; while (last + 1 < lines.length && MEOS_FUSEN_ROW_RE.test(lines[last + 1] || '')) last++;
-    const fake = true;   // ★v5.1.705(俊克 am11:5x「直す」= Fの付箋の紙の下に空の段): 付箋はいつも見せかけで描く(描き方を1つに)・コメントは紙の一番下に揃える= 余る段は本文と線の間(書く欄の余白)へ
+    const fake = true;   // ★v5.1.705(俊克 am11:5x「直す」= Fの付箋の紙の下に空の段): 付箋はいつも見せかけで描く(描き方を1つに)
     const rowsOf = (i) => Math.max(1, Math.min(20, meosTcwRowsOf(lines[i] || '', wrapCol)));
     const slots = []; for (let i = b.open; i <= last; i++) { const r = rowsOf(i); for (let j = 0; j < r; j++) slots.push([i, j]); }
     const out = [{ k: 't', s: b.info || '' }];
@@ -46218,7 +46218,7 @@ function meosFusenFakeLayout(lines, b, wrapCol) {
       for (let i = b.open + 1; i < b.close; i++) meosTcwSegs(lines[i] || '', W).forEach(x => out.push({ k: 'b', s: x }));
       (text ? meosTcwSegs(text, W) : ['']).forEach((x, q) => out.push({ k: text ? 'c' : 'p', s: x, first: q === 0 }));
     }
-    const nc = out.filter(o => o.k === 'c' || o.k === 'p').length, nb = out.length - nc; out.forEach((o, q) => { o.at = q < nb ? q : slots.length - (out.length - q); });   // コメントは下に揃える
+    out.forEach((o, q) => { o.at = q; });   // v5.1.706(俊克 pm00:02「本文の方に空行が出る・前の方が良い・コメントを何行も書く時はコメントの領域が広がった方がいい」): 上から詰める= 余る段は紙の下(コメントの側)
     return { W, size, fake, from: b.open, capLn, last, slots, out, rowsOf, scaffolds: last - capLn, need: out.length, have: slots.length };
   } catch (_) { return null; }
 }
