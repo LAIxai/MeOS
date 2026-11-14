@@ -217,7 +217,7 @@ inside a code block stay plain text — they never run, and they do not flicker 
 ```Bank
 Call the bank before Friday.
 ```
-<!-- Mew!UFC FUSEN_20261112t094702JST (/YRB黄赤青) Called. They open at 9 on Friday. -->
+<!-- Mew!UFC FUSEN_20261112t094702JST (F/SML/LL) (/YRB黄赤青) Called. They open at 9 on Friday. -->
 
 Buy `oat milk` and `coffee filters` on the way home.
 <!-- Mew!FC-ic FUSEN-ic_20261112t094702JST (/YRB黄赤青) --><!-- Mew!FC-ic FUSEN-ic_20261112t094723JST (/YRB黄赤青) -->
@@ -235,6 +235,12 @@ out, and the menu bar takes the name from the note's text.
 What you write after the colour on the FUSEN line — `Called. They open at 9 on Friday.` above — is a comment under
 the note, in blue, like a reply. Leave it empty and the note shows *Write a comment here*: one person writes the
 note, another answers it.
+
+The first bracket is the **size**, read from its first letter like the colour: **F**ree (as wide as the longest
+line of the note), **S**, **M**, **L** or **LL** (20, 30, 40 or 50 columns). Reorder it — `(S/MLF/LL)` — and the note
+changes size. Text that does not fit wraps inside the note, the comment too; MeOS adds `<!-- Mew!UFC FUSEN-row -->`
+lines under the note when it needs more rows, and takes them away when it needs fewer. Line up S, M and L notes
+and it looks like a pad of Post-its.
 
 Stick one anywhere. The menu bar sorts them by kind and colour, and from there you warp to any of them at any time.
 The newest come first, so old notes slowly fade from the list — the name keeps its time stamp, so a search for
