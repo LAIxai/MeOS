@@ -14505,7 +14505,7 @@ function meosFusenList() {
         const t = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+FUSEN_(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})\S*\s*(.*?)\s*-->/.exec(t);
         if (!m) continue;
         let body = ''; for (let i = b.open + 1; i < b.close; i++) { if ((lines[i] || '').trim()) { body = lines[i].trim(); break; } }
-        cb.push({ k: 'c', ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, ch: 0, color: meosFusenColorOf(m[7]), title: meosFusenTitle(m, b.info || String(m[7] || '').replace(/^[(（][^()（）]*[)）]\s*/, '') || body) });   // v5.1.315: 色
+        cb.push({ k: 'c', ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, ch: 0, color: meosFusenColorOf(m[7]), title: meosFusenTitle(m, b.info || String(m[7] || '').replace(/^[(（][^()（）]*[)）]\s*/, '').replace(/^(?:LL|L|M|S)(?=\s|$)\s*/, '') || body) });   // v5.1.315: 色
       }
       if (txt.indexOf('FUSEN-ic_') >= 0) meosFusenIcIn(d, lines, ic);
     }
@@ -46184,16 +46184,68 @@ function meosApplyQuoteDecorations(editor) {
 }
 // {* ▲mCN=4283_QUOTE // *}
 let fenceFoldDeco = null;   // v5.1.49: 畳まれた板の頭に「⇐ click ⋯ to unfold」
-let fenceCapHideDeco = null, fenceCapInkDeco = null; const _fenceCapLineTypes = new Map(); let _fenceCapPhType = null; const MEOS_FENCE_CAP_PH = 'Write a comment here';   // v5.1.299: 空の説明の欄   // v5.1.295: 閉じの行に出す説明の1行目= 字ごとの種類
+let fenceFakeDeco = null, fenceCapHideDeco = null, fenceCapInkDeco = null; const _fenceCapLineTypes = new Map(); let _fenceCapPhType = null; const MEOS_FENCE_CAP_PH = 'Write a comment here';   // v5.1.299: 空の説明の欄   // v5.1.295: 閉じの行に出す説明の1行目= 字ごとの種類
  let _meosCapDbgSig = '';   // v5.1.294 測る口   // v5.1.114: 説明の行(閉じの直後の UFC)
 const MEOS_FENCE_CAP_INK = '#2f6fb3';   // v5.1.114: 説明の字= 中身の茶と分ける青
 // ★v5.1.114(俊克 10.21 am11:34「codeブロックの閉じ記号の空行に説明を書くのに利用すると良い・上と区別する色で」
 //   → am11:44「閉じの直後に置いたFC行も、codeブロックの中に取り込んで、2行分にコメントを見せかければ良い」):
 //   閉じの ``` の後ろには字を書けない(CommonMark= 書くと閉じない)ので、説明は閉じの直後の行に書く。
 //   FC は閉じの行を頭に畳まれて2行目が消えるので、畳まない指定行(UFC)= `<!-- Mew!UFC 説明 -->`。⏰の行と罫線(---)は説明ではない。
+// ★v5.1.701(俊克 11.14 am10:43〜11:11「コメントの為に幅が伸びるのは付箋らしくない・本文の最長行の幅で・S,M,L,LLで幅を指定・収まらなければ折り返す・FCコメント群で足場を作って見せかけの付箋を描く(セル折り返しと同じ)・ポストイットのラインナップみたいに」):
+//   紙の幅= 印の後ろの大きさ(S=20/M=30/L=40/LL=50 桁)か、無ければ本文の一番長い行(コメントは数えない)・折り返し幅で止まる。
+//   本文かコメントがその幅に収まらない時は、ソースの字を透明にし、紙の幅で割った字を段ごとに絶対配置で描く(meosTcwLayout と同じ手)。
+//   段はソースの行が持つ段(Monaco の折り返し)を上から使う= 足りなければ説明の行の下に足場 <!-- Mew!UFC FUSEN-row --> を足す(カーソルが付箋の外の時・余れば減らす)
+const MEOS_FUSEN_SIZES = { S: 20, M: 30, L: 40, LL: 50 };
+const MEOS_FUSEN_ROW = '<!-- Mew!UFC FUSEN-row -->', MEOS_FUSEN_ROW_RE = /^\s*<!--\s*Mew!UFC\s+FUSEN-row\s*-->\s*$/;
+const MEOS_FUSEN_SIZE_TOK = '(?:\\s+(?:LL|L|M|S)(?=\\s|-->|$))?';
+function meosFusenSizeOf(t) { const m = /FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?\s+(LL|L|M|S)(?=\s|-->|$)/.exec(String(t || '')); return m ? MEOS_FUSEN_SIZES[m[1]] : 0; }
+function meosFusenFakeLayout(lines, b, wrapCol) {
+  try {
+    const capLn = b.close + 1, ct = lines[capLn] || '';
+    if (!(wrapCol > 0) || b.close <= b.open || !/<!--\s*Mew!UFC\s+FUSEN_/.test(ct)) return null;
+    const cap = meosFenceCaption(lines, b), text = cap ? cap.text : '';
+    let bodyMax = 0; for (let i = b.open + 1; i < b.close; i++) bodyMax = Math.max(bodyMax, meosRenderCols(lines[i] || ''));
+    const size = meosFusenSizeOf(ct), W = Math.min(wrapCol, Math.max(7, size || bodyMax));
+    let last = capLn; while (last + 1 < lines.length && MEOS_FUSEN_ROW_RE.test(lines[last + 1] || '')) last++;
+    const fake = bodyMax > W || (text ? meosRenderCols(text) : 0) > W;
+    const rowsOf = (i) => Math.max(1, Math.min(20, meosTcwRowsOf(lines[i] || '', wrapCol)));
+    const slots = []; for (let i = b.open; i <= last; i++) { const r = rowsOf(i); for (let j = 0; j < r; j++) slots.push([i, j]); }
+    const out = [{ k: 't', s: b.info || '' }];
+    if (fake) {
+      for (let i = b.open + 1; i < b.close; i++) meosTcwSegs(lines[i] || '', W).forEach(x => out.push({ k: 'b', s: x }));
+      (text ? meosTcwSegs(text, W) : ['']).forEach((x, q) => out.push({ k: text ? 'c' : 'p', s: x, first: q === 0 }));
+    }
+    return { W, size, fake, from: b.open, capLn, last, slots, out, rowsOf, scaffolds: last - capLn, need: out.length, have: slots.length };
+  } catch (_) { return null; }
+}
+// 足場を合わせる= 足りなければ足す・余れば(足場の分だけ)減らす。付箋の外にカーソルがある時だけ・同じ形は1度だけ
+const _meosFusenFitSeen = new Map();
+function meosFusenFitSoon(doc, z) {
+  try {
+    const add = z.fake ? Math.max(0, z.need - z.have) : 0, del = z.fake ? Math.min(z.scaffolds, Math.max(0, z.have - z.need)) : z.scaffolds;
+    if (!add && !del) return;
+    const key = doc.uri.toString() + '#' + z.from, sig = doc.version + ':' + add + ':' + del;
+    if (_meosFusenFitSeen.get(key) === sig) return; _meosFusenFitSeen.set(key, sig);
+    setTimeout(async () => {
+      try {
+        const ed = vscode.window.visibleTextEditors.find(e => e.document === doc); if (!ed) return;
+        const ls = meosDocLines(doc), b = meosFenceBlocks(doc).find(x => x.open === z.from); if (!b) return;
+        const y = meosFusenFakeLayout(ls, b, meosFenceWrapColumn(doc)); if (!y) return;
+        if ((ed.selections || [ed.selection]).some(sl => sl.active.line >= y.from && sl.active.line <= y.last)) return;   // 書いている間は触らない
+        const a2 = y.fake ? Math.max(0, y.need - y.have) : 0, d2 = y.fake ? Math.min(y.scaffolds, Math.max(0, y.have - y.need)) : y.scaffolds;
+        if (!a2 && !d2) return;
+        const we = new vscode.WorkspaceEdit(), endOf = (i) => new vscode.Position(i, (ls[i] || '').length);
+        if (a2) we.insert(doc.uri, endOf(y.last), ('\n' + MEOS_FUSEN_ROW).repeat(a2));
+        else we.delete(doc.uri, new vscode.Range(endOf(y.last - d2), endOf(y.last)));
+        await vscode.workspace.applyEdit(we);
+        meosDbg('[fusenFake] 足場 ' + (a2 ? '+' + a2 : '-' + d2) + ' 行=' + (y.from + 1) + ' 要る段=' + y.need + ' 在る段=' + y.have + ' 幅=' + y.W);
+      } catch (e) { meosDbg('[fusenFake] 足場の例外 ' + e); }
+    }, 350);
+  } catch (_) { }
+}
 // v5.1.304: 空の説明の欄= <!-- Mew!UFC --> か <!-- Mew!UFC FUSEN_<日時> -->。返すのは打ち始める桁(-1= 空の欄ではない)
 function meosFenceCapEmpty(t) {
-  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?)?(\s*)-->\s*$/.exec(String(t || ''));   // v5.1.315: 印の後ろの色(/pink)も印のうち
+  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+(?:LL|L|M|S)(?=\s|-->))?)?(\s*)-->\s*$/.exec(String(t || ''));   // v5.1.701: 大きさ(S/M/L/LL)も印のうち   // v5.1.315: 印の後ろの色(/pink)も印のうち
   return m ? m[1].length + (m[2] ? m[2].length : 0) + Math.min(1, m[3].length) : -1;
 }
 function meosFenceCaption(lines, b) {
@@ -46203,7 +46255,7 @@ function meosFenceCaption(lines, b) {
     const m = /^(\s*<!--\s*Mew!UFC\s+)(.*?)(\s*-->\s*)$/.exec(t);
     if (!m || !m[2] || m[2].indexOf('\u23f0') >= 0 || meosIsRuleAny(t)) return null;
     // ★v5.1.304(俊克 pm03:46「堂々と FUSEN と名乗る・付箋で検索できるようにコメントに FUSEN_TS を付けよう」): 先頭の FUSEN_<日時> は印= 紙には出さない
-    const f = /^FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+|$)/.exec(m[2]); const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
+    const f = /^FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+(?:LL|L|M|S)(?=\s|$))?(?:\s+|$)/.exec(m[2]);   /* v5.1.701: 大きさも印 */ const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
     // v5.1.315: 印の後ろの色 (/pink) も紙には出さない
     if (!text) return null;   // 印だけ= 空の欄(meosFenceCapEmpty)
     return { line: i, text, at, end: at + text.length };
@@ -46234,7 +46286,7 @@ function meosApplyCodeFenceDecorations(editor) {
     const _seen = (ln) => _vrs.some(r => r.start.line <= ln && ln <= r.end.line);
     const _foldHead = (ln) => _seen(ln) && !_seen(ln + 1) && _vrs.some(r => r.start.line > ln + 1);   // 次の行が隠れ、その先にまた見える= 畳まれている(画面の下端で切れているのとは違う)
     const paper = new Map();                                        // 型 → 置く行(予備の板と、字の側の紙)
-    const inks = [], ticks = [], langs = [], indents = [], folds = [], capHides = [], capInks = [], capLines = new Map(), capPh = [];
+    const fakes = [], inks = [], ticks = [], langs = [], indents = [], folds = [], capHides = [], capInks = [], capLines = new Map(), capPh = [];
     if (!fenceCapHideDeco) {
       fenceCapHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       fenceCapInkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -46245,6 +46297,8 @@ function meosApplyCodeFenceDecorations(editor) {
       editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs);
       editor.setDecorations(fenceIndentDeco, indents);
       editor.setDecorations(fenceFoldDeco, folds);   // v5.1.49
+      if (!fenceFakeDeco && fakes.length) fenceFakeDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      if (fenceFakeDeco) editor.setDecorations(fenceFakeDeco, fakes);   // v5.1.701: 見せかけの付箋
       editor.setDecorations(fenceCapHideDeco, capHides); editor.setDecorations(fenceCapInkDeco, capInks);   // v5.1.114
       for (const t of _fenceCapLineTypes.values()) editor.setDecorations(t, capLines.get(t) || []);   // v5.1.295
       if (_fenceCapPhType) editor.setDecorations(_fenceCapPhType, capPh);   // v5.1.299
@@ -46267,6 +46321,7 @@ function meosApplyCodeFenceDecorations(editor) {
         //     VS Codethat「今までに描いた行の中で一番長い行」で箱を決めているから(実測)。その箱から降りる。
         const _wrapCol = meosFenceWrapColumn(doc);   // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
         const _cap = meosFenceCaption(lines, b);                       // v5.1.114: 説明の行
+        const _fz = meosFusenFakeLayout(lines, b, _wrapCol);          // v5.1.701: 見せかけの付箋の割り付け(付箋でなければ null)
         // ★v5.1.299(俊克 pm02:00「母親がコメント空欄のまま『おやつは冷蔵庫に』と書く。子が『美味しかったよ』とコメントを書く」→ pm02:05「空欄の時は薄い色の枠・見せかけの字で薄く」):
         //   空の説明の行(<!-- Mew!UFC  -->)= まだ書いていない返事の欄。今までは説明と読まず紙の外に生の行が出た→ 紙の足に入れ、閉じの行に薄い点線の枠と見せかけの字。
         const _capE = (!_cap && b.close > b.open && meosFenceCapEmpty(lines[b.close + 1]) >= 0) ? { line: b.close + 1 } : null;
@@ -46274,7 +46329,7 @@ function meosApplyCodeFenceDecorations(editor) {
         let _capW = 0;
         const _w = (() => {
           let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, meosRenderCols(lines[i] || ''));
-          if (_cap) { const cc = meosRenderCols(_cap.text); if (cc > c) c = cc; }   // ★v5.1.700(俊克 11.14 am10:31 改良1「コメントが長いと折り返されて格好が悪いので、行の折返し幅の範囲で、クリーム色の幅を広げよう」): 説明が1行に収まる幅まで広げる(折り返し幅で止まる・すぐ下の行) / v5.1.114: 2行に収まる幅
+          if (_fz) { if (_fz.size) c = Math.max(c, _fz.size); } if (_cap) { const cc = meosRenderCols(_cap.text); if (cc > c) c = cc; }   // ★v5.1.700(俊克 11.14 am10:31 改良1「コメントが長いと折り返されて格好が悪いので、行の折返し幅の範囲で、クリーム色の幅を広げよう」): 説明が1行に収まる幅まで広げる(折り返し幅で止まる・すぐ下の行) / v5.1.114: 2行に収まる幅
           if (_capE) c = Math.max(c, MEOS_FENCE_CAP_PH.length + 2);   // v5.1.299: 空の欄の見せかけの字が収まる幅
           c = Math.max(c, 7);   // ★v5.1.296(俊克 改良1「コード本文がない時、コメントが折り返される。幅の最小値をあと3文字分」): 中身の幅の下限= 7桁(今までの下限4桁+3)= 例文 Comment が1行に収まる
           if (_wrapCol) c = Math.min(c, _wrapCol);                    // 折り返った行は其処までしか出ていない
@@ -46290,6 +46345,24 @@ function meosApplyCodeFenceDecorations(editor) {
         }
         const _capLive = !!_cap && !raw.has(b.close) && !raw.has(_cap.line);   // カーソルが居る間は生のまま
         const _capELive = !!_capE && !raw.has(b.close) && !raw.has(_capE.line);   // v5.1.299
+        // ★v5.1.701: 見せかけの付箋= 本文かコメントが紙の幅に収まらず、足場の段が足りていて、カーソルが付箋の外の時
+        if (_fz) { let _in = false; for (let i = _fz.from; i <= _fz.last; i++) if (raw.has(i)) { _in = true; break; }
+          if (!_in) meosFusenFitSoon(doc, _fz);
+          if (!_in && _fz.fake && _fz.have >= _fz.need) {
+            const _lh = meosTcwLineEm(doc), _fw = MEOS_FENCE_INDENT_COLS + _fz.W + MEOS_FENCE_PAD_COLS, em = (x) => (Math.round(x * _lh * 1000) / 1000) + 'em';
+            for (let i = Math.max(_fz.from, vr[0]); i <= Math.min(_fz.last, vr[1]); i++) {
+              const ty = meosFencePaperCapType(_fw, i === _fz.from ? 'head' : (i === _fz.last ? 'foot' : 'body'), _fz.rowsOf(i), _fcol);
+              if (!paper.has(ty)) paper.set(ty, []); paper.get(ty).push(L(i));
+              const t = lines[i] || ''; if (t.length) ticks.push(new vscode.Range(i, 0, i, t.length));
+            }
+            _fz.out.forEach((o, q) => { const sl = _fz.slots[q]; if (!sl || sl[0] < vr[0] || sl[0] > vr[1]) return; const top = em(sl[1]), base = 'none; position: absolute; left: ' + MEOS_FENCE_INDENT_COLS + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; ';
+              const col = o.k === 't' ? '#6b5a3a' : ((o.k === 'c' || o.k === 'p') ? MEOS_FENCE_CAP_INK : MEOS_FENCE_INK);
+              if (o.first) fakes.push({ range: L(sl[0]), renderOptions: { before: { contentText: '', textDecoration: base + 'width: ' + _fz.W + 'ch; height: 0; border-top: 1px solid ' + MEOS_FENCE_CAP_INK + ';' } } });
+              const s0 = o.k === 'p' ? MEOS_FENCE_CAP_PH : o.s; if (!s0) return;
+              fakes.push({ range: L(sl[0]), renderOptions: { before: { contentText: s0.replace(/ /g, ' '), textDecoration: base + 'color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
+                + (o.k === 't' ? ' font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em; margin-left: 2px;' : '') + ((o.k === 'c' || o.k === 'p') ? ' font-style: italic;' : '') + (o.k === 'p' ? ' opacity: .5;' : '') } } }); });
+            continue;
+          } }
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
