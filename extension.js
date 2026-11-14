@@ -7478,6 +7478,25 @@ function meosIsFofClockKey(k) { return String(k || '').charAt(0) === '♥'; }
 function meosFofClockOwner(doc, closeLine) {
   try { const r = meosFofRange(doc, 7); if (!r || r.end !== closeLine) return null; const o = meosPuzzleTagsOf(doc, 7).find(h => h.line === r.start), d = o && String(o.desc || '').trim(); return { id: r.key, fofName: '♥️' + (d ? ' ' + d : ''), start: r.start, end: r.end }; } catch (_) { return null; }
 }
+// ★v5.1.709(俊克 11.14 pm05:24「CB付箋は一種の膜なので(CB付箋膜)、タイマーを設定できるようにしよう」「⏰FCを削除すると⏰リストから消えるけど、付箋リストには残る」「IC付箋は未対応」):
+//   持ち主= 付箋の印 FUSEN_<日時>(膜名と同じく一意)。⏰の行は付箋の塊(閉じ ``` ・FUSEN の行・足場の行)の後ろに積む= ♥膜(v5.1.609)と同じ作り。
+//   上へ指定行を飛び越えて着く行が閉じ ``` で、その直下が FUSEN の行なら、その付箋の⏰。囲いの中には書けない(囲いの中は全部文字)。
+function meosIsFusenClockKey(k) { return /^FUSEN_\S/.test(String(k || '')); }
+function meosFusenClockBlock(doc, b, lines) {   // 囲い b が CB付箋なら {key, start, end, cap, last, name}
+  const ct = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+(FUSEN_\S+)\s*(.*?)\s*-->/.exec(ct); if (!m || /^FUSEN_\S*-->/.test(m[1])) return null;
+  const key = m[1].replace(/-->$/, ''); let last = b.close + 1; while (last + 1 < lines.length && MEOS_FUSEN_ROW_RE.test(lines[last + 1] || '')) last++;
+  let body = ''; for (let i = b.open + 1; i < b.close; i++) { if ((lines[i] || '').trim()) { body = lines[i].trim(); break; } }
+  const cmt = String(m[2] || '').replace(/^(?:[(（][^()（）]*[)）]\s*){1,2}/, '').replace(/^(?:LL|L|M|S|F)(?=\s|$)\s*/, '').trim(), t = b.info || cmt || body || 'FUSEN';
+  return { key, start: b.open, end: b.close, cap: b.close + 1, last, name: 'FUSEN ' + (t.length > 30 ? t.slice(0, 29) + '…' : t) };
+}
+function meosFusenClockRange(doc, key) { try { const L = meosDocLines(doc); for (const b of meosFenceBlocks(doc)) { if (b.close < 0 || (L[b.close + 1] || '').indexOf(key) < 0) continue; const f = meosFusenClockBlock(doc, b, L); if (f && f.key === key) return f; } } catch (_) { } return null; }
+function meosFusenClockAt(doc, line) {   // その行が CB付箋の塊(開き ``` 〜 最後の足場)の中なら、その付箋
+  try { const L = meosDocLines(doc); for (const b of meosFenceBlocks(doc)) { if (b.open > line) break; if (b.close < 0 || line > b.close + 60) continue; const f = meosFusenClockBlock(doc, b, L); if (f && f.start <= line && line <= f.last) return f; } } catch (_) { } return null;
+}
+function meosFusenClockOwner(doc, closeLine) {
+  try { const L = meosDocLines(doc); if ((L[closeLine + 1] || '').indexOf('FUSEN_') < 0) return null; const b = meosFenceBlocks(doc).find(x => x.close === closeLine); const f = b && meosFusenClockBlock(doc, b, L); return f ? { id: f.key, fofName: f.name, start: f.start, end: f.end } : null; } catch (_) { return null; }
+}
+function meosClockPseudoOwner(doc, closeLine) { return meosFofClockOwner(doc, closeLine) || meosFusenClockOwner(doc, closeLine); }
 const MEOS_CLOCK_LABEL_FG = '#000000';   // ★v5.1.627(俊克 11.09 pm08:46 改良「明るい橙に白字は読み難い。黒字か灰色に」): ⏰の橙の札(本文の行とバッジの行)の字
 const MEOS_CLOCK_DD_RE = /(^|\s)dd(?=\s|$)/;
 function meosClockDdTitle(c) {   // ★v5.1.613(俊克 am10:36 バグ1「バッジのdd部分に予定時刻が表示されていない」): 描く側の c は本文を読み直した物(鍵なし)= 札の2か所は owner を渡してここを通す。一時停止中は「今再開すれば」の時刻 / v5.1.610: 本文は dd のまま・見せる時だけ消滅日時(WT と同じ作法)。「数字+.」は回数の器に読まれるので月/日
@@ -11553,6 +11572,7 @@ function meosScopeRangeNow(doc, key) {
   try {
     if (!key) return { from: 0, to: Math.max(0, doc.lineCount - 1) };
     if (meosIsFofClockKey(key)) { const _fr = meosFofRange(doc, 7); return (_fr && _fr.key === key) ? { from: _fr.start, to: _fr.end } : null; }   // v5.1.609
+    if (meosIsFusenClockKey(key)) { const _fz = meosFusenClockRange(doc, key); if (_fz) return { from: _fz.start, to: _fz.last }; }   // v5.1.709: CB付箋
     const p = collectPairs(doc, { excludeIndex: false }).find(q => q.id === key);
     return p ? { from: p.start, to: p.end } : null;
   } catch (_) { return null; }
@@ -12272,7 +12292,7 @@ function meosClockFcScan(doc) {
     //     (その膜の⏰を1本しか数えていなかった)。
     //   ★★→ **直前の閉じ膜thatが無ければ、時計として読まない**。持ち主の無い⏰は、ただの字。
     //     ★これで「どこに書いてよいか」thatが1つに決まる= 迷う所thatが無くなる。
-    const owner = pairs.find(p => p.end === j) || meosFofClockOwner(doc, j);   // v5.1.609: ♥膜の閉じ♥も持ち主
+    const owner = pairs.find(p => p.end === j) || meosClockPseudoOwner(doc, j);   // v5.1.609: ♥膜の閉じ♥も持ち主
     if (!owner) continue;                                              // v4.1.1120: 持ち主thatが無い⏰は読まない
     // v4.1.71: 札は**膜のコメント**から。⏰行に書いた物も足す(v4.1.70の分を置いていかない)。
     const _tags = (c.tags || []).slice();
@@ -12484,11 +12504,14 @@ function meosClockSetTarget() {
     const badgeKey = (l) => (l >= 1 && meosIsPairBadgeSpec(doc.lineAt(l).text)) ? closeKey(l - 1) : '';
     // ★v4.2.550(俊克「開始膜、折り畳んだ膜の上でもSetできるように」): 畳んだ膜のカーソルは開始膜の行に居る
     const openKey = (l) => { const p = pairs.find(q => q.start === l); return p ? String(p.id || '') : ''; };
+    // ★v5.1.709: CB付箋の塊(開き ``` 〜 足場)の上、またはその下のバッジ行の上= その付箋に⏰
+    { const _fz = meosFusenClockAt(doc, ln) || ((ln >= 1 && meosIsPairBadgeSpec(doc.lineAt(ln).text)) ? meosFusenClockAt(doc, ln - 1) : null); if (_fz) return { atKey: _fz.key }; }
     let k = closeKey(ln) || badgeKey(ln) || openKey(ln);
     if (k) return { atKey: k };
     if (!doc.lineAt(ln).text.trim() && ln >= 1) {
       const up = meosClockAtLine(doc, null, ln - 1); if (up) return { atKey: String(up.key || '') };
       k = closeKey(ln - 1) || badgeKey(ln - 1); if (k) return { atKey: k };
+      { const _fz = meosFusenClockAt(doc, ln - 1); if (_fz) return { atKey: _fz.key }; }   // v5.1.709: 付箋の直下の空行
     }
     return { refused: '\u23f0 To add a clock, put the caret on the closing \u25b2 line or on the empty line just below the \u23f0 lines, then press Set. To change a clock, put the caret on its \u23f0 line.' };
   } catch (_) { return null; }
@@ -13257,6 +13280,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       let at = -1, _pr = null;
       try { for (const p of collectPairs(doc, { excludeIndex: false })) if (p.id === key) { at = p.end; _pr = p; break; } } catch (_) { }
       let _fofBg = false; if (at < 0 && meosIsFofClockKey(key)) { const _fr = meosFofRange(doc, 7); if (_fr && _fr.key === key) { at = _fr.end; _fofBg = !(at + 1 < doc.lineCount && meosIsPairBadgeSpec(doc.lineAt(at + 1).text)); } }   // v5.1.609: ♥膜 / ★v5.1.612(俊克 am10:23 改良1「バッジが無いので、本文に表示できないんだね。これがないと動いているように見えないんだよ。バッジも追加しようよ」): ふつうの膜と同じ▲の次のバッジ行= 残り時間の置き場
+      if (at < 0 && meosIsFusenClockKey(key)) { const _fz = meosFusenClockRange(doc, key); if (_fz) { at = _fz.last; _fofBg = !(at + 1 < doc.lineCount && meosIsPairBadgeSpec(doc.lineAt(at + 1).text)); } }   // v5.1.709: CB付箋= 足場の後ろ(FUSEN の行と足場は閉じ ``` の直下に続けておく)・バッジ行は UFC(♥膜と同じ)
       if (at < 0) return false;                                    // 膜の外(ファイル全体)には書かない
       let ln = at + 1;
       while (ln < doc.lineCount && meosIsSpecLine(doc.lineAt(ln).text)) ln++;
@@ -14505,13 +14529,14 @@ function meosFusenList() {
         const t = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+FUSEN_(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})\S*\s*(.*?)\s*-->/.exec(t);
         if (!m) continue;
         let body = ''; for (let i = b.open + 1; i < b.close; i++) { if ((lines[i] || '').trim()) { body = lines[i].trim(); break; } }
-        cb.push({ k: 'c', ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, ch: 0, color: meosFusenColorOf(m[7]), title: meosFusenTitle(m, b.info || String(m[7] || '').replace(/^(?:[(（][^()（）]*[)）]\s*){1,2}/, '').replace(/^(?:LL|L|M|S|F)(?=\s|$)\s*/, '') || body) });   // v5.1.315: 色
+        let clk = false; for (let q = b.close + 2; q < lines.length && q < b.close + 80 && meosIsSpecLine(lines[q] || ''); q++) { const t9 = lines[q] || ''; if (t9.indexOf('\u23f0') < 0) continue; const c9 = meosClockFcParse(t9); if (c9 && !c9.done && (c9.when || (Array.isArray(c9.cycle) && c9.cycle.length))) { clk = true; break; } }   // v5.1.709: ⏰の付いた付箋
+        cb.push({ clk, k: 'c', ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, ch: 0, color: meosFusenColorOf(m[7]), title: meosFusenTitle(m, b.info || String(m[7] || '').replace(/^(?:[(（][^()（）]*[)）]\s*){1,2}/, '').replace(/^(?:LL|L|M|S|F)(?=\s|$)\s*/, '') || body) });   // v5.1.315: 色
       }
       if (txt.indexOf('FUSEN-ic_') >= 0) meosFusenIcIn(d, lines, ic);
     }
     const byTs = (a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0);
     cb.sort(byTs); ic.sort(byTs);
-    _meosFusen = { cb: cb.slice(0, MEOS_FUSEN_MAX * 3), ic: ic.slice(0, MEOS_FUSEN_MAX * 3), key, at: Date.now() };   // v5.1.344: 3色それぞれに MEOS_FUSEN_MAX 枚まで残せる数
+    _meosFusen = { cb: meosFusenKeep(cb, MEOS_FUSEN_MAX * 3), ic: ic.slice(0, MEOS_FUSEN_MAX * 3), key, at: Date.now() };   // v5.1.344: 3色それぞれに MEOS_FUSEN_MAX 枚まで残せる数
   } catch (_) { }
   return _meosFusen;
 }
@@ -14538,9 +14563,11 @@ let _meosListStar;
 function meosListStarGet() { if (_meosListStar === undefined) { _meosListStar = {}; try { _meosListStar = (extensionContext && extensionContext.globalState.get('meosListStar')) || {}; } catch (_) { } } return _meosListStar; }
 function meosListStarSet(kind, sc) { try { if (!sc) return; const st = Object.assign({}, meosListStarGet()); st[kind] = { uri: String(sc.uri || ''), key: String(sc.key || '') }; _meosListStar = st; if (extensionContext) extensionContext.globalState.update('meosListStar', st); } catch (_) { } }
 function meosListStarIs(kind, sc) { const s = meosListStarGet()[kind]; return !!(s && sc && s.key && s.uri === String(sc.uri || '') && s.key === String(sc.key || '')); }
+// ★v5.1.709(俊克 11.14「⏰FCを削除すると⏰リストから消えるけど、付箋リストには残る」): ⏰の生きている付箋は、古くても一覧から落とさない(新しい順のまま後ろに残す)。⏰を消せば、ふつうの付箋と同じく古い物から消えて行く
+function meosFusenKeep(list, n) { return list.slice(0, n).concat(list.slice(n).filter(f => f.clk)); }
 function meosFusenGroups() {
   const g = meosFusenList(), out = [];
-  for (const [k, list] of [['CB', g.cb], ['IC', g.ic]]) MEOS_FUSEN_COLOR_ORDER.forEach((c, n) => out.push({ ic1: k === 'IC' && n === 0, name: k + ' FUSEN \u00b7 ' + ({ yellow: 'Yellow', pink: 'Red', blue: 'Blue' })[c], color: MEOS_FUSEN_COLORS[c].tab, list: list.filter(f => (f.color || 'yellow') === c).slice(0, MEOS_FUSEN_MAX) }));
+  for (const [k, list] of [['CB', g.cb], ['IC', g.ic]]) MEOS_FUSEN_COLOR_ORDER.forEach((c, n) => out.push({ ic1: k === 'IC' && n === 0, name: k + ' FUSEN \u00b7 ' + ({ yellow: 'Yellow', pink: 'Red', blue: 'Blue' })[c], color: MEOS_FUSEN_COLORS[c].tab, list: meosFusenKeep(list.filter(f => (f.color || 'yellow') === c), MEOS_FUSEN_MAX) }));
   return out;
 }
 async function meosFusenGo(kts) {   // 押した時に一覧が並べ替わっていても取り違えない= 順番でなく種類＋印の日時で引く
@@ -15311,6 +15338,7 @@ function meosScopeOwnsLine(sc, c, line) {
 function meosClockOwnerScopeAt(doc, line) {
   try {
     const uri = doc.uri.toString();
+    { const _k = meosClockOwnerKeyForLine(doc, line); if (meosIsFusenClockKey(_k) || meosIsFofClockKey(_k)) { const _s = _meosPseudoScopes.get(uri + ' ' + _k); const _c = meosClockFcParse(doc.lineAt(line).text || ''); return (_s && (_s.when || _s.synth) && _c && meosScopeOwnsLine(_s, _c, line)) ? _s : null; } }   // v5.1.709: 付箋/♥の⏰は膜の外に居る
     let best = null;
     for (const p of collectPairs(doc, { excludeIndex: false })) {
       if (p.start <= line && line <= meosBlockEndForCarry(doc, p) && (!best || (p.end - p.start) < (best.end - best.start))) best = p;
@@ -15994,7 +16022,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           }
           let j = i - 1;
           while (j >= 0 && meosIsSpecLine(doc.lineAt(j).text)) j--;
-          let owner = _pairs().find(p => p.end === j) || meosFofClockOwner(doc, j);   // ★v5.1.611(俊克 11.09 am10:06 バグ1「自動起動しない」バグ2「▶️ボタンを押しても起動しない」): 走っていた(記録 走っている=true)= 描く側だけが♥膜を持ち主と読まず外側の日記の膜を引いていた→ ▶️のまま・数字なし
+          let owner = _pairs().find(p => p.end === j) || meosClockPseudoOwner(doc, j);   // ★v5.1.611(俊克 11.09 am10:06 バグ1「自動起動しない」バグ2「▶️ボタンを押しても起動しない」): 走っていた(記録 走っている=true)= 描く側だけが♥膜を持ち主と読まず外側の日記の膜を引いていた→ ▶️のまま・数字なし
           if (!owner) for (const p of _pairs()) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
           // ★v4.2.347 Date&Count: カーソルが行を出たら `~日付` を `×N` に書き戻す。書けなければ ⚠️ を添えて残す。
           try {
@@ -17050,6 +17078,8 @@ async function meosJumpToScope(scope, byBell) {
     if (!doc) return;
     const rng = meosScopeRangeNow(doc, scope.key);
     if (!rng) { _meosLastJump = 'NO RANGE (key=' + scope.key + ')'; return; }
+    // ★v5.1.709: CB付箋の鐘= 付箋の一覧から飛ぶ時と同じ口(紙の1つ上の行の末尾へ・紙は紙のまま見える)
+    if (byBell && meosIsFusenClockKey(scope.key)) { try { const _fr0 = vscode.window.activeTextEditor; if (_fr0) meosNoteReturnMark(_fr0, meosMembraneNameAtLine(_fr0.document, _fr0.selection.active.line)); } catch (_) { } await meosFusenLand({ k: 'c', uri: doc.uri, line: rng.from, ch: 0, ts: String(scope.key).replace(/^FUSEN_/, '').replace(/\D/g, '').slice(0, 14) }); _meosLastJumpLine = Math.max(0, rng.from - 1); _meosLastJump = 'went to FUSEN ' + (rng.from + 1); return; }
     const from = vscode.window.activeTextEditor;
     try { if (byBell && from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
     const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });

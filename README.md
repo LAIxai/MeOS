@@ -246,6 +246,11 @@ Stick one anywhere. The menu bar sorts them by kind and colour, and from there y
 The newest come first, so old notes slowly fade from the list — the name keeps its time stamp, so a search for
 `FUSEN` still finds them all. This is what a sticky note should be in the digital age.
 
+**A sticky note can carry a ⏰.** A code-block note is a small membrane of its own: put the caret on it and press ⏰,
+or copy a line from the ⏰ database under its FUSEN line. When it rings, you warp to the note. A note with a ⏰
+stays on the menu bar however old it gets; delete the ⏰ line and it leaves the ⏰ list, but the note stays on the
+FUSEN list. (Inline-code notes don't take a ⏰ yet.)
+
 **The version tells you what changed.** Most apps show a version number, and when it goes up you have to remember
 the old one to see which digit moved. After MeOS updates itself, the digits that changed blink in the version under
 ♥ in mGATE (macOS) and in the Me Dock header — big and red three times — and then stay red for an hour. Look away
