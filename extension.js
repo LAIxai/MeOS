@@ -46207,7 +46207,7 @@ function meosFusenFakeLayout(lines, b, wrapCol) {
     const capLn = b.close + 1, ct = lines[capLn] || '';
     if (!(wrapCol > 0) || b.close <= b.open || !/<!--\s*Mew!UFC\s+FUSEN_/.test(ct)) return null;
     const cap = meosFenceCaption(lines, b), text = cap ? cap.text : '';
-    let bodyMax = 0; for (let i = b.open + 1; i < b.close; i++) bodyMax = Math.max(bodyMax, meosRenderCols(lines[i] || ''));
+    let bodyMax = 0; for (let i = b.open + 1; i < b.close; i++) bodyMax = Math.max(bodyMax, meosRenderCols(lines[i] || ''), Math.ceil(meosStrWidth(lines[i] || '') - 0.1));   // v5.1.708: 割る物差し(meosStrWidth)でも収まる幅
     const size = meosFusenSizeOf(ct), W = Math.min(wrapCol, Math.max(7, size || bodyMax));
     let last = capLn; while (last + 1 < lines.length && MEOS_FUSEN_ROW_RE.test(lines[last + 1] || '')) last++;
     const fake = true;   // ★v5.1.705(俊克 am11:5x「直す」= Fの付箋の紙の下に空の段): 付箋はいつも見せかけで描く(描き方を1つに)
@@ -46215,7 +46215,7 @@ function meosFusenFakeLayout(lines, b, wrapCol) {
     const slots = []; for (let i = b.open; i <= last; i++) { const r = rowsOf(i); for (let j = 0; j < r; j++) slots.push([i, j]); }
     const out = [{ k: 't', s: b.info || '' }];
     if (fake) {
-      for (let i = b.open + 1; i < b.close; i++) meosTcwSegs(lines[i] || '', W).forEach(x => out.push({ k: 'b', s: x }));
+      for (let i = b.open + 1; i < b.close; i++) ((size || bodyMax > W) ? meosTcwSegs(lines[i] || '', W) : [lines[i] || '']).forEach(x => out.push({ k: 'b', s: x }));   // ★v5.1.708(俊克 pm00:30「フリーサイズ指定なのに、なぜ折り返されるのか?」= 💥 を割る物差しが紙の幅より広く数えた): F は本文の行を割らない(幅を本文で決めている)
       (text ? meosTcwSegs(text, W) : ['']).forEach((x, q) => out.push({ k: text ? 'c' : 'p', s: x, first: q === 0 }));
     }
     out.forEach((o, q) => { o.at = q; });   // v5.1.706(俊克 pm00:02「本文の方に空行が出る・前の方が良い・コメントを何行も書く時はコメントの領域が広がった方がいい」): 上から詰める= 余る段は紙の下(コメントの側)
