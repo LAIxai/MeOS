@@ -7537,7 +7537,7 @@ function meosClockDdParse(face) {   // dd の顔を読む= [年/]月/日[(曜)][
   return isFinite(t) ? t : 0;
 }
 function meosClockFmtCycle(ms) {   // 長さを ① と同じ5つの単位で= 0y0d1h0m0s(y は365日= MEOS_CYCLE_UNIT)
-  let t = Math.max(1, Math.round((Number(ms) || 0) / 1000)); const U = [['y', 365 * 86400], ['d', 86400], ['h', 3600], ['m', 60], ['s', 1]];
+  let t = Math.max(1, Math.ceil((Number(ms) || 0) / 1000 - 1e-9)); const U = [['y', 365 * 86400], ['d', 86400], ['h', 3600], ['m', 60], ['s', 1]];
   return U.map(([u, n]) => { const k = Math.floor(t / n); t -= k * n; return k + u; }).join('');
 }
 const _meosDdPauseFace = new Map();   // ⏸️で本文に書いた dd= の顔(▶️で、直されたかどうかを比べる)
@@ -7565,7 +7565,9 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
       const edited = was ? (q[2] !== was) : true;
       const e = (typeof cur.vElapsed === 'number' && cur.vElapsed >= 0) ? cur.vElapsed : -1;
       if (!edited || !simple || !(D > now) || e < 0) { meosDbg('[dd] ▶️ 題を dd へ(周期そのまま) edited=' + edited + ' key=' + key); return out; }
-      const T0 = meosCycleMs(cy[0]), k = Math.max(1, Math.floor(e / T0) + 1), T = (e + (D - now)) / k;
+      // ★v5.1.712(俊克 711テスト: 11/15 pm11:39 に直したら札が pm11:38= 2秒足りない): 本文の v9s は秒まで= 再開で使う起点は覚えの側(止めた起点+休んだ分)。その起点から数え、秒は切り上げる(鐘は直した日時ちょうどか直後)
+      let org = now - e; try { const _fz = _meosPauseFreeze.get(lk), _b = _meosChainStart.get(lk); if (_fz && _fz.line === atLine && _b) org = _b + Math.max(0, now - _fz.at); } catch (_) { }
+      const T0 = meosCycleMs(cy[0]), k = Math.max(1, Math.floor((now - org) / T0) + 1), T = Math.ceil((D - org) / k / 1000) * 1000;
       const step = meosClockFmtCycle(T), src = String(spec.cycleSrc == null ? '' : spec.cycleSrc);
       out.cycle = [step]; out.cycleSrc = src && src.indexOf(cy[0]) >= 0 ? src.replace(cy[0], step) : (Number(spec.rounds) > 0 ? '(' + step + ')\u00d7' + Math.floor(spec.rounds) : step);
       meosDbg('[dd] ▶️ dd=' + q[2] + ' → 周期 ' + cy[0] + ' → ' + step + ' (周' + k + ') key=' + key);
