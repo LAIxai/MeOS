@@ -251,7 +251,8 @@ or copy a line from the ⏰ database under its FUSEN line. When it rings, you wa
 stays on the menu bar however old it gets; delete the ⏰ line and it leaves the ⏰ list, but the note stays on the
 FUSEN list. (Inline-code notes don't take a ⏰ yet.)
 
-**⏰ Seamless Timer (S-Timer).** Most timers make you choose: how long, or until when. A ⏰ in MeOS is both at once.
+**↺↻Timer — the Seamless Timer (S-Timer).** Most timers make you choose: how long, or until when. A ⏰ in MeOS is both
+at once — read `↺↻` as "seamless": ↺ counts down, ↻ counts up, and the ⏰ line already carries both.
 Write a length — `↺↻(0y0d1h0m0s)` — and `dd` in the title shows when it will ring, while the badge counts down and
 counts up side by side. Press ⏸️ and `dd` turns into that date, written in the text (`dd=11/15(S)pm06:33`): change
 it, even to next year, press ▶️, and the length is rewritten to ring then, carrying on from where it stopped. `dd`
