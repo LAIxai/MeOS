@@ -7567,6 +7567,7 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
       if (!edited || !simple || !(D > now) || e < 0) { meosDbg('[dd] ▶️ 題を dd へ(周期そのまま) edited=' + edited + ' key=' + key); return out; }
       // ★v5.1.712(俊克 711テスト: 11/15 pm11:39 に直したら札が pm11:38= 2秒足りない): 本文の v9s は秒まで= 再開で使う起点は覚えの側(止めた起点+休んだ分)。その起点から数え、秒は切り上げる(鐘は直した日時ちょうどか直後)
       let org = now - e; try { const _fz = _meosPauseFreeze.get(lk), _b = _meosChainStart.get(lk); if (_fz && _fz.line === atLine && _b) org = _b + Math.max(0, now - _fz.at); } catch (_) { }
+      org = Math.floor(org / 1000) * 1000;   // ★v5.1.713(712テスト: 2027/1/14 pm11:58 に直して札が pm11:57= 1秒不足): 本文の v起点 は秒未満を捨てて書かれ、札はその字から数える→ 起点も秒で切り捨ててから数える
       const T0 = meosCycleMs(cy[0]), k = Math.max(1, Math.floor((now - org) / T0) + 1), T = Math.ceil((D - org) / k / 1000) * 1000;
       const step = meosClockFmtCycle(T), src = String(spec.cycleSrc == null ? '' : spec.cycleSrc);
       out.cycle = [step]; out.cycleSrc = src && src.indexOf(cy[0]) >= 0 ? src.replace(cy[0], step) : (Number(spec.rounds) > 0 ? '(' + step + ')\u00d7' + Math.floor(spec.rounds) : step);
