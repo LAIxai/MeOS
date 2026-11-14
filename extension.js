@@ -46274,7 +46274,7 @@ function meosApplyCodeFenceDecorations(editor) {
         let _capW = 0;
         const _w = (() => {
           let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, meosRenderCols(lines[i] || ''));
-          if (_cap) { const cc = meosRenderCols(_cap.text); if (cc > c) c = Math.max(c, Math.ceil(cc / 2)); }   // v5.1.114: 説明が2行に収まる幅まで広げる
+          if (_cap) { const cc = meosRenderCols(_cap.text); if (cc > c) c = cc; }   // ★v5.1.700(俊克 11.14 am10:31 改良1「コメントが長いと折り返されて格好が悪いので、行の折返し幅の範囲で、クリーム色の幅を広げよう」): 説明が1行に収まる幅まで広げる(折り返し幅で止まる・すぐ下の行) / v5.1.114: 2行に収まる幅
           if (_capE) c = Math.max(c, MEOS_FENCE_CAP_PH.length + 2);   // v5.1.299: 空の欄の見せかけの字が収まる幅
           c = Math.max(c, 7);   // ★v5.1.296(俊克 改良1「コード本文がない時、コメントが折り返される。幅の最小値をあと3文字分」): 中身の幅の下限= 7桁(今までの下限4桁+3)= 例文 Comment が1行に収まる
           if (_wrapCol) c = Math.min(c, _wrapCol);                    // 折り返った行は其処までしか出ていない
