@@ -51,7 +51,18 @@ file, too, carries two layers in one — the text you read, and the comments tha
 
 <!-- v5.1 の2本柱(🔐暗号の仮想化/🏦貸金庫膜)の節は、この上に書く(2026.10.21 時点で未記入)。 -->
 
-### NEW in v5.1 — a ⏰ database, clocks on a chain, and a note under your code
+### NEW in v5.1 — tables that wrap inside the cell, stop lines, a ⏰ database, and sticky notes (FUSEN)
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.1-table-cell-wrap.png" alt="Cell wrap - a long GFM table falls apart when the lines wrap at 50 columns; after the table button, each long cell wraps inside its own cell at the same width; the Raw view shows the source is still plain GFM" width="80%"><br>
+  <sub><b>NEW in v5.1 — tables that wrap inside the cell.</b> Top: a long table breaks when the line wraps. Bottom: the same width, wrapped cell by cell. Right: the source stays plain GFM.</sub>
+</p>
+
+**Tables wrap inside the cell.** A Markdown table with long cells either stretches far to the right or, once the line
+wraps, loses its columns. In v5.1 a long cell wraps **on screen only**, inside its own cell, and the column lines stay
+straight. The source is an ordinary GFM table — GitHub still reads it as one. Put the cursor in the table and you see
+the raw table, so you edit it as before. While you edit, inline code in it hides its backticks too. You no longer need
+to widen the wrap width for a table: it reads at 50 columns.
 
 **The ⏰ database.** Press `⏰0y0d0h3m …` on the menu bar (macOS) or in Me Dock's **Format Me**, and you warp to
 a membrane near the end of your diary, just above the meta membrane. Your everyday timers wait there, one per line:
@@ -117,6 +128,11 @@ from outside, a membrane edged with stop lines is a single stop: Cmd+↓/↑ hal
 jumps over the whole membrane. Step inside, and its own lines take over.
 A heading made with the heading button gets a solid stop line under it, after its FC line: Cmd+↓ lands on its
 FC line, one more ↓ takes you into the text, and Cmd+↑ from below lands at the start of the text.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.1-stop-lines.png" alt="Stop lines - the eight lines with STOP and OFF signs at both ends; Cmd+up or holding up stops at the start of the line below a stop line, Cmd+down or holding down stops at the end of the line above the next one" width="80%"><br>
+  <sub><b>NEW in v5.1 — stop lines.</b> Eight lines, each with a sign at both ends. Cmd+↑/↓, or holding ↑/↓, stops just before a line.</sub>
+</p>
 
 **Switch a line off, without deleting it.** Click the 🛑 at the left end: the line disappears and a blue **OFF**
 sign stays in its place — in the text it is `<!-- Mew!UFC --- 🚫 -->`, and nothing stops there any more. Click OFF to

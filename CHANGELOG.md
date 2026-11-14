@@ -4,7 +4,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
-### v5.1.694 (2026-11-13) — the first public v5.1
+### v5.1.697 (2026-11-14) — the first public v5.1
 - **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
 - **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.
 - **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE.
@@ -21,6 +21,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - **▲ opens and closes in place.** Click ▲ on a closing line and the membrane folds and unfolds without the page drifting, and a membrane you folded with ▲ stays folded.
 - **Long lines in a code block stay on the sheet.** A line that wraps into a third row no longer spills out under the sheet.
 - **Tables wrap in their cells.** Long cells wrap on screen without touching the source. While you edit a table, inline code in it hides its backticks too.
+- **A diary template can be up to 2,000 lines.** A whole long membrane saved as a template made every cursor move slow, and could freeze the editor. Larger ones are now refused, and any already saved are dropped at startup.
 - **CB and IC evolve into sticky notes (FUSEN).** A FUSEN comment after a code block makes a square note, after an inline code a long one, in yellow, red or blue. Stick them anywhere; the menu bar lists them by kind and colour, newest first, beside your ⏰ and 🏷️ TAG, and warps you to any of them. Delete the comment and it is plain code again.
 - **The ` button in Format Me.** One button for inline code, a code block, and their red forms (the backticks themselves as code); ↻ cycles them.
 - **The version tells you what changed.** After an update, the digits that changed blink in the version under ♥ in mGATE and in the Me Dock header, then stay red for an hour.
