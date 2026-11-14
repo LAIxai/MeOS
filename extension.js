@@ -14505,7 +14505,7 @@ function meosFusenList() {
         const t = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+FUSEN_(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})\S*\s*(.*?)\s*-->/.exec(t);
         if (!m) continue;
         let body = ''; for (let i = b.open + 1; i < b.close; i++) { if ((lines[i] || '').trim()) { body = lines[i].trim(); break; } }
-        cb.push({ k: 'c', ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, ch: 0, color: meosFusenColorOf(m[7]), title: meosFusenTitle(m, b.info || String(m[7] || '').replace(/^[(（][^()（）]*[)）]\s*/, '').replace(/^(?:LL|L|M|S)(?=\s|$)\s*/, '') || body) });   // v5.1.315: 色
+        cb.push({ k: 'c', ts: m[1] + m[2] + m[3] + m[4] + m[5] + m[6], uri: d.uri, line: b.open, ch: 0, color: meosFusenColorOf(m[7]), title: meosFusenTitle(m, b.info || String(m[7] || '').replace(/^[(（][^()（）]*[)）]\s*/, '').replace(/^(?:LL|L|M|S|F)(?=\s|$)\s*/, '') || body) });   // v5.1.315: 色
       }
       if (txt.indexOf('FUSEN-ic_') >= 0) meosFusenIcIn(d, lines, ic);
     }
@@ -45761,7 +45761,7 @@ async function meosFenceCaptionAt(editor, blk) {
   const doc = editor.document, lines = meosDocLines(doc), cap = meosFenceCaption(lines, blk);
   if (cap) { editor.selection = new vscode.Selection(new vscode.Position(cap.line, cap.at), new vscode.Position(cap.line, cap.end)); return; }
   const ln = blk.close, end = doc.lineAt(ln).text.length; let head = '<!-- Mew!UFC ';
-  const ex = 'Comment'; head = head + 'FUSEN_' + meosMembraneStamp(new Date()) + meosFusenColorSpec(meosFusenColorNow()) + ' ';   // v5.1.315: 今の付箋の色   // v5.1.304: 付箋の印(FUSEN_ で全部探せる)   // v5.1.295(俊克 バグ1「コメントの例文が書かれてない」): 例文を選んだ状態で置く= 打てば置き換わる・空だと説明と読まれず紙の外に生の行が出た(バグ2)
+  const ex = 'Comment'; head = head + 'FUSEN_' + meosMembraneStamp(new Date()) + meosFusenColorSpec(meosFusenColorNow()) + ' F ';   /* v5.1.702: 大きさ F(フリー= 本文の一番長い行)を書いておく= S/M/L/LL に書き換えられると分かる */   // v5.1.315: 今の付箋の色   // v5.1.304: 付箋の印(FUSEN_ で全部探せる)   // v5.1.295(俊克 バグ1「コメントの例文が書かれてない」): 例文を選んだ状態で置く= 打てば置き換わる・空だと説明と読まれず紙の外に生の行が出た(バグ2)
   await editor.edit(eb => eb.insert(new vscode.Position(ln, end), '\n' + head + ex + ' -->'));
   editor.selection = new vscode.Selection(new vscode.Position(ln + 1, head.length), new vscode.Position(ln + 1, head.length + ex.length));
 }
@@ -46195,10 +46195,9 @@ const MEOS_FENCE_CAP_INK = '#2f6fb3';   // v5.1.114: 説明の字= 中身の茶�
 //   紙の幅= 印の後ろの大きさ(S=20/M=30/L=40/LL=50 桁)か、無ければ本文の一番長い行(コメントは数えない)・折り返し幅で止まる。
 //   本文かコメントがその幅に収まらない時は、ソースの字を透明にし、紙の幅で割った字を段ごとに絶対配置で描く(meosTcwLayout と同じ手)。
 //   段はソースの行が持つ段(Monaco の折り返し)を上から使う= 足りなければ説明の行の下に足場 <!-- Mew!UFC FUSEN-row --> を足す(カーソルが付箋の外の時・余れば減らす)
-const MEOS_FUSEN_SIZES = { S: 20, M: 30, L: 40, LL: 50 };
+const MEOS_FUSEN_SIZES = { F: 0, S: 20, M: 30, L: 40, LL: 50 };   // v5.1.702(俊克 am11:21「Fと書いてフリーサイズとして、本文の一番長い幅に」): F= 0= 本文の一番長い行(書かない時も同じ)
 const MEOS_FUSEN_ROW = '<!-- Mew!UFC FUSEN-row -->', MEOS_FUSEN_ROW_RE = /^\s*<!--\s*Mew!UFC\s+FUSEN-row\s*-->\s*$/;
-const MEOS_FUSEN_SIZE_TOK = '(?:\\s+(?:LL|L|M|S)(?=\\s|-->|$))?';
-function meosFusenSizeOf(t) { const m = /FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?\s+(LL|L|M|S)(?=\s|-->|$)/.exec(String(t || '')); return m ? MEOS_FUSEN_SIZES[m[1]] : 0; }
+function meosFusenSizeOf(t) { const m = /FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?\s+(LL|L|M|S|F)(?=\s|-->|$)/.exec(String(t || '')); return m ? MEOS_FUSEN_SIZES[m[1]] : 0; }
 function meosFusenFakeLayout(lines, b, wrapCol) {
   try {
     const capLn = b.close + 1, ct = lines[capLn] || '';
@@ -46245,7 +46244,7 @@ function meosFusenFitSoon(doc, z) {
 }
 // v5.1.304: 空の説明の欄= <!-- Mew!UFC --> か <!-- Mew!UFC FUSEN_<日時> -->。返すのは打ち始める桁(-1= 空の欄ではない)
 function meosFenceCapEmpty(t) {
-  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+(?:LL|L|M|S)(?=\s|-->))?)?(\s*)-->\s*$/.exec(String(t || ''));   // v5.1.701: 大きさ(S/M/L/LL)も印のうち   // v5.1.315: 印の後ろの色(/pink)も印のうち
+  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+(?:LL|L|M|S|F)(?=\s|-->))?)?(\s*)-->\s*$/.exec(String(t || ''));   // v5.1.701: 大きさ(S/M/L/LL)も印のうち   // v5.1.315: 印の後ろの色(/pink)も印のうち
   return m ? m[1].length + (m[2] ? m[2].length : 0) + Math.min(1, m[3].length) : -1;
 }
 function meosFenceCaption(lines, b) {
@@ -46255,7 +46254,7 @@ function meosFenceCaption(lines, b) {
     const m = /^(\s*<!--\s*Mew!UFC\s+)(.*?)(\s*-->\s*)$/.exec(t);
     if (!m || !m[2] || m[2].indexOf('\u23f0') >= 0 || meosIsRuleAny(t)) return null;
     // ★v5.1.304(俊克 pm03:46「堂々と FUSEN と名乗る・付箋で検索できるようにコメントに FUSEN_TS を付けよう」): 先頭の FUSEN_<日時> は印= 紙には出さない
-    const f = /^FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+(?:LL|L|M|S)(?=\s|$))?(?:\s+|$)/.exec(m[2]);   /* v5.1.701: 大きさも印 */ const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
+    const f = /^FUSEN_\S*(?:\s*[(（][^()（）]*[)）])?(?:\s+(?:LL|L|M|S|F)(?=\s|$))?(?:\s+|$)/.exec(m[2]);   /* v5.1.701: 大きさも印 */ const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
     // v5.1.315: 印の後ろの色 (/pink) も紙には出さない
     if (!text) return null;   // 印だけ= 空の欄(meosFenceCapEmpty)
     return { line: i, text, at, end: at + text.length };
