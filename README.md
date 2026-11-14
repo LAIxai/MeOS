@@ -214,7 +214,7 @@ inside a code block stay plain text — they never run, and they do not flicker 
 (IC), and it becomes a sticky note. The sticky-note button in Format Me writes the comment for you:
 
 ````md
-```
+```Bank
 Call the bank before Friday.
 ```
 <!-- Mew!UFC FUSEN_20261112t094702JST (/YRB黄赤青) -->
@@ -227,6 +227,10 @@ A code block makes a square note; an inline code makes a long one. Several inlin
 FUSEN comments after the paragraph in order. The first letter after `/` is the colour — **Y**ellow, **R**ed or
 **B**lue — so reorder `YRB` to recolour a note. Delete the FUSEN comment, and it is a plain code block or inline code
 again. Either way the cream label stands out, as a note and as code.
+
+Whatever you write after the opening ` ``` ` — `Bank` above — is the note's **title**. It sits on the top row
+of the note without adding a line, and the menu bar lists the note by that name. Click it to type a new one. Leave it
+out, and the menu bar takes the name from the note's text.
 
 Stick one anywhere. The menu bar sorts them by kind and colour, and from there you warp to any of them at any time.
 The newest come first, so old notes slowly fade from the list — the name keeps its time stamp, so a search for
