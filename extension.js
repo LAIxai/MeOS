@@ -46210,7 +46210,7 @@ function meosFusenFakeLayout(lines, b, wrapCol) {
     let bodyMax = 0; for (let i = b.open + 1; i < b.close; i++) bodyMax = Math.max(bodyMax, meosRenderCols(lines[i] || ''));
     const size = meosFusenSizeOf(ct), W = Math.min(wrapCol, Math.max(7, size || bodyMax));
     let last = capLn; while (last + 1 < lines.length && MEOS_FUSEN_ROW_RE.test(lines[last + 1] || '')) last++;
-    const fake = bodyMax > W || (text ? meosRenderCols(text) : 0) > W;
+    const fake = true;   // ★v5.1.705(俊克 am11:5x「直す」= Fの付箋の紙の下に空の段): 付箋はいつも見せかけで描く(描き方を1つに)・コメントは紙の一番下に揃える= 余る段は本文と線の間(書く欄の余白)へ
     const rowsOf = (i) => Math.max(1, Math.min(20, meosTcwRowsOf(lines[i] || '', wrapCol)));
     const slots = []; for (let i = b.open; i <= last; i++) { const r = rowsOf(i); for (let j = 0; j < r; j++) slots.push([i, j]); }
     const out = [{ k: 't', s: b.info || '' }];
@@ -46218,6 +46218,7 @@ function meosFusenFakeLayout(lines, b, wrapCol) {
       for (let i = b.open + 1; i < b.close; i++) meosTcwSegs(lines[i] || '', W).forEach(x => out.push({ k: 'b', s: x }));
       (text ? meosTcwSegs(text, W) : ['']).forEach((x, q) => out.push({ k: text ? 'c' : 'p', s: x, first: q === 0 }));
     }
+    const nc = out.filter(o => o.k === 'c' || o.k === 'p').length, nb = out.length - nc; out.forEach((o, q) => { o.at = q < nb ? q : slots.length - (out.length - q); });   // コメントは下に揃える
     return { W, size, fake, from: b.open, capLn, last, slots, out, rowsOf, scaffolds: last - capLn, need: out.length, have: slots.length };
   } catch (_) { return null; }
 }
@@ -46358,7 +46359,7 @@ function meosApplyCodeFenceDecorations(editor) {
               if (!paper.has(ty)) paper.set(ty, []); paper.get(ty).push(L(i));
               const t = lines[i] || ''; if (t.length) ticks.push(new vscode.Range(i, 0, i, t.length));
             }
-            _fz.out.forEach((o, q) => { const sl = _fz.slots[q]; if (!sl || sl[0] < vr[0] || sl[0] > vr[1]) return; const top = em(sl[1]), base = 'none; position: absolute; left: ' + MEOS_FENCE_INDENT_COLS + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; ';
+            _fz.out.forEach((o, q) => { const sl = _fz.slots[o.at]; if (!sl || sl[0] < vr[0] || sl[0] > vr[1]) return; const top = em(sl[1]), base = 'none; position: absolute; left: ' + MEOS_FENCE_INDENT_COLS + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; ';
               const col = o.k === 't' ? '#6b5a3a' : ((o.k === 'c' || o.k === 'p') ? MEOS_FENCE_CAP_INK : MEOS_FENCE_INK);
               if (o.first) fakes.push({ range: L(sl[0]), renderOptions: { before: { contentText: '', textDecoration: base + 'width: ' + _fz.W + 'ch; height: 0; border-top: 1px solid ' + MEOS_FENCE_CAP_INK + ';' } } });
               const s0 = o.k === 'p' ? MEOS_FENCE_CAP_PH : o.s; if (!s0) return;
