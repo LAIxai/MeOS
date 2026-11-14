@@ -4,7 +4,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
-### v5.1.716 (2026-11-15) — the first public v5.1
+### v5.1.717 (2026-11-15) — the first public v5.1
 - **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
 - **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.
 - **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE.
@@ -24,7 +24,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - **Sticky notes come in sizes.** `(F/SML/LL)` after the FUSEN mark: F is as wide as the note's longest line; S, M, L and LL are 20, 30, 40 and 50 columns. Text and comment wrap inside the note, on rows MeOS adds as `FUSEN-row` lines.
 - **A sticky note can carry a ⏰.** Press ⏰ with the caret on a code-block note, or copy a ⏰ line under its FUSEN line. It rings and warps you to the note; a note with a ⏰ stays on the menu bar however old it is. Delete the ⏰ line and the note stays on the FUSEN list. Inline-code notes don't take a ⏰ yet.
 - **① adds a ⏰ where you are.** On a membrane's opening or closing line, its badge, or a sticky note's edge, ① adds a one-shot ⏰ to it; on an empty line it makes a new ⏰ membrane as before. A sticky note shows its text plainly while the caret is on its edge — the title, the FUSEN line or the ⏰ under it. `dd` adds the year when the bell is a year or more away.
-- **↺↻Timer, the Seamless Timer (S-Timer) — change when a paused ⏰ rings by editing its `dd`.** Press ⏸️ and the `dd` in the title becomes the date it would ring (`dd=11/15(S)pm06:33`). Edit that date and press ▶️ — the length (`0y0d1h0m0s`) is rewritten to ring then, and the title goes back to `dd`.
+- **↺↻Timer, the Seamless Timer (S-Timer) — change when a paused ⏰ rings by editing its `dd`.** Press ⏸️ and the `dd` in the title becomes the date it would ring (`dd=11/15(S)pm06:33`). Edit that date and press ▶️ — the length (`0y0d1h0m0s`) is rewritten to ring then, and the title goes back to `dd`. For five seconds after ⏸️, the two places you can edit — the length and `dd=` — show in an orange frame; click one to start editing.
 - **A diary template can be up to 2,000 lines.** A whole long membrane saved as a template made every cursor move slow, and could freeze the editor. Larger ones are now refused, and any already saved are dropped at startup.
 - **CB and IC evolve into sticky notes (FUSEN).** A FUSEN comment after a code block makes a square note, after an inline code a long one, in yellow, red or blue. Stick them anywhere; the menu bar lists them by kind and colour, newest first, beside your ⏰ and 🏷️ TAG, and warps you to any of them. Delete the comment and it is plain code again.
 - **The ` button in Format Me.** One button for inline code, a code block, and their red forms (the backticks themselves as code); ↻ cycles them.

@@ -7554,6 +7554,7 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
       const base = _meosChainStart.get(lk) || cur.vAt || 0; if (!base) return spec;
       const end = meosClockDdEnd(Object.assign({}, cur, { vAt: base })); if (!end) return spec;
       const face = meosClockDdFace(end); _meosDdPauseFace.set(lk, face);
+      try { const _pk = doc.uri.toString() + ' ' + atLine; _meosDdPeek.set(_pk, Date.now() + 5000); setTimeout(() => { try { if ((_meosDdPeek.get(_pk) || 0) <= Date.now()) _meosDdPeek.delete(_pk); const _ed = vscode.window.activeTextEditor; if (_ed) meosApplyTimerLineDecorations(_ed); } catch (_) { } }, 5100); } catch (_) { }   // v5.1.717: 5秒だけ周期と dd= を見せる
       meosDbg('[dd] ⏸️ 題に dd=' + face + ' key=' + key);
       return Object.assign({}, spec, { title: String(spec.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + 'dd=' + face) });
     }
@@ -15329,6 +15330,7 @@ let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
 let meosClockBadgeHideDeco = null, meosStopHide2Deco = null;
+const _meosDdPeek = new Map(); let meosDdPeekDeco = null;   // ★v5.1.717(俊克 11.15 am00:52「⏸️ボタンを押したとき…↺↻(0y0d1h0m0s)×2 と dd= の2箇所だけ見えるようにする。どっちかをクリックして修正に自然に入る。5秒しても何もしなければ閉じる」): uri+' '+行 → 見せる期限
 let meosClockGap3Deco = null;
 let meosClockGapNDeco = null;   // ★v4.2.483: ±1s の札の前の隙間(6px/9px)
 const _meosNudgeHints = new Map();   // ★v4.2.483: uri -> [{line, col, label}]= ⏰行のボタンの札(v4.2.487: 全部のボタン)
@@ -15698,7 +15700,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     //   動いているものの本文の表示that、ウィンドウ下端にも表示される、と言うのthat正しい見せ方でしょ?」):
     //   ★★**タイトルは、走っている1本だけthat見せる**= 待っている⏰の `// …` は畳んで消す。
     //   ★見せる時は**下端と同じ字**= 周回数を入れた形(meosChainFillSlot)。字を作る所は1つ(v4.2.91の下端と同じ関数)。
-    const titles = [], _titleAt = new Map();
+    const titles = [], _titleAt = new Map(), ddPeek = [];
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -15819,7 +15821,14 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               try {   // ★v4.2.477: メッセージ(矢印の後ろの最初の // から)は行から全部隠す= 回数の札はバッジ行へ。頭の 🔔主/🔕副 は字を隠してボタンを描く
                 const _ar30 = txt.search(/[↺↻]/), _e30 = (_c9 > 0 ? _c9 : txt.length);
                 const _h30 = _ar30 >= 0 ? txt.indexOf('//', _ar30) : -1;
-                if (_h30 > 0 && _h30 < _e30) { let _s30 = _h30; while (_s30 > 0 && txt.charAt(_s30 - 1) === ' ') _s30--; badgeHide.push(new vscode.Range(i, _s30, i, _e30)); }
+                const _pk30 = ((_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now()) ? txt.slice(0, _e30).search(/(^|\s)dd=\S/) : -1;   // ★v5.1.717: ⏸️直後の5秒= 周期と dd=日時 だけ見せる(押せば Raw に入って直せる)
+                if (_h30 > 0 && _h30 < _e30 && _pk30 > _h30) {
+                  const _d0 = _pk30 + (txt.charAt(_pk30) === 'd' ? 0 : 1), _m30 = /^dd=\S+/.exec(txt.slice(_d0)), _d1 = _d0 + (_m30 ? _m30[0].length : 3);
+                  let _s30 = _h30; while (_s30 > 0 && txt.charAt(_s30 - 1) === ' ') _s30--;
+                  badgeHide.push(new vscode.Range(i, _s30 + 1, i, _d0)); if (_d1 < _e30) badgeHide.push(new vscode.Range(i, _d1, i, _e30));
+                  ddPeek.push(new vscode.Range(i, _d0, i, _d1));
+                  const _cy30 = /^[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt.slice(_ar30)); if (_cy30) ddPeek.push(new vscode.Range(i, _ar30 + _cy30[0].search(/[^↺↻]/), i, _ar30 + _cy30[0].length));
+                } else if (_h30 > 0 && _h30 < _e30) { let _s30 = _h30; while (_s30 > 0 && txt.charAt(_s30 - 1) === ' ') _s30--; badgeHide.push(new vscode.Range(i, _s30, i, _e30)); }
                 const _bh30 = meosClockBellHead(txt);
                 if (_bh30) {
                   // ★v4.2.479(俊克「Rawには 🔔Gong/🔕Mew があるので、本来なら 🔔🔕 と表示されるはず」): 隠す範囲の**内側**に置いた before は一緒に消える
@@ -16563,6 +16572,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (reps.length && !meosClockRepDeco) meosClockRepDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
+    if (ddPeek.length && !meosDdPeekDeco) meosDdPeekDeco = vscode.window.createTextEditorDecorationType({ border: '1px solid #e0803a', borderRadius: '3px', backgroundColor: 'rgba(224,128,58,0.18)', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosDdPeekDeco) editor.setDecorations(meosDdPeekDeco, ddPeek);   // v5.1.717: ⏸️直後の5秒= 直せる2か所を橙の枠で
     if (stopHide2.length && !meosStopHide2Deco) meosStopHide2Deco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosStopHide2Deco) editor.setDecorations(meosStopHide2Deco, stopHide2);   // v5.1.645
     if (gap3.length && !meosClockGap3Deco) meosClockGap3Deco = vscode.window.createTextEditorDecorationType({
