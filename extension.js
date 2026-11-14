@@ -7510,12 +7510,69 @@ const MEOS_CLOCK_LABEL_FG = '#000000';   // ★v5.1.627(俊克 11.09 pm08:46 改
 const MEOS_CLOCK_DD_RE = /(^|\s)dd(?=\s|$)/;
 function meosClockDdTitle(c) {   // ★v5.1.613(俊克 am10:36 バグ1「バッジのdd部分に予定時刻が表示されていない」): 描く側の c は本文を読み直した物(鍵なし)= 札の2か所は owner を渡してここを通す。一時停止中は「今再開すれば」の時刻 / v5.1.610: 本文は dd のまま・見せる時だけ消滅日時(WT と同じ作法)。「数字+.」は回数の器に読まれるので月/日
   // ★v5.1.623(俊克 11.09 pm06:02「通常のoneショットタイマーなどでも、ddと書くと、予定時刻を表示するようにしよう」): ♥膜だけの門を外す。予定時刻は鐘の計算と同じ1つから= 起点だけ→ その時刻 / 周期あり→ 次の鐘(meosCycleSeriesNext)。起点がまだ無い(待ち・連なりの2本目)は dd のまま
-  try { if (!MEOS_CLOCK_DD_RE.test((c && c.title) || '')) return c.title;
-    const at = c.vAt || ((typeof c.vElapsed === 'number' && c.vElapsed >= 0) ? Date.now() - c.vElapsed : 0) || (meosParseStampLoose(c.when) || { getTime: () => 0 }).getTime(); if (!at) return c.title;
-    const hasC = Array.isArray(c.cycle) && c.cycle.length > 0, n = Number(c.rounds) || 0, last = (hasC && n > 0 && isFinite(n)) ? meosCycleLastAt(at, c.cycle, n) : 0, nx = hasC ? ((meosCycleSeriesNext(at, c.cycle, Date.now()) || {}).at || 0) : at, end = (last && (!nx || nx > last)) ? last : nx; if (!end) return c.title;   // ★v5.1.626(俊克 11.09 pm08:39「2回の50時間後ではなく、知りたいのは、1回目の日時だよ。2回目に入ったら、2回目の終了日時に切り替える」): ×N も「次の鐘」。全部鳴り終えた後だけ最後の鐘
-    const d = new Date(end), h = d.getHours();   // ★v5.1.710(俊克「1yや2yで指定している時に、ddが年を表示しないのは分り難い。1年未満なら年は必要ない」): 1年以上先なら年/月/日
-    const face = (end - Date.now() >= 365 * 864e5 ? d.getFullYear() + '/' : '') + (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  // ★v5.1.711(俊克 pm10:29「oneショットタイマーの⏸️ボタンを押した時、バッジにddの時間が表示されている。その部分を修正可能にする。そこを修正した上で、▶️ボタンを押すと、それに合わせて(0y0d1h0m0s)を変更して再開する」): 休み中は本文が dd=日時(直せる字)= 見せる時は日時だけ
+  try { const _q = MEOS_CLOCK_DDQ_RE.exec((c && c.title) || ''); if (_q) return String(c.title).replace(MEOS_CLOCK_DDQ_RE, (m, p, f) => p + f);
+    if (!MEOS_CLOCK_DD_RE.test((c && c.title) || '')) return c.title;
+    const end = meosClockDdEnd(c); if (!end) return c.title;
+    const face = meosClockDdFace(end);
     return String(c.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + face); } catch (_) { return c.title; }
+}
+function meosClockDdEnd(c) {   // 札の dd と同じ1つの数え方= 起点だけ→ その時刻 / 周期あり→ 次の鐘(×N は全部鳴り終えた後だけ最後の鐘)
+  try { const at = c.vAt || ((typeof c.vElapsed === 'number' && c.vElapsed >= 0) ? Date.now() - c.vElapsed : 0) || (meosParseStampLoose(c.when) || { getTime: () => 0 }).getTime(); if (!at) return 0;
+    const hasC = Array.isArray(c.cycle) && c.cycle.length > 0, n = Number(c.rounds) || 0, last = (hasC && n > 0 && isFinite(n)) ? meosCycleLastAt(at, c.cycle, n) : 0, nx = hasC ? ((meosCycleSeriesNext(at, c.cycle, Date.now()) || {}).at || 0) : at;   // ★v5.1.626(俊克 11.09 pm08:39「2回の50時間後ではなく、知りたいのは、1回目の日時だよ。2回目に入ったら、2回目の終了日時に切り替える」)
+    return (last && (!nx || nx > last)) ? last : nx; } catch (_) { return 0; }
+}
+function meosClockDdFace(end) {   // ★v5.1.710(俊克「1yや2yで指定している時に、ddが年を表示しないのは分り難い。1年未満なら年は必要ない」): 1年以上先なら年/月/日
+  const d = new Date(end), h = d.getHours();
+  return (end - Date.now() >= 365 * 864e5 ? d.getFullYear() + '/' : '') + (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+const MEOS_CLOCK_DDQ_RE = /(^|\s)dd=(\S+)/;
+function meosClockHasDd(t) { return MEOS_CLOCK_DD_RE.test(t || '') || MEOS_CLOCK_DDQ_RE.test(t || ''); }
+function meosClockDdParse(face) {   // dd の顔を読む= [年/]月/日[(曜)][am|pm]時:分。年が無ければ今年(過ぎていれば来年)。曜日は見ない(日付が真実)
+  const m = /^(?:(\d{4})\/)?(\d{1,2})\/(\d{1,2})(?:\([SMTWtFs]\))?(am|pm)?(\d{1,2}):(\d{2})$/i.exec(String(face || '').trim());
+  if (!m) { const l = meosParseStampLoose(face); return l ? l.getTime() : 0; }
+  let h = +m[5]; const ap = (m[4] || '').toLowerCase(); if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0;
+  const now = new Date(), mk = (y) => new Date(y, +m[2] - 1, +m[3], h, +m[6], 0, 0).getTime();
+  let t = mk(m[1] ? +m[1] : now.getFullYear()); if (!m[1] && t < Date.now() - 864e5) t = mk(now.getFullYear() + 1);
+  return isFinite(t) ? t : 0;
+}
+function meosClockFmtCycle(ms) {   // 長さを ① と同じ5つの単位で= 0y0d1h0m0s(y は365日= MEOS_CYCLE_UNIT)
+  let t = Math.max(1, Math.round((Number(ms) || 0) / 1000)); const U = [['y', 365 * 86400], ['d', 86400], ['h', 3600], ['m', 60], ['s', 1]];
+  return U.map(([u, n]) => { const k = Math.floor(t / n); t -= k * n; return k + u; }).join('');
+}
+const _meosDdPauseFace = new Map();   // ⏸️で本文に書いた dd= の顔(▶️で、直されたかどうかを比べる)
+// 休みに入る1本= 起点が無い・周期が1つ(暦の規則でない)・題に dd → 題を dd=次の鐘 に。走りに戻る1本= dd= が直されていれば周期を書き換え、題は dd へ戻す
+function meosClockDdPauseResume(doc, key, spec, atLine) {
+  try {
+    if (!spec || typeof atLine !== 'number' || spec.done || spec.wait || !spec.title) return spec;
+    let cur = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === atLine) cur = x;
+    if (!cur || cur.when) return spec;
+    const lk = doc.uri.toString() + ' ' + key, cy = Array.isArray(cur.cycle) ? cur.cycle : [];
+    const simple = cy.length === 1 && !meosCycleRules(cy).length && meosCycleMs(cy[0]) > 0;
+    if (spec.off && !cur.off) {
+      if (!simple || !MEOS_CLOCK_DD_RE.test(String(spec.title))) return spec;
+      const base = _meosChainStart.get(lk) || cur.vAt || 0; if (!base) return spec;
+      const end = meosClockDdEnd(Object.assign({}, cur, { vAt: base })); if (!end) return spec;
+      const face = meosClockDdFace(end); _meosDdPauseFace.set(lk, face);
+      meosDbg('[dd] ⏸️ 題に dd=' + face + ' key=' + key);
+      return Object.assign({}, spec, { title: String(spec.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + 'dd=' + face) });
+    }
+    if (!spec.off && cur.off) {
+      const q = MEOS_CLOCK_DDQ_RE.exec(String(spec.title)); if (!q) return spec;
+      const out = Object.assign({}, spec, { title: String(spec.title).replace(MEOS_CLOCK_DDQ_RE, (m, p) => p + 'dd') });
+      const was = _meosDdPauseFace.get(lk); _meosDdPauseFace.delete(lk);
+      const D = meosClockDdParse(q[2]), now = Date.now();
+      const edited = was ? (q[2] !== was) : true;
+      const e = (typeof cur.vElapsed === 'number' && cur.vElapsed >= 0) ? cur.vElapsed : -1;
+      if (!edited || !simple || !(D > now) || e < 0) { meosDbg('[dd] ▶️ 題を dd へ(周期そのまま) edited=' + edited + ' key=' + key); return out; }
+      const T0 = meosCycleMs(cy[0]), k = Math.max(1, Math.floor(e / T0) + 1), T = (e + (D - now)) / k;
+      const step = meosClockFmtCycle(T), src = String(spec.cycleSrc == null ? '' : spec.cycleSrc);
+      out.cycle = [step]; out.cycleSrc = src && src.indexOf(cy[0]) >= 0 ? src.replace(cy[0], step) : (Number(spec.rounds) > 0 ? '(' + step + ')\u00d7' + Math.floor(spec.rounds) : step);
+      meosDbg('[dd] ▶️ dd=' + q[2] + ' → 周期 ' + cy[0] + ' → ' + step + ' (周' + k + ') key=' + key);
+      return out;
+    }
+  } catch (_) { }
+  return spec;
 }
 function meosFofClockOneShot(c) { const n = Array.isArray(c && c.cycle) ? c.cycle.length : 0; return !n || (n === 1 && Number(c.rounds) === 1) || meosClockIsFinalStep(c); }
 function meosFofClockLinesBelow(doc, ln) {
@@ -12243,7 +12300,7 @@ function meosClockWtTitle(c) {
     return d + ap + String(c.title).replace(/^WT/, '');
   } catch (_) { return c.title; }
 }
-function meosClockWtOf(c) { const t = /^WT(?:\s|$)/.test((c && c.title) || '') ? meosClockWtTitle(c) : (c && c.title); return MEOS_CLOCK_DD_RE.test(t || '') ? meosClockDdTitle(Object.assign({}, c, { title: t })) : t; }   // v5.1.505: バッジの札も同じ1つから
+function meosClockWtOf(c) { const t = /^WT(?:\s|$)/.test((c && c.title) || '') ? meosClockWtTitle(c) : (c && c.title); return meosClockHasDd(t) ? meosClockDdTitle(Object.assign({}, c, { title: t })) : t; }   // v5.1.505: バッジの札も同じ1つから
 function meosClockFcScan(doc) {
   const out = [];
   const _lines = new Set();
@@ -12309,7 +12366,7 @@ function meosClockFcScan(doc) {
     _lines.add(i);
     out.push({ line: i, key: owner ? owner.id : '', name: owner ? (owner.fofName || owner.id) : '', when: c.when, chainSrc: c.chainSrc || '', chainDir: c.chainDir || '', chainN: c.chainN || 0, chainReps: c.chainReps || 0, chainOff: !!c.chainOff, chainBad: !!c.chainBad, /* v5.1.94 / v5.1.96 / v5.1.105 */ lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
     { const _o = out[out.length - 1]; if (_o && /^WT(?:\s|$)/.test(_o.title || '')) { _o.titleRaw = _o.title; _o.title = meosClockWtTitle(_o); } }   // v5.1.504: // WT
-    { const _o = out[out.length - 1]; if (_o && MEOS_CLOCK_DD_RE.test(_o.title || '')) { _o.titleRaw = _o.titleRaw || _o.title; _o.title = meosClockDdTitle(_o); } }   // v5.1.610: // ♥️Timer dd
+    { const _o = out[out.length - 1]; if (_o && meosClockHasDd(_o.title)) { _o.titleRaw = _o.titleRaw || _o.title; _o.title = meosClockDdTitle(_o); } }   // v5.1.610: // ♥️Timer dd
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -13173,6 +13230,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
         for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === atLine) { spec = Object.assign({}, spec, { title: x.titleRaw || x.title || '' }); break; }   /* v5.1.610: 見せかけ(WT・dd)を本文へ焼き付けない */
       }
     } catch (_) { }
+    spec = meosClockDdPauseResume(doc, key, spec, atLine);   // ★v5.1.711: ⏸️で dd=日時(直せる字)/▶️で直した日時に合わせて周期を書き換える
     // ★v4.2.347: 書き戻す前の `~日付` も運ぶ= 起点の p を書き足す等の書き直しで消えない(⚓と同じ作法)。
     try {
       if (spec && spec.untilSrc === undefined) {
