@@ -7496,6 +7496,15 @@ function meosFusenClockAt(doc, line) {   // その行が CB付箋の塊(開き `
 function meosFusenClockOwner(doc, closeLine) {
   try { const L = meosDocLines(doc); if ((L[closeLine + 1] || '').indexOf('FUSEN_') < 0) return null; const b = meosFenceBlocks(doc).find(x => x.close === closeLine); const f = b && meosFusenClockBlock(doc, b, L); return f ? { id: f.key, fofName: f.name, start: f.start, end: f.end } : null; } catch (_) { return null; }
 }
+// ★v5.1.710(俊克 11.14 pm06:57 改良1「カーソルが入っても、クリーム色の枠が出ていて読み難い。膜と同様に、開始膜と閉じ膜のどっちに入っても両方をRaw化し、FCコメントもRaw化」「CB膜にとっての開始膜は冒頭のタイトル部分、閉じ膜はUFCコメント」「クリーム色を本文だけ出しておくのも意味がない」):
+//   付箋の縁= 開きの ``` ・閉じの ``` ・FUSEN の行・足場・その下に続く指定行(バッジ/⏰)。縁のどれかにカーソル→ 付箋の全部の行を生に(▼▲バッジが3つで1つなのと同じ)・紙は敷かない。本文の行に居る時は今までどおり
+function meosFusenMateLines(doc, ln) {
+  try { const L = meosDocLines(doc), t = L[ln] || ''; let f = null;
+    if (/^[ \t]{0,3}(?:`{3,}|~{3,})/.test(t)) { f = meosFusenClockAt(doc, ln); if (f && ln !== f.start && ln !== f.end) f = null; }
+    else if (t.indexOf('<!--') >= 0 && meosIsSpecLine(t)) { let k = ln; while (k >= 0 && meosIsSpecLine(L[k] || '')) k--; if (k >= 0 && /^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*$/.test(L[k] || '')) { f = meosFusenClockAt(doc, k); if (f && f.end !== k) f = null; } }
+    if (!f) return null; let e = f.last; while (e + 1 < L.length && meosIsSpecLine(L[e + 1] || '')) e++; return { from: f.start, to: e };
+  } catch (_) { return null; }
+}
 function meosClockPseudoOwner(doc, closeLine) { return meosFofClockOwner(doc, closeLine) || meosFusenClockOwner(doc, closeLine); }
 const MEOS_CLOCK_LABEL_FG = '#000000';   // ★v5.1.627(俊克 11.09 pm08:46 改良「明るい橙に白字は読み難い。黒字か灰色に」): ⏰の橙の札(本文の行とバッジの行)の字
 const MEOS_CLOCK_DD_RE = /(^|\s)dd(?=\s|$)/;
@@ -7504,8 +7513,8 @@ function meosClockDdTitle(c) {   // ★v5.1.613(俊克 am10:36 バグ1「バッ�
   try { if (!MEOS_CLOCK_DD_RE.test((c && c.title) || '')) return c.title;
     const at = c.vAt || ((typeof c.vElapsed === 'number' && c.vElapsed >= 0) ? Date.now() - c.vElapsed : 0) || (meosParseStampLoose(c.when) || { getTime: () => 0 }).getTime(); if (!at) return c.title;
     const hasC = Array.isArray(c.cycle) && c.cycle.length > 0, n = Number(c.rounds) || 0, last = (hasC && n > 0 && isFinite(n)) ? meosCycleLastAt(at, c.cycle, n) : 0, nx = hasC ? ((meosCycleSeriesNext(at, c.cycle, Date.now()) || {}).at || 0) : at, end = (last && (!nx || nx > last)) ? last : nx; if (!end) return c.title;   // ★v5.1.626(俊克 11.09 pm08:39「2回の50時間後ではなく、知りたいのは、1回目の日時だよ。2回目に入ったら、2回目の終了日時に切り替える」): ×N も「次の鐘」。全部鳴り終えた後だけ最後の鐘
-    const d = new Date(end), h = d.getHours();
-    const face = (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    const d = new Date(end), h = d.getHours();   // ★v5.1.710(俊克「1yや2yで指定している時に、ddが年を表示しないのは分り難い。1年未満なら年は必要ない」): 1年以上先なら年/月/日
+    const face = (end - Date.now() >= 365 * 864e5 ? d.getFullYear() + '/' : '') + (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     return String(c.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + face); } catch (_) { return c.title; }
 }
 function meosFofClockOneShot(c) { const n = Array.isArray(c && c.cycle) ? c.cycle.length : 0; return !n || (n === 1 && Number(c.rounds) === 1) || meosClockIsFinalStep(c); }
@@ -12696,7 +12705,9 @@ async function meosOpenTimerDb() {
 // ★v5.1.152(俊克 10.23 am11:40「oneショット①ボタンは、常に、どこでも、⏰付きの膜を生成すればいい。作ってどこかに移動するも善し、⏰FCだけコピペして膜は棄てても良い」):
 //   fresh= ①から来た= カーソルがどこに居ても、今の膜には足さず、新しい⏰の膜を作る(足す道は⏰0y0d0h3m…のデータベースからコピー)。
 async function meosClockSetTargetOrCreate(add, fresh) {
-  let t = fresh ? { refused: 'One click \u23f0 | Could not make a new membrane here \u2014 move the caret off the membrane name and press \u2460 again.' } : (meosClockSetTarget() || {});
+  // ★v5.1.710(俊克 11.14 pm06:57 改良2「膜やCB付箋膜に対して①でoneショットタイマーを設定できるように。空行で実行すれば膜を作り、膜の上では⏰だけを付ける」): v5.1.152(いつも膜ごと作る)を取り消す。
+  //   ⏰ボタン(Create)と同じ的(閉じ膜・開始膜・バッジ・⏰群の下の空行・付箋の縁)に居れば、その膜/付箋に⏰を足す。それ以外は今までどおり⏰付きの膜を作る
+  let t = fresh ? (function () { const _t = meosClockSetTarget() || {}; return (!_t.refused && _t.atKey) ? { atKey: _t.atKey } : { refused: 'One click \u23f0 | Could not make a new membrane here \u2014 move the caret off the membrane name and press \u2460 again.' }; })() : (meosClockSetTarget() || {});
   if (add === false && typeof t.atLine !== 'number') return { refused: 'Set \u23f0 | Put the caret on a \u23f0 line to change it. To add a new one, press Create \u23f0.' };
   if (add === true && typeof t.atLine === 'number') { t = { atKey: t.atKey }; }
   if (!t.refused) return t;
@@ -42694,6 +42705,7 @@ function meosRawLines(editor, skipCaret, caretAt) {
     }
     for (const ln of Array.from(out)) {
       const m = meosFcMate(editor.document, ln);
+      { const _fm = meosFusenMateLines(editor.document, ln); if (_fm) for (let l = _fm.from; l <= _fm.to; l++) out.add(l); }   // v5.1.710: 付箋の縁に居る= 付箋ごと生
       if (m) for (const l of (m.lines || [])) if (l >= 0) out.add(l);
       // ★v5.1.662(俊克 11.12 am10:10 改良1「FCコメントの1つの中に文字カーソルがあるときにも、対応するICを橙色で表示するように。これはFCコメントの基本ルール」):
       //   FC-ic の行に居る時も本文の段落を生で見せる= IC の ` が見え、対の橙が本文に乗る(ハイライトの FC 行と同じ)
@@ -46344,6 +46356,7 @@ function meosApplyCodeFenceDecorations(editor) {
     };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
+    const _fzSup = meosRawSuppressedAt(editor), _fzCaret = editor.selection ? editor.selection.active.line : -1, _fzMate = (!_fzSup && _fzCaret >= 0 && meosModeAtLine(doc, _fzCaret) === 'normal') ? meosFusenMateLines(doc, _fzCaret) : null;   // v5.1.710
     const raw = meosRawLines(editor, meosRawSuppressedAt(editor)), lines = meosDocLines(doc);   // v5.1.312: 飛んできた直後(着地の一時抑止)は紙のまま
     const L = (ln) => new vscode.Range(ln, 0, ln, 0);
     for (const vr of meosScanSpans(editor, doc)) {
@@ -46356,6 +46369,7 @@ function meosApplyCodeFenceDecorations(editor) {
         const _wrapCol = meosFenceWrapColumn(doc);   // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
         const _cap = meosFenceCaption(lines, b);                       // v5.1.114: 説明の行
         const _fz = meosFusenFakeLayout(lines, b, _wrapCol);          // v5.1.701: 見せかけの付箋の割り付け(付箋でなければ null)
+        if (_fz && _fzMate && _fzMate.from === b.open) continue;     // v5.1.710: 付箋の縁にカーソル= 紙を敷かず全部生(本文だけ紙を残さない)
         // ★v5.1.299(俊克 pm02:00「母親がコメント空欄のまま『おやつは冷蔵庫に』と書く。子が『美味しかったよ』とコメントを書く」→ pm02:05「空欄の時は薄い色の枠・見せかけの字で薄く」):
         //   空の説明の行(<!-- Mew!UFC  -->)= まだ書いていない返事の欄。今までは説明と読まず紙の外に生の行が出た→ 紙の足に入れ、閉じの行に薄い点線の枠と見せかけの字。
         const _capE = (!_cap && b.close > b.open && meosFenceCapEmpty(lines[b.close + 1]) >= 0) ? { line: b.close + 1 } : null;
