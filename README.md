@@ -256,7 +256,8 @@ at once — read `↺↻` as "seamless": ↺ counts down, ↻ counts up, and the
 Write a length — `↺↻(0y0d1h0m0s)` — and `dd` in the title shows when it will ring, while the badge counts down and
 counts up side by side. Press ⏸️ and `dd` turns into that date, written in the text (`dd=11/15(S)pm06:33`): change
 it, even to next year, press ▶️, and the length is rewritten to ring then, carrying on from where it stopped. `dd`
-is the bridge between the two ways of saying it.
+is the bridge between the two ways of saying it. To add a day, change the `d`; when the date itself moves, pause and change
+the `dd`. ① starts it at one hour — set it roughly, or to the minute; it is up to you.
 
 **The version tells you what changed.** Most apps show a version number, and when it goes up you have to remember
 the old one to see which digit moved. After MeOS updates itself, the digits that changed blink in the version under
