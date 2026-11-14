@@ -210,7 +210,7 @@ only the code — the note is a comment. Use UFC, not FC: an FC line folds under
 row would be gone. A ⏰ line or a `---` line is never taken as a note. Clocks and other MeOS notation you quote
 inside a code block stay plain text — they never run, and they do not flicker while you type outside the block.
 
-**CB and IC evolve into sticky notes (FUSEN).** Put a FUSEN comment after a code block (CB) or an inline code
+**CB and IC evolve into sticky notes (FUSEN) — stick as many as you like, they're free.** Put a FUSEN comment after a code block (CB) or an inline code
 (IC), and it becomes a sticky note. The sticky-note button in Format Me writes the comment for you:
 
 ````md
