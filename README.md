@@ -251,6 +251,12 @@ or copy a line from the ⏰ database under its FUSEN line. When it rings, you wa
 stays on the menu bar however old it gets; delete the ⏰ line and it leaves the ⏰ list, but the note stays on the
 FUSEN list. (Inline-code notes don't take a ⏰ yet.)
 
+**⏰ Seamless Timer (S-Timer).** Most timers make you choose: how long, or until when. A ⏰ in MeOS is both at once.
+Write a length — `↺↻(0y0d1h0m0s)` — and `dd` in the title shows when it will ring, while the badge counts down and
+counts up side by side. Press ⏸️ and `dd` turns into that date, written in the text (`dd=11/15(S)pm06:33`): change
+it, even to next year, press ▶️, and the length is rewritten to ring then, carrying on from where it stopped. `dd`
+is the bridge between the two ways of saying it.
+
 **The version tells you what changed.** Most apps show a version number, and when it goes up you have to remember
 the old one to see which digit moved. After MeOS updates itself, the digits that changed blink in the version under
 ♥ in mGATE (macOS) and in the Me Dock header — big and red three times — and then stay red for an hour. Look away
