@@ -7549,14 +7549,17 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
   try {
     if (!spec || typeof atLine !== 'number' || spec.done || spec.wait || !spec.title) return spec;
     let cur = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === atLine) cur = x;
-    if (!cur || cur.when) return spec;
+    if (!cur) return spec;
+    // ★v5.1.723(俊克 11.15 am11:30「ワンショットタイマーを一時停止して、再度▶️ボタンを押すと、起点が変わってしまう。最初の起点を残すことに反している」→ am11:35「v5.1では、ワンショットタイマーだけを起点固定に」):
+    //   ①は起点 日時p を書く(起点は動かさない)。止めていた分は▶️で**長さを伸ばす**= dd を直した時と同じ道(起点・長さ・終点のうち2つで残り1つ= S-Timer)
+    const own = cur.when ? ((meosParseStampLoose(cur.when) || { getTime: () => 0 }).getTime()) : 0;
     const lk = doc.uri.toString() + ' ' + key, cy = Array.isArray(cur.cycle) ? cur.cycle : [];
     const simple = cy.length === 1 && !meosCycleRules(cy).length && meosCycleMs(cy[0]) > 0;
     if (spec.off && !cur.off) {
       if (!simple || !MEOS_CLOCK_DD_RE.test(String(spec.title))) return spec;
-      const base = _meosChainStart.get(lk) || cur.vAt || 0; if (!base) return spec;
-      const end = meosClockDdEnd(Object.assign({}, cur, { vAt: base })); if (!end) return spec;
-      const face = meosClockDdFace(end); _meosDdPauseFace.set(lk, { face, end });
+      const base = own || _meosChainStart.get(lk) || cur.vAt || 0; if (!base) return spec;
+      const end = own ? meosClockDdEnd(cur) : meosClockDdEnd(Object.assign({}, cur, { vAt: base })); if (!end) return spec;
+      const face = meosClockDdFace(end); _meosDdPauseFace.set(lk, { face, end, at: Date.now() });
       try { const _pk = doc.uri.toString() + ' ' + atLine; _meosDdPeek.set(_pk, Date.now() + 10000); _meosDdPeekAt.set(_pk, Date.now()); setTimeout(() => { try { if ((_meosDdPeek.get(_pk) || 0) <= Date.now()) _meosDdPeek.delete(_pk); const _ed = vscode.window.activeTextEditor; if (_ed) { try { refresh(_ed); } catch (_) { } meosApplyTimerLineDecorations(_ed); } } catch (_) { } }, 10100); } catch (_) { }   // v5.1.717: 周期と dd= を見せる / v5.1.718(俊克「5秒は短いので10秒に」)
       meosDbg('[dd] ⏸️ 題に dd=' + face + ' key=' + key);
       return Object.assign({}, spec, { title: String(spec.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + 'dd=' + face) });
@@ -7568,6 +7571,15 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
       const D = meosClockDdParse(q[2]), now = Date.now();
       const _min = (t) => Math.floor(t / 60000), _endNow = meosClockDdEnd(cur);   // ★v5.1.721(720 の実測: 直さずに▶️でも 1h0m0s→0h58m30s= 顔は分まで): 分が同じなら直していない
       const edited = was ? (q[2] !== was.face && _min(D) !== _min(was.end)) : (!_endNow || _min(D) !== _min(_endNow));
+      if (own && simple) {   // v5.1.723: 起点ありの dd の⏰(①・♥)= 起点はそのまま。直していれば dd へ、直していなければ止めていた分だけ先へ
+        const T0 = meosCycleMs(cy[0]), pAt = was && was.at ? was.at : now, k = Math.max(1, Math.floor((pAt - own) / T0) + 1);
+        const target = edited ? (D > now ? D : 0) : (was && was.end ? was.end + Math.max(0, now - was.at) : 0);
+        if (!target || target <= own) { meosDbg('[dd] ▶️ 起点あり・周期そのまま key=' + key); return out; }
+        const T = Math.ceil((target - own) / k / 1000) * 1000, step = meosClockFmtCycle(T), src = String(spec.cycleSrc == null ? '' : spec.cycleSrc);
+        out.cycle = [step]; out.cycleSrc = src && src.indexOf(cy[0]) >= 0 ? src.replace(cy[0], step) : (Number(spec.rounds) > 0 ? '(' + step + ')\u00d7' + Math.floor(spec.rounds) : step);
+        meosDbg('[dd] ▶️ 起点あり ' + (edited ? 'dd=' + q[2] : '止めた分 ' + Math.round((now - (was ? was.at : now)) / 1000) + '秒') + ' → 周期 ' + cy[0] + ' → ' + step + ' (周' + k + ') key=' + key);
+        return out;
+      }
       const e = (typeof cur.vElapsed === 'number' && cur.vElapsed >= 0) ? cur.vElapsed : -1;
       if (!edited || !simple || !(D > now) || e < 0) { meosDbg('[dd] ▶️ 題を dd へ(周期そのまま) edited=' + edited + ' key=' + key); return out; }
       // ★v5.1.712(俊克 711テスト: 11/15 pm11:39 に直したら札が pm11:38= 2秒足りない): 本文の v9s は秒まで= 再開で使う起点は覚えの側(止めた起点+休んだ分)。その起点から数え、秒は切り上げる(鐘は直した日時ちょうどか直後)
@@ -38609,6 +38621,7 @@ function toggleMeDock(editorOverride) {
     }
     // v4.0.462: ▾から来た一発指定(分 or いつ)。読む口は meosParseWhen 1つ(menu と同じ物に訊く)。
     if (message && message.type === 'pseudoTimerSet') {
+      if (message.fresh && String(message.when || '') === '') message.when = meosClockFcStamp(new Date());   // ★v5.1.723: ①は起点を今で書く(↺↻ と過去の起点= 日時p)。止めても起点は動かない
       _meosClockLockNext = !!message.lock;                                   // v4.1.5: パネルの🔐
       _meosClockAnchorNext = !!message.anchor;                               // v4.2.312: パネルの⚓
       // v4.1.64: 繰返しの箱に何か書いてあれば、それthat最後の指定。空なら触らない。
