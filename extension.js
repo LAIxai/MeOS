@@ -15397,8 +15397,8 @@ async function meosDdEditKey(k) {
 function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期と dd=日時 の窓の絵(飾りの上に被せる)
   const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt), a = txt.indexOf('\u23f0'); if (a < 0) return;
   const rows = meosRawRowsOf(txt, meosFenceWrapColumn(doc)), at = (p) => { let r = 0; while (r + 1 < rows.length && p >= rows[r + 1][0]) r++; return { r, x: meosRenderColsF(txt.slice(rows[r][0], p)) }; };
-  const win = { a, cyc: null, dd: null }, put = (s, e, col, rgb) => {
-    const q = at(s);
+  const win = { a, cyc: null, dd: null }, put = (s, e, col, rgb, q0) => {
+    const q = q0 || at(s);
     if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + 1px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad); animation: monaco-cursor-smooth 0.5s ease-in-out 0s infinite alternate;' } } });   // v5.1.725: 窓の中のカーソルの棒
     items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: txt.slice(s, e), color: 'var(--vscode-editor-foreground)',
       textDecoration: 'none; position: absolute; left: ' + (Math.round(q.x * 100) / 100) + 'ch; top: ' + (q.r * 100) + '%; z-index: 6; white-space: pre; pointer-events: auto; cursor: ' + meosHandCursor() + '; border: 1px solid rgb(' + rgb + '); border-radius: 3px; padding-right: 4px; background-color: var(--vscode-editor-background); box-shadow: inset 0 0 0 999px rgba(' + rgb + ',0.18); font-style: normal; font-weight: normal; font-size: 1em;' } } });
@@ -15406,7 +15406,9 @@ function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期
   if (_cy) { const s = _cy.index + _cy[0].search(/[^↺↻]/), e = _cy.index + _cy[0].length; win.cyc = [s, e]; put(s, e, a, '224,128,58'); }
   if (_dq) { const s = _dq.index + _dq[1].length, e = s + _dq[2].length; win.dd = [s, e];
     let today = false; try { today = new Date(meosClockDdParse(_dq[2].slice(3))).toDateString() === new Date().toDateString(); } catch (_) { }   // v5.1.719: 今日の dd= は緑
-    put(s, e, a + 1, today ? '63,185,80' : '224,128,58'); }
+    // ★v5.1.734(俊克 733「緑色の枠を次の行に出すから駄目。橙枠のように見せかけの行に被せるように表示すればいい」): dd の窓は1つ上の段(見せかけの日時の段)の字の後ろへ
+    let q0 = null; { const r0 = at(s).r; if (r0 > 0) q0 = { r: r0 - 1, x: meosRenderColsF(txt.slice(rows[r0 - 1][0], rows[r0 - 1][1]).replace(/\s+$/, '')) + 1 }; }
+    put(s, e, a + 1, today ? '63,185,80' : '224,128,58', q0); }
   _meosDdPeekWin.set(doc.uri.toString() + ' ' + i, win);
   meosDbg('[dd] 覗き窓 行=' + (i + 1) + ' 段=' + rows.length + ' 周期=' + (win.cyc ? JSON.stringify(at(win.cyc[0])) : '-') + ' dd=' + (win.dd ? JSON.stringify(at(win.dd[0])) : '-'));
 }
@@ -47176,7 +47178,7 @@ function activate(context) {
     const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = ch === w.a + 1 || inS(w && w.dd);   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
     if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
       const sp = hitC ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k); _meosDdEditSp.set(k, hitC ? 'cyc' : 'dd');
-      meosDdEditCtxSync(e.textEditor); meosDdPadAdd(e.textEditor, ln); { const sp2 = meosDdEditSpans(e.textEditor.document.lineAt(ln).text)[hitC ? 'cyc' : 'dd']; if (sp2 && (ch < sp2[0] || ch > sp2[1])) { const P = new vscode.Position(ln, sp2[0]); e.textEditor.selection = new vscode.Selection(P, P); } }   // v5.1.729: 同じ物差しで頭へ   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
+      meosDdEditCtxSync(e.textEditor); /* v5.1.734: 水増しは効かなかった(俊克の tttttttt でも同じ)→ 足さない */ { const sp2 = meosDdEditSpans(e.textEditor.document.lineAt(ln).text)[hitC ? 'cyc' : 'dd']; if (sp2 && (ch < sp2[0] || ch > sp2[1])) { const P = new vscode.Position(ln, sp2[0]); e.textEditor.selection = new vscode.Selection(P, P); } }   // v5.1.729: 同じ物差しで頭へ   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
       meosDbg('[dd] 覗き窓を押した(' + (hitC ? '周期' : 'dd') + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
   } catch (_) { } }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => meosPostCaretDay(false)));
