@@ -15386,7 +15386,7 @@ async function meosDdEditKey(k) {
   const nat = { left: 'cursorLeft', right: 'cursorRight', up: 'cursorUp', down: 'cursorDown', home: 'cursorHome', end: 'cursorEnd', backspace: 'deleteLeft', delete: 'deleteRight' }[k];
   const ed = vscode.window.activeTextEditor; if (!ed) return;
   const L = ed.selection.active.line, key = ed.document.uri.toString() + ' ' + L;
-  if (!_meosDdEdit.has(key) || !ed.selection.isEmpty) { meosDdEditCtxSync(ed); if (nat) await vscode.commands.executeCommand(nat); return; }   // 文脈キーは遅れて届く= 窓で直していなければ素の動き
+  if (!_meosDdEdit.has(key) || !ed.selection.isEmpty) { meosDbg('[ddKey] k=' + k + ' 窓の外→ 素の動き'); meosDdEditCtxSync(ed); if (nat) await vscode.commands.executeCommand(nat); return; }   // 文脈キーは遅れて届く= 窓で直していなければ素の動き
   const S = meosDdEditSpans(ed.document.lineAt(L).text), sp = S[_meosDdEditSp.get(key) || 'dd'] || S.dd || S.cyc; if (!sp) return;
   let c = Math.min(sp[1], Math.max(sp[0], ed.selection.active.character));
   if (k === 'backspace') { if (c > sp[0]) await ed.edit(eb => eb.delete(new vscode.Range(L, c - 1, L, c))); return; }   // 窓の頭では何も消さない(728 の穴= 窓の外の ( や = が消えた)
@@ -15396,7 +15396,8 @@ async function meosDdEditKey(k) {
     // ★v5.1.741(俊克 740 改良1「→/←押しっ放しで、一時停止しよう。境界が一時停止線ということだね」): キーの離れは拡張に見えない→ 間隔で読む(↑↓の一時停止線 v5.1.580 と同じ物差し)。
     //   リピートは30ms・初回だけ225ms= 境で止まっていない時は0.3秒以上空いた1打だけ渡る。止まった後は0.15秒空いたら手を離した印= 押し直しの1打で渡る
     const _cross = (k === 'right' && nm === 'cyc' && c >= sp[1] && S.dd) || (k === 'left' && nm === 'dd' && c <= sp[0] && S.cyc);
-    if (_cross && !(_meosDdKey.hold ? _gap >= 150 : _gap >= 300)) { _meosDdKey.hold = true; return; }
+    meosDbg('[ddKey] k=' + k + ' 窓=' + nm + ' c=' + c + ' 範囲=' + JSON.stringify(sp) + ' 間隔=' + _gap + ' 止=' + _meosDdKey.hold + ' 渡る候補=' + !!_cross);   // v5.1.742: 741 バグ1「押しっ放しで一時停止しない」の実測
+    if (_cross && !(_meosDdKey.hold ? _gap >= 150 : _gap >= 300)) { _meosDdKey.hold = true; meosDbg('[ddKey] → 境で止める'); return; }
     _meosDdKey.hold = false;   // ★v5.1.738(俊克 736「文字カーソルだけで移動できて、どっちでも直せれば最高」): 橙と緑は横並び= 橙の尻で→は緑の頭へ・緑の頭で←は橙の尻へ
     if (k === 'right' && nm === 'cyc' && c >= sp[1] && S.dd) { _meosDdEditSp.set(key, 'dd'); const P = new vscode.Position(L, S.dd[0]); ed.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(ed); return; }
     if (k === 'left' && nm === 'dd' && c <= sp[0] && S.cyc) { _meosDdEditSp.set(key, 'cyc'); const P = new vscode.Position(L, S.cyc[1]); ed.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(ed); return; } }
@@ -15698,7 +15699,8 @@ const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3
 const _meosStopRotUrl = new Map();
 function meosStopRotUrl(c, k) { k = Math.max(0, k | 0); const key = c + ' ' + k; let u = _meosStopRotUrl.get(key); if (u) return u;   // v5.1.739: 線種の↺= 線と同じ色の矢印
   // ★v5.1.741(俊克 740 改良2「メニューバーのように、回転角度をボタンごとに変える」「円の中に↻を入れよう」): 円の中に右回りの↻・線種の番号 k ごとに45°ずつ回す(矢印の先の向き= 今の線種)
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="' + c + '" stroke-width="7"/><g transform="rotate(' + (k * 45) + ' 50 50) translate(50 50) scale(0.6) translate(-50 -50)"><path d="M30 26 A32 32 0 1 1 18 52" fill="none" stroke="' + c + '" stroke-width="12" stroke-linecap="round"/><polygon points="48,4 16,22 46,44" fill="' + c + '"/></g></svg>';
+  // ★v5.1.742(俊克 741 改良1「円をそれ自身の色にして、↻を白に」・バグ「↻が回転しない」= 741 は番号(meosStopKindOf)を MEOS_STOP_KINDS.indexOf で引き直し、いつも0だった)
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="' + c + '"/><g transform="rotate(' + (k * 45) + ' 50 50) translate(50 50) scale(0.62) translate(-50 -50)"><path d="M30 26 A32 32 0 1 1 18 52" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/><polygon points="48,4 16,22 46,44" fill="#fff"/></g></svg>';
   u = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); _meosStopRotUrl.set(key, u); return u; }
 function meosStopEdgeColor(edge) { return edge === 1 ? 'rgba(22, 163, 74, 0.98)' : edge === -1 ? 'rgba(37, 99, 235, 0.98)' : '#e0803a'; }
 const MEOS_STOP_OFF_URL = meosStopSignSvg('#1e88e5', 'OFF', '#fff', 56);   // v5.1.645: オフの標識(灰) / ★v5.1.652: 青OFF= 通過してよい(信号の青)
@@ -15872,7 +15874,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _bg45 = _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : (_sb45 && _sb45.rot > 0)   // v5.1.739: 左の標識の右の真横に↺(札は桁2)・線は↺の後ろから
-                  ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), MEOS_STOP_KINDS.indexOf(meosStopKindOf(txt))) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
+                  ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), meosStopKindOf(txt)) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
                   : _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
               // ★v5.1.646(俊克 pm09:48 バグ1「開始膜の線がオンのときに、右の🛑上で選択指に変わらない。オフにすれば押せる」): 645 は右端の札の位置を詰め物の札(空白56個)の幅で見積もった= 札の字の幅と箱の ch がずれ、札が標識の下に来ていなかった。
               //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
@@ -47199,6 +47201,7 @@ function activate(context) {
           else if (kb && S[act]) { const sp = S[act]; to = (l0 === L0) ? (c < sp[0] ? sp[0] : sp[1]) : (l0 < L0 ? sp[0] : sp[1]); }   // ←/→ は端で止まる・↑ は頭・↓ は尻
           else out = true;   // マウスで窓の外/行の外= 終わり(窓の外は見えない所を直さないよう、ふつうの Raw)
         } catch (_) { out = true; }
+        if (kb || to >= 0 || out) meosDbg('[ddSel] kb=' + kb + ' 行=' + (l0 + 1) + ' c=' + c + ' 窓=' + (_meosDdEditSp.get(k0) || '-') + ' 引き戻し=' + to + ' 終わり=' + out);   // v5.1.742: 押しっ放しの実測
         if (to >= 0) { const P = new vscode.Position(L0, to); e.textEditor.selection = new vscode.Selection(P, P); }
         if (out) { _meosDdEdit.delete(k0); _meosDdEditSp.delete(k0); gone = true; meosDdPadStrip(e.textEditor, L0); } else meosApplyTimerLineDecorations(e.textEditor); }
       if (gone) { try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); } meosDdEditCtxSync(e.textEditor); }   // v5.1.722: 行を出たら窓の中の直しは終わり
