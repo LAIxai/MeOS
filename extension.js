@@ -15667,9 +15667,17 @@ function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑
     return { on, next, sig, self: 1, rot: on ? 2 : -1, bulk: sig === 'none' ? -1 : (on ? 5 : 2), pad: on ? 4 : -1, gap: on ? 3 : -1 };   // ★v5.1.739(俊克 pm08:31「左側の停止線ボタンに↺ボタンを付けて線種を変えられるように。右肩ではなく右の真横」): オンの線= 桁2に↺の札・詰め物は桁3・箱は桁4・右の札は桁5   // ★v5.1.673: オンの線= 桁2に詰め物・桁3に線の箱(箱は字の前の絵= 桁2と桁3の間に立つ)= 線を押すと桁2か3(何もしない)・右の札は桁4
   } catch (_) { return null; }
 }
-async function meosStopCycleKind(ed, i) { const doc = ed.document, t = doc.lineAt(i).text; if (!MEOS_RULE_LINE_RE.test(t)) return false;   // v5.1.739: ↺= 線種を次へ(MEOS_STOP_KINDS の順に8種を巡る)
-  const nx = MEOS_STOP_KINDS[(meosStopKindOf(t) + 1) % MEOS_STOP_KINDS.length], u = t.replace(/(Mew!UFC\s+)(.*?)(\s*-->\s*)$/, (m, a, b, c) => a + nx + c); if (u === t) return false;
+async function meosStopCycleKind(ed, i, to) { const doc = ed.document, t = doc.lineAt(i).text; if (!MEOS_RULE_LINE_RE.test(t)) return false;   // v5.1.739: ↺= 線種を次へ(MEOS_STOP_KINDS の順に8種を巡る) / v5.1.745: to= その番号へ
+  const nx = MEOS_STOP_KINDS[typeof to === 'number' ? to : (meosStopKindOf(t) + 1) % MEOS_STOP_KINDS.length], u = t.replace(/(Mew!UFC\s+)(.*?)(\s*-->\s*)$/, (m, a, b, c) => a + nx + c); if (u === t) return false;
   return ed.edit(eb => meosStopReplaceDiff(eb, i, t, u)); }
+// ★v5.1.745(俊克 744 改良2「↻ボタンを押して1秒以内に数字キーを押すと、その角度になるようにしよう」): ↻を押してから1秒= 文脈キー meos.stopDigit。1〜8 のキーはその番号の線種(1=実線 … 8=二重波線)。1打で終わり
+let _meosStopDigit = null;
+function meosStopDigitArm(ed, i) { if (_meosStopDigit && _meosStopDigit.timer) clearTimeout(_meosStopDigit.timer);
+  _meosStopDigit = { uri: ed.document.uri.toString(), line: i, timer: setTimeout(meosStopDigitDisarm, 1000) }; vscode.commands.executeCommand('setContext', 'meos.stopDigit', true); }
+function meosStopDigitDisarm() { if (_meosStopDigit && _meosStopDigit.timer) clearTimeout(_meosStopDigit.timer); _meosStopDigit = null; vscode.commands.executeCommand('setContext', 'meos.stopDigit', false); }
+async function meosStopDigitKey(n) { const g = _meosStopDigit, ed = vscode.window.activeTextEditor; meosStopDigitDisarm();
+  if (!g || !ed || ed.document.uri.toString() !== g.uri || !(n >= 1 && n <= MEOS_STOP_KINDS.length)) { if (ed && n) await vscode.commands.executeCommand('type', { text: String(n) }); return; }   // 窓が切れていたら素の数字
+  setRefNoRaw(ed.document, g.line); await meosStopCycleKind(ed, g.line, n - 1); setRefNoRaw(ed.document, g.line); meosCalmRefresh(ed); }
 // ★v5.1.744(俊克 11.16 am00:29 改良1「↻ボタンを押すと、左端の🛑ボタンが一旦消えてから再描画している。見苦しい」): 行を丸ごと置き換えると、行頭の札に付いたインレイヒントと飾りの錨が消え、描き直すまで🛑が抜けた
 //   → 変わった所(前後の同じ字を除いた真ん中)だけを置き換える= 札の桁には触らない
 function meosStopReplaceDiff(eb, i, t, u) { let a = 0; while (a < t.length && a < u.length && t[a] === u[a]) a++; let b = 0; while (b < t.length - a && b < u.length - a && t[t.length - 1 - b] === u[u.length - 1 - b]) b++;
@@ -25425,7 +25433,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           try { const _pv = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === _ln && p.id === _vbs.id); if (_pv && isPairFolded(editor, _pv)) await setPairFoldStateAndMstat(editor, _pv, false); } catch (_) { }
           meosCalmRefresh(editor); return; }
         { const _sb = meosStopBtnSpots(editor.document, _ln, editor), _cc = editor.selection.active.character;   // ★v5.1.645: 一時停止線の🛑= 左は自分 / v5.1.652: 右は次の線の信号
-          if (_sb && _sb.rot > 0 && _cc === _sb.rot) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosStopCycleKind(editor, _ln); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }   // v5.1.739: ↺= 線種を次へ
+          if (_sb && _sb.rot > 0 && _cc === _sb.rot) { setRefNoRaw(editor.document, _ln); /* ★v5.1.745(俊克 744 改良1「文字カーソルが↻の左側から🛑の左に移動する動きが目障り」): ↻は行頭へ寄せない(落ちた桁のまま) */ await meosStopCycleKind(editor, _ln); meosStopDigitArm(editor, _ln); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }   // v5.1.739: ↺= 線種を次へ
           if (_sb && (_cc <= _sb.self || (_sb.bulk > 0 && _cc === _sb.bulk))) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln);
             if (_cc === _sb.bulk) await meosStopCycleNext(editor, _ln); else await meosStopToggleSelf(editor, _ln);   // v5.1.652: 右= 次の線の信号を 赤→青→黄 で回す
             setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; } }
@@ -48699,7 +48707,8 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
     vscode.commands.registerCommand('laiMembrane.duplicateMe', duplicateMe),
     vscode.commands.registerCommand('laiMembrane.aliasMe', aliasMe),
     vscode.commands.registerCommand('laiMembrane.enterAtCloseRightEdge', handleEnterAtMembraneRightEdge),
-    vscode.commands.registerCommand('laiMembrane.ddEditKey', (a) => meosDdEditKey(a && a.k)),   // v5.1.729: 窓は入力枠= キーを先に受け取る
+    vscode.commands.registerCommand('laiMembrane.ddEditKey', (a) => meosDdEditKey(a && a.k)),
+    vscode.commands.registerCommand('laiMembrane.stopKindDigit', (a) => meosStopDigitKey(a && a.n)),   // v5.1.745: ↻の後1秒の数字   // v5.1.729: 窓は入力枠= キーを先に受け取る
     vscode.commands.registerCommand('laiMembrane.backspaceJoinSpecLines', handleBackspaceJoinSpecLines), // v4.0.179: 段落を結ぶ時、FC指定も結ぶ
     vscode.commands.registerCommand('laiMembrane.deleteJoinSpecLines', handleDeleteJoinSpecLines), // v4.0.183: Forward space(Delete)も同じ口へ
     vscode.commands.registerCommand('laiMembrane.toggleCurrent', toggleCurrent),
