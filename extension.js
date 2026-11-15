@@ -15391,6 +15391,9 @@ async function meosDdEditKey(k) {
   let c = Math.min(sp[1], Math.max(sp[0], ed.selection.active.character));
   if (k === 'backspace') { if (c > sp[0]) await ed.edit(eb => eb.delete(new vscode.Range(L, c - 1, L, c))); return; }   // 窓の頭では何も消さない(728 の穴= 窓の外の ( や = が消えた)
   if (k === 'delete') { if (c < sp[1]) await ed.edit(eb => eb.delete(new vscode.Range(L, c, L, c + 1))); return; }
+  { const nm = (_meosDdEditSp.get(key) || 'dd');   // ★v5.1.738(俊克 736「文字カーソルだけで移動できて、どっちでも直せれば最高」): 橙と緑は横並び= 橙の尻で→は緑の頭へ・緑の頭で←は橙の尻へ
+    if (k === 'right' && nm === 'cyc' && c >= sp[1] && S.dd) { _meosDdEditSp.set(key, 'dd'); const P = new vscode.Position(L, S.dd[0]); ed.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(ed); return; }
+    if (k === 'left' && nm === 'dd' && c <= sp[0] && S.cyc) { _meosDdEditSp.set(key, 'cyc'); const P = new vscode.Position(L, S.cyc[1]); ed.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(ed); return; } }
   if (k === 'left') c = Math.max(sp[0], c - 1); else if (k === 'right') c = Math.min(sp[1], c + 1); else if (k === 'up' || k === 'home') c = sp[0]; else if (k === 'down' || k === 'end') c = sp[1];
   const P = new vscode.Position(L, c); ed.selection = new vscode.Selection(P, P);
 }
@@ -15405,7 +15408,7 @@ function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期
   };
   if (_cy) { const s = _cy.index + _cy[0].search(/[^↺↻]/), e = _cy.index + _cy[0].length; win.cyc = [s, e];
     // ★v5.1.737(俊克 736 改良1「橙枠を緑枠の段に移動して横並びにしたら、見た目が整う」): dd の窓がある時は、橙の窓を緑の窓(dd の字+右の余白4字)の右へ1字空けて並べる。緑は動かさない(本物のカーソルを覆う位置)
-    let qc = null; if (_dq) { const ds = _dq.index + _dq[1].length, dq0 = at(ds); qc = { r: dq0.r, x: dq0.x + meosRenderColsF(_dq[2]) + 4 + 1 }; }
+    let qc = null; if (_dq) { const ds = _dq.index + _dq[1].length, dq0 = at(ds); qc = { r: dq0.r, x: dq0.x }; }   // ★v5.1.738(俊克 737 改良1「橙枠が右側になった。順番は逆の方が良い」): 橙を段の頭・緑をその右へ(本物の字の順)
     put(s, e, a, '224,128,58', qc); }
   if (_dq) { const s = _dq.index + _dq[1].length, e = s + _dq[2].length; win.dd = [s, e];
     let today = false; try { today = new Date(meosClockDdParse(_dq[2].slice(3))).toDateString() === new Date().toDateString(); } catch (_) { }   // v5.1.719: 今日の dd= は緑
@@ -15413,7 +15416,7 @@ function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期
     let q0 = null; { const r0 = at(s).r; if (r0 > 0) q0 = { r: r0 - 1, x: meosRenderColsF(txt.slice(rows[r0 - 1][0], rows[r0 - 1][1]).replace(/\s+$/, '')) + 1 }; }
     // ★v5.1.735(734 実測: 窓を上の段へ移すと本物のカーソルが3段目に丸見え= 左端 440・尻 848 と字に付いて動く)→ 3段目の窓は本物のカーソルを覆っていた(窓が上)。
     //   漏れたのは尻だけ= 本物の字の並びが窓より約3字右にずれ、尻のカーソルが窓の右端(780)の外へ出ていた。→ 3段目へ戻し、右に4字ぶんの余白で覆う
-    q0 = null;
+    q0 = null; if (win.cyc) { const r0 = at(s); q0 = { r: r0.r, x: r0.x + meosRenderColsF(txt.slice(win.cyc[0], win.cyc[1])) + 0.5 }; }   // v5.1.738: 緑は橙の右へ半字空けて。本物の dd のカーソル(段の頭から約6〜21字)は橙と緑の2枚で覆う(隙間は半字)
     put(s, e, a + 1, today ? '63,185,80' : '224,128,58', q0, 'padding-right: 4ch;'); }
   _meosDdPeekWin.set(doc.uri.toString() + ' ' + i, win);
   meosDbg('[dd] 覗き窓 行=' + (i + 1) + ' 段=' + rows.length + ' 周期=' + (win.cyc ? JSON.stringify(at(win.cyc[0])) : '-') + ' dd=' + (win.dd ? JSON.stringify(at(win.dd[0])) : '-'));
@@ -15893,7 +15896,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   窓は ⏰ の桁(飾りの1段目)に置いた before を absolute で Raw の段/桁へ動かす。押すと before の桁にカーソル→ 選択の口がその窓の字へ運ぶ
           if (!_rawHere && (_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now()) { try { meosDdPeekWindows(doc, i, txt, items); } catch (_) { } }
           if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) { _meosDdEdit.delete(uri + ' ' + i); meosDdEditCtxSync(editor); setTimeout(() => meosDdPadStrip(editor, i), 0); } else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character);
-            const _cyE = _meosDdEditSp.get(uri + ' ' + i) === 'cyc' && /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt); if (_cyE) {   // ★v5.1.736(俊克 735 バグ1「緑枠から橙枠をクリックするとRawになる。逆は移動できる」): dd を直す間も周期を隠していた→ 橙の窓の下に字が無く、押すと別の桁に落ちて「窓の外」と読んでいた。周期を隠すのは周期を直す間だけ
+            const _cyE = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt); if (_cyE) {   // v5.1.736 は dd を直す間は周期を隠さなかった(橙の窓の下に字を残す)→ ★v5.1.738: 橙は3段目へ移った= 1段目の周期の字が見えてしまう(737 の3枚目)ので、また常に隠す
             const e1 = _cyE.index + _cyE[0].length; ddEditHide.push(new vscode.Range(i, _cyE.index + _cyE[0].search(/[^↺↻]/), i, e1 + (txt[e1] === ' ' ? 1 : 0))); }
             { const _dqE = /(^|\s)(dd=\S+)/.exec(txt); if (_dqE) { const s1 = _dqE.index + _dqE[1].length, e1 = s1 + _dqE[2].length; let e2 = e1; while (txt[e2] === ' ' || txt[e2] === '\u00a0') e2++; ddEditHide.push(new vscode.Range(i, s1, i, e2)); } }   // v5.1.731: 後ろの足した空白ごと隠す   // ★v5.1.729(俊克 728 改良1「本文の文字カーソルと二重に見える」): 直す字を display:none にする= 隠れた字の中では Monaco が本物のカーソルを描けない(測れない)。後ろの空白も隠す= 尻の桁でも見えない   // ★v5.1.727(俊克 726 バグ1「橙色の枠の中で動かすと本文の方の文字カーソルも追従。緑色の方は正しいのに、なぜ?」): dd は隠した字の中なので本物のカーソルが見えない。周期は見えている字だった→ 直す間は飾りの周期も畳む(窓が同じ字を見せる)
           } catch (_) { } }   // v5.1.725: 直している間も覗き窓の姿のまま(窓に今の字とカーソルの棒)
