@@ -15671,6 +15671,15 @@ async function meosStopCycleKind(ed, i, to) { const doc = ed.document, t = doc.l
   const nx = MEOS_STOP_KINDS[typeof to === 'number' ? to : (meosStopKindOf(t) + 1) % MEOS_STOP_KINDS.length], u = t.replace(/(Mew!UFC\s+)(.*?)(\s*-->\s*)$/, (m, a, b, c) => a + nx + c); if (u === t) return false;
   return ed.edit(eb => meosStopReplaceDiff(eb, i, t, u)); }
 // ★v5.1.745(俊克 744 改良2「↻ボタンを押して1秒以内に数字キーを押すと、その角度になるようにしよう」): ↻を押してから1秒= 文脈キー meos.stopDigit。1〜8 のキーはその番号の線種(1=実線 … 8=二重波線)。1打で終わり
+// ★v5.1.748(俊克 747 改良1「↻をクリックして数字キーを押したら、文字カーソルが左に出てしまうので連続してクリックできない。文字カーソルを解除しよう」):
+//   745 は押した桁に残した= 同じ桁をもう一度押しても選択が変わらず、次の1回が届かない(v4.2.76 と同じ穴)・カーソルも↻の左に見えた。
+//   → 押す前に居た所(別の行)へすぐ戻す= 線の上にカーソルが残らず、次のクリックも届く。押す前も同じ行なら家の作法(行頭へ寄せる)
+function meosStopCaretAway(editor, ln) { try { const pv = _meosPrevCaretPos;
+  if (pv && pv.line !== ln && pv.line < editor.document.lineCount) { const P = new vscode.Position(pv.line, pv.character); editor.selection = new vscode.Selection(P, P); } else meosParkCaretAfterPress(editor, ln); } catch (_) { } }
+// ★v5.1.748(俊克 747 👍1「この透明度で良い。ステルスモードにして、クリックしたら従来通り濃く出す」): 押した線は濃く(押すたびに延びる)・3秒触らなければ薄いへ戻る
+const MEOS_STOP_LIT_MS = 3000; let _meosStopLit = null;
+function meosStopLight(editor, ln) { if (_meosStopLit && _meosStopLit.timer) clearTimeout(_meosStopLit.timer);
+  const k = editor.document.uri.toString() + ' ' + ln; _meosStopLit = { key: k, timer: setTimeout(() => { if (_meosStopLit && _meosStopLit.key === k) _meosStopLit = null; for (const ed of vscode.window.visibleTextEditors) if (k.startsWith(ed.document.uri.toString() + ' ')) meosApplyTimerLineDecorations(ed); }, MEOS_STOP_LIT_MS) }; }
 const MEOS_STOP_FAINT = 0.3, _meosStopFaint = new Map();   // v5.1.747: オンの線の標識と↻の濃さ(普段は薄く)
 function meosStopFaintUrl(u) { let f = _meosStopFaint.get(u); if (f) return f; try { const svg = Buffer.from(u.slice(u.indexOf(',') + 1), 'base64').toString('utf8').replace('<svg ', '<svg opacity="' + MEOS_STOP_FAINT + '" '); f = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); } catch (_) { f = u; } _meosStopFaint.set(u, f); return f; }
 let _meosStopDigit = null;
@@ -15679,7 +15688,7 @@ function meosStopDigitArm(ed, i) { if (_meosStopDigit && _meosStopDigit.timer) c
 function meosStopDigitDisarm() { if (_meosStopDigit && _meosStopDigit.timer) clearTimeout(_meosStopDigit.timer); _meosStopDigit = null; vscode.commands.executeCommand('setContext', 'meos.stopDigit', false); }
 async function meosStopDigitKey(n) { const g = _meosStopDigit, ed = vscode.window.activeTextEditor; meosStopDigitDisarm();
   if (!g || !ed || ed.document.uri.toString() !== g.uri || !(n >= 1 && n <= MEOS_STOP_KINDS.length)) { if (ed && n) await vscode.commands.executeCommand('type', { text: String(n) }); return; }   // 窓が切れていたら素の数字
-  setRefNoRaw(ed.document, g.line); await meosStopCycleKind(ed, g.line, n - 1); setRefNoRaw(ed.document, g.line); meosCalmRefresh(ed); }
+  setRefNoRaw(ed.document, g.line); meosStopLight(ed, g.line); await meosStopCycleKind(ed, g.line, n - 1); setRefNoRaw(ed.document, g.line); meosCalmRefresh(ed); }
 // ★v5.1.744(俊克 11.16 am00:29 改良1「↻ボタンを押すと、左端の🛑ボタンが一旦消えてから再描画している。見苦しい」): 行を丸ごと置き換えると、行頭の札に付いたインレイヒントと飾りの錨が消え、描き直すまで🛑が抜けた
 //   → 変わった所(前後の同じ字を除いた真ん中)だけを置き換える= 札の桁には触らない
 function meosStopReplaceDiff(eb, i, t, u) { let a = 0; while (a < t.length && a < u.length && t[a] === u[a]) a++; let b = 0; while (b < t.length - a && b < u.length - a && t[t.length - 1 - b] === u[u.length - 1 - b]) b++;
@@ -15895,7 +15904,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v5.1.746(俊克 745 改良3「両端の🛑と↻ボタンを通常時は非表示にして、ポインターを線の上にホーバーした時だけ表示」→ am00:4x「ホバーを試す」): オンの線は普段は線だけ(行の端から端まで)・
               //   ホバーの口(provideHover)がその行を訊いてきた時だけ標識と↻を描く。押す札は普段もそのまま(見えないだけ)。オフの線は線が無いので今まで通り
               // ★v5.1.747(746 不発= 俊克の設定は Markdown のホバーが切ってある("editor.hover.enabled": "off")→ ホバーの口は一度も呼ばれない。俊克「普段は薄く」): オンの線の標識と↻は薄く描く(線が主役)。押す札は同じ
-              const _fa = (u) => _off45 ? u : meosStopFaintUrl(u);
+              const _lit48 = !!_meosStopLit && _meosStopLit.key === doc.uri.toString() + ' ' + i;   // v5.1.748: 押した線は3秒濃く
+              const _fa = (u) => (_off45 || _lit48) ? u : meosStopFaintUrl(u);
               const _bg45 = _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : (_sb45 && _sb45.rot > 0)   // v5.1.739: 左の標識の右の真横に↺(札は桁2)・線は↺の後ろから
@@ -25439,8 +25449,8 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           try { const _pv = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === _ln && p.id === _vbs.id); if (_pv && isPairFolded(editor, _pv)) await setPairFoldStateAndMstat(editor, _pv, false); } catch (_) { }
           meosCalmRefresh(editor); return; }
         { const _sb = meosStopBtnSpots(editor.document, _ln, editor), _cc = editor.selection.active.character;   // ★v5.1.645: 一時停止線の🛑= 左は自分 / v5.1.652: 右は次の線の信号
-          if (_sb && _sb.rot > 0 && _cc === _sb.rot) { setRefNoRaw(editor.document, _ln); /* ★v5.1.745(俊克 744 改良1「文字カーソルが↻の左側から🛑の左に移動する動きが目障り」): ↻は行頭へ寄せない(落ちた桁のまま) */ await meosStopCycleKind(editor, _ln); meosStopDigitArm(editor, _ln); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }   // v5.1.739: ↺= 線種を次へ
-          if (_sb && (_cc <= _sb.self || (_sb.bulk > 0 && _cc === _sb.bulk))) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln);
+          if (_sb && _sb.rot > 0 && _cc === _sb.rot) { setRefNoRaw(editor.document, _ln); meosStopCaretAway(editor, _ln); meosStopLight(editor, _ln); /* ★v5.1.745(俊克 744 改良1「文字カーソルが↻の左側から🛑の左に移動する動きが目障り」) */ await meosStopCycleKind(editor, _ln); meosStopDigitArm(editor, _ln); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }   // v5.1.739: ↺= 線種を次へ
+          if (_sb && (_cc <= _sb.self || (_sb.bulk > 0 && _cc === _sb.bulk))) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); meosStopLight(editor, _ln);
             if (_cc === _sb.bulk) await meosStopCycleNext(editor, _ln); else await meosStopToggleSelf(editor, _ln);   // v5.1.652: 右= 次の線の信号を 赤→青→黄 で回す
             setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; } }
         const _lb = meosLegacyBtnSpot(editor.document, _ln, editor);   // v5.1.38: 🏦 遺産膜の🔄= 長さを選んで延長
