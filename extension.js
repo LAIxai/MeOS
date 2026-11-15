@@ -15372,11 +15372,11 @@ function meosDdEditSpans(t) {   // 窓で直せる桁の範囲。周期は ( の
 }
 // ★v5.1.731(俊克 730 改良3「pm0 の右端なら外側に文字カーソルが出ない。pm06 の右端なら僅かに見える」「スペースを4文字足して、四角枠はそのままで止めれば、うまく行くんじゃないか?」):
 //   dd が行の最後の字だと、尻の桁=行末で本物のカーソルが描かれる。→ 窓で直す間だけ行末に空白4つを足し(隠す)、窓を出たら外す。窓とキーの範囲は dd の字まで
-const _meosDdPad = new Set();
+const _meosDdPad = new Set(); const MEOS_DD_PAD = 15;   // v5.1.732(俊克 pm07:09「極端に10〜15文字くらいスペースを足して試そう」): 4→15
 function meosDdPadAdd(ed, L) { try { const k = ed.document.uri.toString() + ' ' + L, t = ed.document.lineAt(L).text, dq = /(^|\s)(dd=\S+)$/.exec(t); if (!dq || _meosDdPad.has(k)) return; _meosDdPad.add(k);
-  ed.edit(eb => eb.insert(new vscode.Position(L, t.length), '    '), { undoStopBefore: false, undoStopAfter: false }); } catch (_) { } }
+  ed.edit(eb => eb.insert(new vscode.Position(L, t.length), ' '.repeat(MEOS_DD_PAD)), { undoStopBefore: false, undoStopAfter: false }); } catch (_) { } }
 function meosDdPadStrip(ed, L) { try { const k = ed.document.uri.toString() + ' ' + L; if (!_meosDdPad.delete(k)) return;
-  ed.edit(eb => { const t = ed.document.lineAt(L).text; if (/dd(=\S+)?    $/.test(t)) eb.delete(new vscode.Range(L, t.length - 4, L, t.length)); }, { undoStopBefore: false, undoStopAfter: false }); } catch (_) { } }
+  ed.edit(eb => { const t = ed.document.lineAt(L).text; if (new RegExp('dd(=\\S+)? {' + MEOS_DD_PAD + '}$').test(t)) eb.delete(new vscode.Range(L, t.length - MEOS_DD_PAD, L, t.length)); }, { undoStopBefore: false, undoStopAfter: false }); } catch (_) { } }
 let _meosDdEditCtx = false;
 function meosDdEditCtxSync(ed) {
   let v = false; try { ed = ed || vscode.window.activeTextEditor; if (ed && ed.document) v = _meosDdEdit.has(ed.document.uri.toString() + ' ' + ed.selection.active.line); } catch (_) { }
