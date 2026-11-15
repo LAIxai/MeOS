@@ -15669,11 +15669,15 @@ function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑
 }
 async function meosStopCycleKind(ed, i) { const doc = ed.document, t = doc.lineAt(i).text; if (!MEOS_RULE_LINE_RE.test(t)) return false;   // v5.1.739: ↺= 線種を次へ(MEOS_STOP_KINDS の順に8種を巡る)
   const nx = MEOS_STOP_KINDS[(meosStopKindOf(t) + 1) % MEOS_STOP_KINDS.length], u = t.replace(/(Mew!UFC\s+)(.*?)(\s*-->\s*)$/, (m, a, b, c) => a + nx + c); if (u === t) return false;
-  return ed.edit(eb => eb.replace(new vscode.Range(i, 0, i, t.length), u)); }
-async function meosStopToggleSelf(ed, i) { const doc = ed.document, t = doc.lineAt(i).text, on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return false; return ed.edit(eb => eb.replace(new vscode.Range(i, 0, i, t.length), meosStopOffText(t, on))); }
+  return ed.edit(eb => meosStopReplaceDiff(eb, i, t, u)); }
+// ★v5.1.744(俊克 11.16 am00:29 改良1「↻ボタンを押すと、左端の🛑ボタンが一旦消えてから再描画している。見苦しい」): 行を丸ごと置き換えると、行頭の札に付いたインレイヒントと飾りの錨が消え、描き直すまで🛑が抜けた
+//   → 変わった所(前後の同じ字を除いた真ん中)だけを置き換える= 札の桁には触らない
+function meosStopReplaceDiff(eb, i, t, u) { let a = 0; while (a < t.length && a < u.length && t[a] === u[a]) a++; let b = 0; while (b < t.length - a && b < u.length - a && t[t.length - 1 - b] === u[u.length - 1 - b]) b++;
+  eb.replace(new vscode.Range(i, a, i, t.length - b), u.slice(a, u.length - b)); }
+async function meosStopToggleSelf(ed, i) { const doc = ed.document, t = doc.lineAt(i).text, on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return false; return ed.edit(eb => meosStopReplaceDiff(eb, i, t, meosStopOffText(t, on))); }
 async function meosStopCycleNext(ed, i) { const doc = ed.document, next = meosStopNextLines(doc, i); if (!next || !next.length) return false;
   const sig = meosStopSignal(next), wantOff = (k) => sig === 'red' ? true : sig === 'blue' ? k > 0 : sig === 'yellow' ? k === 0 : false;   // 赤→青(すべてオフ) / 青→黄STOP(次だけオン) / 黄STOP→黄OFF(次だけオフ) / 黄OFF→赤(すべてオン)
-  return ed.edit(eb => { next.forEach((x, k) => { const w = wantOff(k); if (x.off === w) return; const t = doc.lineAt(x.line).text; eb.replace(new vscode.Range(x.line, 0, x.line, t.length), meosStopOffText(t, w)); }); }); }
+  return ed.edit(eb => { next.forEach((x, k) => { const w = wantOff(k); if (x.off === w) return; const t = doc.lineAt(x.line).text; meosStopReplaceDiff(eb, x.line, t, meosStopOffText(t, w)); }); }); }
 function meosStopSignSvg(fill, text, ink, len) { return 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="29.29,0.00 70.71,0.00 100.00,29.29 100.00,70.71 70.71,100.00 29.29,100.00 0.00,70.71 0.00,29.29" fill="#1a1a1a"/><polygon points="30.74,3.50 69.26,3.50 96.50,30.74 96.50,69.26 69.26,96.50 30.74,96.50 3.50,69.26 3.50,30.74" fill="#fff"/><polygon points="32.19,7.00 67.81,7.00 93.00,32.19 93.00,67.81 67.81,93.00 32.19,93.00 7.00,67.81 7.00,32.19" fill="' + fill + '"/><text x="50" y="62.5" font-family="Arial Narrow,Helvetica Neue,Arial,sans-serif" font-weight="700" font-size="33" textLength="' + len + '" lengthAdjust="spacingAndGlyphs" text-anchor="middle" fill="' + ink + '">' + text + '</text></svg>').toString('base64'); }
 // ★v5.1.593(俊克 11.08 am11:27「罫線 <!-- Mew!UFC --- --> を一時停止線と命名しよう。区別する為に、頭に見かけ上の標識を作って付けよう。世界的な一時停止標識は正八角形なので、オーストリアを参考に」):
 //   名前= 一時停止線(↑↓の押しっぱなしが止まる線・v5.1.579)。行頭に正八角形の STOP(黒の外枠・白の縁・赤の地・白い字)を絵で重ねる(本文の字は変えない= 見かけだけ)
