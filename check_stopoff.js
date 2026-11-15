@@ -111,8 +111,11 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
   const bg = (ln) => calls.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === ln && x.renderOptions && x.renderOptions.before && /background:/.test(x.renderOptions.before.textDecoration || '')).map(x => x.renderOptions.before.textDecoration)[0] || '';
   const nOff = (t) => t.split(T.MEOS_STOP_OFF_URL).length - 1, nStop = (t) => t.split(T.MEOS_STOP_SIGN_URL).length - 1;
   const nY = (t) => t.split(T.MEOS_STOP_YELLOW_URL).length - 1, nN = (t) => t.split(T.MEOS_STOP_NONE_URL).length - 1;
-  ok(nOff(bg(2)) === 2 && nStop(bg(2)) === 0, '開始膜の線オフ・次もオフ= 青OFF が2つ並ぶ', [nOff(bg(2)), nStop(bg(2))]);
-  ok(nOff(bg(4)) === 1 && nN(bg(4)) === 1 && nStop(bg(4)) === 0 && !/gradient/.test(bg(4)), '中の線オフ・次が無い= 左に青OFF・隣に黒NONE・線は描かない', [nOff(bg(4)), nN(bg(4))]);
+  ok(nOff(bg(4)) === 0 && /gradient/.test(bg(4)) && /opacity: 0\.3/.test(bg(4)), 'v5.1.751 オフの線もステルス= 普段は同じ線を薄く', [nOff(bg(4)), bg(4).slice(-30)]);
+  const litBg0 = (ln) => { T.meosStopLight(e6, ln); calls.length = 0; T.meosApplyTimerLineDecorations(e6); return bg(ln); };
+  { const b2 = litBg0(2); ok(nOff(b2) === 2 && nStop(b2) === 0, '開始膜の線オフ・次もオフ= 青OFF が2つ並ぶ(押した線)', [nOff(b2), nStop(b2)]); }
+  { const b4 = litBg0(4); ok(nOff(b4) === 1 && nN(b4) === 1 && nStop(b4) === 0 && !/gradient/.test(b4), '中の線オフ・次が無い= 左に青OFF・隣に黒NONE・線は描かない(押した線)', [nOff(b4), nN(b4)]); }
+  T.meosStopLight(e6, -1); calls.length = 0; T.meosApplyTimerLineDecorations(e6);
   ok(nStop(bg(6)) === 0 && nOff(bg(6)) === 0 && /gradient/.test(bg(6)), 'v5.1.749 ステルス= 普段のオンの線は標識なしで線だけ', [nStop(bg(6)), nOff(bg(6))]);
   const litBg = (ln) => { T.meosStopLight(e6, ln); calls.length = 0; T.meosApplyTimerLineDecorations(e6); return bg(ln); };
   { const b6 = litBg(6); ok(nStop(b6) === 2 && nOff(b6) === 0 && /gradient/.test(b6), 'v5.1.652 閉じ膜の線オン・外の線がすべてオン= 左右とも赤STOP と線(押した線)', [nStop(b6), nOff(b6)]); }
