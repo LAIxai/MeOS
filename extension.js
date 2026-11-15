@@ -15398,9 +15398,15 @@ async function meosDdEditKey(k) {
     const _cross = (k === 'right' && nm === 'cyc' && c >= sp[1] && S.dd) || (k === 'left' && nm === 'dd' && c <= sp[0] && S.cyc);
     meosDbg('[ddKey] k=' + k + ' 窓=' + nm + ' c=' + c + ' 範囲=' + JSON.stringify(sp) + ' 間隔=' + _gap + ' 止=' + _meosDdKey.hold + ' 渡る候補=' + !!_cross);   // v5.1.742: 741 バグ1「押しっ放しで一時停止しない」の実測
     if (_cross && !(_meosDdKey.hold ? _gap >= 150 : _gap >= 300)) { _meosDdKey.hold = true; meosDbg('[ddKey] → 境で止める'); return; }
-    _meosDdKey.hold = false;   // ★v5.1.738(俊克 736「文字カーソルだけで移動できて、どっちでも直せれば最高」): 橙と緑は横並び= 橙の尻で→は緑の頭へ・緑の頭で←は橙の尻へ
-    if (k === 'right' && nm === 'cyc' && c >= sp[1] && S.dd) { _meosDdEditSp.set(key, 'dd'); const P = new vscode.Position(L, S.dd[0]); ed.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(ed); return; }
-    if (k === 'left' && nm === 'dd' && c <= sp[0] && S.cyc) { _meosDdEditSp.set(key, 'cyc'); const P = new vscode.Position(L, S.cyc[1]); ed.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(ed); return; } }
+    // ★v5.1.743(742 実測: 境で止めた直後に拡張が0.45秒詰まり、溜まったリピートの先頭が「間の空いた1打」に見えて渡っていた= 14:56:16.979 止め→17.438 間隔459で渡る→ 後ろに間隔0の塊):
+    //   ↑↓の v5.1.583 と同じ= 間の空いた1打は70ms待つ。続くキーが来れば押しっぱなし(止めたまま)・来なければ本当の押し直し= 渡る
+    //   ★v5.1.738(俊克 736「文字カーソルだけで移動できて、どっちでも直せれば最高」): 橙と緑は横並び= 橙の尻で→は緑の頭へ・緑の頭で←は橙の尻へ
+    if (_cross) { const k0 = key, t0 = _now; _meosDdKey.hold = true;
+      setTimeout(() => setImmediate(() => { if (_meosDdKey.at !== t0) { meosDbg('[ddKey] → 続くキーあり= 押しっぱなし(止めたまま)'); return; }
+        const e2 = vscode.window.activeTextEditor; if (!e2 || e2.document.uri.toString() + ' ' + L !== k0 || !_meosDdEdit.has(k0)) return;
+        _meosDdKey.hold = false; const to = k === 'right' ? 'dd' : 'cyc'; _meosDdEditSp.set(k0, to); const P = new vscode.Position(L, k === 'right' ? S.dd[0] : S.cyc[1]); e2.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(e2); meosDbg('[ddKey] → 押し直し= ' + to + ' へ渡る'); }), 70);
+      return; }
+    _meosDdKey.hold = false; }
   if (k === 'left') c = Math.max(sp[0], c - 1); else if (k === 'right') c = Math.min(sp[1], c + 1); else if (k === 'up' || k === 'home') c = sp[0]; else if (k === 'down' || k === 'end') c = sp[1];
   const P = new vscode.Position(L, c); ed.selection = new vscode.Selection(P, P);
 }
@@ -15699,8 +15705,9 @@ const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3
 const _meosStopRotUrl = new Map();
 function meosStopRotUrl(c, k) { k = Math.max(0, k | 0); const key = c + ' ' + k; let u = _meosStopRotUrl.get(key); if (u) return u;   // v5.1.739: 線種の↺= 線と同じ色の矢印
   // ★v5.1.741(俊克 740 改良2「メニューバーのように、回転角度をボタンごとに変える」「円の中に↻を入れよう」): 円の中に右回りの↻・線種の番号 k ごとに45°ずつ回す(矢印の先の向き= 今の線種)
+  // ★v5.1.743(俊克 742 改良1「時計回りに回転するので、↻に替えよう」): 741 で左右を裏返した矢印を 739 の向きへ戻す。
   // ★v5.1.742(俊克 741 改良1「円をそれ自身の色にして、↻を白に」・バグ「↻が回転しない」= 741 は番号(meosStopKindOf)を MEOS_STOP_KINDS.indexOf で引き直し、いつも0だった)
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="' + c + '"/><g transform="rotate(' + (k * 45) + ' 50 50) translate(50 50) scale(0.62) translate(-50 -50)"><path d="M30 26 A32 32 0 1 1 18 52" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/><polygon points="48,4 16,22 46,44" fill="#fff"/></g></svg>';
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="' + c + '"/><g transform="rotate(' + (k * 45) + ' 50 50) translate(50 50) scale(0.62) translate(-50 -50)"><path d="M70 26 A32 32 0 1 0 82 52" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/><polygon points="52,4 84,22 54,44" fill="#fff"/></g></svg>';
   u = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); _meosStopRotUrl.set(key, u); return u; }
 function meosStopEdgeColor(edge) { return edge === 1 ? 'rgba(22, 163, 74, 0.98)' : edge === -1 ? 'rgba(37, 99, 235, 0.98)' : '#e0803a'; }
 const MEOS_STOP_OFF_URL = meosStopSignSvg('#1e88e5', 'OFF', '#fff', 56);   // v5.1.645: オフの標識(灰) / ★v5.1.652: 青OFF= 通過してよい(信号の青)
