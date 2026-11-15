@@ -15334,7 +15334,8 @@ let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
 let meosClockBadgeHideDeco = null, meosStopHide2Deco = null;
-const _meosDdPeek = new Map(), _meosDdPeekAt = new Map(); const _meosDdPeekWin = new Map();   // v5.1.721: uri+' '+行 → {a:窓を置いた桁, cyc:[s,e], dd:[s,e]}   // ★v5.1.717(俊克 11.15 am00:52「⏸️ボタンを押したとき…↺↻(0y0d1h0m0s)×2 と dd= の2箇所だけ見えるようにする。どっちかをクリックして修正に自然に入る。5秒しても何もしなければ閉じる」): uri+' '+行 → 見せる期限
+const _meosDdPeek = new Map(), _meosDdPeekAt = new Map(); const _meosDdEdit = new Set(); let meosDdEditDeco = null, meosDdEditTodayDeco = null, meosDdEditHideDeco = null;   // ★v5.1.722(俊克 721 改良1「覗き窓をクリックすると全体がRawに変わってしまうが、前のように、この覗き窓の中で修正ができるように。他の部分を間違って修正しない為でもある」): uri+' '+行= 窓の中で直している行
+const _meosDdPeekWin = new Map();   // v5.1.721: uri+' '+行 → {a:窓を置いた桁, cyc:[s,e], dd:[s,e]}   // ★v5.1.717(俊克 11.15 am00:52「⏸️ボタンを押したとき…↺↻(0y0d1h0m0s)×2 と dd= の2箇所だけ見えるようにする。どっちかをクリックして修正に自然に入る。5秒しても何もしなければ閉じる」): uri+' '+行 → 見せる期限
 function meosRawRowsOf(text, wrap) {   // ★v5.1.721: Raw の並びの段割り(折り返し幅で、空白の後ろで折る= Monaco の素の規則の近似)。幅は家の物差し(全角= _meosTableCjkW・異体字選択子は0)
   const w = meosRawChW;
   const rows = []; let s = 0, x = 0, brk = -1, k = 0;
@@ -15342,8 +15343,8 @@ function meosRawRowsOf(text, wrap) {   // ★v5.1.721: Raw の並びの段割り
   if (!(wrap > 0)) return [[0, (text || '').length]];
   let rs = 0; x = 0; brk = -1;
   for (k = 0; k < cps.length; k++) {
-    const c = cps[k], cw = w(c);
-    if (c !== ' ' && x + cw > wrap && k > rs) { const at = (brk > rs) ? brk : k; rows.push([idx[rs], idx[at]]); rs = at; x = 0; for (let q = rs; q < k; q++) x += w(cps[q]); brk = -1; }
+    const c = cps[k], cw = w(c, cps[k + 1]);
+    if (c !== ' ' && x + cw > wrap && k > rs) { const at = (brk > rs) ? brk : k; rows.push([idx[rs], idx[at]]); rs = at; x = 0; for (let q = rs; q < k; q++) x += w(cps[q], cps[q + 1]); brk = -1; }
     x += cw; if (c === ' ') brk = k + 1;
   }
   rows.push([idx[rs], idx[cps.length]]);
@@ -15363,8 +15364,8 @@ function meosDdPeekWindows(doc, i, txt, items) {   // ★v5.1.721: 周期と dd=
   _meosDdPeekWin.set(doc.uri.toString() + ' ' + i, win);
   meosDbg('[dd] 覗き窓 行=' + (i + 1) + ' 段=' + rows.length + ' 周期=' + (win.cyc ? JSON.stringify(at(win.cyc[0])) : '-') + ' dd=' + (win.dd ? JSON.stringify(at(win.dd[0])) : '-'));
 }
-function meosRawChW(ch) { const cp = ch.codePointAt(0); if (/[\ufe00-\ufe0f\u200d]/.test(ch)) return 0; if (cp >= 0x1F000 || (cp >= 0x2300 && cp <= 0x23FF) || (cp >= 0x2600 && cp <= 0x27BF)) return 2; return isWideCodePoint(cp) ? _meosTableCjkW : 1; }   // v5.1.721: 絵文字は2桁(717 の Raw のスクショを画素で測った= ⏰ 46px/1桁 24.6px≒1.9)・全角は家の値
-function meosRenderColsF(text) { let n = 0; for (const ch of (text || '')) n += meosRawChW(ch); return n; }
+function meosRawChW(ch, nx) { const cp = ch.codePointAt(0); if (/[\ufe00-\ufe0f\u200d]/.test(ch)) return 0; if (/\p{Emoji_Presentation}/u.test(ch) || (nx === '\ufe0f' && /\p{Extended_Pictographic}/u.test(ch))) return 2; return (isWideCodePoint(cp) && !/\p{Extended_Pictographic}/u.test(ch)) ? _meosTableCjkW : 1; }   // v5.1.722(721 のスクショ: 周期の窓が2桁右): 絵の顔(⏰🔔)だけ2桁・字の顔(⏸ ↺↻)は1桁   // v5.1.721: 絵文字は2桁(717 の Raw のスクショを画素で測った= ⏰ 46px/1桁 24.6px≒1.9)・全角は家の値
+function meosRenderColsF(text) { const a = Array.from(text || ''); let n = 0; for (let k = 0; k < a.length; k++) n += meosRawChW(a[k], a[k + 1]); return n; }
 let meosClockGap3Deco = null;
 let meosClockGapNDeco = null;   // ★v4.2.483: ±1s の札の前の隙間(6px/9px)
 const _meosNudgeHints = new Map();   // ★v4.2.483: uri -> [{line, col, label}]= ⏰行のボタンの札(v4.2.487: 全部のボタン)
@@ -15734,7 +15735,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     //   動いているものの本文の表示that、ウィンドウ下端にも表示される、と言うのthat正しい見せ方でしょ?」):
     //   ★★**タイトルは、走っている1本だけthat見せる**= 待っている⏰の `// …` は畳んで消す。
     //   ★見せる時は**下端と同じ字**= 周回数を入れた形(meosChainFillSlot)。字を作る所は1つ(v4.2.91の下端と同じ関数)。
-    const titles = [], _titleAt = new Map(), ddPeek = [];
+    const titles = [], _titleAt = new Map(), ddPeek = [], ddEdit = [], ddEditToday = [], ddEditHide = [];
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -15837,6 +15838,14 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   718〜720 は行を Raw の並びにしていた(飾りが消える)。→ ⏰ボタン・表の見せかけと同じ作り= 飾りはそのまま、Raw の位置に窓の絵を被せる。
           //   窓は ⏰ の桁(飾りの1段目)に置いた before を absolute で Raw の段/桁へ動かす。押すと before の桁にカーソル→ 選択の口がその窓の字へ運ぶ
           if (!_rawHere && (_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now()) { try { meosDdPeekWindows(doc, i, txt, items); } catch (_) { } }
+          if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) _meosDdEdit.delete(uri + ' ' + i); else try {   // v5.1.722: 窓の中で直す= その行は Raw の並び・2か所以外は透明(幅は残す)・2か所に枠
+            const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt), sp = [];
+            if (_cy) { const a = _cy.index + _cy[0].search(/[^↺↻]/); sp.push([a, _cy.index + _cy[0].length, false]); }
+            if (_dq) { const a = _dq.index + _dq[1].length; let t = false; try { t = new Date(meosClockDdParse(_dq[2].slice(3))).toDateString() === new Date().toDateString(); } catch (_) { } sp.push([a, a + _dq[2].length, t]); }
+            sp.sort((x, y) => x[0] - y[0]); let at = 0;
+            for (const [a, b, t] of sp) { if (a > at) ddEditHide.push(new vscode.Range(i, at, i, a)); (t ? ddEditToday : ddEdit).push(new vscode.Range(i, a, i, b)); at = b; }
+            if (at < txt.length) ddEditHide.push(new vscode.Range(i, at, i, txt.length));
+          } catch (_) { } }
           // ★★★v4.1.149(俊克 9/6 am00:12「いっそのこと、2行目も『\u23f0\ud83d\udd12 2026-09-05(s) 20:05 \u21ba\u21bb3m/1m』
           //   **だけを見せかけ表示**しようよ。文字カーソルthat入った時に、生データthat見えればいいんだからさ。
           //   **これですべてthatすっきりする**よ」):
@@ -16603,6 +16612,12 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (reps.length && !meosClockRepDeco) meosClockRepDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
+    if (ddEdit.length && !meosDdEditDeco) meosDdEditDeco = vscode.window.createTextEditorDecorationType({ border: '1px solid #e0803a', borderRadius: '3px', backgroundColor: 'rgba(224,128,58,0.18)', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosDdEditDeco) editor.setDecorations(meosDdEditDeco, ddEdit);   // v5.1.722: 窓の中で直す(橙)
+    if (ddEditToday.length && !meosDdEditTodayDeco) meosDdEditTodayDeco = vscode.window.createTextEditorDecorationType({ border: '1px solid #3fb950', borderRadius: '3px', backgroundColor: 'rgba(63,185,80,0.18)', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosDdEditTodayDeco) editor.setDecorations(meosDdEditTodayDeco, ddEditToday);   // 今日の dd= は緑
+    if (ddEditHide.length && !meosDdEditHideDeco) meosDdEditHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosDdEditHideDeco) editor.setDecorations(meosDdEditHideDeco, ddEditHide);   // 2か所以外は透明(幅は残す)
     if (stopHide2.length && !meosStopHide2Deco) meosStopHide2Deco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosStopHide2Deco) editor.setDecorations(meosStopHide2Deco, stopHide2);   // v5.1.645
     if (gap3.length && !meosClockGap3Deco) meosClockGap3Deco = vscode.window.createTextEditorDecorationType({
@@ -42804,7 +42819,9 @@ function meosRawLines(editor, skipCaret, caretAt) {
     else for (const sl of (editor.selections && editor.selections.length ? editor.selections : [editor.selection])) {
       out.add(sl.active.line); out.add(sl.anchor.line);
     }
+    const _edU = editor.document.uri.toString() + ' ';
     for (const ln of Array.from(out)) {
+      if (_meosDdEdit.size && _meosDdEdit.has(_edU + ln)) continue;   // v5.1.722: 窓の中で直している⏰行は膜の▼▲・バッジ行へ広げない
       const m = meosFcMate(editor.document, ln);
       { const _fm = meosFusenMateLines(editor.document, ln); if (_fm) for (let l = _fm.from; l <= _fm.to; l++) out.add(l); }   // v5.1.710: 付箋の縁に居る= 付箋ごと生
       if (m) for (const l of (m.lines || [])) if (l >= 0) out.add(l);
@@ -47098,11 +47115,16 @@ function activate(context) {
   // ★v5.1.720(俊克 719 バグ1「停止しても覗き窓が出なくなった」): 719 は「カーソルがその行に居れば覗き終わり」= ⏸️ボタン自体がその行にあり、押した瞬間に消していた。
   //   → 覗きが始まった**後**のクリック/キー移動でその行に入った時だけ終える(⏸️を押した選択は始まる前に届く)。終えたらふつうの Raw で直し続けられる(改良1)
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try {
+    { const u0 = e.textEditor.document.uri.toString() + ' ', l0 = e.textEditor.selection.active.line; let gone = false; for (const k0 of Array.from(_meosDdEdit)) if (k0.startsWith(u0)) { let out = Number(k0.slice(u0.length)) !== l0;
+      if (!out) { try { const t = e.textEditor.document.lineAt(l0).text, c = e.textEditor.selection.active.character, cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(t), dq = /(^|\s)(dd=\S+)/.exec(t);
+        const inCy = cy && c >= cy.index + cy[0].search(/[^↺↻]/) && c <= cy.index + cy[0].length, inDd = dq && c >= dq.index + dq[1].length && c <= dq.index + dq[1].length + dq[2].length;
+        out = !(inCy || inDd); } catch (_) { } }   // 窓の外へ出たら= 見えない所を直さないよう、ふつうの Raw に戻す
+      if (out) { _meosDdEdit.delete(k0); gone = true; } } if (gone) { try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); } }   // v5.1.722: 行を出たら窓の中の直しは終わり
     if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
     // v5.1.721: 窓を押した時だけ= カーソルが窓の桁(⏰の桁=周期 / その次=dd)に落ちた時。他の動き(⏸️の約1秒後に MeOS が動かすカーソル等)では消さない(720 の実測)
     const w = _meosDdPeekWin.get(k), ch = e.textEditor.selection.active.character;
     if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (ch === w.a || ch === w.a + 1)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
-      const sp = (ch === w.a) ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdPeekWin.delete(k);
+      const sp = (ch === w.a) ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdPeekWin.delete(k); _meosDdEdit.add(k);
       if (sp) { const to = (sp === w.dd) ? sp[0] + 3 : sp[0] + 1; const P = new vscode.Position(ln, to); e.textEditor.selection = new vscode.Selection(P, P); }   // 周期は ( の後ろ・dd は = の後ろへ
       meosDbg('[dd] 覗き窓を押した(' + (ch === w.a ? '周期' : 'dd') + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
   } catch (_) { } }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
