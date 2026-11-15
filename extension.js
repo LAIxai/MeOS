@@ -15671,13 +15671,8 @@ async function meosStopCycleKind(ed, i, to) { const doc = ed.document, t = doc.l
   const nx = MEOS_STOP_KINDS[typeof to === 'number' ? to : (meosStopKindOf(t) + 1) % MEOS_STOP_KINDS.length], u = t.replace(/(Mew!UFC\s+)(.*?)(\s*-->\s*)$/, (m, a, b, c) => a + nx + c); if (u === t) return false;
   return ed.edit(eb => meosStopReplaceDiff(eb, i, t, u)); }
 // ★v5.1.745(俊克 744 改良2「↻ボタンを押して1秒以内に数字キーを押すと、その角度になるようにしよう」): ↻を押してから1秒= 文脈キー meos.stopDigit。1〜8 のキーはその番号の線種(1=実線 … 8=二重波線)。1打で終わり
-let _meosStopHover = null;   // v5.1.746: ホバーの口が今訊いている停止線(uri+' '+行)。無ければ null
-function meosStopHoverNote(doc, pos) { try {
-  const t = doc.lineAt(pos.line).text, on = MEOS_RULE_LINE_RE.test(t), k = on ? doc.uri.toString() + ' ' + pos.line : null;
-  meosDbg('[stopHover] 行=' + (pos.line + 1) + ' 桁=' + pos.character + ' 停止線=' + on + ' 今=' + (_meosStopHover || '-'));   // 試しの実測(ホバーの口が線の上のどこで呼ばれるか)
-  if (k === _meosStopHover) return; const was = _meosStopHover; _meosStopHover = k;
-  for (const ed of vscode.window.visibleTextEditors) if (ed.document === doc || (was && was.startsWith(ed.document.uri.toString() + ' '))) meosApplyTimerLineDecorations(ed);
-} catch (_) { } }
+const MEOS_STOP_FAINT = 0.3, _meosStopFaint = new Map();   // v5.1.747: オンの線の標識と↻の濃さ(普段は薄く)
+function meosStopFaintUrl(u) { let f = _meosStopFaint.get(u); if (f) return f; try { const svg = Buffer.from(u.slice(u.indexOf(',') + 1), 'base64').toString('utf8').replace('<svg ', '<svg opacity="' + MEOS_STOP_FAINT + '" '); f = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); } catch (_) { f = u; } _meosStopFaint.set(u, f); return f; }
 let _meosStopDigit = null;
 function meosStopDigitArm(ed, i) { if (_meosStopDigit && _meosStopDigit.timer) clearTimeout(_meosStopDigit.timer);
   _meosStopDigit = { uri: ed.document.uri.toString(), line: i, timer: setTimeout(meosStopDigitDisarm, 1000) }; vscode.commands.executeCommand('setContext', 'meos.stopDigit', true); }
@@ -15899,12 +15894,13 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _nextU = !_sb45 ? MEOS_STOP_SIGN_URL : ({ red: MEOS_STOP_SIGN_URL, yellow: MEOS_STOP_YELLOW_URL, yellowOff: MEOS_STOP_YELLOW_OFF_URL, blue: MEOS_STOP_OFF_URL, none: MEOS_STOP_NONE_URL })[_sb45.sig] || MEOS_STOP_SIGN_URL;   // v5.1.652: 右= 次の線の信号
               // ★v5.1.746(俊克 745 改良3「両端の🛑と↻ボタンを通常時は非表示にして、ポインターを線の上にホーバーした時だけ表示」→ am00:4x「ホバーを試す」): オンの線は普段は線だけ(行の端から端まで)・
               //   ホバーの口(provideHover)がその行を訊いてきた時だけ標識と↻を描く。押す札は普段もそのまま(見えないだけ)。オフの線は線が無いので今まで通り
-              const _hov46 = !!_meosStopHover && _meosStopHover === doc.uri.toString() + ' ' + i;
-              const _bg45 = (!_off45 && !_hov46) ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i)) : _off45
+              // ★v5.1.747(746 不発= 俊克の設定は Markdown のホバーが切ってある("editor.hover.enabled": "off")→ ホバーの口は一度も呼ばれない。俊克「普段は薄く」): オンの線の標識と↻は薄く描く(線が主役)。押す札は同じ
+              const _fa = (u) => _off45 ? u : meosStopFaintUrl(u);
+              const _bg45 = _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : (_sb45 && _sb45.rot > 0)   // v5.1.739: 左の標識の右の真横に↺(札は桁2)・線は↺の後ろから
-                  ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), meosStopKindOf(txt)) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
-                  : _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
+                  ? _sign(_fa(MEOS_STOP_SIGN_URL), 'left') + ', ' + 'url(' + _fa(meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), meosStopKindOf(txt))) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_fa(_nextU), 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
+                  : _sign(_fa(MEOS_STOP_SIGN_URL), 'left') + ', ' + _sign(_fa(_nextU), 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
               // ★v5.1.646(俊克 pm09:48 バグ1「開始膜の線がオンのときに、右の🛑上で選択指に変わらない。オフにすれば押せる」): 645 は右端の札の位置を詰め物の札(空白56個)の幅で見積もった= 札の字の幅と箱の ch がずれ、札が標識の下に来ていなかった。
               //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
               const _mid46 = !!(_sb45 && _sb45.pad > 0);
@@ -48260,7 +48256,6 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
     vscode.languages.registerHoverProvider(foldingSelector, {
       provideHover(document, position) {
         const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
-        meosStopHoverNote(document, position);   // v5.1.746: 停止線の標識と↻はホバーの時だけ
         // v0.9.486: try RED first. On an opening membrane both `[oGJF=v]🟢`
         // and `[tRJF=v]🔴` live on the same line and visually sit side-by-
         // side (the 8-char `[tRJF=v]` between them collapses to 0 width

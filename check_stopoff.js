@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMemRecentlyFolded, _meosMemJustFolded, MEOS_RULE_LINE_RE, MEOS_RULE_OFF_RE, MEOS_STOP_OFF_URL, MEOS_STOP_SIGN_URL, meosIsRuleAny, meosStopOffText, meosStopNextLines, meosStopSignal, MEOS_STOP_YELLOW_URL, MEOS_STOP_YELLOW_OFF_URL, MEOS_STOP_NONE_URL, meosStopBtnSpots, meosStopToggleSelf, meosStopCycleNext, meosStopKindOf, meosMembraneRuleTarget, meosStopLineNear, makeDecorations, meosApplyTimerLineDecorations, setCtx: (c) => { extensionContext = c; }, setStopHover: (k) => { _meosStopHover = k; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMemRecentlyFolded, _meosMemJustFolded, MEOS_RULE_LINE_RE, MEOS_RULE_OFF_RE, MEOS_STOP_OFF_URL, MEOS_STOP_SIGN_URL, meosStopFaintUrl, meosIsRuleAny, meosStopOffText, meosStopNextLines, meosStopSignal, MEOS_STOP_YELLOW_URL, MEOS_STOP_YELLOW_OFF_URL, MEOS_STOP_NONE_URL, meosStopBtnSpots, meosStopToggleSelf, meosStopCycleNext, meosStopKindOf, meosMembraneRuleTarget, meosStopLineNear, makeDecorations, meosApplyTimerLineDecorations, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -113,11 +113,9 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
   const nY = (t) => t.split(T.MEOS_STOP_YELLOW_URL).length - 1, nN = (t) => t.split(T.MEOS_STOP_NONE_URL).length - 1;
   ok(nOff(bg(2)) === 2 && nStop(bg(2)) === 0, '開始膜の線オフ・次もオフ= 青OFF が2つ並ぶ', [nOff(bg(2)), nStop(bg(2))]);
   ok(nOff(bg(4)) === 1 && nN(bg(4)) === 1 && nStop(bg(4)) === 0 && !/gradient/.test(bg(4)), '中の線オフ・次が無い= 左に青OFF・隣に黒NONE・線は描かない', [nOff(bg(4)), nN(bg(4))]);
-  ok(nStop(bg(6)) === 0 && /gradient/.test(bg(6)), 'v5.1.746 ホバーしていないオンの線= 標識なしで線だけ', [nStop(bg(6))]);
-  const hovBg = (ln) => { T.setStopHover(d6.uri.toString() + ' ' + ln); calls.length = 0; T.meosApplyTimerLineDecorations(e6); const r = bg(ln); T.setStopHover(null); return r; };
-  { const b6 = hovBg(6); ok(nStop(b6) === 2 && nOff(b6) === 0 && /gradient/.test(b6), 'v5.1.652 閉じ膜の線オン・外の線がすべてオン= 左右とも赤STOP と線(ホバー中)', [nStop(b6), nOff(b6)]); }
-  { const b9 = hovBg(9); ok(nStop(b9) === 1 && nN(b9) === 1, '次が無い線= 右は黒NONE(ホバー中)', [nStop(b9), nN(b9)]); }
-  calls.length = 0; T.meosApplyTimerLineDecorations(e6);
+  const nFS = (t) => t.split(T.meosStopFaintUrl(T.MEOS_STOP_SIGN_URL)).length - 1, nFN = (t) => t.split(T.meosStopFaintUrl(T.MEOS_STOP_NONE_URL)).length - 1;
+  ok(nFS(bg(6)) === 2 && nOff(bg(6)) === 0 && /gradient/.test(bg(6)), 'v5.1.652 閉じ膜の線オン・外の線がすべてオン= 左右とも赤STOP と線(v5.1.747 薄く)', [nFS(bg(6)), nOff(bg(6))]);
+  ok(nFS(bg(9)) === 1 && nFN(bg(9)) === 1, '次が無い線= 右は黒NONE(v5.1.747 薄く)', [nFS(bg(9)), nFN(bg(9))]);
   ok(/position: absolute/.test(bg(4)) && /position: relative/.test(bg(9)), 'オフの線は箱を浮かせる・オンの線は札の間に置く', [bg(4).slice(0, 40), bg(9).slice(0, 40)]);
   { const d7 = doc(['top', H1, R, 'a3', R, 'a5', R, H2]), c7 = [], e7 = mkEd(d7, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0, character: 0 }, isEmpty: true });
     e7.selections = [e7.selection]; e7.setDecorations = (deco, items) => c7.push({ deco, items: items || [] }); stub.window.activeTextEditor = e7; stub.window.visibleTextEditors = [e7]; T.meosApplyTimerLineDecorations(e7);
