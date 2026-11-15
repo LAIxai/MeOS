@@ -15905,7 +15905,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v5.1.747(746 不発= 俊克の設定は Markdown のホバーが切ってある("editor.hover.enabled": "off")→ ホバーの口は一度も呼ばれない。俊克「普段は薄く」): オンの線の標識と↻は薄く描く(線が主役)。押す札は同じ
               const _lit48 = !!_meosStopLit && _meosStopLit.key === doc.uri.toString() + ' ' + i;   // v5.1.748: 押した線は3秒濃く
               // ★v5.1.749(俊克 am01:20「ステルスモードは完全に透明だよ。つまり、線だけが見えるようにしよう」): 普段のオンの線は線だけ(行の端から端まで)・押した線だけ3秒、標識と↻を濃く。押す札は普段もそのまま
-              // ★v5.1.751(俊克 am01:54「1つ穴があった。OFFにすると、10秒経っても、ステルスモードにならない」): オフの線もステルス= 普段は同じ線種の線を薄く(30%)=「線はあるが今は止まらない」。押すと10秒 青OFF と信号
+              // ★v5.1.751(俊克 am01:54「1つ穴があった。OFFにすると、10秒経っても、ステルスモードにならない」): オフの線もステルス= 普段は同じ線種の線を薄く(30%→v5.1.752 で15%)=「線はあるが今は止まらない」。押すと10秒 青OFF と信号
               const _ghost51 = _off45 && !_lit48;
               const _bg45 = !_lit48 ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i)) : _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
@@ -15916,7 +15916,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
               const _mid46 = !!(_sb45 && _sb45.pad > 0);
               items.push({ range: new vscode.Range(i, _mid46 ? _sb45.pad : 0, i, _mid46 ? _sb45.pad : 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + (MEOS_STOP_BTN_CH * (_sb45.rot > 0 ? 2 : 1) + 1) + 'ch; margin-right: -' + MEOS_STOP_BTN_CH + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' + (_ghost51 ? ' opacity: 0.3;' : '') } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
+                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + (MEOS_STOP_BTN_CH * (_sb45.rot > 0 ? 2 : 1) + 1) + 'ch; margin-right: -' + MEOS_STOP_BTN_CH + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' + (_ghost51 ? ' opacity: 0.15;' : '')   /* v5.1.752(俊克 751「今の半分でも良いかも」→ 15%) */ } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
               // ★v5.1.672(俊克 11.12 pm01:33 バグ1「停止線の線のところをクリックすると、OFFになってしまう。ここはRawにするべき」): 桁は隣り合う桁の位置の中点で分かれる(v5.1.571)= 線の右半分を押すと桁3(右の札)に落ちて信号が回っていた。
               //   箱を1ch縮め、桁3に幅1chの詰め物を置いて右の札を桁4へ= 線のどこを押しても桁2か3(何もしない→ ふつうに生になる)。右の札の手前0.5chだけが札
               // ★v5.1.673(俊克 pm03:54 バグ1「直ってない。線の右半分→Raw・左半分→OFF。両端の🛑だけが選択指=そこだけがボタン。選択指でなければRawに」): 実機の桁の位置は字の前の絵(before)の後ろで測られる= 桁2の箱は桁1と桁2の間に立ち、左半分が桁1(左の札)に落ちていた。
