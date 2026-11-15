@@ -15890,7 +15890,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   窓は ⏰ の桁(飾りの1段目)に置いた before を absolute で Raw の段/桁へ動かす。押すと before の桁にカーソル→ 選択の口がその窓の字へ運ぶ
           if (!_rawHere && (_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now()) { try { meosDdPeekWindows(doc, i, txt, items); } catch (_) { } }
           if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) { _meosDdEdit.delete(uri + ' ' + i); meosDdEditCtxSync(editor); setTimeout(() => meosDdPadStrip(editor, i), 0); } else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character);
-            const _cyE = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt); if (_cyE) { const e1 = _cyE.index + _cyE[0].length; ddEditHide.push(new vscode.Range(i, _cyE.index + _cyE[0].search(/[^↺↻]/), i, e1 + (txt[e1] === ' ' ? 1 : 0))); }
+            const _cyE = _meosDdEditSp.get(uri + ' ' + i) === 'cyc' && /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt); if (_cyE) {   // ★v5.1.736(俊克 735 バグ1「緑枠から橙枠をクリックするとRawになる。逆は移動できる」): dd を直す間も周期を隠していた→ 橙の窓の下に字が無く、押すと別の桁に落ちて「窓の外」と読んでいた。周期を隠すのは周期を直す間だけ
+            const e1 = _cyE.index + _cyE[0].length; ddEditHide.push(new vscode.Range(i, _cyE.index + _cyE[0].search(/[^↺↻]/), i, e1 + (txt[e1] === ' ' ? 1 : 0))); }
             { const _dqE = /(^|\s)(dd=\S+)/.exec(txt); if (_dqE) { const s1 = _dqE.index + _dqE[1].length, e1 = s1 + _dqE[2].length; let e2 = e1; while (txt[e2] === ' ' || txt[e2] === '\u00a0') e2++; ddEditHide.push(new vscode.Range(i, s1, i, e2)); } }   // v5.1.731: 後ろの足した空白ごと隠す   // ★v5.1.729(俊克 728 改良1「本文の文字カーソルと二重に見える」): 直す字を display:none にする= 隠れた字の中では Monaco が本物のカーソルを描けない(測れない)。後ろの空白も隠す= 尻の桁でも見えない   // ★v5.1.727(俊克 726 バグ1「橙色の枠の中で動かすと本文の方の文字カーソルも追従。緑色の方は正しいのに、なぜ?」): dd は隠した字の中なので本物のカーソルが見えない。周期は見えている字だった→ 直す間は飾りの周期も畳む(窓が同じ字を見せる)
           } catch (_) { } }   // v5.1.725: 直している間も覗き窓の姿のまま(窓に今の字とカーソルの棒)
           // ★★★v4.1.149(俊克 9/6 am00:12「いっそのこと、2行目も『\u23f0\ud83d\udd12 2026-09-05(s) 20:05 \u21ba\u21bb3m/1m』
@@ -47166,7 +47167,8 @@ function activate(context) {
       for (const k0 of Array.from(_meosDdEdit)) if (k0.startsWith(u0)) { const L0 = Number(k0.slice(u0.length)); let out = false, to = -1;
         try { const S = meosDdEditSpans(e.textEditor.document.lineAt(L0).text);   // v5.1.729: 周期は ( の後ろから・dd は = の後ろから(キーの口と同じ1つの物差し)
           const inn = (sp) => !!sp && c >= sp[0] && c <= sp[1], act = _meosDdEditSp.get(k0) || 'dd', w0 = _meosDdPeekWin.get(k0);
-          if (l0 === L0 && inn(S.cyc)) _meosDdEditSp.set(k0, 'cyc');
+          if (l0 === L0 && !kb && S.cyc && c === S.cyc[0] - 1) { _meosDdEditSp.set(k0, 'cyc'); to = S.cyc[0]; }   // v5.1.736: 窓の ( の上を押した= 周期の窓の頭
+          else if (l0 === L0 && inn(S.cyc)) _meosDdEditSp.set(k0, 'cyc');
           else if (l0 === L0 && inn(S.dd)) _meosDdEditSp.set(k0, 'dd');
           else if (l0 === L0 && w0 && (c === w0.a || c === w0.a + 1) && S[c === w0.a ? 'cyc' : 'dd']) { const n = c === w0.a ? 'cyc' : 'dd'; _meosDdEditSp.set(k0, n); to = S[n][0]; }   // v5.1.727: もう1つの窓を押した= その窓へ
           else if (kb && S[act]) { const sp = S[act]; to = (l0 === L0) ? (c < sp[0] ? sp[0] : sp[1]) : (l0 < L0 ? sp[0] : sp[1]); }   // ←/→ は端で止まる・↑ は頭・↓ は尻
