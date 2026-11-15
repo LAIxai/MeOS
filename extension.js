@@ -15620,14 +15620,17 @@ function meosClockLineHints(editor, doc, i) {
   } catch (_) { }
   return out;
 }
-const MEOS_RULE_LINE_RE = /^\s*<!--\s*Mew!UFC\s+(?:-{3,}|={3,}|-\.-(?:\.-)*\.?|-\.\.-(?:\.\.-)*|-(?: -)+|\.{3,}|[\u301c\uff5e]{3,}|\u2248{3,})\s*-->\s*$/;   // v5.1.112: 罫線の行(`<!-- Mew!UFC --- -->`) / v5.1.597: === 二重線・-.- 一点鎖線も   // v5.1.639: - - 破線・... 点線・〜〜〜 波線・≈≈≈ 二重波線も
+const MEOS_RULE_LINE_RE = /^\s*<!--\s*Mew!UFC\s+(?:-{3,}|={3,}|-\.-(?:\.-)*\.?|-\.\.-(?:\.\.-)*|-(?: -)+|\.{3,}|[\u301c\uff5e]{3,}|\u2248{3,})(?:\s*\u26aa)?\s*-->\s*$/;   // v5.1.753: 後ろの ⚪= 薄い線(止まる) / v5.1.112: 罫線の行(`<!-- Mew!UFC --- -->`) / v5.1.597: === 二重線・-.- 一点鎖線も   // v5.1.639: - - 破線・... 点線・〜〜〜 波線・≈≈≈ 二重波線も
 // ★v5.1.645(俊克 11.10 pm09:22〜09:34「停止線の🛑ボタンでオンオフをできるようにしよう。膜の停止線は、左側の🛑で自分自身のオンオフ、右側の🛑で膜内部の線を一括オンオフ」
 //   「線は消して、左端の🛑のSTOP表示をOFFに変える」「開始膜の線はOFFにしたときに🛑🛑と2つ並べて、左はOFF、右は一括OFFならOFF・オンならSTOP」「閉じ膜の線は内部の線と同様。右側はボタンにしない」):
 //   オフ= 本文に `<!-- Mew!UFC --- 🚫 -->`(Format Me の取消🚫と同じ印・コピペしてもオフのまま)。オフの線は止まらない(Cmd+↓/↑・長押し・膜の関所の判定は MEOS_RULE_LINE_RE= オンだけ)。
 //   一括の状態は覚えで持たず、本文から読む= 中の線が全部オフなら OFF、1本でもオンなら STOP([[feedback_reconcile_dont_remember]])。中の線= 開始膜の線と閉じ膜の線の間(閉じ膜の線は数えない・囲いの中は数えない)
 const MEOS_RULE_OFF_RE = new RegExp(MEOS_RULE_LINE_RE.source.replace('\\s*-->\\s*$', '\\s*\\ud83d\\udeab\\s*-->\\s*$'));
+// ★v5.1.753(俊克 11.16 am02:47「🛑↻●のように表示して、●をクリックすると濃い色と薄い色に切り替えて、目立たない線を選べるように」・am08:28「⚫と⚪で濃度差」・am08:33「🚫は⚪という意味を含む」・am08:43「OFFを解除すると濃い線」):
+//   本文= `--- -->` 濃い線 / `--- ⚪ -->` 薄い線(止まる) / `--- 🚫 -->` オフ(止まらない・薄さは⚪と同じ)。オフにすると ⚪ は消え、解除すると濃い線
+function meosStopIsFaint(t) { return MEOS_RULE_LINE_RE.test(t) && /\u26aa\s*-->\s*$/.test(t); }
 function meosIsRuleAny(t) { t = String(t || ''); return MEOS_RULE_LINE_RE.test(t) || MEOS_RULE_OFF_RE.test(t); }
-function meosStopOffText(t, off) { return off ? String(t).replace(/\s*-->\s*$/, ' 🚫 -->') : String(t).replace(/\s*🚫\s*-->\s*$/, ' -->'); }
+function meosStopOffText(t, off) { return off ? String(t).replace(/(?:\s*\u26aa)?\s*-->\s*$/, ' 🚫 -->') : String(t).replace(/\s*🚫\s*-->\s*$/, ' -->'); }
 // ★v5.1.652(俊克 11.11 am09:16 💥💥「中継点の右端の🛑STOPもボタン化しよう」・am09:40〜10:15 の問答で決め。中継点= 一時停止線のこと):
 //   右🛑= **次の線とその先**の信号。左🛑= 現在地(その線自身)。どちらも通過するなら青信号(灰OFF → 青OFF)。
 //   次の線とその先= その線の下にある一時停止線(オン/オフ)を、包む膜の閉じ膜の線の手前まで(本文の順)。
@@ -15664,11 +15667,11 @@ function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑
     if (meosFenceLines(doc).has(i)) return null;
     if (editor) { try { if (meosShowsRawLineStable(editor, i) || meosRuleHidden(editor, i)) return null; } catch (_) { } }
     const next = meosStopNextLines(doc, i) || [], sig = meosStopSignal(next);
-    return { on, next, sig, self: 1, rot: on ? 2 : -1, bulk: sig === 'none' ? -1 : (on ? 5 : 2), pad: on ? 4 : -1, gap: on ? 3 : -1 };   // ★v5.1.739(俊克 pm08:31「左側の停止線ボタンに↺ボタンを付けて線種を変えられるように。右肩ではなく右の真横」): オンの線= 桁2に↺の札・詰め物は桁3・箱は桁4・右の札は桁5   // ★v5.1.673: オンの線= 桁2に詰め物・桁3に線の箱(箱は字の前の絵= 桁2と桁3の間に立つ)= 線を押すと桁2か3(何もしない)・右の札は桁4
+    return { on, next, sig, self: 1, rot: on ? 2 : -1, dot: on ? 3 : -1, bulk: sig === 'none' ? -1 : (on ? 6 : 2), pad: on ? 5 : -1, gap: on ? 4 : -1 };   // ★v5.1.753: ↻の右に⚫⚪の札(桁3)・詰め物4・箱5・右6   // ★v5.1.739(俊克 pm08:31「左側の停止線ボタンに↺ボタンを付けて線種を変えられるように。右肩ではなく右の真横」): オンの線= 桁2に↺の札・詰め物は桁3・箱は桁4・右の札は桁5   // ★v5.1.673: オンの線= 桁2に詰め物・桁3に線の箱(箱は字の前の絵= 桁2と桁3の間に立つ)= 線を押すと桁2か3(何もしない)・右の札は桁4
   } catch (_) { return null; }
 }
 async function meosStopCycleKind(ed, i, to) { const doc = ed.document, t = doc.lineAt(i).text; if (!MEOS_RULE_LINE_RE.test(t)) return false;   // v5.1.739: ↺= 線種を次へ(MEOS_STOP_KINDS の順に8種を巡る) / v5.1.745: to= その番号へ
-  const nx = MEOS_STOP_KINDS[typeof to === 'number' ? to : (meosStopKindOf(t) + 1) % MEOS_STOP_KINDS.length], u = t.replace(/(Mew!UFC\s+)(.*?)(\s*-->\s*)$/, (m, a, b, c) => a + nx + c); if (u === t) return false;
+  const nx = MEOS_STOP_KINDS[typeof to === 'number' ? to : (meosStopKindOf(t) + 1) % MEOS_STOP_KINDS.length], u = t.replace(/(Mew!UFC\s+)(.*?)(\s*(?:\u26aa\s*)?-->\s*)$/, (m, a, b, c) => a + nx + c);   // v5.1.753: ⚪ は残す if (u === t) return false;
   return ed.edit(eb => meosStopReplaceDiff(eb, i, t, u)); }
 // ★v5.1.745(俊克 744 改良2「↻ボタンを押して1秒以内に数字キーを押すと、その角度になるようにしよう」): ↻を押してから1秒= 文脈キー meos.stopDigit。1〜8 のキーはその番号の線種(1=実線 … 8=二重波線)。1打で終わり
 // ★v5.1.748(俊克 747 改良1「↻をクリックして数字キーを押したら、文字カーソルが左に出てしまうので連続してクリックできない。文字カーソルを解除しよう」):
@@ -15692,6 +15695,8 @@ async function meosStopDigitKey(n) { const g = _meosStopDigit, ed = vscode.windo
 //   → 変わった所(前後の同じ字を除いた真ん中)だけを置き換える= 札の桁には触らない
 function meosStopReplaceDiff(eb, i, t, u) { let a = 0; while (a < t.length && a < u.length && t[a] === u[a]) a++; let b = 0; while (b < t.length - a && b < u.length - a && t[t.length - 1 - b] === u[u.length - 1 - b]) b++;
   eb.replace(new vscode.Range(i, a, i, t.length - b), u.slice(a, u.length - b)); }
+async function meosStopFaintToggle(ed, i) { const t = ed.document.lineAt(i).text; if (!MEOS_RULE_LINE_RE.test(t)) return false;   // v5.1.753: ⚫⚪= 濃い⇄薄い
+  const u = meosStopIsFaint(t) ? t.replace(/\s*\u26aa(\s*-->\s*)$/, '$1') : t.replace(/(\s*-->\s*)$/, ' \u26aa$1'); return ed.edit(eb => meosStopReplaceDiff(eb, i, t, u)); }
 async function meosStopToggleSelf(ed, i) { const doc = ed.document, t = doc.lineAt(i).text, on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return false; return ed.edit(eb => meosStopReplaceDiff(eb, i, t, meosStopOffText(t, on))); }
 async function meosStopCycleNext(ed, i) { const doc = ed.document, next = meosStopNextLines(doc, i); if (!next || !next.length) return false;
   const sig = meosStopSignal(next), wantOff = (k) => sig === 'red' ? true : sig === 'blue' ? k > 0 : sig === 'yellow' ? k === 0 : false;   // 赤→青(すべてオフ) / 青→黄STOP(次だけオン) / 黄STOP→黄OFF(次だけオフ) / 黄OFF→赤(すべてオン)
@@ -15705,7 +15710,7 @@ function meosStopSignSvg(fill, text, ink, len) { return 'data:image/svg+xml;base
 // ★v5.1.639(俊克 11.10 am11:43「もう少し停止線の種類を追加しよう。- - 破線 / ... 点線 / 〜〜〜 波線 / ≈≈≈ 二重波線」・「Me Dockのボタンは 実線→破線→点線→波線 で循環…Optを押しつつホーバーで二重線/二重波線」): 8種類
 const MEOS_STOP_KINDS = ['---', '===', '-.-', '-..-', '- -', '...', '\u301c\u301c\u301c', '\u2248\u2248\u2248'], MEOS_STOP_KIND_NAMES = ['solid', 'double', 'dash-dot', 'two-dot', 'dashed', 'dotted', 'wavy', 'double wavy'];
 function meosStopEdgeOf(doc, i) { try { if (i > 0 && meosMemEdgeAt(doc.lineAt(i - 1).text, false) === 1) return 1; if (i + 1 < doc.lineCount && meosMemEdgeAt(doc.lineAt(i + 1).text, false) === -1) return -1; } catch (_) { } return 0; }   // v5.1.600: 膜の境= 上が開始膜(1)・下が閉じ膜(-1)
-function meosStopKindOf(t) { const m = /Mew!UFC\s+(.*?)\s*-->/.exec(String(t || '')), k = m ? m[1].replace(/\s*\ud83d\udeab$/, '') : '';   // v5.1.645: オフの🚫は種類に数えない
+function meosStopKindOf(t) { const m = /Mew!UFC\s+(.*?)\s*-->/.exec(String(t || '')), k = m ? m[1].replace(/\s*(?:\ud83d\udeab|\u26aa)$/, '') : '';   // v5.1.645: オフの🚫は種類に数えない
   return k[0] === '=' ? 1 : k.indexOf('\u2248') >= 0 ? 7 : /[\u301c\uff5e]/.test(k) ? 6 : k[0] === '.' ? 5 : k.indexOf(' ') >= 0 ? 4 : k.indexOf('..') >= 0 ? 3 : k.indexOf('.') >= 0 ? 2 : 0; }
 // ★v5.1.600(俊克 pm01:29 改良2「膜の境界線を…色も変えて、区別しよう」→ pm01:36「膜の境界線は実線のままにして、膜の境界にボタンを使って引いたときには、自動で色を変えるようにしよう」):
 //   線の形は本文の字のまま(--- / === / -.-)・色だけ位置で変える= 開始膜のすぐ下=緑・閉じ膜のすぐ上=青(♥膜の▼▲と同じ色)。ボタンで境に引いても、手で書いても同じ
@@ -15714,8 +15719,8 @@ const _meosWaveUrl = new Map();
 function meosStopWaveUrl(c, two) { const key = c + (two ? '2' : '1'); let u = _meosWaveUrl.get(key); if (u) return u; const h = two ? 10 : 6, path = (y) => '<path d="M0 ' + y + ' Q3 ' + (y - 2.5) + ' 6 ' + y + ' T12 ' + y + '" fill="none" stroke="' + c + '" stroke-width="1.2"/>';
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="' + h + '"><defs><pattern id="w" width="12" height="' + h + '" patternUnits="userSpaceOnUse">' + path(3) + (two ? path(7) : '') + '</pattern></defs><rect width="100%" height="' + h + '" fill="url(#w)"/></svg>';
   u = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); _meosWaveUrl.set(key, u); return u; }
-function meosStopLineCss(kind, x, edge, xl) { const c = edge === 1 ? 'rgba(22, 163, 74, 0.98)' : edge === -1 ? 'rgba(37, 99, 235, 0.98)' : '#e0803a', w = 'calc(100% - ' + (x + (xl > 0 ? xl : x)) + 'em)';   // v5.1.739: xl= 左の余白(↺の後ろから線)
-  if (xl > 0) { const css = meosStopLineCss(kind, x, edge).split(x + 'em ').join(xl + 'em '); return css.split('calc(100% - ' + (2 * x) + 'em)').join(w); }
+function meosStopLineCss(kind, x, edge, xl, al) { const _a = al > 0 ? al : 0.98, c = edge === 1 ? 'rgba(22, 163, 74, ' + _a + ')' : edge === -1 ? 'rgba(37, 99, 235, ' + _a + ')' : (al > 0 ? 'rgba(224, 128, 58, ' + al + ')' : '#e0803a'),   /* v5.1.753: al= 濃さ(薄い線/オフ= MEOS_STOP_FAINT) */ w = 'calc(100% - ' + (x + (xl > 0 ? xl : x)) + 'em)';   // v5.1.739: xl= 左の余白(↺の後ろから線)
+  if (xl > 0) { const css = meosStopLineCss(kind, x, edge, 0, al).split(x + 'em ').join(xl + 'em '); return css.split('calc(100% - ' + (2 * x) + 'em)').join(w); }
   if (kind === 1) return 'linear-gradient(' + c + ', ' + c + ') ' + x + 'em calc(50% - 2px) / ' + w + ' 1px no-repeat, linear-gradient(' + c + ', ' + c + ') ' + x + 'em calc(50% + 2px) / ' + w + ' 1px no-repeat';
   if (kind === 2) return 'repeating-linear-gradient(90deg, ' + c + ' 0 12px, transparent 12px 16px, ' + c + ' 16px 18px, transparent 18px 22px) ' + x + 'em center / ' + w + ' 1px no-repeat';
   if (kind === 3) return 'repeating-linear-gradient(90deg, ' + c + ' 0 12px, transparent 12px 16px, ' + c + ' 16px 18px, transparent 18px 22px, ' + c + ' 22px 24px, transparent 24px 28px) ' + x + 'em center / ' + w + ' 1px no-repeat';
@@ -15724,6 +15729,11 @@ function meosStopLineCss(kind, x, edge, xl) { const c = edge === 1 ? 'rgba(22, 1
   if (kind === 6 || kind === 7) return 'url(' + meosStopWaveUrl(c, kind === 7) + ') ' + x + 'em center / ' + w + ' ' + (kind === 7 ? 10 : 6) + 'px no-repeat';
   return 'linear-gradient(' + c + ', ' + c + ') ' + x + 'em center / ' + w + ' 1px no-repeat'; }
 const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjI5LjI5LDAuMDAgNzAuNzEsMC4wMCAxMDAuMDAsMjkuMjkgMTAwLjAwLDcwLjcxIDcwLjcxLDEwMC4wMCAyOS4yOSwxMDAuMDAgMC4wMCw3MC43MSAwLjAwLDI5LjI5IiBmaWxsPSIjMWExYTFhIi8+PHBvbHlnb24gcG9pbnRzPSIzMC43NCwzLjUwIDY5LjI2LDMuNTAgOTYuNTAsMzAuNzQgOTYuNTAsNjkuMjYgNjkuMjYsOTYuNTAgMzAuNzQsOTYuNTAgMy41MCw2OS4yNiAzLjUwLDMwLjc0IiBmaWxsPSIjZmZmIi8+PHBvbHlnb24gcG9pbnRzPSIzMi4xOSw3LjAwIDY3LjgxLDcuMDAgOTMuMDAsMzIuMTkgOTMuMDAsNjcuODEgNjcuODEsOTMuMDAgMzIuMTksOTMuMDAgNy4wMCw2Ny44MSA3LjAwLDMyLjE5IiBmaWxsPSIjZGMzYjMwIi8+PHRleHQgeD0iNTAiIHk9IjYyLjUiIGZvbnQtZmFtaWx5PSJBcmlhbCBOYXJyb3csSGVsdmV0aWNhIE5ldWUsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIzMyIgdGV4dExlbmd0aD0iNjYiIGxlbmd0aEFkanVzdD0ic3BhY2luZ0FuZEdseXBocyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+U1RPUDwvdGV4dD48L3N2Zz4=', MEOS_STOP_SIGN_EM = 1.3;
+const MEOS_STOP_FAINT = 0.15;   // v5.1.752(俊克 751「今の半分でも良いかも」→ 15%)・v5.1.753 薄い線(⚪)も同じ値
+const _meosStopDotUrl = new Map();
+function meosStopDotUrl(c, faint) { const key = c + ' ' + faint; let u = _meosStopDotUrl.get(key); if (u) return u;   // v5.1.753: ⚫= 濃い線(線の色で塗った丸) / ⚪= 薄い線(線の色の輪)
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' + (faint ? '<circle cx="50" cy="50" r="40" fill="none" stroke="' + c + '" stroke-width="12"/>' : '<circle cx="50" cy="50" r="46" fill="' + c + '"/>') + '</svg>';
+  u = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); _meosStopDotUrl.set(key, u); return u; }
 const _meosStopRotUrl = new Map();
 function meosStopRotUrl(c, k) { k = Math.max(0, k | 0); const key = c + ' ' + k; let u = _meosStopRotUrl.get(key); if (u) return u;   // v5.1.739: 線種の↺= 線と同じ色の矢印
   // ★v5.1.741(俊克 740 改良2「メニューバーのように、回転角度をボタンごとに変える」「円の中に↻を入れよう」): 円の中に右回りの↻・線種の番号 k ごとに45°ずつ回す(矢印の先の向き= 今の線種)
@@ -15895,9 +15905,9 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v5.1.645: 🛑を押せる札(見えない字)にする= 札の桁で隠す範囲を割り、2つの型で交互に隠す(1つの範囲の内側に立てた札は字と一緒に幅0= v5.1.40 の穴)。
               //   箱は浮かせて(absolute)札の上に重ねる= 札が場所を取っても絵は行頭から。押す当たりは札・絵は pointer-events: none
               const _sb45 = meosStopBtnSpots(doc, i, editor), _off45 = !MEOS_RULE_LINE_RE.test(txt), _S = MEOS_STOP_SIGN_EM;
-              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.rot > 0) _cuts.push(_sb45.rot); if (_sb45.gap > 0) _cuts.push(_sb45.gap); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } _cuts.push(txt.length);
+              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.rot > 0) _cuts.push(_sb45.rot); if (_sb45.dot > 0) _cuts.push(_sb45.dot); if (_sb45.gap > 0) _cuts.push(_sb45.gap); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } _cuts.push(txt.length);
                 for (let _k = 0; _k + 1 < _cuts.length; _k++) if (_cuts[_k + 1] > _cuts[_k]) (_k % 2 ? stopHide2 : badgeHide).push(new vscode.Range(i, _cuts[_k], i, _cuts[_k + 1]));
-                if (_sb45) { hintSkins.push({ range: new vscode.Range(i, 0, i, _sb45.rot > 0 ? 3 : 2) }); if (_sb45.bulk > 0) hintSkins.push({ range: new vscode.Range(i, _sb45.bulk - 1, i, _sb45.bulk + 1) }); } }
+                if (_sb45) { hintSkins.push({ range: new vscode.Range(i, 0, i, _sb45.dot > 0 ? 4 : _sb45.rot > 0 ? 3 : 2) }); if (_sb45.bulk > 0) hintSkins.push({ range: new vscode.Range(i, _sb45.bulk - 1, i, _sb45.bulk + 1) }); } }
               const _sign = (u, pos) => 'url(' + u + ') ' + pos + ' center / ' + _S + 'em ' + _S + 'em no-repeat';
               const _nextU = !_sb45 ? MEOS_STOP_SIGN_URL : ({ red: MEOS_STOP_SIGN_URL, yellow: MEOS_STOP_YELLOW_URL, yellowOff: MEOS_STOP_YELLOW_OFF_URL, blue: MEOS_STOP_OFF_URL, none: MEOS_STOP_NONE_URL })[_sb45.sig] || MEOS_STOP_SIGN_URL;   // v5.1.652: 右= 次の線の信号
               // ★v5.1.746(俊克 745 改良3「両端の🛑と↻ボタンを通常時は非表示にして、ポインターを線の上にホーバーした時だけ表示」→ am00:4x「ホバーを試す」): オンの線は普段は線だけ(行の端から端まで)・
@@ -15906,17 +15916,18 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _lit48 = !!_meosStopLit && _meosStopLit.key === doc.uri.toString() + ' ' + i;   // v5.1.748: 押した線は3秒濃く
               // ★v5.1.749(俊克 am01:20「ステルスモードは完全に透明だよ。つまり、線だけが見えるようにしよう」): 普段のオンの線は線だけ(行の端から端まで)・押した線だけ3秒、標識と↻を濃く。押す札は普段もそのまま
               // ★v5.1.751(俊克 am01:54「1つ穴があった。OFFにすると、10秒経っても、ステルスモードにならない」): オフの線もステルス= 普段は同じ線種の線を薄く(30%→v5.1.752 で15%)=「線はあるが今は止まらない」。押すと10秒 青OFF と信号
-              const _ghost51 = _off45 && !_lit48;
-              const _bg45 = !_lit48 ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i)) : _off45
+              const _al53 = (_off45 || meosStopIsFaint(txt)) ? MEOS_STOP_FAINT : 0;   // ★v5.1.753: 薄い線(⚪)とオフは同じ薄さ(1つの値)
+              const _dot53 = (_sb45 && _sb45.dot > 0) ? ', url(' + meosStopDotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), !!_al53) + ') ' + (MEOS_STOP_BTN_CH * 2) + 'ch center / ' + (_S * 0.6) + 'em ' + (_S * 0.6) + 'em no-repeat' : '';
+              const _bg45 = !_lit48 ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i), 0, _al53) : _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : (_sb45 && _sb45.rot > 0)   // v5.1.739: 左の標識の右の真横に↺(札は桁2)・線は↺の後ろから
-                  ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), meosStopKindOf(txt)) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
+                  ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), meosStopKindOf(txt)) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat' + _dot53 + ', ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5 + (_dot53 ? 1.25 : 0), _al53)
                   : _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
               // ★v5.1.646(俊克 pm09:48 バグ1「開始膜の線がオンのときに、右の🛑上で選択指に変わらない。オフにすれば押せる」): 645 は右端の札の位置を詰め物の札(空白56個)の幅で見積もった= 札の字の幅と箱の ch がずれ、札が標識の下に来ていなかった。
               //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
               const _mid46 = !!(_sb45 && _sb45.pad > 0);
               items.push({ range: new vscode.Range(i, _mid46 ? _sb45.pad : 0, i, _mid46 ? _sb45.pad : 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + (MEOS_STOP_BTN_CH * (_sb45.rot > 0 ? 2 : 1) + 1) + 'ch; margin-right: -' + MEOS_STOP_BTN_CH + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' + (_ghost51 ? ' opacity: 0.15;' : '')   /* v5.1.752(俊克 751「今の半分でも良いかも」→ 15%) */ } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
+                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + (MEOS_STOP_BTN_CH * (_sb45.dot > 0 ? 3 : _sb45.rot > 0 ? 2 : 1) + 1) + 'ch; margin-right: -' + MEOS_STOP_BTN_CH + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + MEOS_STOP_BOX_CH + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
               // ★v5.1.672(俊克 11.12 pm01:33 バグ1「停止線の線のところをクリックすると、OFFになってしまう。ここはRawにするべき」): 桁は隣り合う桁の位置の中点で分かれる(v5.1.571)= 線の右半分を押すと桁3(右の札)に落ちて信号が回っていた。
               //   箱を1ch縮め、桁3に幅1chの詰め物を置いて右の札を桁4へ= 線のどこを押しても桁2か3(何もしない→ ふつうに生になる)。右の札の手前0.5chだけが札
               // ★v5.1.673(俊克 pm03:54 バグ1「直ってない。線の右半分→Raw・左半分→OFF。両端の🛑だけが選択指=そこだけがボタン。選択指でなければRawに」): 実機の桁の位置は字の前の絵(before)の後ろで測られる= 桁2の箱は桁1と桁2の間に立ち、左半分が桁1(左の札)に落ちていた。
@@ -25451,7 +25462,8 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           meosCalmRefresh(editor); return; }
         { const _sb = meosStopBtnSpots(editor.document, _ln, editor), _cc = editor.selection.active.character;   // ★v5.1.645: 一時停止線の🛑= 左は自分 / v5.1.652: 右は次の線の信号
           // ★v5.1.749(ステルス): 見えていないボタンは狙えない= 濃く出ていないオンの線の札を押した1回目は、出すだけ(何も切り替えない)。出ている3秒の間に押すと効く
-          if (_sb && (_cc <= _sb.self || _cc === _sb.rot || (_sb.bulk > 0 && _cc === _sb.bulk)) && !(_meosStopLit && _meosStopLit.key === editor.document.uri.toString() + ' ' + _ln)) { setRefNoRaw(editor.document, _ln); meosStopCaretAway(editor, _ln); meosStopLight(editor, _ln); meosApplyTimerLineDecorations(editor); setRefNoRaw(editor.document, _ln); return; }
+          if (_sb && (_cc <= _sb.self || _cc === _sb.rot || _cc === _sb.dot || (_sb.bulk > 0 && _cc === _sb.bulk)) && !(_meosStopLit && _meosStopLit.key === editor.document.uri.toString() + ' ' + _ln)) { setRefNoRaw(editor.document, _ln); meosStopCaretAway(editor, _ln); meosStopLight(editor, _ln); meosApplyTimerLineDecorations(editor); setRefNoRaw(editor.document, _ln); return; }
+          if (_sb && _sb.dot > 0 && _cc === _sb.dot) { setRefNoRaw(editor.document, _ln); meosStopCaretAway(editor, _ln); meosStopLight(editor, _ln); await meosStopFaintToggle(editor, _ln); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }   // v5.1.753: ⚫⚪= 濃い⇄薄い
           if (_sb && _sb.rot > 0 && _cc === _sb.rot) { setRefNoRaw(editor.document, _ln); meosStopCaretAway(editor, _ln); meosStopLight(editor, _ln); /* ★v5.1.745(俊克 744 改良1「文字カーソルが↻の左側から🛑の左に移動する動きが目障り」) */ await meosStopCycleKind(editor, _ln); meosStopDigitArm(editor, _ln); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }   // v5.1.739: ↺= 線種を次へ
           if (_sb && (_cc <= _sb.self || (_sb.bulk > 0 && _cc === _sb.bulk))) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); meosStopLight(editor, _ln);
             if (_cc === _sb.bulk) await meosStopCycleNext(editor, _ln); else await meosStopToggleSelf(editor, _ln);   // v5.1.652: 右= 次の線の信号を 赤→青→黄 で回す
@@ -48255,6 +48267,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
                 const _bt = '\u00a0'.repeat(MEOS_STOP_BTN_CH), _h1 = new vscode.InlayHint(new vscode.Position(ln, 1), _bt);
                 _h1.tooltip = _sb.on ? 'Stop line | Click to turn it off (🚫): Cmd+↓/↑ and held arrows pass through. Click again to turn it on.' : 'Stop line — off | Click to turn it on again.'; out.push(_h1);
                 if (_sb.rot > 0) { const _h2 = new vscode.InlayHint(new vscode.Position(ln, _sb.rot), _bt); const _kn = meosStopKindOf(document.lineAt(ln).text); _h2.tooltip = 'Line style — ' + MEOS_STOP_KIND_NAMES[_kn] + ' | Click for ' + MEOS_STOP_KIND_NAMES[(_kn + 1) % MEOS_STOP_KIND_NAMES.length] + ' (8 styles in turn).'; out.push(_h2); }   // v5.1.739: ↺の札
+                if (_sb.dot > 0) { const _hd = new vscode.InlayHint(new vscode.Position(ln, _sb.dot), _bt); _hd.tooltip = meosStopIsFaint(document.lineAt(ln).text) ? 'Line — faint ⚪ (still stops) | Click for a dark line ⚫.' : 'Line — dark ⚫ | Click for a faint line ⚪ that still stops.'; out.push(_hd); }   // v5.1.753: ⚫⚪の札
                 if (_sb.bulk > 0) { const _h3 = new vscode.InlayHint(new vscode.Position(ln, _sb.bulk), _bt); _h3.tooltip = ({ red: 'Next stop lines — red STOP: all on | Click to turn them all off (blue OFF).', blue: 'Next stop lines — blue OFF: all off, so Cmd+↓ passes them | Click to turn only the next one on (yellow STOP).', yellow: 'Next stop line — yellow STOP: on, some after it off | Click to turn only the next one off (yellow OFF).', yellowOff: 'Next stop line — yellow OFF: off, so Cmd+↓ passes it; some after it on | Click to turn them all on (red STOP).' })[_sb.sig] || ''; out.push(_h3); }   // v5.1.652: 右= 次の線の信号
               } }
           }
