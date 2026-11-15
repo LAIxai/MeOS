@@ -15346,7 +15346,7 @@ let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
 let meosClockBadgeHideDeco = null, meosStopHide2Deco = null;
-const _meosDdPeek = new Map(), _meosDdPeekAt = new Map(); const _meosDdEdit = new Set(); let meosDdEditDeco = null, meosDdEditTodayDeco = null, meosDdEditHideDeco = null;   // ★v5.1.722(俊克 721 改良1「覗き窓をクリックすると全体がRawに変わってしまうが、前のように、この覗き窓の中で修正ができるように。他の部分を間違って修正しない為でもある」): uri+' '+行= 窓の中で直している行
+const _meosDdPeek = new Map(), _meosDdPeekAt = new Map(); const _meosDdEdit = new Set(), _meosDdEditSp = new Map(); let meosDdEditDeco = null, meosDdEditTodayDeco = null, meosDdEditHideDeco = null;   // ★v5.1.722(俊克 721 改良1「覗き窓をクリックすると全体がRawに変わってしまうが、前のように、この覗き窓の中で修正ができるように。他の部分を間違って修正しない為でもある」): uri+' '+行= 窓の中で直している行
 const _meosDdPeekWin = new Map();   // v5.1.721: uri+' '+行 → {a:窓を置いた桁, cyc:[s,e], dd:[s,e]}   // ★v5.1.717(俊克 11.15 am00:52「⏸️ボタンを押したとき…↺↻(0y0d1h0m0s)×2 と dd= の2箇所だけ見えるようにする。どっちかをクリックして修正に自然に入る。5秒しても何もしなければ閉じる」): uri+' '+行 → 見せる期限
 function meosRawRowsOf(text, wrap) {   // ★v5.1.721: Raw の並びの段割り(折り返し幅で、空白の後ろで折る= Monaco の素の規則の近似)。幅は家の物差し(全角= _meosTableCjkW・異体字選択子は0)
   const w = meosRawChW;
@@ -47123,20 +47123,27 @@ function activate(context) {
   // ★v5.1.720(俊克 719 バグ1「停止しても覗き窓が出なくなった」): 719 は「カーソルがその行に居れば覗き終わり」= ⏸️ボタン自体がその行にあり、押した瞬間に消していた。
   //   → 覗きが始まった**後**のクリック/キー移動でその行に入った時だけ終える(⏸️を押した選択は始まる前に届く)。終えたらふつうの Raw で直し続けられる(改良1)
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try {
-    { const u0 = e.textEditor.document.uri.toString() + ' ', l0 = e.textEditor.selection.active.line; let gone = false; for (const k0 of Array.from(_meosDdEdit)) if (k0.startsWith(u0)) { let out = Number(k0.slice(u0.length)) !== l0;
-      if (!out) { try { const t = e.textEditor.document.lineAt(l0).text, c = e.textEditor.selection.active.character, cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(t), dq = /(^|\s)(dd=\S+)/.exec(t);
-        const inCy = cy && c >= cy.index + cy[0].search(/[^↺↻]/) && c <= cy.index + cy[0].length, inDd = dq && c >= dq.index + dq[1].length && c <= dq.index + dq[1].length + dq[2].length;
-        out = !(inCy || inDd);
-        if (out) { const w0 = _meosDdPeekWin.get(k0);   // ★v5.1.727(俊克 726 改良1「2つの枠の間をクリックして切替ようとすると、枠が消えてしまう」): もう1つの窓を押した(窓の桁に落ちた)= その窓へ移る
-          const sp0 = w0 ? (c === w0.a ? w0.cyc : (c === w0.a + 1 ? w0.dd : null)) : null;
-          if (sp0) { out = false; const P = new vscode.Position(l0, sp0 === w0.dd ? sp0[0] + 3 : sp0[0] + 1); e.textEditor.selection = new vscode.Selection(P, P); } } } catch (_) { } }   // 窓の外へ出たら= 見えない所を直さないよう、ふつうの Raw に戻す
-      if (out) { _meosDdEdit.delete(k0); gone = true; } else meosApplyTimerLineDecorations(e.textEditor); } if (gone) { try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); } }   // v5.1.722: 行を出たら窓の中の直しは終わり
+    { const u0 = e.textEditor.document.uri.toString() + ' ', l0 = e.textEditor.selection.active.line, c = e.textEditor.selection.active.character, kb = e.kind === vscode.TextEditorSelectionChangeKind.Keyboard; let gone = false;
+      // ★v5.1.728(俊克 pm00:49「2つの枠で←/→キーを押して行くと、枠から出ると枠が消えてしまう。枠の中から出ないように」「↓/↑を押すと端に移動するように。普通の入力枠と同様に」): 窓は入力枠= キーでは出ない
+      for (const k0 of Array.from(_meosDdEdit)) if (k0.startsWith(u0)) { const L0 = Number(k0.slice(u0.length)); let out = false, to = -1;
+        try { const t = e.textEditor.document.lineAt(L0).text, cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(t), dq = /(^|\s)(dd=\S+)/.exec(t);
+          const S = { cyc: cy ? [cy.index + cy[0].search(/[^↺↻]/), cy.index + cy[0].length] : null, dd: dq ? [dq.index + dq[1].length + 3, dq.index + dq[1].length + dq[2].length] : null };   // dd は = の後ろから(dd= は直さない)
+          const inn = (sp) => !!sp && c >= sp[0] && c <= sp[1], act = _meosDdEditSp.get(k0) || 'dd', w0 = _meosDdPeekWin.get(k0);
+          if (l0 === L0 && inn(S.cyc)) _meosDdEditSp.set(k0, 'cyc');
+          else if (l0 === L0 && inn(S.dd)) _meosDdEditSp.set(k0, 'dd');
+          else if (l0 === L0 && w0 && (c === w0.a || c === w0.a + 1) && S[c === w0.a ? 'cyc' : 'dd']) { const n = c === w0.a ? 'cyc' : 'dd'; _meosDdEditSp.set(k0, n); to = S[n][0] + (n === 'cyc' ? 1 : 0); }   // v5.1.727: もう1つの窓を押した= その窓へ
+          else if (kb && S[act]) { const sp = S[act]; to = (l0 === L0) ? (c < sp[0] ? sp[0] : sp[1]) : (l0 < L0 ? sp[0] : sp[1]); }   // ←/→ は端で止まる・↑ は頭・↓ は尻
+          else out = true;   // マウスで窓の外/行の外= 終わり(窓の外は見えない所を直さないよう、ふつうの Raw)
+        } catch (_) { out = true; }
+        if (to >= 0) { const P = new vscode.Position(L0, to); e.textEditor.selection = new vscode.Selection(P, P); }
+        if (out) { _meosDdEdit.delete(k0); _meosDdEditSp.delete(k0); gone = true; } else meosApplyTimerLineDecorations(e.textEditor); }
+      if (gone) { try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); } }   // v5.1.722: 行を出たら窓の中の直しは終わり
     if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
     // v5.1.721: 窓を押した時だけ= カーソルが窓の桁(⏰の桁=周期 / その次=dd)に落ちた時。他の動き(⏸️の約1秒後に MeOS が動かすカーソル等)では消さない(720 の実測)
     const w = _meosDdPeekWin.get(k), ch = e.textEditor.selection.active.character;
     const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = ch === w.a + 1 || inS(w && w.dd);   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
     if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
-      const sp = hitC ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k);
+      const sp = hitC ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k); _meosDdEditSp.set(k, hitC ? 'cyc' : 'dd');
       if (sp && !inS(sp)) { const to = (sp === w.dd) ? sp[0] + 3 : sp[0] + 1; const P = new vscode.Position(ln, to); e.textEditor.selection = new vscode.Selection(P, P); }   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
       meosDbg('[dd] 覗き窓を押した(' + (hitC ? '周期' : 'dd') + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
   } catch (_) { } }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
