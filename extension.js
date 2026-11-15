@@ -7557,7 +7557,7 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
       const base = _meosChainStart.get(lk) || cur.vAt || 0; if (!base) return spec;
       const end = meosClockDdEnd(Object.assign({}, cur, { vAt: base })); if (!end) return spec;
       const face = meosClockDdFace(end); _meosDdPauseFace.set(lk, face);
-      try { const _pk = doc.uri.toString() + ' ' + atLine; _meosDdPeek.set(_pk, Date.now() + 10000); setTimeout(() => { try { if ((_meosDdPeek.get(_pk) || 0) <= Date.now()) _meosDdPeek.delete(_pk); const _ed = vscode.window.activeTextEditor; if (_ed) { try { refresh(_ed); } catch (_) { } meosApplyTimerLineDecorations(_ed); } } catch (_) { } }, 10100); } catch (_) { }   // v5.1.717: 周期と dd= を見せる / v5.1.718(俊克「5秒は短いので10秒に」)
+      try { const _pk = doc.uri.toString() + ' ' + atLine; _meosDdPeek.set(_pk, Date.now() + 10000); _meosDdPeekAt.set(_pk, Date.now()); setTimeout(() => { try { if ((_meosDdPeek.get(_pk) || 0) <= Date.now()) _meosDdPeek.delete(_pk); const _ed = vscode.window.activeTextEditor; if (_ed) { try { refresh(_ed); } catch (_) { } meosApplyTimerLineDecorations(_ed); } } catch (_) { } }, 10100); } catch (_) { }   // v5.1.717: 周期と dd= を見せる / v5.1.718(俊克「5秒は短いので10秒に」)
       meosDbg('[dd] ⏸️ 題に dd=' + face + ' key=' + key);
       return Object.assign({}, spec, { title: String(spec.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + 'dd=' + face) });
     }
@@ -15333,7 +15333,7 @@ let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
 let meosClockBadgeHideDeco = null, meosStopHide2Deco = null;
-const _meosDdPeek = new Map(); let meosDdPeekDeco = null, meosDdPeekHideDeco = null, meosDdPeekTodayDeco = null;   // ★v5.1.717(俊克 11.15 am00:52「⏸️ボタンを押したとき…↺↻(0y0d1h0m0s)×2 と dd= の2箇所だけ見えるようにする。どっちかをクリックして修正に自然に入る。5秒しても何もしなければ閉じる」): uri+' '+行 → 見せる期限
+const _meosDdPeek = new Map(), _meosDdPeekAt = new Map(); let meosDdPeekDeco = null, meosDdPeekHideDeco = null, meosDdPeekTodayDeco = null;   // ★v5.1.717(俊克 11.15 am00:52「⏸️ボタンを押したとき…↺↻(0y0d1h0m0s)×2 と dd= の2箇所だけ見えるようにする。どっちかをクリックして修正に自然に入る。5秒しても何もしなければ閉じる」): uri+' '+行 → 見せる期限
 let meosClockGap3Deco = null;
 let meosClockGapNDeco = null;   // ★v4.2.483: ±1s の札の前の隙間(6px/9px)
 const _meosNudgeHints = new Map();   // ★v4.2.483: uri -> [{line, col, label}]= ⏰行のボタンの札(v4.2.487: 全部のボタン)
@@ -15802,7 +15802,6 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   ★失う物は無い= 残り時間は Me Dockの\u23f0ボタンとステータスバーにも出ている
           //     (\u23f0行を直している間も、同じ数字that画面に2つ在る)。
           let _pkOn = (_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now();
-          if (_pkOn && cur === i) { _meosDdPeek.delete(uri + ' ' + i); _pkOn = false; }   // ★v5.1.719(俊克 改良1「覗き窓をクリックした時は10秒ルールはキャンセルして、そのまま修正を続ける」): 行に入ったら覗きは終わり= ふつうの Raw   // ★v5.1.718(俊克 バグ1「橙色の枠は Raw の時の位置に表示して、その中に Raw のデータを覗き見る形に。クリックした時と位置を同じにするため」): 覗く10秒は Raw と同じ並び
           const _rawHere = _pkOn || meosShowsRawLineStable(editor, i);   // v4.2.494: 一瞬の生データ切替は受け取らない
           if (_pkOn) { try {   // 2か所(周期・dd=日時)以外は透明(幅は残す= Raw と同じ桁)・2か所は橙の枠
             const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt), sp = [];
@@ -42789,7 +42788,7 @@ function meosRawLines(editor, skipCaret, caretAt) {
     }
     const _caretL = new Set(); try { for (const sl of (editor.selections || [editor.selection])) { _caretL.add(sl.active.line); _caretL.add(sl.anchor.line); } if (_at) _caretL.add(caretAt); } catch (_) { }
     for (const ln of Array.from(out)) {
-      if (_pkL.has(ln) && !_caretL.has(ln)) continue;   // v5.1.719: 覗きの行は広げない
+      if (_pkL.has(ln)) continue;   // v5.1.719: 覗きの行は広げない / v5.1.720: ⏸️を押したカーソルがその行に居ても広げない(覗きを終えるのは始まった後のクリック)
       const m = meosFcMate(editor.document, ln);
       { const _fm = meosFusenMateLines(editor.document, ln); if (_fm) for (let l = _fm.from; l <= _fm.to; l++) out.add(l); }   // v5.1.710: 付箋の縁に居る= 付箋ごと生
       if (m) for (const l of (m.lines || [])) if (l >= 0) out.add(l);
@@ -47079,7 +47078,13 @@ function activate(context) {
   //     拡張パネルに在るので空振りしていた。★**焦点は奪わない**(読んでいる所から勝手に飛ばすのは行儀が悪い)。
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));
+  // ★v5.1.720(俊克 719 バグ1「停止しても覗き窓が出なくなった」): 719 は「カーソルがその行に居れば覗き終わり」= ⏸️ボタン自体がその行にあり、押した瞬間に消していた。
+  //   → 覗きが始まった**後**のクリック/キー移動でその行に入った時だけ終える(⏸️を押した選択は始まる前に届く)。終えたらふつうの Raw で直し続けられる(改良1)
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try {
+    if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
+    if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 300) { _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); meosDbg('[dd] 覗き窓を押した→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
+  } catch (_) { } }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => meosPostCaretDay(false)));
   // ★v5.1.215(俊克 am01:04 改良1「切り替える度に、カレント行の位置がだんだん下にズレて行く・だいぶ前からの症状」): 測る= 離れる時と戻った後(0/0.5/1.5/3秒)に、
   //   カーソル行が窓の上端から何行目に見えているかを [caretDrift] へ。どの時刻にずれるかで犯人(Me Dock の作り直し・畳み・見張り)を分ける
