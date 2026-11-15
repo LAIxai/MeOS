@@ -15677,7 +15677,8 @@ async function meosStopCycleKind(ed, i, to) { const doc = ed.document, t = doc.l
 function meosStopCaretAway(editor, ln) { try { const pv = _meosPrevCaretPos;
   if (pv && pv.line !== ln && pv.line < editor.document.lineCount) { const P = new vscode.Position(pv.line, pv.character); editor.selection = new vscode.Selection(P, P); } else meosParkCaretAfterPress(editor, ln); } catch (_) { } }
 // ★v5.1.748(俊克 747 👍1「この透明度で良い。ステルスモードにして、クリックしたら従来通り濃く出す」): 押した線は濃く(押すたびに延びる)・3秒触らなければ薄いへ戻る
-const MEOS_STOP_LIT_MS = 3000; let _meosStopLit = null;
+const MEOS_STOP_LIT_MS = 10000;   // v5.1.750(俊克 749 改良1「3秒は短いので、10秒にしよう」)
+ let _meosStopLit = null;
 function meosStopLight(editor, ln) { if (_meosStopLit && _meosStopLit.timer) clearTimeout(_meosStopLit.timer);
   const k = editor.document.uri.toString() + ' ' + ln; _meosStopLit = { key: k, timer: setTimeout(() => { if (_meosStopLit && _meosStopLit.key === k) _meosStopLit = null; for (const ed of vscode.window.visibleTextEditors) if (k.startsWith(ed.document.uri.toString() + ' ')) meosApplyTimerLineDecorations(ed); }, MEOS_STOP_LIT_MS) }; }
 let _meosStopDigit = null;
