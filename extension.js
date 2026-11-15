@@ -15346,7 +15346,7 @@ let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
 let meosClockBadgeHideDeco = null, meosStopHide2Deco = null;
-const _meosDdPeek = new Map(), _meosDdPeekAt = new Map(); const _meosDdEdit = new Set(), _meosDdEditSp = new Map(); let meosDdEditDeco = null, meosDdEditTodayDeco = null, meosDdEditHideDeco = null;   // ★v5.1.722(俊克 721 改良1「覗き窓をクリックすると全体がRawに変わってしまうが、前のように、この覗き窓の中で修正ができるように。他の部分を間違って修正しない為でもある」): uri+' '+行= 窓の中で直している行
+const _meosDdPeek = new Map(), _meosDdPeekAt = new Map(); const _meosDdEdit = new Set(), _meosDdEditSp = new Map(), _meosDdKey = { at: 0, hold: false }; let meosDdEditDeco = null, meosDdEditTodayDeco = null, meosDdEditHideDeco = null;   // ★v5.1.722(俊克 721 改良1「覗き窓をクリックすると全体がRawに変わってしまうが、前のように、この覗き窓の中で修正ができるように。他の部分を間違って修正しない為でもある」): uri+' '+行= 窓の中で直している行
 const _meosDdPeekWin = new Map();   // v5.1.721: uri+' '+行 → {a:窓を置いた桁, cyc:[s,e], dd:[s,e]}   // ★v5.1.717(俊克 11.15 am00:52「⏸️ボタンを押したとき…↺↻(0y0d1h0m0s)×2 と dd= の2箇所だけ見えるようにする。どっちかをクリックして修正に自然に入る。5秒しても何もしなければ閉じる」): uri+' '+行 → 見せる期限
 function meosRawRowsOf(text, wrap) {   // ★v5.1.721: Raw の並びの段割り(折り返し幅で、空白の後ろで折る= Monaco の素の規則の近似)。幅は家の物差し(全角= _meosTableCjkW・異体字選択子は0)
   const w = meosRawChW;
@@ -15391,7 +15391,13 @@ async function meosDdEditKey(k) {
   let c = Math.min(sp[1], Math.max(sp[0], ed.selection.active.character));
   if (k === 'backspace') { if (c > sp[0]) await ed.edit(eb => eb.delete(new vscode.Range(L, c - 1, L, c))); return; }   // 窓の頭では何も消さない(728 の穴= 窓の外の ( や = が消えた)
   if (k === 'delete') { if (c < sp[1]) await ed.edit(eb => eb.delete(new vscode.Range(L, c, L, c + 1))); return; }
-  { const nm = (_meosDdEditSp.get(key) || 'dd');   // ★v5.1.738(俊克 736「文字カーソルだけで移動できて、どっちでも直せれば最高」): 橙と緑は横並び= 橙の尻で→は緑の頭へ・緑の頭で←は橙の尻へ
+  const _now = Date.now(), _gap = _now - (_meosDdKey.at || 0); _meosDdKey.at = _now;
+  { const nm = (_meosDdEditSp.get(key) || 'dd');
+    // ★v5.1.741(俊克 740 改良1「→/←押しっ放しで、一時停止しよう。境界が一時停止線ということだね」): キーの離れは拡張に見えない→ 間隔で読む(↑↓の一時停止線 v5.1.580 と同じ物差し)。
+    //   リピートは30ms・初回だけ225ms= 境で止まっていない時は0.3秒以上空いた1打だけ渡る。止まった後は0.15秒空いたら手を離した印= 押し直しの1打で渡る
+    const _cross = (k === 'right' && nm === 'cyc' && c >= sp[1] && S.dd) || (k === 'left' && nm === 'dd' && c <= sp[0] && S.cyc);
+    if (_cross && !(_meosDdKey.hold ? _gap >= 150 : _gap >= 300)) { _meosDdKey.hold = true; return; }
+    _meosDdKey.hold = false;   // ★v5.1.738(俊克 736「文字カーソルだけで移動できて、どっちでも直せれば最高」): 橙と緑は横並び= 橙の尻で→は緑の頭へ・緑の頭で←は橙の尻へ
     if (k === 'right' && nm === 'cyc' && c >= sp[1] && S.dd) { _meosDdEditSp.set(key, 'dd'); const P = new vscode.Position(L, S.dd[0]); ed.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(ed); return; }
     if (k === 'left' && nm === 'dd' && c <= sp[0] && S.cyc) { _meosDdEditSp.set(key, 'cyc'); const P = new vscode.Position(L, S.cyc[1]); ed.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(ed); return; } }
   if (k === 'left') c = Math.max(sp[0], c - 1); else if (k === 'right') c = Math.min(sp[1], c + 1); else if (k === 'up' || k === 'home') c = sp[0]; else if (k === 'down' || k === 'end') c = sp[1];
@@ -15690,9 +15696,10 @@ function meosStopLineCss(kind, x, edge, xl) { const c = edge === 1 ? 'rgba(22, 1
   return 'linear-gradient(' + c + ', ' + c + ') ' + x + 'em center / ' + w + ' 1px no-repeat'; }
 const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjI5LjI5LDAuMDAgNzAuNzEsMC4wMCAxMDAuMDAsMjkuMjkgMTAwLjAwLDcwLjcxIDcwLjcxLDEwMC4wMCAyOS4yOSwxMDAuMDAgMC4wMCw3MC43MSAwLjAwLDI5LjI5IiBmaWxsPSIjMWExYTFhIi8+PHBvbHlnb24gcG9pbnRzPSIzMC43NCwzLjUwIDY5LjI2LDMuNTAgOTYuNTAsMzAuNzQgOTYuNTAsNjkuMjYgNjkuMjYsOTYuNTAgMzAuNzQsOTYuNTAgMy41MCw2OS4yNiAzLjUwLDMwLjc0IiBmaWxsPSIjZmZmIi8+PHBvbHlnb24gcG9pbnRzPSIzMi4xOSw3LjAwIDY3LjgxLDcuMDAgOTMuMDAsMzIuMTkgOTMuMDAsNjcuODEgNjcuODEsOTMuMDAgMzIuMTksOTMuMDAgNy4wMCw2Ny44MSA3LjAwLDMyLjE5IiBmaWxsPSIjZGMzYjMwIi8+PHRleHQgeD0iNTAiIHk9IjYyLjUiIGZvbnQtZmFtaWx5PSJBcmlhbCBOYXJyb3csSGVsdmV0aWNhIE5ldWUsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIzMyIgdGV4dExlbmd0aD0iNjYiIGxlbmd0aEFkanVzdD0ic3BhY2luZ0FuZEdseXBocyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+U1RPUDwvdGV4dD48L3N2Zz4=', MEOS_STOP_SIGN_EM = 1.3;
 const _meosStopRotUrl = new Map();
-function meosStopRotUrl(c) { let u = _meosStopRotUrl.get(c); if (u) return u;   // v5.1.739: 線種の↺= 線と同じ色の左回りの矢印
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M70 26 A32 32 0 1 0 82 52" fill="none" stroke="' + c + '" stroke-width="11" stroke-linecap="round"/><polygon points="52,6 82,22 54,42" fill="' + c + '"/></svg>';
-  u = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); _meosStopRotUrl.set(c, u); return u; }
+function meosStopRotUrl(c, k) { k = Math.max(0, k | 0); const key = c + ' ' + k; let u = _meosStopRotUrl.get(key); if (u) return u;   // v5.1.739: 線種の↺= 線と同じ色の矢印
+  // ★v5.1.741(俊克 740 改良2「メニューバーのように、回転角度をボタンごとに変える」「円の中に↻を入れよう」): 円の中に右回りの↻・線種の番号 k ごとに45°ずつ回す(矢印の先の向き= 今の線種)
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="' + c + '" stroke-width="7"/><g transform="rotate(' + (k * 45) + ' 50 50) translate(50 50) scale(0.6) translate(-50 -50)"><path d="M30 26 A32 32 0 1 1 18 52" fill="none" stroke="' + c + '" stroke-width="12" stroke-linecap="round"/><polygon points="48,4 16,22 46,44" fill="' + c + '"/></g></svg>';
+  u = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); _meosStopRotUrl.set(key, u); return u; }
 function meosStopEdgeColor(edge) { return edge === 1 ? 'rgba(22, 163, 74, 0.98)' : edge === -1 ? 'rgba(37, 99, 235, 0.98)' : '#e0803a'; }
 const MEOS_STOP_OFF_URL = meosStopSignSvg('#1e88e5', 'OFF', '#fff', 56);   // v5.1.645: オフの標識(灰) / ★v5.1.652: 青OFF= 通過してよい(信号の青)
 const MEOS_STOP_YELLOW_URL = meosStopSignSvg('#f2b705', 'STOP', '#1a1a1a', 66);   // v5.1.652: 黄STOP= 次はオン・その先にオフ
@@ -15865,7 +15872,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _bg45 = _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : (_sb45 && _sb45.rot > 0)   // v5.1.739: 左の標識の右の真横に↺(札は桁2)・線は↺の後ろから
-                  ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i))) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
+                  ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), MEOS_STOP_KINDS.indexOf(meosStopKindOf(txt))) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
                   : _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
               // ★v5.1.646(俊克 pm09:48 バグ1「開始膜の線がオンのときに、右の🛑上で選択指に変わらない。オフにすれば押せる」): 645 は右端の札の位置を詰め物の札(空白56個)の幅で見積もった= 札の字の幅と箱の ch がずれ、札が標識の下に来ていなかった。
               //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
