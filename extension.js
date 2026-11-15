@@ -15362,11 +15362,13 @@ function meosRawRowsOf(text, wrap) {   // ★v5.1.721: Raw の並びの段割り
   rows.push([idx[rs], idx[cps.length]]);
   return rows;
 }
-function meosDdPeekWindows(doc, i, txt, items) {   // ★v5.1.721: 周期と dd=日時 の窓の絵(飾りの上に被せる)
+function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期と dd=日時 の窓の絵(飾りの上に被せる)
   const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt), a = txt.indexOf('\u23f0'); if (a < 0) return;
   const rows = meosRawRowsOf(txt, meosFenceWrapColumn(doc)), at = (p) => { let r = 0; while (r + 1 < rows.length && p >= rows[r + 1][0]) r++; return { r, x: meosRenderColsF(txt.slice(rows[r][0], p)) }; };
   const win = { a, cyc: null, dd: null }, put = (s, e, col, rgb) => {
-    const q = at(s); items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: txt.slice(s, e), color: 'var(--vscode-editor-foreground)',
+    const q = at(s);
+    if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + 1px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad);' } } });   // v5.1.725: 窓の中のカーソルの棒
+    items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: txt.slice(s, e), color: 'var(--vscode-editor-foreground)',
       textDecoration: 'none; position: absolute; left: ' + (Math.round(q.x * 100) / 100) + 'ch; top: ' + (q.r * 100) + '%; z-index: 6; white-space: pre; pointer-events: auto; cursor: ' + meosHandCursor() + '; border: 1px solid rgb(' + rgb + '); border-radius: 3px; background-color: var(--vscode-editor-background); box-shadow: inset 0 0 0 999px rgba(' + rgb + ',0.18); font-style: normal; font-weight: normal; font-size: 1em;' } } });
   };
   if (_cy) { const s = _cy.index + _cy[0].search(/[^↺↻]/), e = _cy.index + _cy[0].length; win.cyc = [s, e]; put(s, e, a, '224,128,58'); }
@@ -15747,7 +15749,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     //   動いているものの本文の表示that、ウィンドウ下端にも表示される、と言うのthat正しい見せ方でしょ?」):
     //   ★★**タイトルは、走っている1本だけthat見せる**= 待っている⏰の `// …` は畳んで消す。
     //   ★見せる時は**下端と同じ字**= 周回数を入れた形(meosChainFillSlot)。字を作る所は1つ(v4.2.91の下端と同じ関数)。
-    const titles = [], _titleAt = new Map(), ddPeek = [], ddEdit = [], ddEditToday = [], ddEditHide = [];
+    const titles = [], _titleAt = new Map(), ddPeek = [];
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -15845,19 +15847,12 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //     「MeOSを無効化した時と同じ姿」と決めた以上、字を足せばその定義that崩れるから。
           //   ★失う物は無い= 残り時間は Me Dockの\u23f0ボタンとステータスバーにも出ている
           //     (\u23f0行を直している間も、同じ数字that画面に2つ在る)。
-          const _rawHere = meosShowsRawLineStable(editor, i);   // v4.2.494: 一瞬の生データ切替は受け取らない
+          const _rawHere = !_meosDdEdit.has(uri + ' ' + i) && meosShowsRawLineStable(editor, i);   // v4.2.494: 一瞬の生データ切替は受け取らない / v5.1.725: 窓の中で直す行は飾りのまま
           // ★v5.1.721(俊克 720 バグ1「元の状態を維持しつつ、覗き窓を上書きするって決めたよね」「見かけの上に、さらに見かけの表示を被せるのは、どこかでやったよ」):
           //   718〜720 は行を Raw の並びにしていた(飾りが消える)。→ ⏰ボタン・表の見せかけと同じ作り= 飾りはそのまま、Raw の位置に窓の絵を被せる。
           //   窓は ⏰ の桁(飾りの1段目)に置いた before を absolute で Raw の段/桁へ動かす。押すと before の桁にカーソル→ 選択の口がその窓の字へ運ぶ
           if (!_rawHere && (_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now()) { try { meosDdPeekWindows(doc, i, txt, items); } catch (_) { } }
-          if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) _meosDdEdit.delete(uri + ' ' + i); else try {   // v5.1.722: 窓の中で直す= その行は Raw の並び・2か所以外は透明(幅は残す)・2か所に枠
-            const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt), sp = [];
-            if (_cy) { const a = _cy.index + _cy[0].search(/[^↺↻]/); sp.push([a, _cy.index + _cy[0].length, false]); }
-            if (_dq) { const a = _dq.index + _dq[1].length; let t = false; try { t = new Date(meosClockDdParse(_dq[2].slice(3))).toDateString() === new Date().toDateString(); } catch (_) { } sp.push([a, a + _dq[2].length, t]); }
-            sp.sort((x, y) => x[0] - y[0]); let at = 0;
-            for (const [a, b, t] of sp) { if (a > at) ddEditHide.push(new vscode.Range(i, at, i, a)); (t ? ddEditToday : ddEdit).push(new vscode.Range(i, a, i, b)); at = b; }
-            if (at < txt.length) ddEditHide.push(new vscode.Range(i, at, i, txt.length));
-          } catch (_) { } }
+          if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) _meosDdEdit.delete(uri + ' ' + i); else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character); } catch (_) { } }   // v5.1.725: 直している間も覗き窓の姿のまま(窓に今の字とカーソルの棒)
           // ★★★v4.1.149(俊克 9/6 am00:12「いっそのこと、2行目も『\u23f0\ud83d\udd12 2026-09-05(s) 20:05 \u21ba\u21bb3m/1m』
           //   **だけを見せかけ表示**しようよ。文字カーソルthat入った時に、生データthat見えればいいんだからさ。
           //   **これですべてthatすっきりする**よ」):
@@ -16624,12 +16619,6 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (reps.length && !meosClockRepDeco) meosClockRepDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
-    if (ddEdit.length && !meosDdEditDeco) meosDdEditDeco = vscode.window.createTextEditorDecorationType({ border: '1px solid #e0803a', borderRadius: '3px', backgroundColor: 'rgba(224,128,58,0.18)', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    if (meosDdEditDeco) editor.setDecorations(meosDdEditDeco, ddEdit);   // v5.1.722: 窓の中で直す(橙)
-    if (ddEditToday.length && !meosDdEditTodayDeco) meosDdEditTodayDeco = vscode.window.createTextEditorDecorationType({ border: '1px solid #3fb950', borderRadius: '3px', backgroundColor: 'rgba(63,185,80,0.18)', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    if (meosDdEditTodayDeco) editor.setDecorations(meosDdEditTodayDeco, ddEditToday);   // 今日の dd= は緑
-    if (ddEditHide.length && !meosDdEditHideDeco) meosDdEditHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    if (meosDdEditHideDeco) editor.setDecorations(meosDdEditHideDeco, ddEditHide);   // 2か所以外は透明(幅は残す)
     if (stopHide2.length && !meosStopHide2Deco) meosStopHide2Deco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosStopHide2Deco) editor.setDecorations(meosStopHide2Deco, stopHide2);   // v5.1.645
     if (gap3.length && !meosClockGap3Deco) meosClockGap3Deco = vscode.window.createTextEditorDecorationType({
@@ -32578,7 +32567,7 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
    表の▾から出して、Me Dock の右上(手の切替の隣)へ。作りは家の中の同じ役の部品= A のズーム(mz-split/mz-pop)をそのまま真似る。 */
 .ww-split{position:relative;display:inline-block;margin-right:6px}
 .ww-ring{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:var(--meos-hand);box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:4;line-height:1}   /* ★v4.2.166(俊克「折り返しボタンにも↻ボタンを付けて、3種類のプリセットを切替」): Format の↻(fmt-lvl)と同じ形・同じ場所 */
-.ww-ring.clk-one{background:#7c3aed;color:#fff}   /* ★v5.1.724(俊克 11.15 am11:41「ワンショットタイマーの①の色を変えようよ。🔰などと混同して分りづらい」→「橙系でない別のはっきりと違うことが分る色に」): 紫＋白字(金の↻・🔰・⏰の橙・停止線の緑青のどれとも違う) */
+.ww-ring.clk-one{background:#7c3aed;color:#fff}.ww-ring.clk-one:hover,.ww-split .ww-ring.clk-one:hover{background:#9f67ff !important}   /* ★v5.1.724(俊克 11.15 am11:41「ワンショットタイマーの①の色を変えようよ。🔰などと混同して分りづらい」→「橙系でない別のはっきりと違うことが分る色に」): 紫＋白字(金の↻・🔰・⏰の橙・停止線の緑青のどれとも違う) */
 .ww-ring:hover{background:#c98a1a}
 /* ★v4.2.687(俊克「小さい↻ボタンなども拡大するように。優しさをアピール。パズルの拡大を体験すると、拡大するのが当たり前に思えてきた」):
    小さな丸い札(↻・⊕/⊖・↩・F/H・錠・Ⓝ 等)は、乗せると倍に。transform を使う札(↩ 等)を壊さないよう、別の口の scale で膨らませる */
@@ -42834,6 +42823,7 @@ function meosRawLines(editor, skipCaret, caretAt) {
       out.add(sl.active.line); out.add(sl.anchor.line);
     }
     const _edU = editor.document.uri.toString() + ' ';
+    if (_meosDdEdit.size) for (const ln of Array.from(out)) if (_meosDdEdit.has(_edU + ln)) out.delete(ln);   // ★v5.1.725(俊克 724 改良1「スクショ3枚目の状態のままで編集できるように」): 窓の中で直している⏰行は Raw にしない(飾りのまま・窓に字とカーソル)
     for (const ln of Array.from(out)) {
       if (_meosDdEdit.size && _meosDdEdit.has(_edU + ln)) continue;   // v5.1.722: 窓の中で直している⏰行は膜の▼▲・バッジ行へ広げない
       const m = meosFcMate(editor.document, ln);
@@ -47133,7 +47123,7 @@ function activate(context) {
       if (!out) { try { const t = e.textEditor.document.lineAt(l0).text, c = e.textEditor.selection.active.character, cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(t), dq = /(^|\s)(dd=\S+)/.exec(t);
         const inCy = cy && c >= cy.index + cy[0].search(/[^↺↻]/) && c <= cy.index + cy[0].length, inDd = dq && c >= dq.index + dq[1].length && c <= dq.index + dq[1].length + dq[2].length;
         out = !(inCy || inDd); } catch (_) { } }   // 窓の外へ出たら= 見えない所を直さないよう、ふつうの Raw に戻す
-      if (out) { _meosDdEdit.delete(k0); gone = true; } } if (gone) { try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); } }   // v5.1.722: 行を出たら窓の中の直しは終わり
+      if (out) { _meosDdEdit.delete(k0); gone = true; } else meosApplyTimerLineDecorations(e.textEditor); } if (gone) { try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); } }   // v5.1.722: 行を出たら窓の中の直しは終わり
     if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
     // v5.1.721: 窓を押した時だけ= カーソルが窓の桁(⏰の桁=周期 / その次=dd)に落ちた時。他の動き(⏸️の約1秒後に MeOS が動かすカーソル等)では消さない(720 の実測)
     const w = _meosDdPeekWin.get(k), ch = e.textEditor.selection.active.character;
