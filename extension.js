@@ -15367,7 +15367,7 @@ function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期
   const rows = meosRawRowsOf(txt, meosFenceWrapColumn(doc)), at = (p) => { let r = 0; while (r + 1 < rows.length && p >= rows[r + 1][0]) r++; return { r, x: meosRenderColsF(txt.slice(rows[r][0], p)) }; };
   const win = { a, cyc: null, dd: null }, put = (s, e, col, rgb) => {
     const q = at(s);
-    if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + 1px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad);' } } });   // v5.1.725: 窓の中のカーソルの棒
+    if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + 1px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad); animation: monaco-cursor-smooth 0.5s ease-in-out 0s infinite alternate;' } } });   // v5.1.725: 窓の中のカーソルの棒
     items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: txt.slice(s, e), color: 'var(--vscode-editor-foreground)',
       textDecoration: 'none; position: absolute; left: ' + (Math.round(q.x * 100) / 100) + 'ch; top: ' + (q.r * 100) + '%; z-index: 6; white-space: pre; pointer-events: auto; cursor: ' + meosHandCursor() + '; border: 1px solid rgb(' + rgb + '); border-radius: 3px; background-color: var(--vscode-editor-background); box-shadow: inset 0 0 0 999px rgba(' + rgb + ',0.18); font-style: normal; font-weight: normal; font-size: 1em;' } } });
   };
@@ -47127,10 +47127,11 @@ function activate(context) {
     if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
     // v5.1.721: 窓を押した時だけ= カーソルが窓の桁(⏰の桁=周期 / その次=dd)に落ちた時。他の動き(⏸️の約1秒後に MeOS が動かすカーソル等)では消さない(720 の実測)
     const w = _meosDdPeekWin.get(k), ch = e.textEditor.selection.active.character;
-    if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (ch === w.a || ch === w.a + 1)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
-      const sp = (ch === w.a) ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdPeekWin.delete(k); _meosDdEdit.add(k);
-      if (sp) { const to = (sp === w.dd) ? sp[0] + 3 : sp[0] + 1; const P = new vscode.Position(ln, to); e.textEditor.selection = new vscode.Selection(P, P); }   // 周期は ( の後ろ・dd は = の後ろへ
-      meosDbg('[dd] 覗き窓を押した(' + (ch === w.a ? '周期' : 'dd') + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
+    const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = ch === w.a + 1 || inS(w && w.dd);   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
+    if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
+      const sp = hitC ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdPeekWin.delete(k); _meosDdEdit.add(k);
+      if (sp && !inS(sp)) { const to = (sp === w.dd) ? sp[0] + 3 : sp[0] + 1; const P = new vscode.Position(ln, to); e.textEditor.selection = new vscode.Selection(P, P); }   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
+      meosDbg('[dd] 覗き窓を押した(' + (hitC ? '周期' : 'dd') + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
   } catch (_) { } }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => meosPostCaretDay(false)));
   // ★v5.1.215(俊克 am01:04 改良1「切り替える度に、カレント行の位置がだんだん下にズレて行く・だいぶ前からの症状」): 測る= 離れる時と戻った後(0/0.5/1.5/3秒)に、
