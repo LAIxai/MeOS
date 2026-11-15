@@ -15680,8 +15680,6 @@ function meosStopCaretAway(editor, ln) { try { const pv = _meosPrevCaretPos;
 const MEOS_STOP_LIT_MS = 3000; let _meosStopLit = null;
 function meosStopLight(editor, ln) { if (_meosStopLit && _meosStopLit.timer) clearTimeout(_meosStopLit.timer);
   const k = editor.document.uri.toString() + ' ' + ln; _meosStopLit = { key: k, timer: setTimeout(() => { if (_meosStopLit && _meosStopLit.key === k) _meosStopLit = null; for (const ed of vscode.window.visibleTextEditors) if (k.startsWith(ed.document.uri.toString() + ' ')) meosApplyTimerLineDecorations(ed); }, MEOS_STOP_LIT_MS) }; }
-const MEOS_STOP_FAINT = 0.3, _meosStopFaint = new Map();   // v5.1.747: オンの線の標識と↻の濃さ(普段は薄く)
-function meosStopFaintUrl(u) { let f = _meosStopFaint.get(u); if (f) return f; try { const svg = Buffer.from(u.slice(u.indexOf(',') + 1), 'base64').toString('utf8').replace('<svg ', '<svg opacity="' + MEOS_STOP_FAINT + '" '); f = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); } catch (_) { f = u; } _meosStopFaint.set(u, f); return f; }
 let _meosStopDigit = null;
 function meosStopDigitArm(ed, i) { if (_meosStopDigit && _meosStopDigit.timer) clearTimeout(_meosStopDigit.timer);
   _meosStopDigit = { uri: ed.document.uri.toString(), line: i, timer: setTimeout(meosStopDigitDisarm, 1000) }; vscode.commands.executeCommand('setContext', 'meos.stopDigit', true); }
@@ -15905,12 +15903,12 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               //   ホバーの口(provideHover)がその行を訊いてきた時だけ標識と↻を描く。押す札は普段もそのまま(見えないだけ)。オフの線は線が無いので今まで通り
               // ★v5.1.747(746 不発= 俊克の設定は Markdown のホバーが切ってある("editor.hover.enabled": "off")→ ホバーの口は一度も呼ばれない。俊克「普段は薄く」): オンの線の標識と↻は薄く描く(線が主役)。押す札は同じ
               const _lit48 = !!_meosStopLit && _meosStopLit.key === doc.uri.toString() + ' ' + i;   // v5.1.748: 押した線は3秒濃く
-              const _fa = (u) => (_off45 || _lit48) ? u : meosStopFaintUrl(u);
-              const _bg45 = _off45
+              // ★v5.1.749(俊克 am01:20「ステルスモードは完全に透明だよ。つまり、線だけが見えるようにしよう」): 普段のオンの線は線だけ(行の端から端まで)・押した線だけ3秒、標識と↻を濃く。押す札は普段もそのまま
+              const _bg45 = (!_off45 && !_lit48) ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i)) : _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : (_sb45 && _sb45.rot > 0)   // v5.1.739: 左の標識の右の真横に↺(札は桁2)・線は↺の後ろから
-                  ? _sign(_fa(MEOS_STOP_SIGN_URL), 'left') + ', ' + 'url(' + _fa(meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), meosStopKindOf(txt))) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_fa(_nextU), 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
-                  : _sign(_fa(MEOS_STOP_SIGN_URL), 'left') + ', ' + _sign(_fa(_nextU), 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
+                  ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), meosStopKindOf(txt)) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat, ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5)
+                  : _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i));
               // ★v5.1.646(俊克 pm09:48 バグ1「開始膜の線がオンのときに、右の🛑上で選択指に変わらない。オフにすれば押せる」): 645 は右端の札の位置を詰め物の札(空白56個)の幅で見積もった= 札の字の幅と箱の ch がずれ、札が標識の下に来ていなかった。
               //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
               const _mid46 = !!(_sb45 && _sb45.pad > 0);
@@ -25449,6 +25447,8 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           try { const _pv = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === _ln && p.id === _vbs.id); if (_pv && isPairFolded(editor, _pv)) await setPairFoldStateAndMstat(editor, _pv, false); } catch (_) { }
           meosCalmRefresh(editor); return; }
         { const _sb = meosStopBtnSpots(editor.document, _ln, editor), _cc = editor.selection.active.character;   // ★v5.1.645: 一時停止線の🛑= 左は自分 / v5.1.652: 右は次の線の信号
+          // ★v5.1.749(ステルス): 見えていないボタンは狙えない= 濃く出ていないオンの線の札を押した1回目は、出すだけ(何も切り替えない)。出ている3秒の間に押すと効く
+          if (_sb && _sb.on && (_cc <= _sb.self || _cc === _sb.rot || (_sb.bulk > 0 && _cc === _sb.bulk)) && !(_meosStopLit && _meosStopLit.key === editor.document.uri.toString() + ' ' + _ln)) { setRefNoRaw(editor.document, _ln); meosStopCaretAway(editor, _ln); meosStopLight(editor, _ln); meosApplyTimerLineDecorations(editor); setRefNoRaw(editor.document, _ln); return; }
           if (_sb && _sb.rot > 0 && _cc === _sb.rot) { setRefNoRaw(editor.document, _ln); meosStopCaretAway(editor, _ln); meosStopLight(editor, _ln); /* ★v5.1.745(俊克 744 改良1「文字カーソルが↻の左側から🛑の左に移動する動きが目障り」) */ await meosStopCycleKind(editor, _ln); meosStopDigitArm(editor, _ln); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }   // v5.1.739: ↺= 線種を次へ
           if (_sb && (_cc <= _sb.self || (_sb.bulk > 0 && _cc === _sb.bulk))) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); meosStopLight(editor, _ln);
             if (_cc === _sb.bulk) await meosStopCycleNext(editor, _ln); else await meosStopToggleSelf(editor, _ln);   // v5.1.652: 右= 次の線の信号を 赤→青→黄 で回す
