@@ -15749,7 +15749,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     //   動いているものの本文の表示that、ウィンドウ下端にも表示される、と言うのthat正しい見せ方でしょ?」):
     //   ★★**タイトルは、走っている1本だけthat見せる**= 待っている⏰の `// …` は畳んで消す。
     //   ★見せる時は**下端と同じ字**= 周回数を入れた形(meosChainFillSlot)。字を作る所は1つ(v4.2.91の下端と同じ関数)。
-    const titles = [], _titleAt = new Map(), ddPeek = [];
+    const titles = [], _titleAt = new Map(), ddPeek = [], ddEditHide = [];
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -15852,7 +15852,9 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   718〜720 は行を Raw の並びにしていた(飾りが消える)。→ ⏰ボタン・表の見せかけと同じ作り= 飾りはそのまま、Raw の位置に窓の絵を被せる。
           //   窓は ⏰ の桁(飾りの1段目)に置いた before を absolute で Raw の段/桁へ動かす。押すと before の桁にカーソル→ 選択の口がその窓の字へ運ぶ
           if (!_rawHere && (_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now()) { try { meosDdPeekWindows(doc, i, txt, items); } catch (_) { } }
-          if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) _meosDdEdit.delete(uri + ' ' + i); else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character); } catch (_) { } }   // v5.1.725: 直している間も覗き窓の姿のまま(窓に今の字とカーソルの棒)
+          if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) _meosDdEdit.delete(uri + ' ' + i); else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character);
+            const _cyE = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt); if (_cyE) ddEditHide.push(new vscode.Range(i, _cyE.index + _cyE[0].search(/[^↺↻]/), i, _cyE.index + _cyE[0].length));   // ★v5.1.727(俊克 726 バグ1「橙色の枠の中で動かすと本文の方の文字カーソルも追従。緑色の方は正しいのに、なぜ?」): dd は隠した字の中なので本物のカーソルが見えない。周期は見えている字だった→ 直す間は飾りの周期も畳む(窓が同じ字を見せる)
+          } catch (_) { } }   // v5.1.725: 直している間も覗き窓の姿のまま(窓に今の字とカーソルの棒)
           // ★★★v4.1.149(俊克 9/6 am00:12「いっそのこと、2行目も『\u23f0\ud83d\udd12 2026-09-05(s) 20:05 \u21ba\u21bb3m/1m』
           //   **だけを見せかけ表示**しようよ。文字カーソルthat入った時に、生データthat見えればいいんだからさ。
           //   **これですべてthatすっきりする**よ」):
@@ -16619,6 +16621,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (reps.length && !meosClockRepDeco) meosClockRepDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
+    if (ddEditHide.length && !meosDdEditHideDeco) meosDdEditHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0 !important; font-size: 0 !important; letter-spacing: 0 !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosDdEditHideDeco) editor.setDecorations(meosDdEditHideDeco, ddEditHide);   // v5.1.727: 窓の中で周期を直す間は飾りの周期を畳む(本物のカーソルを隠れた字の中へ)
     if (stopHide2.length && !meosStopHide2Deco) meosStopHide2Deco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosStopHide2Deco) editor.setDecorations(meosStopHide2Deco, stopHide2);   // v5.1.645
     if (gap3.length && !meosClockGap3Deco) meosClockGap3Deco = vscode.window.createTextEditorDecorationType({
@@ -47122,14 +47126,17 @@ function activate(context) {
     { const u0 = e.textEditor.document.uri.toString() + ' ', l0 = e.textEditor.selection.active.line; let gone = false; for (const k0 of Array.from(_meosDdEdit)) if (k0.startsWith(u0)) { let out = Number(k0.slice(u0.length)) !== l0;
       if (!out) { try { const t = e.textEditor.document.lineAt(l0).text, c = e.textEditor.selection.active.character, cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(t), dq = /(^|\s)(dd=\S+)/.exec(t);
         const inCy = cy && c >= cy.index + cy[0].search(/[^↺↻]/) && c <= cy.index + cy[0].length, inDd = dq && c >= dq.index + dq[1].length && c <= dq.index + dq[1].length + dq[2].length;
-        out = !(inCy || inDd); } catch (_) { } }   // 窓の外へ出たら= 見えない所を直さないよう、ふつうの Raw に戻す
+        out = !(inCy || inDd);
+        if (out) { const w0 = _meosDdPeekWin.get(k0);   // ★v5.1.727(俊克 726 改良1「2つの枠の間をクリックして切替ようとすると、枠が消えてしまう」): もう1つの窓を押した(窓の桁に落ちた)= その窓へ移る
+          const sp0 = w0 ? (c === w0.a ? w0.cyc : (c === w0.a + 1 ? w0.dd : null)) : null;
+          if (sp0) { out = false; const P = new vscode.Position(l0, sp0 === w0.dd ? sp0[0] + 3 : sp0[0] + 1); e.textEditor.selection = new vscode.Selection(P, P); } } } catch (_) { } }   // 窓の外へ出たら= 見えない所を直さないよう、ふつうの Raw に戻す
       if (out) { _meosDdEdit.delete(k0); gone = true; } else meosApplyTimerLineDecorations(e.textEditor); } if (gone) { try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); } }   // v5.1.722: 行を出たら窓の中の直しは終わり
     if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
     // v5.1.721: 窓を押した時だけ= カーソルが窓の桁(⏰の桁=周期 / その次=dd)に落ちた時。他の動き(⏸️の約1秒後に MeOS が動かすカーソル等)では消さない(720 の実測)
     const w = _meosDdPeekWin.get(k), ch = e.textEditor.selection.active.character;
     const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = ch === w.a + 1 || inS(w && w.dd);   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
     if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
-      const sp = hitC ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdPeekWin.delete(k); _meosDdEdit.add(k);
+      const sp = hitC ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k);
       if (sp && !inS(sp)) { const to = (sp === w.dd) ? sp[0] + 3 : sp[0] + 1; const P = new vscode.Position(ln, to); e.textEditor.selection = new vscode.Selection(P, P); }   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
       meosDbg('[dd] 覗き窓を押した(' + (hitC ? '周期' : 'dd') + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
   } catch (_) { } }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
