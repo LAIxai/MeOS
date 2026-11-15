@@ -15364,6 +15364,7 @@ function meosRawRowsOf(text, wrap) {   // ★v5.1.721: Raw の並びの段割り
 }
 // ★v5.1.729(俊克 728 バグ1「←/→を押しっ放しだと、窓の端を大きく飛び越えては戻る」): 728 は Monaco が動かした後に引き戻していた(往復の間に次の打鍵が先へ進む)。
 //   → 窓で直している間は ←→↑↓/Home/End/Backspace/Delete を MeOS が先に受け取る(文脈キー meos.ddEdit)= 窓の外へは1桁も出ない。↑↓で隣の窓へ跳ばない(728 は折り返しの段を跨いで dd へ落ちていた)
+// v5.1.730(俊克 729 改良2「×2の右側のカーソルが四角枠の外側なので、四角枠を右側に少し広げよう」): 窓の右に4pxの余白= 尻のカーソルの棒が枠の内側に入る
 function meosDdEditSpans(t) {   // 窓で直せる桁の範囲。周期は ( の後ろから・dd は = の後ろから
   const cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(t), dq = /(^|\s)(dd=\S+)/.exec(t);
   let cyc = null; if (cy) { const s = cy.index + cy[0].search(/[^↺↻]/); cyc = [s + (t[s] === '(' ? 1 : 0), cy.index + cy[0].length]; }
@@ -15393,7 +15394,7 @@ function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期
     const q = at(s);
     if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + 1px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad); animation: monaco-cursor-smooth 0.5s ease-in-out 0s infinite alternate;' } } });   // v5.1.725: 窓の中のカーソルの棒
     items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: txt.slice(s, e), color: 'var(--vscode-editor-foreground)',
-      textDecoration: 'none; position: absolute; left: ' + (Math.round(q.x * 100) / 100) + 'ch; top: ' + (q.r * 100) + '%; z-index: 6; white-space: pre; pointer-events: auto; cursor: ' + meosHandCursor() + '; border: 1px solid rgb(' + rgb + '); border-radius: 3px; background-color: var(--vscode-editor-background); box-shadow: inset 0 0 0 999px rgba(' + rgb + ',0.18); font-style: normal; font-weight: normal; font-size: 1em;' } } });
+      textDecoration: 'none; position: absolute; left: ' + (Math.round(q.x * 100) / 100) + 'ch; top: ' + (q.r * 100) + '%; z-index: 6; white-space: pre; pointer-events: auto; cursor: ' + meosHandCursor() + '; border: 1px solid rgb(' + rgb + '); border-radius: 3px; padding-right: 4px; background-color: var(--vscode-editor-background); box-shadow: inset 0 0 0 999px rgba(' + rgb + ',0.18); font-style: normal; font-weight: normal; font-size: 1em;' } } });
   };
   if (_cy) { const s = _cy.index + _cy[0].search(/[^↺↻]/), e = _cy.index + _cy[0].length; win.cyc = [s, e]; put(s, e, a, '224,128,58'); }
   if (_dq) { const s = _dq.index + _dq[1].length, e = s + _dq[2].length; win.dd = [s, e];
