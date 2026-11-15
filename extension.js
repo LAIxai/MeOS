@@ -15403,7 +15403,10 @@ function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期
     items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: txt.slice(s, e), color: 'var(--vscode-editor-foreground)',
       textDecoration: 'none; position: absolute; left: ' + (Math.round(q.x * 100) / 100) + 'ch; top: ' + (q.r * 100) + '%; z-index: 6; white-space: pre; pointer-events: auto; cursor: ' + meosHandCursor() + '; border: 1px solid rgb(' + rgb + '); border-radius: 3px; ' + (padR || 'padding-right: 4px;') + ' background-color: var(--vscode-editor-background); box-shadow: inset 0 0 0 999px rgba(' + rgb + ',0.18); font-style: normal; font-weight: normal; font-size: 1em;' } } });
   };
-  if (_cy) { const s = _cy.index + _cy[0].search(/[^↺↻]/), e = _cy.index + _cy[0].length; win.cyc = [s, e]; put(s, e, a, '224,128,58'); }
+  if (_cy) { const s = _cy.index + _cy[0].search(/[^↺↻]/), e = _cy.index + _cy[0].length; win.cyc = [s, e];
+    // ★v5.1.737(俊克 736 改良1「橙枠を緑枠の段に移動して横並びにしたら、見た目が整う」): dd の窓がある時は、橙の窓を緑の窓(dd の字+右の余白4字)の右へ1字空けて並べる。緑は動かさない(本物のカーソルを覆う位置)
+    let qc = null; if (_dq) { const ds = _dq.index + _dq[1].length, dq0 = at(ds); qc = { r: dq0.r, x: dq0.x + meosRenderColsF(_dq[2]) + 4 + 1 }; }
+    put(s, e, a, '224,128,58', qc); }
   if (_dq) { const s = _dq.index + _dq[1].length, e = s + _dq[2].length; win.dd = [s, e];
     let today = false; try { today = new Date(meosClockDdParse(_dq[2].slice(3))).toDateString() === new Date().toDateString(); } catch (_) { }   // v5.1.719: 今日の dd= は緑
     // ★v5.1.734(俊克 733「緑色の枠を次の行に出すから駄目。橙枠のように見せかけの行に被せるように表示すればいい」): dd の窓は1つ上の段(見せかけの日時の段)の字の後ろへ
