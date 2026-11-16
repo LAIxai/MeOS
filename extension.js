@@ -15719,8 +15719,8 @@ const _meosWaveUrl = new Map();
 function meosStopWaveUrl(c, two) { const key = c + (two ? '2' : '1'); let u = _meosWaveUrl.get(key); if (u) return u; const h = two ? 10 : 6, path = (y) => '<path d="M0 ' + y + ' Q3 ' + (y - 2.5) + ' 6 ' + y + ' T12 ' + y + '" fill="none" stroke="' + c + '" stroke-width="1.2"/>';
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="' + h + '"><defs><pattern id="w" width="12" height="' + h + '" patternUnits="userSpaceOnUse">' + path(3) + (two ? path(7) : '') + '</pattern></defs><rect width="100%" height="' + h + '" fill="url(#w)"/></svg>';
   u = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); _meosWaveUrl.set(key, u); return u; }
-function meosStopLineCss(kind, x, edge, xl, al) { const _a = al > 0 ? al : 0.98, c = edge === 1 ? 'rgba(22, 163, 74, ' + _a + ')' : edge === -1 ? 'rgba(37, 99, 235, ' + _a + ')' : (al > 0 ? 'rgba(224, 128, 58, ' + al + ')' : '#e0803a'),   /* v5.1.753: al= 濃さ(薄い線/オフ= MEOS_STOP_FAINT) */ w = 'calc(100% - ' + (x + (xl > 0 ? xl : x)) + 'em)';   // v5.1.739: xl= 左の余白(↺の後ろから線)
-  if (xl > 0) { const css = meosStopLineCss(kind, x, edge, 0, al).split(x + 'em ').join(xl + 'em '); return css.split('calc(100% - ' + (2 * x) + 'em)').join(w); }
+function meosStopLineCss(kind, x, edge, xl, al, grey) { const _a = al > 0 ? al : 0.98, c = grey ? MEOS_STOP_OFF_GREY : edge === 1 ? 'rgba(22, 163, 74, ' + _a + ')' : edge === -1 ? 'rgba(37, 99, 235, ' + _a + ')' : (al > 0 ? 'rgba(224, 128, 58, ' + al + ')' : '#e0803a'),   /* v5.1.753: al= 濃さ(薄い線/オフ= MEOS_STOP_FAINT) */ w = 'calc(100% - ' + (x + (xl > 0 ? xl : x)) + 'em)';   // v5.1.739: xl= 左の余白(↺の後ろから線)
+  if (xl > 0) { const css = meosStopLineCss(kind, x, edge, 0, al, grey).split(x + 'em ').join(xl + 'em '); return css.split('calc(100% - ' + (2 * x) + 'em)').join(w); }
   if (kind === 1) return 'linear-gradient(' + c + ', ' + c + ') ' + x + 'em calc(50% - 2px) / ' + w + ' 1px no-repeat, linear-gradient(' + c + ', ' + c + ') ' + x + 'em calc(50% + 2px) / ' + w + ' 1px no-repeat';
   if (kind === 2) return 'repeating-linear-gradient(90deg, ' + c + ' 0 12px, transparent 12px 16px, ' + c + ' 16px 18px, transparent 18px 22px) ' + x + 'em center / ' + w + ' 1px no-repeat';
   if (kind === 3) return 'repeating-linear-gradient(90deg, ' + c + ' 0 12px, transparent 12px 16px, ' + c + ' 16px 18px, transparent 18px 22px, ' + c + ' 22px 24px, transparent 24px 28px) ' + x + 'em center / ' + w + ' 1px no-repeat';
@@ -15731,6 +15731,7 @@ function meosStopLineCss(kind, x, edge, xl, al) { const _a = al > 0 ? al : 0.98,
 const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjI5LjI5LDAuMDAgNzAuNzEsMC4wMCAxMDAuMDAsMjkuMjkgMTAwLjAwLDcwLjcxIDcwLjcxLDEwMC4wMCAyOS4yOSwxMDAuMDAgMC4wMCw3MC43MSAwLjAwLDI5LjI5IiBmaWxsPSIjMWExYTFhIi8+PHBvbHlnb24gcG9pbnRzPSIzMC43NCwzLjUwIDY5LjI2LDMuNTAgOTYuNTAsMzAuNzQgOTYuNTAsNjkuMjYgNjkuMjYsOTYuNTAgMzAuNzQsOTYuNTAgMy41MCw2OS4yNiAzLjUwLDMwLjc0IiBmaWxsPSIjZmZmIi8+PHBvbHlnb24gcG9pbnRzPSIzMi4xOSw3LjAwIDY3LjgxLDcuMDAgOTMuMDAsMzIuMTkgOTMuMDAsNjcuODEgNjcuODEsOTMuMDAgMzIuMTksOTMuMDAgNy4wMCw2Ny44MSA3LjAwLDMyLjE5IiBmaWxsPSIjZGMzYjMwIi8+PHRleHQgeD0iNTAiIHk9IjYyLjUiIGZvbnQtZmFtaWx5PSJBcmlhbCBOYXJyb3csSGVsdmV0aWNhIE5ldWUsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIzMyIgdGV4dExlbmd0aD0iNjYiIGxlbmd0aEFkanVzdD0ic3BhY2luZ0FuZEdseXBocyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+U1RPUDwvdGV4dD48L3N2Zz4=', MEOS_STOP_SIGN_EM = 1.3;
 const MEOS_STOP_FAINT = 0.15;   // v5.1.752(俊克 751「今の半分でも良いかも」→ 15%)・v5.1.753 薄い線(⚪)も同じ値
 const _meosStopDotUrl = new Map();
+const MEOS_STOP_OFF_GREY = 'rgba(136, 136, 136, 0.9)';   // ★v5.1.756(俊克 755 改良1「OFFのとき線を中くらいの濃さの灰色に」): 薄い線(⚪)とOFFを見ただけで分ける
 const MEOS_STOP_FAINT_RIM = 0.25;   // ★v5.1.755(俊克 754 改良1「縁が目立ち過ぎる・25%くらいに」): ⚪の縁の濃さ(中は MEOS_STOP_FAINT)
 function meosStopDotUrl(c, faint) { const key = c + ' ' + faint; let u = _meosStopDotUrl.get(key); if (u) return u;   // v5.1.753: ⚫= 濃い線(線の色で塗った丸) / ⚪= 薄い線(線の色の輪)
   // ★v5.1.754(俊克 753 改良1「⚫の地の色の濃さを規定色の15%で」): ⚪の輪の中を線の色の15%(MEOS_STOP_FAINT)で塗る= 薄い線と同じ濃さ・ライト/ダークどちらの地でも透けて馴染む
@@ -15918,9 +15919,9 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _lit48 = !!_meosStopLit && _meosStopLit.key === doc.uri.toString() + ' ' + i;   // v5.1.748: 押した線は3秒濃く
               // ★v5.1.749(俊克 am01:20「ステルスモードは完全に透明だよ。つまり、線だけが見えるようにしよう」): 普段のオンの線は線だけ(行の端から端まで)・押した線だけ3秒、標識と↻を濃く。押す札は普段もそのまま
               // ★v5.1.751(俊克 am01:54「1つ穴があった。OFFにすると、10秒経っても、ステルスモードにならない」): オフの線もステルス= 普段は同じ線種の線を薄く(30%→v5.1.752 で15%)=「線はあるが今は止まらない」。押すと10秒 青OFF と信号
-              const _al53 = (_off45 || meosStopIsFaint(txt)) ? MEOS_STOP_FAINT : 0;   // ★v5.1.753: 薄い線(⚪)とオフは同じ薄さ(1つの値)
+              const _al53 = (!_off45 && meosStopIsFaint(txt)) ? MEOS_STOP_FAINT : 0;   // ★v5.1.756: オフは薄くせず灰色(MEOS_STOP_OFF_GREY)   // ★v5.1.753: 薄い線(⚪)とオフは同じ薄さ(1つの値)
               const _dot53 = (_sb45 && _sb45.dot > 0) ? ', url(' + meosStopDotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), !!_al53) + ') ' + (MEOS_STOP_BTN_CH * 2) + 'ch center / ' + (_S * 0.6) + 'em ' + (_S * 0.6) + 'em no-repeat' : '';
-              const _bg45 = !_lit48 ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i), 0, _al53) : _off45
+              const _bg45 = !_lit48 ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i), 0, _al53, _off45) : _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : (_sb45 && _sb45.rot > 0)   // v5.1.739: 左の標識の右の真横に↺(札は桁2)・線は↺の後ろから
                   ? _sign(MEOS_STOP_SIGN_URL, 'left') + ', ' + 'url(' + meosStopRotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), meosStopKindOf(txt)) + ') ' + MEOS_STOP_BTN_CH + 'ch center / ' + (_S * 0.85) + 'em ' + (_S * 0.85) + 'em no-repeat' + _dot53 + ', ' + _sign(_nextU, 'right') + ', ' + meosStopLineCss(meosStopKindOf(txt), _S + 0.3, meosStopEdgeOf(doc, i), _S * 0.85 + 1.5 + (_dot53 ? 1.25 : 0), _al53)
