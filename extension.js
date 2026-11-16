@@ -15922,7 +15922,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v5.1.751(俊克 am01:54「1つ穴があった。OFFにすると、10秒経っても、ステルスモードにならない」): オフの線もステルス= 普段は同じ線種の線を薄く(30%→v5.1.752 で15%)=「線はあるが今は止まらない」。押すと10秒 青OFF と信号
               const _al53 = (!_off45 && meosStopIsFaint(txt)) ? MEOS_STOP_FAINT : 0;   // ★v5.1.756: オフは薄くせず灰色(MEOS_STOP_OFF_GREY)   // ★v5.1.753: 薄い線(⚪)とオフは同じ薄さ(1つの値)
               const _dot53 = (_sb45 && _sb45.dot > 0) ? ', url(' + meosStopDotUrl(meosStopEdgeColor(meosStopEdgeOf(doc, i)), !!_al53) + ') ' + (MEOS_STOP_BTN_CH * 2) + 'ch center / ' + (_S * 0.6) + 'em ' + (_S * 0.6) + 'em no-repeat' : '';
-              const _bg45 = !_lit48 ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i), 0, _al53, _off45, _off45 ? 'calc(' + (MEOS_STOP_BTN_CH * 2) + 'ch + ' + (_S * 0.6) + 'em)' : 0) :   /* ★v5.1.761(俊克「3つの幅にしよう」): STOP・↻・⚫ の3つ分(⚫の右端まで) */   // ★v5.1.760(俊克 pm04:12 改良1「OFFの灰色の線の長さを左のボタンの幅に」): 素通りするのも、そこに線が在るのも分かる
+              const _bg45 = !_lit48 ? meosStopLineCss(meosStopKindOf(txt), 0, meosStopEdgeOf(doc, i), 0, _al53, _off45, _off45 ? 'calc(' + (MEOS_STOP_BTN_CH * 2) + 'ch + ' + (_S * 0.6 + 1.1) + 'em)' : 0) :   /* ★v5.1.761(俊克「3つの幅にしよう」): STOP・↻・⚫ の3つ分(⚫の右端まで) / ★v5.1.762(俊克「二点鎖線の二点がもう一個出るくらい」): +1.1em */   // ★v5.1.760(俊克 pm04:12 改良1「OFFの灰色の線の長さを左のボタンの幅に」): 素通りするのも、そこに線が在るのも分かる
                 _off45
                 ? _sign(MEOS_STOP_OFF_URL, 'left') + ', ' + _sign(_nextU, (MEOS_STOP_BTN_CH + 0.3) + 'ch')   // オフ= 線は消して左端に青OFF・隣に次の信号
                 : (_sb45 && _sb45.rot > 0)   // v5.1.739: 左の標識の右の真横に↺(札は桁2)・線は↺の後ろから
