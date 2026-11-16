@@ -98,7 +98,7 @@ in Me Dock: 🪑 chair 3 minutes, 🛋️ sofa 15, 💺 train seat 30 (each one 
 sky blue, red-brown, gold. In the last 75 seconds it counts in seconds, `🪑0:42`, and a minute before the end it
 rings like any ⏰; touch anything and it stops. Doze off at the keyboard, and it wakes you up — along with everyone
 around you. When it does close, it first parks the pointer on the valley of the
-M in the mGATE logo in the menu bar: come back, wake the Mac and just click — without moving the mouse a millimetre —
+M in the big mGATE logo under the menu bar: come back, wake the Mac and just click — without moving the mouse a millimetre —
 and MeOS opens again.
 
 **Unlocked, still behind a blind.** When you unlock a 🔐 membrane, its inside stays covered by a white blind. Only

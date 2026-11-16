@@ -4,10 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
-### v5.1.764 (2026-11-15) — the first public v5.1
+### v5.1.765 (2026-11-15) — the first public v5.1
 - **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
 - **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.
-- **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE. Before it closes, the pointer is parked on the valley of the M in the mGATE logo in the menu bar — come back, wake the Mac and click without moving the mouse, and MeOS opens again.
+- **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE. Before it closes, the pointer is parked on the valley of the M in the big mGATE logo under the menu bar — come back, wake the Mac and click without moving the mouse, and MeOS opens again.
 - **🏦 The safe-deposit membrane.** A 🔐 membrane with a deadline. Extend it with 🔄 before the deadline; if you don't, its passphrase can be read — words left for later. A bell rings before the deadline.
 - **⏰ The ⏰ database.** `⏰0y0d0h3m …` on the menu bar or in Format Me warps to a membrane of everyday timers, one per line. ▶️ runs just that line; copy a line into any membrane and it works there.
 - **⛓️ Clocks on a chain.** `⛓️⤵️2` runs this line and the next one after the other, `⛓️⤴️2)×8` goes back and repeats 8 times, `⛓️‍💥` cuts the chain. Write `1.` in a title and the round number is filled in.

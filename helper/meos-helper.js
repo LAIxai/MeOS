@@ -1369,6 +1369,11 @@ function run(argv) {
     if (!gateWant.gone) { gateWant.gone = now; return; }
     if (now - gateWant.gone < 1200) return;   // 札を描き直す間を待つ
     gateWant = null;
+    // ★v5.1.765(俊克 pm10:34 改良1「小さい方でなく、その下の大きなmGATEロゴに移動して欲しかった。ここなら位置は変わらない」): ぶら下がりの mGATE の大きいロゴ(mgate-big.png)の M の谷を先に。
+    //   ロゴの箱= dockOutOnLogo と同じ物差し(窓の左から DO_LX・幅 DO_LG・縦は真中)。谷= 横の真中・上から 0.68(絵の V の先 125/176 の少し上= 白い所・押せる台形の中)
+    try { if (dockOut.win && !dockOut.win.isNil() && dockOut.win.isVisible) { const f = dockOut.win.frame, H0 = $.NSScreen.screens.objectAtIndex(0).frame.size.height, x = f.origin.x + DO_LX + DO_LG / 2, y = f.origin.y + (f.size.height - DO_LG) / 2 + DO_LG * (1 - 0.68);
+      $.CGWarpMouseCursorPosition({ x: x, y: H0 - y }); $.CGAssociateMouseAndMouseCursorPosition(true); hlog('[ptrGate] 大きいロゴの谷へ ' + x.toFixed(1) + ',' + (H0 - y).toFixed(1)); return; } } catch (e) { hlog('[ptrGate] 大きいロゴ 失敗 ' + e); }
+    // mGATE を閉じている時だけ、札の左端の小さいロゴへ
     try { const b = item.button, w = b.window; if (!w || w.isNil() || !logoW || !imgAllW) { hlog('[ptrGate] ロゴが無い'); return; }
       const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), H0 = $.NSScreen.screens.objectAtIndex(0).frame.size.height, LH = 18;
       const x = r.origin.x + Math.max(0, (r.size.width - imgAllW) / 2) + LH / 2, y = r.origin.y + (r.size.height - LH) / 2 + LH / 4;   // 下からの物差し(ロゴの下から 1/4 = 上から 3/4)
