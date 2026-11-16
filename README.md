@@ -139,8 +139,8 @@ A heading made with the heading button gets a faint stop line under it, after it
 FC line, one more ↓ takes you into the text, and Cmd+↑ from below lands at the start of the text.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.1-stop-lines.png" alt="Stop lines - the eight lines with STOP and OFF signs at both ends; Cmd+up or holding up stops at the start of the line below a stop line, Cmd+down or holding down stops at the end of the line above the next one" width="80%"><br>
-  <sub><b>NEW in v5.1 — stop lines.</b> Eight lines, each with a sign at both ends. Cmd+↑/↓, or holding ↑/↓, stops just before a line.</sub>
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.1-stop-lines.png" alt="Stop lines - the eight lines numbered 1 to 8; click either end of a line to show its buttons: STOP, the ↻ that changes the style (or a digit 1 to 8 after the click) and the dot that switches dark and faint; Cmd+up or holding up stops below a line, Cmd+down or holding down stops above the next; switched-off lines shrink to a short grey stub, with blue and yellow OFF signs" width="80%"><br>
+  <sub><b>NEW in v5.1 — stop lines.</b> Eight lines, 1–8. Click an end for the buttons: ↻ (or 1–8) for the style, ⚫ for dark or faint. Cmd+↑/↓, or holding ↑/↓, stops just before a line; an off line is a short grey stub.</sub>
 </p>
 
 **Switch a line off, without deleting it.** Click the 🛑 at the left end: the line shrinks to a short grey stub, as wide as the three buttons at its left end, and while its buttons
