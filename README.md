@@ -112,8 +112,10 @@ always holds the ciphertext. So when nobody has touched the Mac for a tenth of t
 or press a key, and you are back under the everyday blind — no passphrase. It is not a lock; it is for the eyes
 behind you, a shared screen or a screenshot. The 🪑 is the lock.
 
-**🛑 Stop lines.** `<!-- Mew!UFC --- -->` — three dashes or more, as in Markdown's own `---` — is drawn as a stop line:
-a rule with an octagonal STOP sign at each end. Dashes and dots, read like Morse code, give eight lines in all:
+**🛑 Stop lines.** `<!-- Mew!UFC --- -->` — three dashes or more, as in Markdown's own `---` — is drawn as a stop line.
+Most of the time you see only the line itself — its buttons stay hidden. Click either end of the line and they appear
+for ten seconds: an octagonal STOP sign at each end, and next to the left one a ↻ and a ⚫. Dashes and dots, read like
+Morse code, give eight lines in all:
 
 | Type | Line | Type | Line |
 |---|---|---|---|
@@ -126,7 +128,14 @@ Hold ↓ or ↑ and the cursor pauses on the line before it. Let go, and it stay
 second, and it jumps on as Cmd+↓/↑ does and stops there. **Cmd+↓/↑** jumps from stop line to stop line, so one long file reads like a stack of short notes. Seen
 from outside, a membrane edged with stop lines is a single stop: Cmd+↓/↑ halts in front of it, and the next press
 jumps over the whole membrane. Step inside, and its own lines take over.
-A heading made with the heading button gets a solid stop line under it, after its FC line: Cmd+↓ lands on its
+**Change the style with the ↻.** The white ↻ in a circle of the line's colour moves on one style per click, and the
+arrow turns 45° with each style. Press a digit within a second of the click to pick a style directly (1 solid … 8 double wavy).
+
+**Dark or faint — ⚫ / ⚪.** Click ⚫ and the line turns faint: `<!-- Mew!UFC --- ⚪ -->`. A faint line is still a stop —
+Cmd+↓/↑ and holding ↑/↓ halt there just the same — it only stays quiet, for a writer's soft break. Click ⚪ for the dark
+line again.
+
+A heading made with the heading button gets a faint stop line under it, after its FC line: Cmd+↓ lands on its
 FC line, one more ↓ takes you into the text, and Cmd+↑ from below lands at the start of the text.
 
 <p align="center">
@@ -134,9 +143,10 @@ FC line, one more ↓ takes you into the text, and Cmd+↑ from below lands at t
   <sub><b>NEW in v5.1 — stop lines.</b> Eight lines, each with a sign at both ends. Cmd+↑/↓, or holding ↑/↓, stops just before a line.</sub>
 </p>
 
-**Switch a line off, without deleting it.** Click the 🛑 at the left end: the line disappears and a blue **OFF**
-sign stays in its place — in the text it is `<!-- Mew!UFC --- 🚫 -->`, and nothing stops there any more. Click OFF to
-turn it back on. Leave a membrane's edge off on one side and it becomes a one-way door: Cmd+↓ walks in, Cmd+↑ jumps over.
+**Switch a line off, without deleting it.** Click the 🛑 at the left end: the line turns grey, and while its buttons
+show, a blue **OFF** sign stands at its left end — in the text it is `<!-- Mew!UFC --- 🚫 -->`, and nothing stops there
+any more. The grey is meant to be seen: faint means "a quiet stop", grey means "no stop here". Click OFF to turn it
+back on, as a dark line. Leave a membrane's edge off on one side and it becomes a one-way door: Cmd+↓ walks in, Cmd+↑ jumps over.
 
 **The right 🛑 is a signal for the lines ahead.** The left sign tells you about this line; the right one tells you about
 the next stop lines below it, however far away they are — up to the end of the membrane it sits in (on a closing edge,
@@ -153,12 +163,13 @@ stays as you typed it. In Japanese input, `~` three times gives `〜〜〜` (`�
 and holding Opt over 🛑 turns solid into double and wavy into double wavy. With the cursor on or next to a stop line,
 🛑 turns into 🚫 and takes it off.
 
-On a membrane boundary the line turns green under the opening membrane and blue above the closing one. Two dashes
+A new membrane gets a faint line under its opening edge and a dark one above its closing edge; a line you type by hand
+is dark. On a membrane boundary the line turns green under the opening membrane and blue above the closing one. Two dashes
 are not enough, and inside a code block it stays text. It is a UFC line (one that never folds), so it does not break
 a list of clocks — the badge line and the chains reach across it.
 
 **Every Me Dock letter is a membrane.** ♥ and the letters M e D o c k can each wrap a passage: select it and press the
-letter, and it gets an opening `▼P1` and a closing `▲P1`, with stop lines inside the edges. Only a letter with no
+letter, and it gets an opening `▼P1` and a closing `▲P1`, with a faint stop line under the opening edge and a dark one above the closing edge. Only a letter with no
 membrane yet wraps; once it has one, pressing the letter warps you back into it, to the place you last were — even
 with text still selected. One membrane per letter; ▼ is green and ▲ blue, as with ♥,
 and the chips wear the letter's colour from Me Dock.
