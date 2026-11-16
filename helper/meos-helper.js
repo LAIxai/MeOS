@@ -974,11 +974,22 @@ function run(argv) {
     // v5.1.686(俊克 am09:11「拡大0.5秒→元に0.2秒を3回・2回目3回目はもう少し素早く・減り張り」): 大 500 / 元 200 / 大 350 / 元 150 / 大 250 で終わり(偶数の相が大)
     if (dockOut.vh && now > dockOut.vh.until) { dockOut.vh = null; dockOutPaint(); }   // v5.1.690: 赤の1時間が過ぎたら ふつうに
     const vb = dockOut.vb; if (!vb) return; const DUR = [1000, 200, 1000, 200, 1000];   /* v5.1.689 最後3秒 → v5.1.690(俊克 am09:53「最後も1秒でいい・小さく戻っても赤のまま1時間」)で1秒に戻した */   /* v5.1.687(俊克 am09:24「最初を1秒にしよう」) / v5.1.688(am09:29「見てから手が反応するまで0.4秒・2回目3回目も1秒で良い」) */ let el = now - vb.t0, ph = 0; while (ph < DUR.length && el >= DUR[ph]) { el -= DUR[ph]; ph++; } if (ph === vb.ph) return; if (ph >= DUR.length) { dockOut.vh = { from: vb.from, until: vb.t0 + 3600000 }; dockOut.vb = null; } else vb.ph = ph; dockOutPaint(); };
+  // ★v5.1.770(俊克 11.17 am00:31「macOSのバージョンが上がる毎に、この点を再検査する必要があるかも」→「入れる」): macOS の版ごとに1回、押しの遅れを自分で測って events.log へ。
+  //   ふだんの押しの中で「今押しているか(pressedMouseButtons)が押しに変わった時刻」と「Mac の押した数が増えた時刻」の差を5回測り、真中の値を書く。済んだ印= os-lag-<版> のファイル
+  const osLag = { ver: '', done: null, t: 0, raw: -1, xs: [] };
+  const osLagStep = (pr, raw) => {
+    if (osLag.done === true) return; const now = Date.now();
+    if (osLag.done === null) { try { osLag.ver = String(ObjC.unwrap($.NSProcessInfo.processInfo.operatingSystemVersionString)).replace(/[^0-9A-Za-z.]+/g, '_'); } catch (e) { osLag.ver = 'unknown'; } osLag.done = $.NSFileManager.defaultManager.fileExistsAtPath($(dir + '/os-lag-' + osLag.ver)) ? true : false; osLag.raw = raw; if (osLag.done) return; }
+    if (pr && !dockOut.prLive) osLag.t = now;
+    if (raw !== osLag.raw) { osLag.raw = raw; if (osLag.t && now - osLag.t < 3000) { osLag.xs.push(now - osLag.t); osLag.t = 0; } }
+    if (osLag.xs.length >= 5) { const xs = osLag.xs.slice().sort((a, b) => a - b), md = xs[2]; hlog('[osLag] macOS ' + osLag.ver + ' の押した数の遅れ= 真中 ' + md + 'ms (' + xs.join(',') + 'ms)' + (md > 100 ? ' ← 遅い(v5.1.768 の今押しているかで補っている)' : ''));
+      try { $(String(md)).writeToFileAtomicallyEncodingError(dir + '/os-lag-' + osLag.ver, true, $.NSUTF8StringEncoding, null); } catch (e) {} osLag.done = true; } };
   const dockOutFast = () => { if (!dockOut.shown) return; try { fastPart('ver', dockOutVerBlink); } catch (e) {} fastPart('drain', dockOutDrain); let dn = dockOutCnt(1), up = dockOutCnt(2);
     // ★v5.1.768(俊克 pm11:31「失敗する方が多い」): 767 の測り= 見張りは0.02秒ごとに回っているのに、押しの記録は .121/.621 と0.5秒刻み= Mac の押した数(CGEventSourceCounter)が約0.5秒遅れて増える。
     //   普通の速さで押して動かして放すと、数が増えた時にはもう放されていて、掴む前に放した事になっていた。→ 今押しているか(NSEvent.pressedMouseButtons= 呼んだ瞬間の状態)も見て、数より先に押し/放しを起こす。
     //   数は「前より増えたら」だけ数える(先に起こした分を、遅れて増えた数で二度数えない)
     { const pr = (Number($.NSEvent.pressedMouseButtons) & 1) !== 0;
+      try { osLagStep(pr, dn); } catch (e) {}
       if (pr && !dockOut.prLive && dn <= dockOut.dnN) dn = dockOut.dnN + 1;
       if (!pr && dockOut.prLive && up <= dockOut.upN) up = dockOut.upN + 1;
       dockOut.prLive = pr; } fastPart('tip', dockOutTipStep); fastPart('x', dockOutXStep);
