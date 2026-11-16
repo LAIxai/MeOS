@@ -7381,10 +7381,10 @@ async function meosFofReconcile(ed, n) {
     // ★v5.1.591(俊克 am10:40 改良1「既存のP1を膜化したとき、罫線も自動で入れようよ」): 組が今できた(▼▲の無かった印が▼▲になる)時、開始の下・閉じの上に罫線(閉じ罫線の上は空行= v5.1.576)。既に在れば足さない
     let rules = null;
     if (pr.m && jobs.some(j => !meosFofTwoPre(L[j.line].slice(j.a, j.b), n) && /[\u25bc\u25b2]/.test(j.to))) {
-      const o = Math.min(pr.f.line, pr.m.line), c = Math.max(pr.f.line, pr.m.line), ind = (L[o].match(/^[ \t]*/) || [''])[0], ru = meosFofRule(doc, ind);
+      const o = Math.min(pr.f.line, pr.m.line), c = Math.max(pr.f.line, pr.m.line), ind = (L[o].match(/^[ \t]*/) || [''])[0], ru = meosFofRule(doc, ind), ruF = meosFofRule(doc, ind, true);
       if (ru) { const isR = (l) => l >= 0 && l < L.length && meosIsRuleAny(L[l]), blank = (l) => l >= 0 && l < L.length && !L[l].trim();
-        const top = isR(o + 1) ? '' : ru, bot = isR(c - 1) ? '' : ((c - 1 === o || blank(c - 1) ? '' : ind + '\n') + ru);
-        if (c === o + 1) rules = (top || bot) ? [{ line: c, text: top + ind + '\n' + '\n' + ru }] : null;
+        const top = isR(o + 1) ? '' : ruF, bot = isR(c - 1) ? '' : ((c - 1 === o || blank(c - 1) ? '' : ind + '\n') + ru);
+        if (c === o + 1) rules = (top || bot) ? [{ line: c, text: (top || ruF) + ind + '\n' + '\n' + ru }] : null;
         else rules = [top ? { line: o + 1, text: top } : null, bot ? { line: c, text: bot } : null].filter(Boolean); } }
     const _born7 = n === 7 && !!pr.m && jobs.some(j => !meosFofTwoPre(L[j.line].slice(j.a, j.b), n) && /[\u25bc\u25b2]/.test(j.to));   // v5.1.609: 組が今できた= 1d の⏰
     const _orphan7 = n === 7 ? jobs.filter(j => L[j.line].slice(j.a, j.b).indexOf('\u25b2') >= 0 && !/[\u25bc\u25b2]/.test(j.to)).reduce((a, j) => a.concat(meosFofClockLinesBelow(doc, j.line)), []) : [];   // v5.1.609: 閉じ♥でなくなった印の下の⏰= 持ち主が居ない
@@ -7737,14 +7737,14 @@ async function meosFofWarpTo(ed, from, to) {
 //   最後に指定した所が組になる= 新しい開始♥が F・閉じ♥が相方。前の組は消さず中間♥に落とす(消すのは Cmd+クリック)。Cmd+Z 1回で戻る
 // ★v5.1.574(俊克 pm07:37「♥膜と中身との境界に、罫線を入れよう。何かの弾みで膜の一部を削除してしまったりするから。見た目も分かり易く」): 開始♥の下・閉じ♥の上に1本ずつ。HTML コメントの文書だけ
 // ★v5.1.576(俊克 pm07:59 改良1「下の罫線の上に1行の空行を…最後の行と閉じ罫線が1行として認識されている」): UFC は上の本文に付く助詞(FC と同じ)= 本文の直後に置くと Enter が罫線を越え、カーソルで Raw になる。閉じ罫線の上は必ず空行
-function meosFofRule(doc, ind) { return wrapRefMark(doc, 'x').indexOf('<!--') >= 0 ? ind + MEOS_TIMER_DB_RULE + '\n' : ''; }
+function meosFofRule(doc, ind, faint) { return wrapRefMark(doc, 'x').indexOf('<!--') >= 0 ? ind + (faint ? MEOS_RULE_FAINT : MEOS_TIMER_DB_RULE) + '\n' : ''; }   // v5.1.758: faint= 開始の下/見出しの線
 async function meosFofWrap(ed, ch, n) {
   n = n || 7; const doc = ed.document, sel = ed.selection, a = sel.start.line, b = (sel.end.character === 0 && sel.end.line > a) ? sel.end.line - 1 : sel.end.line, ind = (doc.lineAt(a).text.match(/^[ \t]*/) || [''])[0], used = new Set(meosPuzzleTagsOf(doc, n).map(h => h.name));
   const free = (t) => { for (let i = 0; i < 100; i++, t += 1000) { const nm = ch + '_' + meosMembraneStamp(new Date(t)); if (!used.has(nm)) { used.add(nm); return { nm, t }; } } return { nm: ch + '_' + meosMembraneStamp(new Date(t)), t }; };   // 刻みは秒= 続けて包むと前の閉じ♥と同じ名になる
   const _shadow = meosPuzzleShadowGet(ch), _o = free(Date.now()), nameO = _o.nm, nameC = free(_o.t + 1000).nm;
   const tagO = ind + wrapRefMark(doc, '{* ' + meosPzmO(n) + 'mP' + n + '=' + nameO + ' // ' + (_shadow ? _shadow + ' ' : ' ') + '*}'), tagC = ind + wrapRefMark(doc, '{* ' + meosPzmC(n) + 'mP' + n + '=' + nameC + ' //  *}');
-  const last = b + 1 >= doc.lineCount, rule = meosFofRule(doc, ind);
-  const ok = await ed.edit(eb => { eb.insert(new vscode.Position(a, 0), tagO + '\n' + rule); const gap = rule ? '\n' : ''; if (last) eb.insert(new vscode.Position(b, doc.lineAt(b).text.length), '\n' + gap + rule + tagC); else eb.insert(new vscode.Position(b + 1, 0), gap + rule + tagC + '\n'); });
+  const last = b + 1 >= doc.lineCount, rule = meosFofRule(doc, ind), ruleF = meosFofRule(doc, ind, true);
+  const ok = await ed.edit(eb => { eb.insert(new vscode.Position(a, 0), tagO + '\n' + ruleF); const gap = rule ? '\n' : ''; if (last) eb.insert(new vscode.Position(b, doc.lineAt(b).text.length), '\n' + gap + rule + tagC); else eb.insert(new vscode.Position(b + 1, 0), gap + rule + tagC + '\n'); });
   if (!ok) return;
   meosPuzzleFSet(doc, n, nameO); _meosFofWant = { uri: doc.uri.toString(), name: nameC, n };
   const _ln = b + (rule ? 2 : 1), _p = new vscode.Position(_ln, ed.document.lineAt(_ln).text.length); ed.selection = new vscode.Selection(_p, _p);   // ★v5.1.578(俊克 pm08:19 改良1「♥膜を作成した直後の文字カーソルの着地点を行末に」): 中身の最後の行の行末= そのまま続きを書ける
@@ -7769,7 +7769,7 @@ async function meosPuzzleTag(ch, opt) {
       let _welcome = false; try { _welcome = !_shadow && !extensionContext.globalState.get('meosPuzzleWelcomed', false); } catch (_) { }
       const tag = ind + wrapRefMark(doc, '{* ' + meosPzmO(n) + 'mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_shadow ? _shadow + ' ' : _welcome ? MEOS_PUZZLE_WELCOME + ' ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
       // ★v5.1.562(俊克 pm01:33「最初から組で作った方がいいね」): 最初の♥は3行= 開始♥・空の行・閉じ♥。カーソルは間の行= そのまま書き始める
-      const _rule7 = meosFofRule(doc, ind), _tag2 = _rule7 + ind + '\n' + (_rule7 ? '\n' : '') + _rule7 + ind + wrapRefMark(doc, '{* ' + meosPzmC(n) + 'mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n';   // v5.1.588: どの字も最初から膜(3行)
+      const _rule7 = meosFofRule(doc, ind), _tag2 = meosFofRule(doc, ind, true) + ind + '\n' + (_rule7 ? '\n' : '') + _rule7 + ind + wrapRefMark(doc, '{* ' + meosPzmC(n) + 'mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date(Date.now() + 1000)) + ' //  *}') + '\n';   // v5.1.588: どの字も最初から膜(3行)
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag + _tag2));
       { const _p = new vscode.Position(ln + (_rule7 ? 2 : 1), ind.length); ed.selection = new vscode.Selection(_p, _p); }
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
@@ -12629,7 +12629,7 @@ function meosTimerDbBlockAt(doc, line) {   // その行が⏰データベース�
 // ★v5.1.96(俊克 10.20 am10:25 改良1「連動の例も入れようよ」): ⛓️ の例= Tabata(20秒/10秒 を8回)とポモドーロ(25分/5分 を4回)
 // ★v5.1.113(俊克 10.21 am11:28 改良1「データベースの膜の罫線を橙に。区切り方はスクショのように(最初の個別のを一々区切るのはウザい)」):
 //   型の区切り= 単発5本 / --- / ↺t1,3 と Tabata / --- / Pomodoro。罫線は鎖の例の前後に置く(既存の膜へ例を足す時も同じ並び)。
-const MEOS_TIMER_DB_RULE = '<!-- Mew!UFC --- -->';
+const MEOS_TIMER_DB_RULE = '<!-- Mew!UFC --- -->', MEOS_RULE_FAINT = '<!-- Mew!UFC --- \u26aa -->';   // ★v5.1.758(俊克 11.16 am10:47「見出しボタンと膜の生成で入れる線を薄く・膜は開始線の下を薄く閉じ膜の上は濃く」): 見出し/開始の線= ⚪(薄い・止まる)
 const MEOS_TIMER_DB_CHAIN_EX = [
   '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(20s)×1 ⛓️⤵️2 // 💪Tabata work -->',
   '<!-- Mew!FC ⏰ 🔔/🔔 ↺↻(10s)×1 ⛓️⤴️2)×8 // 😮‍💨Tabata rest -->',
@@ -27853,7 +27853,7 @@ async function addMembrane() {
       const rule = tpl.markdown ? `${indent}${MEOS_TIMER_DB_RULE}` : '';
       if (rule) {
         const last = endLine + 1 >= doc.lineCount, after = !last && !isBlankDocumentLine(doc, endLine + 1) ? '\n' : '';
-        editBuilder.insert(new vscode.Position(startLine, 0), `${startLine > 0 && !isBlankDocumentLine(doc, startLine - 1) ? '\n' : ''}${open}\n${rule}\n`);
+        editBuilder.insert(new vscode.Position(startLine, 0), `${startLine > 0 && !isBlankDocumentLine(doc, startLine - 1) ? '\n' : ''}${open}\n${indent}${MEOS_RULE_FAINT}\n`);   // v5.1.758: 開始の下= 薄い
         if (last) editBuilder.insert(new vscode.Position(endLine, doc.lineAt(endLine).text.length), `\n\n${rule}\n${close}`); else editBuilder.insert(new vscode.Position(endLine + 1, 0), `\n${rule}\n${close}\n${after}`);   // v5.1.576: 閉じ罫線の上は空行
       } else {
         const block = `${open}\n`, tail = `\n${close}`;
@@ -27864,7 +27864,7 @@ async function addMembrane() {
       for (const e of meosDeepenBadgeEdits(doc, startLine, endLine, meosWrapDepthShift(doc, startLine, endLine))) editBuilder.replace(e.range, e.text);
     } else {
       const block = tpl.markdown
-        ? `${open}\n${indent}${MEOS_TIMER_DB_RULE}\n${indent}\n\n${indent}${MEOS_TIMER_DB_RULE}\n${close}`   // v5.1.575
+        ? `${open}\n${indent}${MEOS_RULE_FAINT}\n${indent}\n\n${indent}${MEOS_TIMER_DB_RULE}\n${close}`   // v5.1.575
         : `${open}\n${indent}\n${close}`;
       editBuilder.insert(sel.active, wrapInsertedMembraneBlock(doc, startLine, startLine, block));
     }
@@ -28546,7 +28546,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     // ★v5.1.669(俊克 11.12 pm00:44「見出しボタンを押した時、停止線(実線)を最後に付けよう。これで、呪文とCmdジャンプも使えて、両刀遣いができる」/ pm00:52「FC行の後が良い…Cmd+↓では一番下のFC行に着地するので↓1つで本文に進める。Cmd+↑では本文の先頭に着地する。これは本文の境界なんだよ」):
     //   見出しの FC 群の後ろに一時停止線(実線)。既に線があれば足さない(押し直しで積まない)
     if (_prose) try { const d2 = editor.document, L2 = meosDocLines(d2); let e2 = ln; while (e2 + 1 < L2.length && meosIsBoundSpecLine(L2[e2 + 1] || '')) e2++;
-      const rule = meosFofRule(d2, _indent);
+      const rule = meosFofRule(d2, _indent, true);   // v5.1.758: 見出しの線は薄く(⚪)
       if (rule && !(e2 + 1 < L2.length && MEOS_RULE_LINE_RE.test(L2[e2 + 1] || ''))) { const we = new vscode.WorkspaceEdit(); we.insert(d2.uri, new vscode.Position(e2 + 1 < d2.lineCount ? e2 + 1 : e2, e2 + 1 < d2.lineCount ? 0 : d2.lineAt(e2).text.length), e2 + 1 < d2.lineCount ? rule : '\n' + rule.replace(/\n$/, '')); await vscode.workspace.applyEdit(we); meosDbg('[heading] 見出しの FC の後ろに停止線 行=' + (e2 + 2)); } } catch (_) { }
     const b = _prose ? (_indent.length + _blt.length + hashes.length + 1) : (_indent.length + cOpen.length + hashes.length + 1); // 本文の先頭 // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
     bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b)); // v0.9.999132: 見出しは選択しない(適用後カーソルが見出し内→⊘##表示)は残る
@@ -31062,12 +31062,12 @@ async function addMembraneWithName(nameInput, colorCode = '') {
     if (hasSelection) {
       const selectedText = meosDeepenBadgesInText(doc.getText(selection), meosWrapDepthShift(doc, startLine, endLine)); // v4.0.334
       const wrapped = template.markdown
-        ? `${openLine}\n${indent}${MEOS_TIMER_DB_RULE}\n${selectedText}\n\n${indent}${MEOS_TIMER_DB_RULE}\n${closeLine}`   // v5.1.575
+        ? `${openLine}\n${indent}${MEOS_RULE_FAINT}\n${selectedText}\n\n${indent}${MEOS_TIMER_DB_RULE}\n${closeLine}`   // v5.1.575
         : `${openLine}\n${selectedText}\n${closeLine}`;
       edit.replace(selection, wrapped);
     } else {
       const block = template.markdown
-        ? `${openLine}\n${indent}${MEOS_TIMER_DB_RULE}\n${indent}\n\n${indent}${MEOS_TIMER_DB_RULE}\n${closeLine}`
+        ? `${openLine}\n${indent}${MEOS_RULE_FAINT}\n${indent}\n\n${indent}${MEOS_TIMER_DB_RULE}\n${closeLine}`
         : `${openLine}\n${indent}\n${closeLine}`;
       edit.insert(selection.active, wrapInsertedMembraneBlock(doc, startLine, startLine, block));
     }
