@@ -15732,7 +15732,8 @@ const MEOS_STOP_SIGN_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3
 const MEOS_STOP_FAINT = 0.15;   // v5.1.752(俊克 751「今の半分でも良いかも」→ 15%)・v5.1.753 薄い線(⚪)も同じ値
 const _meosStopDotUrl = new Map();
 function meosStopDotUrl(c, faint) { const key = c + ' ' + faint; let u = _meosStopDotUrl.get(key); if (u) return u;   // v5.1.753: ⚫= 濃い線(線の色で塗った丸) / ⚪= 薄い線(線の色の輪)
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' + (faint ? '<circle cx="50" cy="50" r="40" fill="none" stroke="' + c + '" stroke-width="12"/>' : '<circle cx="50" cy="50" r="46" fill="' + c + '"/>') + '</svg>';
+  // ★v5.1.754(俊克 753 改良1「⚫の地の色の濃さを規定色の15%で」): ⚪の輪の中を線の色の15%(MEOS_STOP_FAINT)で塗る= 薄い線と同じ濃さ・ライト/ダークどちらの地でも透けて馴染む
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' + (faint ? '<circle cx="50" cy="50" r="40" fill="' + c + '" fill-opacity="' + MEOS_STOP_FAINT + '" stroke="' + c + '" stroke-width="12"/>' : '<circle cx="50" cy="50" r="46" fill="' + c + '"/>') + '</svg>';
   u = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); _meosStopDotUrl.set(key, u); return u; }
 const _meosStopRotUrl = new Map();
 function meosStopRotUrl(c, k) { k = Math.max(0, k | 0); const key = c + ' ' + k; let u = _meosStopRotUrl.get(key); if (u) return u;   // v5.1.739: 線種の↺= 線と同じ色の矢印
