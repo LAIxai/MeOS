@@ -143,7 +143,7 @@ FC line, one more ↓ takes you into the text, and Cmd+↑ from below lands at t
   <sub><b>NEW in v5.1 — stop lines.</b> Eight lines, each with a sign at both ends. Cmd+↑/↓, or holding ↑/↓, stops just before a line.</sub>
 </p>
 
-**Switch a line off, without deleting it.** Click the 🛑 at the left end: the line shrinks to a short grey stub, as wide as the left sign, and while its buttons
+**Switch a line off, without deleting it.** Click the 🛑 at the left end: the line shrinks to a short grey stub, as wide as the three buttons at its left end, and while its buttons
 show, a blue **OFF** sign stands at its left end — in the text it is `<!-- Mew!UFC --- 🚫 -->`, and nothing stops there
 any more. The stub tells you a line is there, and that Cmd+↓/↑ will pass it: faint means "a quiet stop", grey means "no stop here". Click OFF to turn it
 back on, as a dark line. Leave a membrane's edge off on one side and it becomes a one-way door: Cmd+↓ walks in, Cmd+↑ jumps over.
