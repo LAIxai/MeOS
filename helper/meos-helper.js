@@ -1356,8 +1356,27 @@ function run(argv) {
     try { $.CGWarpMouseCursorPosition({ x: x, y: y }); $.CGAssociateMouseAndMouseCursorPosition(true); } catch (e) {}
     hlog('warpPtr ' + how + ' dx=' + Number(o.dx).toFixed(1) + ' dy=' + Number(o.dy).toFixed(1) + ' bs=' + bs + ' entry=' + (isFinite(ex) ? ex.toFixed(1) + ',' + ey.toFixed(1) : '?') + ' now=' + cx.toFixed(1) + ',' + cy.toFixed(1) + ' to=' + x.toFixed(1) + ',' + y.toFixed(1));
   };
+  // ★v5.1.764(俊克 11.16 pm10:09 改良1「離席タイマーでVSCmを閉じる前に、ポインターをmGATEのロゴのMの字の真中の谷の部分に移動しておこう…戻ってきて直ぐにクリックしてMeOSを起動できる」):
+  //   拡張は閉じる直前に ptr-gate.json を置くだけ。運ぶのはエディターが居なくなって札を描き直した後(閉じると札の幅が変わり、真中寄せのロゴの位置も動く)。
+  //   行き先= 札の左端の小さいロゴ(pieceHit の '\u0000logo' と同じ物差し)の M の谷= ロゴの横の真中・上から 3/4。
+  let gateWant = null;
+  const gatePtr = () => {
+    const gp = dir + '/ptr-gate.json', fm = $.NSFileManager.defaultManager;
+    if (!gateWant) { if (!fm.fileExistsAtPath(gp)) return; let o = null; try { o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(gp, $.NSUTF8StringEncoding, null))); } catch (e) {} try { fm.removeItemAtPathError(gp, null); } catch (e) {}
+      if (!o || !(Date.now() - Number(o.t) < 120000)) return; gateWant = { t: Date.now(), gone: 0 }; hlog('[ptrGate] 頼まれた= エディターが閉じたらロゴの谷へ'); }
+    const now = Date.now(); if (now - gateWant.t > 120000) { gateWant = null; return; }
+    if (edRunning()) { gateWant.gone = 0; return; }
+    if (!gateWant.gone) { gateWant.gone = now; return; }
+    if (now - gateWant.gone < 1200) return;   // 札を描き直す間を待つ
+    gateWant = null;
+    try { const b = item.button, w = b.window; if (!w || w.isNil() || !logoW || !imgAllW) { hlog('[ptrGate] ロゴが無い'); return; }
+      const r = w.convertRectToScreen(b.convertRectToView(b.bounds, $())), H0 = $.NSScreen.screens.objectAtIndex(0).frame.size.height, LH = 18;
+      const x = r.origin.x + Math.max(0, (r.size.width - imgAllW) / 2) + LH / 2, y = r.origin.y + (r.size.height - LH) / 2 + LH / 4;   // 下からの物差し(ロゴの下から 1/4 = 上から 3/4)
+      $.CGWarpMouseCursorPosition({ x: x, y: H0 - y }); $.CGAssociateMouseAndMouseCursorPosition(true); hlog('[ptrGate] ロゴの谷へ ' + x.toFixed(1) + ',' + (H0 - y).toFixed(1)); } catch (e) { hlog('[ptrGate] 失敗 ' + e); }
+  };
   const modsTick = () => {
     try { warpPtr(); } catch (e) {}
+    try { gatePtr(); } catch (e) {}
     try { armTick(); } catch (e) {}
     try { pzlTick(); } catch (e) {}
     try { dockOutTick(); } catch (e) {}

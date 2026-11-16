@@ -19608,6 +19608,7 @@ async function meosAwayLeave(idle) {
     if (_meosAwayFast) { clearInterval(_meosAwayFast); _meosAwayFast = null; }   // v5.1.52
     try { meosDbg('[away] ' + Math.round((idle || 0) / 1000) + 's 無操作 → 保存・施錠・終了'); } catch (_) { }
     try { await extensionContext.globalState.update('meosAwayClosed', { at: Date.now(), slot: meosAwaySlot(), mins: meosAwayMins()[meosAwaySlot() - 1] }); } catch (_) { }   // v5.1.50: 次に開いた時に一度だけ知らせる
+    try { if (meosRealHost() && meosVHelperOn()) { const fs = require('fs'), path = require('path'), dir = meosHelperDir(); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'ptr-gate.json'), JSON.stringify({ t: Date.now() })); meosDbg('[away] 閉じた後にポインターを mGATE のロゴの谷へ(wGATE に頼む)'); } } catch (_) { }   // ★v5.1.764(俊克「離席で閉じる前にポインターを mGATE のロゴの M の谷へ」): 戻ってすぐクリックで起こせる
     await vscode.commands.executeCommand('workbench.action.quit');
   } finally { setTimeout(() => { _meosAwayBusy = false; }, 30000); }
 }   // ★v5.1.1(俊克 10.17 am10:58「テスト用に3分で自動施錠に」): 試しの間は3分。★リリース前に30分へ戻す

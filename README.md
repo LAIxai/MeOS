@@ -97,7 +97,9 @@ wGATE, and when you come back a note tells you what happened. Pick a seat with t
 in Me Dock: 🪑 chair 3 minutes, 🛋️ sofa 15, 💺 train seat 30 (each one 3–60), and the tile takes the seat's colour —
 sky blue, red-brown, gold. In the last 75 seconds it counts in seconds, `🪑0:42`, and a minute before the end it
 rings like any ⏰; touch anything and it stops. Doze off at the keyboard, and it wakes you up — along with everyone
-around you.
+around you. When it does close, it first parks the pointer on the valley of the
+M in the mGATE logo in the menu bar: come back, wake the Mac and just click — without moving the mouse a millimetre —
+and MeOS opens again.
 
 **Unlocked, still behind a blind.** When you unlock a 🔐 membrane, its inside stays covered by a white blind. Only
 the line with the text cursor shows. Click the blind, and the first line shows — so keep passwords off the first
