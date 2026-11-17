@@ -75,7 +75,7 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
   ok(s1[0] && s1[0].name === '♥️', '名前は♥️', s1[0] && s1[0].name);
   const lk1 = d1.uri.toString() + ' ' + r1.key, sc1 = T.scopes.get(lk1); ok(T.until.has(lk1) && sc1, '書いた瞬間に走り出す(自動起動)', [...T.until.keys()]);
   const ex = new Date(s1[0].vAt + 24 * 3600e3), h = ex.getHours(), face = (ex.getMonth() + 1) + '/' + ex.getDate() + '(' + 'SMTWtFs'[ex.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + String(h > 12 ? h - 12 : h).padStart(2, '0') + ':' + String(ex.getMinutes()).padStart(2, '0');
-  ok(sc1 && T.say(sc1) === '♥️Timer ' + face, '一覧の字= ♥️Timer+消滅日時', sc1 && T.say(sc1));
+  ok(sc1 && T.say(sc1) === '♥️Timer ' + ((t, f) => { const d = t - Date.now(); return (d > 0 && d < 864e5) ? f.replace(/^\d{1,2}\/\d{1,2}\([SMTWtFs]\)/, '') : f; })(ex.getTime(), face), '一覧の字= ♥️Timer+消滅日時(v5.1.790: 24時間以内は時刻だけ)', sc1 && T.say(sc1));
   ok(Math.abs(s1[0].vAt - Date.now()) < 5000, '起点は今', s1[0].vAt);
   const rg = T.meosScopeRangeNow(d1, r1.key); ok(rg && rg.from === r1.start && rg.to === r1.end, '一覧からのワープ先の範囲', rg);
   ok(d1.L.includes('本文1') && d1.L.includes('本文2'), '本文はそのまま', d1.L);
@@ -145,7 +145,7 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
   const calls2 = [], e16 = mkEd(d16, { start: { line: 9, character: 0 }, end: { line: 9, character: 0 }, active: { line: 9, character: 0 }, isEmpty: true }); e16.selections = [e16.selection]; e16.setDecorations = (deco, items) => calls2.push({ deco, items: items || [] }); stub.window.activeTextEditor = e16; stub.window.visibleTextEditors = [e16];
   T.meosApplyTimerLineDecorations(e16); const onB = calls2.flatMap(c => c.items).filter(x => x && x.range && x.range.start.line === 7).map(x => { const r = x.renderOptions || {}; return (r.before && r.before.contentText) || (r.after && r.after.contentText) || ''; });
   ok(onB.some(s => /\d+:\d\d/.test(s)), '残り時間がバッジ行に出る', onB);
-  ok(onB.some(s => s.indexOf('♥️Timer') >= 0 && /\d+\/\d+\([SMTWtFs]\)[ap]m\d\d:\d\d/.test(s)) && !onB.some(s => /Timer dd/.test(s)), 'バッジの札の dd が消滅日時になる', onB);
+  ok(onB.some(s => s.indexOf('♥️Timer') >= 0 && /(\d+\/\d+\([SMTWtFs]\))?[ap]m\d\d:\d\d/.test(s)) && !onB.some(s => /Timer dd/.test(s)), 'バッジの札の dd が消滅日時になる(v5.1.790: 24時間以内は時刻だけ)', onB);
   const c16 = T.meosClockFcScan(d16)[0]; await T.meosFofClockExpire(d16, c16, false); ok(!d16.L.includes(B) && clocks(d16).length === 0 && d16.L.includes(H1) && d16.L.includes('本文') && d16.L.includes('後'), '時間切れでバッジ行も消える', d16.L);
   const d17 = doc([H1, R, '本文', '', R, H2, B, far, '後']); T.meosPuzzleFSet(d17, 7, Fn); await T.meosPuzzleSweep(mkEd(d17), 7, 'f'); ok(badges(d17).length === 0 && clocks(d17).length === 0 && d17.L.includes('後'), 'Cmd+クリックで閉じ♥と一緒にバッジも', d17.L);
   // 9e. 開いたメニューから行が減る(V-helper の本物の部品を切り出して試す)
@@ -178,7 +178,7 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
     ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->') === 'Meet 1/5(T)am08:30', 'dd: 日時だけ= その日時', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:30 // Meet dd -->'));
     ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 08:00 ↺8h // dd -->') === '1/5(T)am08:00', 'dd: 回数なしの繰り返し= 次の鐘', dd('<!-- Mew!UFC ⏰ 2027-01-05 08:00 ↺8h // dd -->'));
     { const P = (x) => String(x).padStart(2, '0'), vs = (t) => { const d = new Date(t); return 'v' + d.getFullYear() + '-' + P(d.getMonth() + 1) + '-' + P(d.getDate()) + ' ' + P(d.getHours()) + ':' + P(d.getMinutes()) + '.' + P(d.getSeconds()); }, face = (t) => { const d = new Date(t), h = d.getHours(); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + 'SMTWtFs'[d.getDay()] + ')' + (h >= 12 ? 'pm' : 'am') + P(h > 12 ? h - 12 : h) + ':' + P(d.getMinutes()); }, H = 3600000, base = Math.floor(Date.now() / 1000) * 1000, ln = (o) => '<!-- Mew!UFC ⏰ 🔕/🔕 ↺↻(0y0d1h0m0s)×2 ' + vs(o) + ' // Up dd -->';
-      for (const [back, plus, name] of [[H / 6, H, 'dd: ×2の1回目= 1回目の鐘'], [H * 1.5, 2 * H, 'dd: ×2の2回目= 2回目の鐘'], [H * 5, 2 * H, 'dd: 鳴り終えた後= 最後の鐘']]) { const o = base - back, g = dd(ln(o)); ok(g === 'Up ' + face(o + plus), name, g); } }
+      for (const [back, plus, name] of [[H / 6, H, 'dd: ×2の1回目= 1回目の鐘'], [H * 1.5, 2 * H, 'dd: ×2の2回目= 2回目の鐘'], [H * 5, 2 * H, 'dd: 鳴り終えた後= 最後の鐘']]) { const o = base - back, g = dd(ln(o)); ok(g === 'Up ' + ((t, f) => { const d = t - Date.now(); return (d > 0 && d < 864e5) ? f.replace(/^\d{1,2}\/\d{1,2}\([SMTWtFs]\)/, '') : f; })(o + plus, face(o + plus)), name, g); } }   // v5.1.790: 24時間以内は時刻だけ
     ok(dd('<!-- Mew!UFC ⏰ 2027-01-05 10:00 ↺↻(25m 5m)×4 // 🍅 dd -->') === '🍅 1/5(T)am10:00', 'dd: 起点が未来= 最初の鐘', dd('<!-- Mew!UFC ⏰ 2027-01-05 10:00 ↺↻(25m 5m)×4 // 🍅 dd -->'));
     ok(dd('<!-- Mew!UFC ⏰ 2027-01-07 10:00 ↺t1,3 ×2 // Meet dd -->') === 'Meet 1/7(t)am10:00', 'dd: 暦の規則= 次の当たり日', dd('<!-- Mew!UFC ⏰ 2027-01-07 10:00 ↺t1,3 ×2 // Meet dd -->'));
     ok(dd('<!-- Mew!UFC ⏰ ↺↻(3m)×1 // Tea dd -->') === 'Tea dd', 'dd: 起点がまだ無ければ dd のまま', dd('<!-- Mew!UFC ⏰ ↺↻(3m)×1 // Tea dd -->'));
