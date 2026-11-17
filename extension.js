@@ -28489,6 +28489,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
   //   指定するものが無ければ書かない(v4.0.64の約束)= 空の箱を置かない。見出し/リンクは従来どおり。
   const spec = '(' + FG + '/' + BG + ')';
   let bodySel; // 挿入後に選択する本文(プレースホルダ)範囲
+  let _headBlankLn = -1;   // v5.1.775: 見出しの下の空行(書き始める所)
   let _fcWritten = false; // v4.0.307: 本文とFC行を1回の編集で書いたか(書いたなら、後の引っ越しは走らせない)
   if (kind === 'heading') {
     // 見出しは行頭でなければレンダリングされない → 現在行全体を見出しで包む(本文=選択 or 行内容 or 既定)。
@@ -28569,13 +28570,13 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       const rule = meosFofRule(d2, _indent, true);   // v5.1.758: 見出しの線は薄く(⚪)
       // ★v5.1.773(俊克 am11:10「ついでに、空行を1行追加しよう」): 見出し・FC・停止線の後ろに空行を1行(既に空行なら足さない)。オフの線(🚫)も線として数える(二本目を足さない)
       if (rule) { const r0 = e2 + 1, has = r0 < L2.length && MEOS_RULE_LINE_RE.test(L2[r0] || '') && meosStopIsFaint(L2[r0] || ''), after = has ? r0 + 1 : r0,   /* ★v5.1.774(俊克 773 バグ1「薄い線が入らない・空行の場所が違う」): 見出しの線= 自分の薄い線(⚪)だけ。真下に元から在る線(濃い/🚫)は下の本文の物= 残したまま、その上に ⚪ と空行を入れる。押し直しは ⚪ が在るので積まない */ blankOk = after < L2.length && !String(L2[after] || '').trim();
-        let ins = (has ? '' : rule) + (blankOk ? '' : _indent + '\n');
+        let ins = (has ? '' : rule) + (blankOk ? '' : _indent + '\n'); if (!has) _headBlankLn = r0 + 1;   // 押し直し(⚪ が在る)はカーソルを見出しに残す= もう一度押しても空行が見出しにならない / ★v5.1.775(俊克 774 改良1「文字カーソルを空行に移動すると、そのまま書き込める」): ⚪ の下の空行
         if (ins) { const we = new vscode.WorkspaceEdit();
           if (after < d2.lineCount) we.insert(d2.uri, new vscode.Position(after, 0), ins);
           else { const last = d2.lineCount - 1; we.insert(d2.uri, new vscode.Position(last, d2.lineAt(last).text.length), '\n' + ins.replace(/\n$/, '')); }
           await vscode.workspace.applyEdit(we); meosDbg('[heading] 見出しの FC の後ろに' + (has ? '' : '停止線') + (blankOk ? '' : '・空行') + ' 行=' + (e2 + 2)); } } } catch (_) { }
     const b = _prose ? (_indent.length + _blt.length + hashes.length + 1) : (_indent.length + cOpen.length + hashes.length + 1); // 本文の先頭 // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
-    bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b)); // v0.9.999132: 見出しは選択しない(適用後カーソルが見出し内→⊘##表示)は残る
+    bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b)); try { if (_headBlankLn > 0 && _headBlankLn < editor.document.lineCount && !editor.document.lineAt(_headBlankLn).text.trim()) { const _hp = new vscode.Position(_headBlankLn, editor.document.lineAt(_headBlankLn).text.length); bodySel = new vscode.Selection(_hp, _hp); } } catch (_) { }   // v5.1.775: 見出しの下の空行へ / v0.9.999132: 見出しは選択しない(適用後カーソルが見出し内→⊘##表示)は残る
   } else {
     let prefix, close, defBody;
     if (kind === 'highlight') { prefix = '=={'; close = '}=='; defBody = 'ハイライト'; }
