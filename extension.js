@@ -15467,14 +15467,17 @@ async function meosDdEditKey(k) {
   if (k === 'left') c = Math.max(sp[0], c - 1); else if (k === 'right') c = Math.min(sp[1], c + 1); else if (k === 'up' || k === 'home') c = sp[0]; else if (k === 'down' || k === 'end') c = sp[1];
   const P = new vscode.Position(L, c); ed.selection = new vscode.Selection(P, P);
 }
-function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期と dd=日時 の窓の絵(飾りの上に被せる)
+function meosDdPeekWindows(doc, i, txt, items, caret, selA) {   // ★v5.1.721: 周期と dd=日時 の窓の絵(飾りの上に被せる)
   const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt), a = txt.indexOf('\u23f0'); if (a < 0) return;
   const rows = meosRawRowsOf(txt, meosFenceWrapColumn(doc)), at = (p) => { let r = 0; while (r + 1 < rows.length && p >= rows[r + 1][0]) r++; return { r, x: meosRenderColsF(txt.slice(rows[r][0], p)) }; };
   const win = { a, cyc: null, dd: null }, put = (s, e, col, rgb, q0, padR) => {
     const q = q0 || at(s);
     if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + ' + (1 + (q.px || 0)) + 'px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad); animation: monaco-cursor-smooth 0.5s ease-in-out 0s infinite alternate;' } } });   // v5.1.725: 窓の中のカーソルの棒
+    // ★v5.1.780(俊克 779 改良1「一部を選択状態にして別の字を入れようとする時、選択していることが見えにくい」): 本物の選択は隠した字の中= 見えない→ 窓の上に選んだ字を選択の色で描き直す
+    if (typeof caret === 'number' && typeof selA === 'number' && selA !== caret) { const lo = Math.max(s, Math.min(selA, caret)), hi = Math.min(e, Math.max(selA, caret));
+      if (hi > lo) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: txt.slice(lo, hi), color: 'var(--vscode-editor-selectionForeground, var(--vscode-editor-foreground))', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, lo))) * 100) / 100) + 'ch + ' + (1 + (q.px || 0)) + 'px); top: ' + (q.r * 100) + '%; z-index: 7; white-space: pre; pointer-events: none; background-color: var(--vscode-editor-selectionBackground, #264f78); font-style: normal; font-weight: normal; font-size: 1em;' } } }); }
     items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: txt.slice(s, e), color: 'var(--vscode-editor-foreground)',
-      textDecoration: 'none; position: absolute; left: calc(' + (Math.round(q.x * 100) / 100) + 'ch + ' + (q.px || 0) + 'px); top: ' + (q.r * 100) + '%; z-index: 6; white-space: pre; pointer-events: auto; cursor: ' + meosHandCursor() + '; border: 1px solid rgb(' + rgb + '); border-radius: 3px; ' + (padR || 'padding-right: 4px;') + ' background-color: var(--vscode-editor-background); box-shadow: inset 0 0 0 999px rgba(' + rgb + ',0.18); font-style: normal; font-weight: normal; font-size: 1em;' } } });
+      textDecoration: 'none; position: absolute; left: calc(' + (Math.round(q.x * 100) / 100) + 'ch + ' + (q.px || 0) + 'px); top: ' + (q.r * 100) + '%; z-index: 6; white-space: pre; pointer-events: auto; cursor: ' + meosHandCursor() + '; border: 1px solid rgb(' + rgb + '); border-radius: 3px; ' + (padR || 'padding-right: 4px;') + ' background-color: var(--vscode-editor-background); ' + (typeof caret === 'number' ? '' : 'box-shadow: inset 0 0 0 999px rgba(' + rgb + ',0.18); ') + 'font-style: normal; font-weight: normal; font-size: 1em;' } } });
   };
   if (_cy) { const s = _cy.index + _cy[0].search(/[^↺↻]/), e = _cy.index + _cy[0].length; win.cyc = [s, e];
     // ★v5.1.737(俊克 736 改良1「橙枠を緑枠の段に移動して横並びにしたら、見た目が整う」): dd の窓がある時は、橙の窓を緑の窓(dd の字+右の余白4字)の右へ1字空けて並べる。緑は動かさない(本物のカーソルを覆う位置)
@@ -16027,7 +16030,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   718〜720 は行を Raw の並びにしていた(飾りが消える)。→ ⏰ボタン・表の見せかけと同じ作り= 飾りはそのまま、Raw の位置に窓の絵を被せる。
           //   窓は ⏰ の桁(飾りの1段目)に置いた before を absolute で Raw の段/桁へ動かす。押すと before の桁にカーソル→ 選択の口がその窓の字へ運ぶ
           if (!_rawHere && (_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now()) { try { meosDdPeekWindows(doc, i, txt, items); } catch (_) { } }
-          if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) { _meosDdEdit.delete(uri + ' ' + i); meosDdEditCtxSync(editor); setTimeout(() => meosDdPadStrip(editor, i), 0); } else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character);
+          if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) { _meosDdEdit.delete(uri + ' ' + i); meosDdEditCtxSync(editor); setTimeout(() => meosDdPadStrip(editor, i), 0); } else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character, (editor.selection.anchor && editor.selection.anchor.line === i) ? editor.selection.anchor.character : undefined);
             const _cyE = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt); if (_cyE) {   // v5.1.736 は dd を直す間は周期を隠さなかった(橙の窓の下に字を残す)→ ★v5.1.738: 橙は3段目へ移った= 1段目の周期の字が見えてしまう(737 の3枚目)ので、また常に隠す
             const e1 = _cyE.index + _cyE[0].length; ddEditHide.push(new vscode.Range(i, _cyE.index + _cyE[0].search(/[^↺↻]/), i, e1 + (txt[e1] === ' ' ? 1 : 0))); }
             { const _dqE = /(^|\s)(dd=\S+)/.exec(txt); if (_dqE) { const s1 = _dqE.index + _dqE[1].length, e1 = s1 + _dqE[2].length; let e2 = e1; while (txt[e2] === ' ' || txt[e2] === '\u00a0') e2++; ddEditHide.push(new vscode.Range(i, s1, i, e2)); } }
