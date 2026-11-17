@@ -29638,7 +29638,13 @@ async function removeFormatAtCursor(editor, span) {
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, span.range, span.body);
   // v4.0.265: 見出し/箇条書きは**行に効く命令**なので、印の通し番号ではなくFC行の命令そのものを探して落とす。
-  if (span.kind === 'heading') meosDeleteLineSpecForMark(we, editor, span.range.start.line, span.drop || 'head');
+  if (span.kind === 'heading') { meosDeleteLineSpecForMark(we, editor, span.range.start.line, span.drop || 'head');
+    // ★v5.1.776(俊克 11.17 am11:50 バグ1「🚫ボタンで見出しを解除すると、薄い線が残ってしまう」): 見出しボタンが入れた薄い線(⚪)= FC 群のすぐ後ろの ⚪ の線も一緒に消す。
+    //   濃い線・🚫の線は人が置いた物かもしれないので残す(v5.1.774 で元から在る線は見出しの下に残す事にした)。後ろの空行は残す
+    try { const hl = span.range.start.line; let e = hl; while (e + 1 < doc.lineCount && meosIsBoundSpecLine(doc.lineAt(e + 1).text)) e++; const rl = e + 1;
+      if (rl < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(rl).text) && meosStopIsFaint(doc.lineAt(rl).text)) {
+        if (rl + 1 < doc.lineCount) we.delete(doc.uri, new vscode.Range(rl, 0, rl + 1, 0)); else we.delete(doc.uri, new vscode.Range(new vscode.Position(e, doc.lineAt(e).text.length), new vscode.Position(rl, doc.lineAt(rl).text.length)));
+        meosDbg('[heading] 解除= 見出しの薄い線も消す 行=' + (rl + 1)); } } catch (_) { } }
   else meosDeleteSpecForMark(we, editor, span.range);   // v4.0.213: 表なら指定行の相手も一緒に落とす
   await vscode.workspace.applyEdit(we);
   const start = span.range.start;

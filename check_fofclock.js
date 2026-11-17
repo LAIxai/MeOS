@@ -38,7 +38,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_pzm_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { insertFormatTemplate, meosClockZone, meosClockFar, meosClockDdTitle, meosClockWtOf, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { insertFormatTemplate, formatSpanAtCursor, removeFormatAtCursor, meosClockZone, meosClockFar, meosClockDdTitle, meosClockWtOf, meosFofPair, meosFofRange, meosFofReconcile, meosFofWrap, meosPuzzleTagsOf, meosPuzzleFSet, meosPuzzleFGet, meosPuzzleSweep, meosPuzzleTag, meosClockFcScan, meosFofClockWrite, meosFofClockExpire, meosArmClockFcFor, meosPshPath, meosFuseSamples, fuse: _meosFofFuse, fusePlan: meosFofFusePlan, clear: meosClearPseudoTimer, meosScopeRangeNow, makeDecorations, meosApplyTimerLineDecorations, meosPseudoTimeUp, until: _meosPseudoUntil, scopes: _meosPseudoScopes, say: meosClockSayName, setCtx: (c) => { extensionContext = c; } };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
@@ -95,7 +95,10 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
     ok(eh.selection && eh.selection.active && eh.selection.active.line === 3, 'v5.1.775 押した後のカーソルは見出しの下の空行', eh.selection && eh.selection.active);
     const eh2 = mkEd(dh, { start: { line: 0, character: 3 }, end: { line: 0, character: 3 }, active: { line: 0, character: 3 }, isEmpty: true }); stub.window.activeTextEditor = eh2;
     try { await T.insertFormatTemplate('heading', eh2, '白', 'Green', 2, { head: true }); } catch (_) { } await settle();
-    ok(dh.L.filter(t => t === '<!-- Mew!UFC --- \u26aa -->').length === 1 && dh.L.filter(t => t === '').length === 1, 'v5.1.669 押し直しても停止線と空行は1本', dh.L); ok(eh2.selection.active.line === 0, 'v5.1.775 押し直しはカーソルを見出しに残す', eh2.selection.active); }
+    ok(dh.L.filter(t => t === '<!-- Mew!UFC --- \u26aa -->').length === 1 && dh.L.filter(t => t === '').length === 1, 'v5.1.669 押し直しても停止線と空行は1本', dh.L); ok(eh2.selection.active.line === 0, 'v5.1.775 押し直しはカーソルを見出しに残す', eh2.selection.active);
+    { const ex = mkEd(dh, { start: { line: 0, character: 3 }, end: { line: 0, character: 3 }, active: { line: 0, character: 3 }, isEmpty: true }); stub.window.activeTextEditor = ex;
+      try { const sp = T.formatSpanAtCursor(ex, 'heading'); await T.removeFormatAtCursor(ex, sp); } catch (e) { console.log('ERR', e && e.stack); } await settle();
+      ok(dh.L[0] === '見出しの字' && !dh.L.some(x => /Mew!/.test(x)) && dh.L.includes('本文'), 'v5.1.776 🚫で見出しを解除= FC と薄い線(⚪)も消える', dh.L); } }
   // 2d. v5.1.773(俊克 バグ1): 次の行に停止線が在る行で見出しボタン= 停止線を消さない(FC は見出しと線の間)・空行を足す
   { const dk = doc(['見出しの字', '<!-- Mew!UFC --- -->', '本文']), ek = mkEd(dk, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0, character: 0 }, isEmpty: true }); stub.window.activeTextEditor = ek;
     try { await T.insertFormatTemplate('heading', ek, '白', 'Green', 2, { head: true }); } catch (e) { console.log('ERR', e && e.stack); } await settle();
