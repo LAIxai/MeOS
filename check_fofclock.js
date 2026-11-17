@@ -98,7 +98,9 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
   // 2d. v5.1.773(俊克 バグ1): 次の行に停止線が在る行で見出しボタン= 停止線を消さない(FC は見出しと線の間)・空行を足す
   { const dk = doc(['見出しの字', '<!-- Mew!UFC --- -->', '本文']), ek = mkEd(dk, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0, character: 0 }, isEmpty: true }); stub.window.activeTextEditor = ek;
     try { await T.insertFormatTemplate('heading', ek, '白', 'Green', 2, { head: true }); } catch (e) { console.log('ERR', e && e.stack); } await settle();
-    ok(/^## 見出しの字/.test(dk.L[0]) && /Mew!FC H2_/.test(dk.L[1]) && dk.L[2] === '<!-- Mew!UFC --- -->' && dk.L[3] === '' && dk.L[4] === '本文' && dk.L.length === 5, 'v5.1.773 次の行の停止線は消さない(濃い線のまま)・後ろに空行', dk.L); }
+    ok(/^## 見出しの字/.test(dk.L[0]) && /Mew!FC H2_/.test(dk.L[1]) && dk.L[2] === '<!-- Mew!UFC --- \u26aa -->' && dk.L[3] === '' && dk.L[4] === '<!-- Mew!UFC --- -->' && dk.L[5] === '本文' && dk.L.length === 6, 'v5.1.774 次の行の停止線は消さない= 見出し・FC・⚪・空行・元の線・本文', dk.L);
+    const ek2 = mkEd(dk, { start: { line: 0, character: 3 }, end: { line: 0, character: 3 }, active: { line: 0, character: 3 }, isEmpty: true }); stub.window.activeTextEditor = ek2; try { await T.insertFormatTemplate('heading', ek2, '白', 'Green', 2, { head: true }); } catch (_) { } await settle();
+    ok(dk.L.length === 6 && dk.L[4] === '<!-- Mew!UFC --- -->', 'v5.1.774 押し直しても ⚪ と空行は増えない', dk.L); }
   // 3. コピペで組ができる(今ある1点の♥×2)→ 1本だけ。もう一度読んでも増えない
   const d3 = doc(['a', '<!-- {* ♥️▶◀mP7=f_1 //  *} -->', 'b', '<!-- {* ♥️▶◀mP7=f_2 //  *} -->', 'c']); T.meosPuzzleFSet(d3, 7, 'f_1'); const e3 = mkEd(d3); await T.meosFofReconcile(e3, 7); await settle();
   ok(clocks(d3).length === 1, '組が今できた= ⏰が1本', d3.L); await T.meosFofReconcile(e3, 7); await T.meosFofClockWrite(d3); ok(clocks(d3).length === 1, '読み直しても増えない', d3.L);
