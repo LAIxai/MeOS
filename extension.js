@@ -15415,8 +15415,17 @@ function meosRawRowsOf(text, wrap) {   // ★v5.1.721: Raw の並びの段割り
 function meosDdEditSpans(t) {   // 窓で直せる桁の範囲。周期は ( の後ろから・dd は = の後ろから
   const cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(t), dq = /(^|\s)(dd=\S+)/.exec(t);
   let cyc = null; if (cy) { const s = cy.index + cy[0].search(/[^↺↻]/); cyc = [s + (t[s] === '(' ? 1 : 0), cy.index + cy[0].length]; }
-  return { cyc, dd: dq ? [dq.index + dq[1].length + 3, dq.index + dq[1].length + dq[2].length] : null };
+  return { cyc, dd: dq ? [dq.index + dq[1].length + 3, dq.index + dq[1].length + dq[2].length] : null, ttl: meosDdTitleSpan(t) };
 }
+// ★v5.1.779(俊克 777 改良2「⏸️を押したら、コメント部分も3番目の枠として修正できるように」・pm06:59「ワンショットでは『at dd # 1.』を除いた部分・♥膜では『♥️Timer』の部分」):
+//   題= ⏰の後ろの ' // ' から、dd(と前の at)の手前まで。dd が無ければ ' # N' の手前まで。空になっても(全部消しても)枠は残す
+function meosDdTitleSpan(t) {
+  const a = t.indexOf('\u23f0'); if (a < 0) return null; const k = t.indexOf(' // ', a); if (k < 0) return null;
+  const s0 = k + 4; let end = t.indexOf(' -->', s0); if (end < 0) end = t.length; const body = t.slice(s0, end);
+  const m = /(^|\s)(?:at\s+)?dd(?:=\S+)?(?=\s|$)/.exec(body); const e = m ? m.index : body.replace(/\s+#\s*\d+\.?\s*$/, '').length;
+  return [s0, s0 + e];
+}
+const MEOS_DD_SPAN_ORDER = ['cyc', 'dd', 'ttl'];   // v5.1.779: 窓の並び(左→右)= ←→で渡る順
 // ★v5.1.731(俊克 730 改良3「pm0 の右端なら外側に文字カーソルが出ない。pm06 の右端なら僅かに見える」「スペースを4文字足して、四角枠はそのままで止めれば、うまく行くんじゃないか?」):
 //   dd が行の最後の字だと、尻の桁=行末で本物のカーソルが描かれる。→ 窓で直す間だけ行末に空白4つを足し(隠す)、窓を出たら外す。窓とキーの範囲は dd の字まで
 const _meosDdPad = new Set(); const MEOS_DD_PAD = 15;   // ★v5.1.733(俊克 732「全く変わらない。Rawデータの折返しがそこまでしかないからだ。Rawデータを水増しすれば」): 空白は折り返しの段の外へぶら下がり段を延ばさない→ 折れない空白(U+00A0)で dd の語ごと延ばす(\S にも当たらない= dd=\S+ は壊れない) / v5.1.732(俊克 pm07:09「極端に10〜15文字くらいスペースを足して試そう」): 4→15
@@ -15442,7 +15451,8 @@ async function meosDdEditKey(k) {
   { const nm = (_meosDdEditSp.get(key) || 'dd');
     // ★v5.1.741(俊克 740 改良1「→/←押しっ放しで、一時停止しよう。境界が一時停止線ということだね」): キーの離れは拡張に見えない→ 間隔で読む(↑↓の一時停止線 v5.1.580 と同じ物差し)。
     //   リピートは30ms・初回だけ225ms= 境で止まっていない時は0.3秒以上空いた1打だけ渡る。止まった後は0.15秒空いたら手を離した印= 押し直しの1打で渡る
-    const _cross = (k === 'right' && nm === 'cyc' && c >= sp[1] && S.dd) || (k === 'left' && nm === 'dd' && c <= sp[0] && S.cyc);
+    const _ord = MEOS_DD_SPAN_ORDER.filter(n => S[n]), _oi = _ord.indexOf(nm), _to = (k === 'right' && c >= sp[1]) ? _ord[_oi + 1] : (k === 'left' && c <= sp[0] && _oi > 0) ? _ord[_oi - 1] : null;   // v5.1.779: 3つの窓= 隣の窓へ
+    const _cross = !!_to;
     meosDbg('[ddKey] k=' + k + ' 窓=' + nm + ' c=' + c + ' 範囲=' + JSON.stringify(sp) + ' 間隔=' + _gap + ' 止=' + _meosDdKey.hold + ' 渡る候補=' + !!_cross);   // v5.1.742: 741 バグ1「押しっ放しで一時停止しない」の実測
     if (_cross && !(_meosDdKey.hold ? _gap >= 150 : _gap >= 300)) { _meosDdKey.hold = true; meosDbg('[ddKey] → 境で止める'); return; }
     // ★v5.1.743(742 実測: 境で止めた直後に拡張が0.45秒詰まり、溜まったリピートの先頭が「間の空いた1打」に見えて渡っていた= 14:56:16.979 止め→17.438 間隔459で渡る→ 後ろに間隔0の塊):
@@ -15451,7 +15461,7 @@ async function meosDdEditKey(k) {
     if (_cross) { const k0 = key, t0 = _now; _meosDdKey.hold = true;
       setTimeout(() => setImmediate(() => { if (_meosDdKey.at !== t0) { meosDbg('[ddKey] → 続くキーあり= 押しっぱなし(止めたまま)'); return; }
         const e2 = vscode.window.activeTextEditor; if (!e2 || e2.document.uri.toString() + ' ' + L !== k0 || !_meosDdEdit.has(k0)) return;
-        _meosDdKey.hold = false; const to = k === 'right' ? 'dd' : 'cyc'; _meosDdEditSp.set(k0, to); const P = new vscode.Position(L, k === 'right' ? S.dd[0] : S.cyc[1]); e2.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(e2); meosDbg('[ddKey] → 押し直し= ' + to + ' へ渡る'); }), 70);
+        _meosDdKey.hold = false; const to = _to; _meosDdEditSp.set(k0, to); const P = new vscode.Position(L, k === 'right' ? S[to][0] : S[to][1]); e2.selection = new vscode.Selection(P, P); meosApplyTimerLineDecorations(e2); meosDbg('[ddKey] → 押し直し= ' + to + ' へ渡る'); }), 70);
       return; }
     _meosDdKey.hold = false; }
   if (k === 'left') c = Math.max(sp[0], c - 1); else if (k === 'right') c = Math.min(sp[1], c + 1); else if (k === 'up' || k === 'home') c = sp[0]; else if (k === 'down' || k === 'end') c = sp[1];
@@ -15477,9 +15487,12 @@ function meosDdPeekWindows(doc, i, txt, items, caret) {   // ★v5.1.721: 周期
     // ★v5.1.735(734 実測: 窓を上の段へ移すと本物のカーソルが3段目に丸見え= 左端 440・尻 848 と字に付いて動く)→ 3段目の窓は本物のカーソルを覆っていた(窓が上)。
     //   漏れたのは尻だけ= 本物の字の並びが窓より約3字右にずれ、尻のカーソルが窓の右端(780)の外へ出ていた。→ 3段目へ戻し、右に4字ぶんの余白で覆う
     q0 = null; if (win.cyc) { const r0 = at(s); q0 = { r: r0.r, x: r0.x + meosRenderColsF(txt.slice(win.cyc[0], win.cyc[1])), px: 6 }; }   // ★v5.1.740(俊克 738 改良1「橙枠と緑枠が少し被っている。きっちり接するように」): 緑の左= 橙の外寸(字の幅+枠1px+余白4px+枠1px)。v5.1.738: 緑は橙の右へ半字空けて。本物の dd のカーソル(段の頭から約6〜21字)は橙と緑の2枚で覆う(隙間は半字)
-    put(s, e, a + 1, today ? '63,185,80' : '224,128,58', q0, 'padding-right: 4ch;'); }
+    put(s, e, a + 1, today ? '63,185,80' : '224,128,58', q0, 'padding-right: 4ch;');
+    // ★v5.1.779: 題の窓(青)= 緑の窓の右へ接して。押す桁は ⏰ の2つ後(周期= ⏰ / dd= その次)
+    const _ts = meosDdTitleSpan(txt); if (_ts && (_ts[1] > _ts[0] || typeof caret === 'number')) { win.ttl = _ts; const qd = q0 || at(s);
+      put(_ts[0], _ts[1], a + 2, '86,156,214', { r: qd.r, x: qd.x + meosRenderColsF(txt.slice(s, e)) + 4, px: (qd.px || 0) + 2 }); } }
   _meosDdPeekWin.set(doc.uri.toString() + ' ' + i, win);
-  meosDbg('[dd] 覗き窓 行=' + (i + 1) + ' 段=' + rows.length + ' 周期=' + (win.cyc ? JSON.stringify(at(win.cyc[0])) : '-') + ' dd=' + (win.dd ? JSON.stringify(at(win.dd[0])) : '-'));
+  meosDbg('[dd] 覗き窓 行=' + (i + 1) + ' 段=' + rows.length + ' 周期=' + (win.cyc ? JSON.stringify(at(win.cyc[0])) : '-') + ' dd=' + (win.dd ? JSON.stringify(at(win.dd[0])) : '-') + ' 題=' + (win.ttl ? JSON.stringify(win.ttl) : '-'));
 }
 function meosRawChW(ch, nx) { const cp = ch.codePointAt(0); if (/[\ufe00-\ufe0f\u200d]/.test(ch)) return 0; if (/\p{Emoji_Presentation}/u.test(ch) || (nx === '\ufe0f' && /\p{Extended_Pictographic}/u.test(ch))) return 2; return (isWideCodePoint(cp) && !/\p{Extended_Pictographic}/u.test(ch)) ? _meosTableCjkW : 1; }   // v5.1.722(721 のスクショ: 周期の窓が2桁右): 絵の顔(⏰🔔)だけ2桁・字の顔(⏸ ↺↻)は1桁   // v5.1.721: 絵文字は2桁(717 の Raw のスクショを画素で測った= ⏰ 46px/1桁 24.6px≒1.9)・全角は家の値
 function meosRenderColsF(text) { const a = Array.from(text || ''); let n = 0; for (let k = 0; k < a.length; k++) n += meosRawChW(a[k], a[k + 1]); return n; }
@@ -16017,7 +16030,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) { _meosDdEdit.delete(uri + ' ' + i); meosDdEditCtxSync(editor); setTimeout(() => meosDdPadStrip(editor, i), 0); } else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character);
             const _cyE = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt); if (_cyE) {   // v5.1.736 は dd を直す間は周期を隠さなかった(橙の窓の下に字を残す)→ ★v5.1.738: 橙は3段目へ移った= 1段目の周期の字が見えてしまう(737 の3枚目)ので、また常に隠す
             const e1 = _cyE.index + _cyE[0].length; ddEditHide.push(new vscode.Range(i, _cyE.index + _cyE[0].search(/[^↺↻]/), i, e1 + (txt[e1] === ' ' ? 1 : 0))); }
-            { const _dqE = /(^|\s)(dd=\S+)/.exec(txt); if (_dqE) { const s1 = _dqE.index + _dqE[1].length, e1 = s1 + _dqE[2].length; let e2 = e1; while (txt[e2] === ' ' || txt[e2] === '\u00a0') e2++; ddEditHide.push(new vscode.Range(i, s1, i, e2)); } }   // v5.1.731: 後ろの足した空白ごと隠す   // ★v5.1.729(俊克 728 改良1「本文の文字カーソルと二重に見える」): 直す字を display:none にする= 隠れた字の中では Monaco が本物のカーソルを描けない(測れない)。後ろの空白も隠す= 尻の桁でも見えない   // ★v5.1.727(俊克 726 バグ1「橙色の枠の中で動かすと本文の方の文字カーソルも追従。緑色の方は正しいのに、なぜ?」): dd は隠した字の中なので本物のカーソルが見えない。周期は見えている字だった→ 直す間は飾りの周期も畳む(窓が同じ字を見せる)
+            { const _dqE = /(^|\s)(dd=\S+)/.exec(txt); if (_dqE) { const s1 = _dqE.index + _dqE[1].length, e1 = s1 + _dqE[2].length; let e2 = e1; while (txt[e2] === ' ' || txt[e2] === '\u00a0') e2++; ddEditHide.push(new vscode.Range(i, s1, i, e2)); } }
+            { const _tsE = meosDdTitleSpan(txt); if (_tsE && _tsE[1] > _tsE[0]) ddEditHide.push(new vscode.Range(i, _tsE[0], i, _tsE[1])); }   // v5.1.779: 題も窓が見せる= 本文の字は隠す(本物のカーソルを描かせない)   // v5.1.731: 後ろの足した空白ごと隠す   // ★v5.1.729(俊克 728 改良1「本文の文字カーソルと二重に見える」): 直す字を display:none にする= 隠れた字の中では Monaco が本物のカーソルを描けない(測れない)。後ろの空白も隠す= 尻の桁でも見えない   // ★v5.1.727(俊克 726 バグ1「橙色の枠の中で動かすと本文の方の文字カーソルも追従。緑色の方は正しいのに、なぜ?」): dd は隠した字の中なので本物のカーソルが見えない。周期は見えている字だった→ 直す間は飾りの周期も畳む(窓が同じ字を見せる)
           } catch (_) { } }   // v5.1.725: 直している間も覗き窓の姿のまま(窓に今の字とカーソルの棒)
           // ★★★v4.1.149(俊克 9/6 am00:12「いっそのこと、2行目も『\u23f0\ud83d\udd12 2026-09-05(s) 20:05 \u21ba\u21bb3m/1m』
           //   **だけを見せかけ表示**しようよ。文字カーソルthat入った時に、生データthat見えればいいんだからさ。
@@ -47319,7 +47333,8 @@ function activate(context) {
           if (l0 === L0 && !kb && S.cyc && c === S.cyc[0] - 1) { _meosDdEditSp.set(k0, 'cyc'); to = S.cyc[0]; }   // v5.1.736: 窓の ( の上を押した= 周期の窓の頭
           else if (l0 === L0 && inn(S.cyc)) _meosDdEditSp.set(k0, 'cyc');
           else if (l0 === L0 && inn(S.dd)) _meosDdEditSp.set(k0, 'dd');
-          else if (l0 === L0 && w0 && (c === w0.a || c === w0.a + 1) && S[c === w0.a ? 'cyc' : 'dd']) { const n = c === w0.a ? 'cyc' : 'dd'; _meosDdEditSp.set(k0, n); to = S[n][0]; }   // v5.1.727: もう1つの窓を押した= その窓へ
+          else if (l0 === L0 && inn(S.ttl)) _meosDdEditSp.set(k0, 'ttl');   // v5.1.779
+          else if (l0 === L0 && w0 && c >= w0.a && c <= w0.a + 2 && S[MEOS_DD_SPAN_ORDER[c - w0.a]]) { const n = MEOS_DD_SPAN_ORDER[c - w0.a]; _meosDdEditSp.set(k0, n); to = S[n][0]; }   // v5.1.779: 題の窓= ⏰の2つ後   // v5.1.727: もう1つの窓を押した= その窓へ
           else if (kb && S[act]) { const sp = S[act]; to = (l0 === L0) ? (c < sp[0] ? sp[0] : sp[1]) : (l0 < L0 ? sp[0] : sp[1]); }   // ←/→ は端で止まる・↑ は頭・↓ は尻
           else out = true;   // マウスで窓の外/行の外= 終わり(窓の外は見えない所を直さないよう、ふつうの Raw)
         } catch (_) { out = true; }
@@ -47330,11 +47345,11 @@ function activate(context) {
     if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
     // v5.1.721: 窓を押した時だけ= カーソルが窓の桁(⏰の桁=周期 / その次=dd)に落ちた時。他の動き(⏸️の約1秒後に MeOS が動かすカーソル等)では消さない(720 の実測)
     const w = _meosDdPeekWin.get(k), ch = e.textEditor.selection.active.character;
-    const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = ch === w.a + 1 || inS(w && w.dd);   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
-    if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
-      const sp = hitC ? w.cyc : w.dd; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k); _meosDdEditSp.set(k, hitC ? 'cyc' : 'dd');
-      meosDdEditCtxSync(e.textEditor); /* v5.1.734: 水増しは効かなかった(俊克の tttttttt でも同じ)→ 足さない */ { const sp2 = meosDdEditSpans(e.textEditor.document.lineAt(ln).text)[hitC ? 'cyc' : 'dd']; if (sp2 && (ch < sp2[0] || ch > sp2[1])) { const P = new vscode.Position(ln, sp2[0]); e.textEditor.selection = new vscode.Selection(P, P); } }   // v5.1.729: 同じ物差しで頭へ   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
-      meosDbg('[dd] 覗き窓を押した(' + (hitC ? '周期' : 'dd') + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
+    const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = !hitC && (ch === w.a + 1 || inS(w && w.dd)), hitT = !hitC && !hitD && !!(w && w.ttl) && (ch === w.a + 2 || inS(w.ttl));   // v5.1.779: 題の窓   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
+    if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD || hitT)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
+      const nmH = hitC ? 'cyc' : hitD ? 'dd' : 'ttl'; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k); _meosDdEditSp.set(k, nmH);
+      meosDdEditCtxSync(e.textEditor); /* v5.1.734: 水増しは効かなかった(俊克の tttttttt でも同じ)→ 足さない */ { const sp2 = meosDdEditSpans(e.textEditor.document.lineAt(ln).text)[nmH]; if (sp2 && (ch < sp2[0] || ch > sp2[1])) { const P = new vscode.Position(ln, sp2[0]); e.textEditor.selection = new vscode.Selection(P, P); } }   // v5.1.729: 同じ物差しで頭へ   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
+      meosDbg('[dd] 覗き窓を押した(' + ({ cyc: '周期', dd: 'dd', ttl: '題' })[nmH] + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
   } catch (_) { } }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => meosPostCaretDay(false)));
   // ★v5.1.215(俊克 am01:04 改良1「切り替える度に、カレント行の位置がだんだん下にズレて行く・だいぶ前からの症状」): 測る= 離れる時と戻った後(0/0.5/1.5/3秒)に、
