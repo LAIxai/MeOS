@@ -7606,17 +7606,41 @@ function meosDdCycleSyncSoon(doc) {
     if (_meosDdCycTimer) clearTimeout(_meosDdCycTimer); _meosDdCycTimer = setTimeout(() => { _meosDdCycTimer = null; meosDdCycleSync(doc); }, 400); } catch (_) { }
 }
 async function meosDdCycleSync(doc) {
+  // ★v5.1.782(俊克 781 改良1「左右の枠と3行前の札が同期していない。右の枠を直した時に左の枠と札の両方を、左の枠を直しても残りの2つを更新しよう」):
+  //   周期を直した→ dd= を書き直す(778)。dd= を直した→ 周期を書き直す(▶️の「dd が勝つ」と同じ数え方)。札は dd= から描くので両方で揃う。
+  //   ★781 で2度目の周期の直しが効かなかった真因(実測 14:02:55): 書き換えは非同期= 打鍵と競い、控え(face)だけ先に進んで本文が古いまま→ 以後「dd を手で直した」と読んで止まっていた。
+  //     → エディタの edit(版が変わっていれば断る)で書き、断られたら控えを戻してもう一度
   try { const u = doc.uri.toString();
     for (const [lk, v] of Array.from(_meosDdPauseFace)) { if (!v || v.uri !== u || !v.cyc) continue;
       const cur = meosClockFcScan(doc).find(x => x.key === v.key && x.off); if (!cur) continue;
-      const cy = Array.isArray(cur.cycle) ? cur.cycle : []; if (cy.length !== 1 || meosCycleRules(cy).length || !(meosCycleMs(cy[0]) > 0) || cy[0] === (v.seen || v.cyc)) continue;   // seen= 最後に合わせた周期(cyc は止めた時のまま= ▶️が比べる)
-      const t = doc.lineAt(cur.line).text, q = MEOS_CLOCK_DDQ_RE.exec(t); if (!q || q[2] !== v.face) continue;   // dd を手で直していれば触らない
-      const end = v.base ? meosClockDdEnd(Object.assign({}, cur, { vAt: v.base })) : meosClockDdEnd(cur); if (!end) continue;
-      const face = meosClockDdFace(end); if (face === v.face) { v.seen = cy[0]; continue; }
-      const s0 = q.index + q[1].length + 3, we = new vscode.WorkspaceEdit(); we.replace(doc.uri, new vscode.Range(cur.line, s0, cur.line, s0 + q[2].length), face);
-      v.face = face; v.end = end; v.seen = cy[0];
-      meosDbg('[dd] 周期を直した→ dd=' + face + ' key=' + v.key);
-      await vscode.workspace.applyEdit(we);
+      const cy = Array.isArray(cur.cycle) ? cur.cycle : []; if (cy.length !== 1 || meosCycleRules(cy).length || !(meosCycleMs(cy[0]) > 0)) continue;
+      const t = doc.lineAt(cur.line).text, q = MEOS_CLOCK_DDQ_RE.exec(t); if (!q) continue;
+      const cycNow = cy[0], cycWas = v.seen || v.cyc, ddEd = q[2] !== v.face, cycEd = cycNow !== cycWas;
+      if (!ddEd && !cycEd) continue;
+      const ed = vscode.window.visibleTextEditors.find(x => x.document === doc), ver = doc.version;
+      const put = async (s0, e0, txt) => { if (ed) return await ed.edit(eb => eb.replace(new vscode.Range(cur.line, s0, cur.line, e0), txt), { undoStopBefore: false, undoStopAfter: false });
+        const we = new vscode.WorkspaceEdit(); we.replace(doc.uri, new vscode.Range(cur.line, s0, cur.line, e0), txt); return await vscode.workspace.applyEdit(we); };
+      const old = { face: v.face, end: v.end, seen: v.seen };
+      if (cycEd && !ddEd) {   // 周期→ dd
+        const end = v.base ? meosClockDdEnd(Object.assign({}, cur, { vAt: v.base })) : meosClockDdEnd(cur); if (!end) continue;
+        const face = meosClockDdFace(end); if (face === v.face) { v.seen = cycNow; continue; }
+        const s0 = q.index + q[1].length + 3; v.face = face; v.end = end; v.seen = cycNow;
+        const ok = doc.version === ver && await put(s0, s0 + q[2].length, face);
+        meosDbg('[dd] 周期を直した→ dd=' + face + ' ok=' + !!ok + ' key=' + v.key); if (!ok) { Object.assign(v, old); meosDdCycleSyncSoon(doc); }
+        continue;
+      }
+      if (ddEd && !cycEd) {   // dd→ 周期
+        const D = meosClockDdParse(q[2]); if (!D) continue; if (Math.floor(D / 60000) === Math.floor((v.end || 0) / 60000)) { v.face = q[2]; continue; }
+        const own = cur.when ? ((meosParseStampLoose(cur.when) || { getTime: () => 0 }).getTime()) : 0, org = own || v.base; if (!org || !(D > org)) continue;
+        const T0 = meosCycleMs(cycNow), k = Math.max(1, Math.floor(((v.at || Date.now()) - org) / T0) + 1), step = meosClockFmtCycle(Math.ceil((D - org) / k / 1000) * 1000);
+        if (step === cycNow) { v.face = q[2]; v.end = D; continue; }
+        const ci = t.indexOf(cycNow, (t.search(/[↺↻]/) + 1) || 0); if (ci < 0) continue;
+        v.face = q[2]; v.end = D; v.seen = step;
+        const ok = doc.version === ver && await put(ci, ci + cycNow.length, step);
+        meosDbg('[dd] dd を直した→ 周期 ' + cycNow + ' → ' + step + ' (周' + k + ') ok=' + !!ok + ' key=' + v.key); if (!ok) { Object.assign(v, old); meosDdCycleSyncSoon(doc); }
+        continue;
+      }
+      v.face = q[2]; v.seen = cycNow;   // 両方いっぺんに変わった(貼り付け等)= 今の姿を控えにする
     }
   } catch (_) { }
 }
@@ -15491,9 +15515,9 @@ function meosDdPeekWindows(doc, i, txt, items, caret, selA) {   // ★v5.1.721: 
     //   漏れたのは尻だけ= 本物の字の並びが窓より約3字右にずれ、尻のカーソルが窓の右端(780)の外へ出ていた。→ 3段目へ戻し、右に4字ぶんの余白で覆う
     q0 = null; if (win.cyc) { const r0 = at(s); q0 = { r: r0.r, x: r0.x + meosRenderColsF(txt.slice(win.cyc[0], win.cyc[1])), px: 6 }; }   // ★v5.1.740(俊克 738 改良1「橙枠と緑枠が少し被っている。きっちり接するように」): 緑の左= 橙の外寸(字の幅+枠1px+余白4px+枠1px)。v5.1.738: 緑は橙の右へ半字空けて。本物の dd のカーソル(段の頭から約6〜21字)は橙と緑の2枚で覆う(隙間は半字)
     put(s, e, a + 1, today ? '63,185,80' : '224,128,58', q0, 'padding-right: 4ch;');
-    // ★v5.1.779: 題の窓(青)= 緑の窓の右へ接して。押す桁は ⏰ の2つ後(周期= ⏰ / dd= その次)
+    // ★v5.1.779: 題の窓(青)= 緑の窓の右へ接して。★v5.1.782(781 のスクショ: 青い窓が出ない): ⏰の2つ後は止めた時の ⏸1 の隠した字= その上の飾りは消える→ 周期と同じ ⏰ の桁に置く
     const _ts = meosDdTitleSpan(txt); if (_ts && (_ts[1] > _ts[0] || typeof caret === 'number')) { win.ttl = _ts; const qd = q0 || at(s);
-      put(_ts[0], _ts[1], a + 2, '86,156,214', { r: qd.r, x: qd.x + meosRenderColsF(txt.slice(s, e)) + 4, px: (qd.px || 0) + 2 }); } }
+      put(_ts[0], _ts[1], a, '86,156,214', { r: qd.r, x: qd.x + meosRenderColsF(txt.slice(s, e)) + 4, px: (qd.px || 0) + 2 }); } }
   _meosDdPeekWin.set(doc.uri.toString() + ' ' + i, win);
   meosDbg('[dd] 覗き窓 行=' + (i + 1) + ' 段=' + rows.length + ' 周期=' + (win.cyc ? JSON.stringify(at(win.cyc[0])) : '-') + ' dd=' + (win.dd ? JSON.stringify(at(win.dd[0])) : '-') + ' 題=' + (win.ttl ? JSON.stringify(win.ttl) : '-'));
 }
@@ -41425,11 +41449,13 @@ function meosRuleStopAt(ed, cur, down) {
 // ★v5.1.664→665(俊克 11.12 am10:52「さっきの実装に戻して、そこで停止した時に手を離したら、そこで停止し、さらに0.5秒以上押し続けたら、自動でCmd+↓/↑を実行するようにしよう…そのあとも、直ぐに手を離せばそこで停止し、0.5秒以上押し続けていれば、次に進む」):
 //   止まる所は 663 のまま(手前の行に入った所)。止まってから押しっぱなしが0.5秒続いたら Cmd+↓/↑(membraneEdgeDown/Up)を1回打ち、そこで止まる(am10:59「そこで停止するってことだよ」= 手を離して押し直すまで次は打たない)
 const MEOS_RULE_HOLD_JUMP_MS = 1000;   // v5.1.667(俊克 am11:19「0.5秒だと早過ぎるので、1秒に」)
-function meosRuleHoldAt(ed, l, down) { _meosRuleKey.hold = true; _meosRuleKey.holdAt = Date.now(); }
-async function meosRuleGo(cmd, down, run) {
+function meosRuleHoldAt(ed, l, down, sel) { _meosRuleKey.hold = true; _meosRuleKey.holdAt = Date.now();
+  // ★v5.1.782(俊克 781 👍2「Shift+↓で選択すると開始膜の手前の行で停止するようになった。その行の行末まで進めた方が使い易い」): 選択を伸ばしている時は、止まった行の行末(↑は行頭)まで
+  if (sel) try { if (ed && ed.selection.active.line === l) { const P = new vscode.Position(l, down ? ed.document.lineAt(l).text.length : 0); ed.selection = new vscode.Selection(ed.selection.anchor, P); } } catch (_) { } }
+async function meosRuleGo(cmd, down, run, sel) {
   _meosRuleKey.moved = Date.now(); _meosRuleKey.busy = true;
   try { await vscode.commands.executeCommand(cmd); } finally { _meosRuleKey.busy = false; }
-  if (run) try { const ed = vscode.window.activeTextEditor, l = ed && ed.selection.active.line; if (ed && l !== _meosRuleKey.pass && meosRuleStopAt(ed, l, down)) meosRuleHoldAt(ed, l, down); } catch (_) { }
+  if (run) try { const ed = vscode.window.activeTextEditor, l = ed && ed.selection.active.line; if (ed && l !== _meosRuleKey.pass && meosRuleStopAt(ed, l, down)) meosRuleHoldAt(ed, l, down, sel); } catch (_) { }
 }
 // ★v5.1.585: 実機の手前の行は折り返しが多い= 押し直しの1打が同じ行の2段目に動くだけだと、もう一度止まっていた→ 押し直した行では止めない(pass)
 // ★v5.1.663(俊克 11.12 am10:23 改良1「Cmd+↓/↑で停止線にjumpできるようになったので、↓/↑での20行以内の仕組みが邪魔に思えてきた。押し続けた時に停止すると言う事だけを残して、他の機能を削除しよう」):
@@ -41447,13 +41473,13 @@ async function meosRuleStep(down, sel) {
         if (!_there) { _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(down ? 'laiMembrane.membraneEdgeDown' : 'laiMembrane.membraneEdgeUp'); } finally { _meosRuleKey.busy = false; } }
         _meosRuleKey.holdAt = Infinity; _meosRuleKey.moved = Date.now(); meosDbg('[ruleHold] 押し続けた→ Cmd+' + (down ? '↓' : '↑')); return;
       }
-      if (gap >= 150) setTimeout(() => setImmediate(() => { if (_meosRuleKey.at !== now || !_meosRuleKey.hold) return; _meosRuleKey.hold = false; _meosRuleKey.pass = cur; meosRuleGo(cmd, down, false); }), 120);
+      if (gap >= 150) setTimeout(() => setImmediate(() => { if (_meosRuleKey.at !== now || !_meosRuleKey.hold) return; _meosRuleKey.hold = false; _meosRuleKey.pass = cur; meosRuleGo(cmd, down, false, sel); }), 120);
       return;
     }
     if (cur !== _meosRuleKey.pass) _meosRuleKey.pass = -1;
-    if (ed && gap < 400 && cur !== _meosRuleKey.pass && meosRuleStopAt(ed, cur, down)) { meosRuleHoldAt(ed, cur, down); return; }
+    if (ed && gap < 400 && cur !== _meosRuleKey.pass && meosRuleStopAt(ed, cur, down)) { meosRuleHoldAt(ed, cur, down, sel); return; }
   } catch (_) { }
-  meosRuleGo(cmd, down, gap < 400);
+  meosRuleGo(cmd, down, gap < 400, sel);
 }
 // ★v5.1.587(俊克 am02:59 改良1「Cmd+↑/↓をハックして、膜の内部で実行したときは、罫線の手前までジャンプ」): 上は開始の罫線の次の行の頭・下は閉じの罫線の前の行の末尾へ。
 //   中の子の膜は深さで飛ばす。膜の外・罫線の無い膜・もう端に居る時は本来の先頭/末尾へ(もう1回押せば抜ける)。♥膜も同じ。囲いと `…` の中の字は数えない
@@ -47343,6 +47369,7 @@ function activate(context) {
           else if (l0 === L0 && inn(S.dd)) _meosDdEditSp.set(k0, 'dd');
           else if (l0 === L0 && inn(S.ttl)) _meosDdEditSp.set(k0, 'ttl');   // v5.1.779
           else if (l0 === L0 && w0 && c >= w0.a && c <= w0.a + 2 && S[MEOS_DD_SPAN_ORDER[c - w0.a]]) { const n = MEOS_DD_SPAN_ORDER[c - w0.a]; _meosDdEditSp.set(k0, n); to = S[n][0]; }   // v5.1.779: 題の窓= ⏰の2つ後   // v5.1.727: もう1つの窓を押した= その窓へ
+          else if (l0 === L0 && !kb && S[act] && c >= e.textEditor.document.lineAt(L0).text.length) to = S[act][1];   // v5.1.782: 窓の下に字が無い所(行末)を押した= 窓の中に留まる
           else if (kb && S[act]) { const sp = S[act]; to = (l0 === L0) ? (c < sp[0] ? sp[0] : sp[1]) : (l0 < L0 ? sp[0] : sp[1]); }   // ←/→ は端で止まる・↑ は頭・↓ は尻
           else out = true;   // マウスで窓の外/行の外= 終わり(窓の外は見えない所を直さないよう、ふつうの Raw)
         } catch (_) { out = true; }
@@ -47353,8 +47380,10 @@ function activate(context) {
     if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
     // v5.1.721: 窓を押した時だけ= カーソルが窓の桁(⏰の桁=周期 / その次=dd)に落ちた時。他の動き(⏸️の約1秒後に MeOS が動かすカーソル等)では消さない(720 の実測)
     const w = _meosDdPeekWin.get(k), ch = e.textEditor.selection.active.character;
-    const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = !hitC && (ch === w.a + 1 || inS(w && w.dd)), hitT = !hitC && !hitD && !!(w && w.ttl) && (ch === w.a + 2 || inS(w.ttl));   // v5.1.779: 題の窓   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
-    if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD || hitT)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
+    const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = !hitC && (ch === w.a + 1 || inS(w && w.dd)), hitT0 = !hitC && !hitD && !!(w && w.ttl) && (ch === w.a + 2 || inS(w.ttl)), _eol = !!w && !hitC && !hitD && !hitT0 && ch >= e.textEditor.document.lineAt(ln).text.length, hitT = hitT0;   // v5.1.779: 題の窓
+    // ★v5.1.782(俊克 781 バグ1「♥膜は枠をクリックすると Raw になる」): 窓は ::before の絵= 押すとカーソルは下の本物の字に落ちる。♥膜はその段の字が短く(×1 v6m44s)、窓の下に字が無い= 行末(83桁)に落ちて窓と読めなかった(実測 14:11:07 caretCh=83)。
+    //   ワンショットは下に周期の字があり偶然当たっていた。→ 覗いている行の行末に落ちた= 窓を押した(どの窓かは分からない= dd)。←→で隣の窓へ   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
+    if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD || hitT || _eol)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
       const nmH = hitC ? 'cyc' : hitD ? 'dd' : 'ttl'; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k); _meosDdEditSp.set(k, nmH);
       meosDdEditCtxSync(e.textEditor); /* v5.1.734: 水増しは効かなかった(俊克の tttttttt でも同じ)→ 足さない */ { const sp2 = meosDdEditSpans(e.textEditor.document.lineAt(ln).text)[nmH]; if (sp2 && (ch < sp2[0] || ch > sp2[1])) { const P = new vscode.Position(ln, sp2[0]); e.textEditor.selection = new vscode.Selection(P, P); } }   // v5.1.729: 同じ物差しで頭へ   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
       meosDbg('[dd] 覗き窓を押した(' + ({ cyc: '周期', dd: 'dd', ttl: '題' })[nmH] + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
