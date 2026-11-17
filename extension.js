@@ -7806,8 +7806,16 @@ function meosPuzzleTagLine(doc, i, raw) {
   try { if (meosFenceLines(doc).has(i)) return null; } catch (_) { }
   return MEOS_PUZZLE_TAG_NAME_RE.exec(meosRefScanText(raw));
 }
+// ★v5.1.772: 選択が動くたびの描き直しで17万行を毎回なめていた(拡張ホストのプロファイルで3割)= 文書の版ごとに1回だけ数え、字ごとに配る
+let _meosPzTagsCache = { key: '', all: null };
 function meosPuzzleTagsOf(doc, n) {
-  const out = [], L = meosDocLines(doc);
+  const _k = doc && doc.uri ? doc.uri.toString() + '#' + doc.version : '';
+  if (_k && _meosPzTagsCache.key === _k && _meosPzTagsCache.all) return n ? _meosPzTagsCache.all.filter(h => h.n === n).map(h => Object.assign({}, h)) : _meosPzTagsCache.all.map(h => Object.assign({}, h));
+  const all = meosPuzzleTagsScan(doc); if (_k) _meosPzTagsCache = { key: _k, all };
+  return n ? all.filter(h => h.n === n).map(h => Object.assign({}, h)) : all.map(h => Object.assign({}, h));
+}
+function meosPuzzleTagsScan(doc) {
+  const n = 0, out = [], L = meosDocLines(doc);
   for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.indexOf('mP') < 0) continue; const m = meosPuzzleTagLine(doc, i, t); if (m && (!n || +m[1] === n)) { const dm = /\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(t.slice(m.index || 0)); out.push({ line: i, n: +m[1], name: m[2], desc: dm ? dm[1].trim() : '' }); } }   // v4.2.607: `// 説明` も読む
   return out;
 }
@@ -10158,6 +10166,16 @@ async function setTocCreatedAt(document, key, value) {
 //     ],
 //     activeIdx: <number>
 //   }
+// ★v5.1.772(俊克 11.17 am09:15 バグ1「Shift+←/→ で3文字でロックして20秒何も受け付けない・この前直したはずなのに」→「全部効かない」= 窓ごと固まる):
+//   実測= renderer.log の large extension state 1.2MB が、拡張が詰まった直後(09:17:37/09:20:42/09:25:25)に1秒に9〜13回まとめて届いていた= 窓の側で 1.2MB の書き込みが十数回。
+//   中身の6割が hyperTocData の控え(extension.js 516KB・日記 213KB×2・git: の写し 152KB…)。本物は文書の中の別セクター= globalState は控えに過ぎない(v0.9.677)。
+//   → 大きい控え(48KB超)と git: などの写しは globalState に持たない。起動時に今ある物も捨てる(v5.1.695 の原型と同じ掃除)
+const MEOS_HTOC_CACHE_MAX = 48000;
+function meosHtocCacheOk(document, data) { try { const sc = document && document.uri ? document.uri.scheme : ''; if (sc !== 'file' && sc !== 'meos-vault') return false; return JSON.stringify(data || null).length <= MEOS_HTOC_CACHE_MAX; } catch (_) { return false; } }
+function meosHtocCachePrune() {
+  try { const gs = extensionContext && extensionContext.globalState; if (!gs || typeof gs.keys !== 'function') return; let n = 0, b = 0;
+    for (const k of gs.keys()) { if (k.indexOf('hyperTocData:') !== 0) continue; const v = gs.get(k); const len = JSON.stringify(v || null).length; const u = k.slice('hyperTocData:'.length); if (len > MEOS_HTOC_CACHE_MAX || !/^(file|meos-vault):/.test(u)) { gs.update(k, undefined); n++; b += len; } }
+    if (n) meosDbg('[htocPrune] 目次の控えを ' + n + ' 個捨てた(' + Math.round(b / 1024) + 'KB)'); } catch (_) { } }
 function hyperTocDataKey(document) {
   return 'hyperTocData:' + (document && document.uri ? document.uri.toString() : 'unknown');
 }
@@ -10400,7 +10418,7 @@ async function setHyperTocData(document, data) {
   flushMeCharStatsIntoData(document, data);
   // v0.9.677: persist to the in-file "別セクター" (source of truth, travels with the file).
   // Keep globalState as a fast cache / fallback for when the doc isn't open as an editor.
-  if (extensionContext && !(document.uri && document.uri.scheme === 'untitled')) { try { await extensionContext.globalState.update(hyperTocDataKey(document), data); } catch (_) {} } // v0.9.959: UntitledはglobalStateに残さない(URI使い回しの幽霊項目防止)
+  if (extensionContext && !(document.uri && document.uri.scheme === 'untitled')) { try { await extensionContext.globalState.update(hyperTocDataKey(document), meosHtocCacheOk(document, data) ? data : undefined); } catch (_) {} } // v0.9.959: UntitledはglobalStateに残さない(URI使い回しの幽霊項目防止)
   await writeHyperTocToSource(document, data);
 }
 let __hyperTocIdCounter = 0;
@@ -47202,6 +47220,7 @@ function activate(context) {
   try { _meosGlobalState = context.globalState; _meosClocksOff = !!context.globalState.get(MEOS_CLOCKS_OFF_KEY, false); } catch (_) { }
   extensionContext = context;
   meosDiaryTplPrune();   // v5.1.695: 大き過ぎる原型を捨てる(globalState が膨れて窓が固まる)
+  meosHtocCachePrune();   // v5.1.772: 大きい目次の控え・git: の写しを捨てる(1.2MB → 窓が固まる)
   try { meosRememberFolders(); context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(() => { try { meosRememberFolders(); meosPostReopenFolder(vscode.window.activeTextEditor); } catch (_) { } })); } catch (_) { }   // v4.2.684: ふだんのフォルダーを覚える
   try { meosStartLagWatch(); context.subscriptions.push({ dispose() { try { clearInterval(_meosLagWatch); } catch (_) {} _meosLagWatch = null; } }); } catch (_) {}
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。

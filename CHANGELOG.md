@@ -4,7 +4,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
-### v5.1.771 (2026-11-15) — the first public v5.1
+### v5.1.772 (2026-11-15) — the first public v5.1
 - **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
 - **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.
 - **🪑 The away timer.** 🪑 3 minutes, 🛋️ 15, 💺 30 (each 3–60): when nobody touches the Mac that long, MeOS saves, locks every 🔐 membrane and quits VSCodium. Your clocks keep ringing from wGATE. Before it closes, the pointer is parked on the valley of the M in the big mGATE logo under the menu bar — come back, wake the Mac and click without moving the mouse, and MeOS opens again.
@@ -15,6 +15,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - **Every Me Dock letter is a membrane.** ♥ and M e D o c k can each wrap a passage: `▼P1` … `▲P1`, with a faint stop line under the opening edge and a dark one above the closing edge. Only a letter with no membrane yet wraps the selection; once it has one, the letter always warps you there. Other marks of the same letter are relay points, `🚥mP1=` (`♥️🚥mP7=` for ♥): click 🚥 to go round them, and the chip beside it to go back into the membrane. ▼ is green and ▲ blue; the chips wear the letter's colour from Me Dock.
 - **♥ A membrane with a one-day fuse.** A new ♥ membrane starts a one-shot ⏰ for 24 hours: `↺↻(0y1d0h0m0s)×1`. Change the digits for another length, and the ⏰ list shows the moment it ends — one more way to warp back. Don't want it? Delete the ⏰ line. Five seconds before the end a fuse starts to hiss; on the final *pssh* the closing ♥, the ⏰ and the stop lines go; the opening ♥ and all your text stay, so the ♥ on the menu bar still takes you there. Cmd+Z brings it back. If the file was closed, it tidies up the next time you open it.
 - **`dd` in a ⏰ title shows its next bell.** Write `// Tea dd` and the ⏰ list and badge show when it next rings; the text keeps `dd`. The ① button and the ⏰ database come with it.
+- **No more freezes while selecting with Shift+←/→ in a long diary.** MeOS keeps far less in VSCodium's shared storage, and counts the Me Dock letter marks once per edit instead of on every caret move.
 - **Grab mGATE at its left edge, at normal speed.** A quick press-and-drag on the strip left of the logo now takes hold at once (before, you had to hold the button for a moment).
 - **mGATE stays behind other apps.** When another app's window covers mGATE, clicks no longer go through to it, and its tips and hand pointer stay away.
 - **Opt+↑/↓ → Jump to M-🛑.** A button in Format Me turns Opt+↑/↓ (moving a line) into a jump to the ends of a membrane, as Opt+↑/↓ means "to the end of the paragraph" on the Mac. When you turn round, **U-turn** lights up and takes you back the way you came.
