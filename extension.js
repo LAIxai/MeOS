@@ -29635,6 +29635,9 @@ async function removeFormatAtCursor(editor, span) {
   if (span.kind === 'heading') {
     span.body = span.body.replace(MEOS_HEAD_STAMP_RE, '').trim(); // v4.0.12: 末尾TZ(JST/GMT+9等)も一緒に剥がす・旧TZ無しも後方互換 // v4.0.171: 物差しは1つ(見出しボタンの押し直しと共有)
   }
+  // ★v5.1.777(俊克 776 改良1「文字カーソルの位置が先頭に移ってしまった」): 解除の前に、見出しの字の中のどこに居たかを控える= 剥がした # の分だけ左へずらして同じ字の所へ
+  let _headCol = -1;
+  if (span.kind === 'heading') { try { const _old = doc.getText(span.range), _bi = _old.indexOf(span.body), _c = editor.selection.active; if (_bi >= 0 && _c.line === span.range.start.line) _headCol = span.range.start.character + Math.max(0, Math.min(span.body.length, _c.character - (span.range.start.character + _bi))); } catch (_) { } }
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, span.range, span.body);
   // v4.0.265: 見出し/箇条書きは**行に効く命令**なので、印の通し番号ではなくFC行の命令そのものを探して落とす。
@@ -29654,7 +29657,8 @@ async function removeFormatAtCursor(editor, span) {
   //   次の一押しでそれ全部が基準文字になってしまう(選択が「相手」を名乗る規則の裏目)。
   //   → 上付き/下付きだけは**右端にカーソルを置くだけ**にする(俊克案)。これで何度でもやり直せる。
   const _end = new vscode.Position(start.line, start.character + span.body.length);
-  const sel = (span.kind === 'heading') ? new vscode.Selection(start, start)
+  const _hp = _headCol >= 0 ? new vscode.Position(start.line, _headCol) : start;
+  const sel = (span.kind === 'heading') ? new vscode.Selection(_hp, _hp)
     : (span.kind === 'metex') ? new vscode.Selection(_end, _end)
     : new vscode.Selection(start, _end);
   editor.selection = sel;

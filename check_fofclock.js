@@ -98,7 +98,7 @@ const H1 = '<!-- {* ♥️▼mP7=f_20261108S005813JST //  *} -->', H2 = '<!-- {*
     ok(dh.L.filter(t => t === '<!-- Mew!UFC --- \u26aa -->').length === 1 && dh.L.filter(t => t === '').length === 1, 'v5.1.669 押し直しても停止線と空行は1本', dh.L); ok(eh2.selection.active.line === 0, 'v5.1.775 押し直しはカーソルを見出しに残す', eh2.selection.active);
     { const ex = mkEd(dh, { start: { line: 0, character: 3 }, end: { line: 0, character: 3 }, active: { line: 0, character: 3 }, isEmpty: true }); stub.window.activeTextEditor = ex;
       try { const sp = T.formatSpanAtCursor(ex, 'heading'); await T.removeFormatAtCursor(ex, sp); } catch (e) { console.log('ERR', e && e.stack); } await settle();
-      ok(dh.L[0] === '見出しの字' && !dh.L.some(x => /Mew!/.test(x)) && dh.L.includes('本文'), 'v5.1.776 🚫で見出しを解除= FC と薄い線(⚪)も消える', dh.L); } }
+      ok(dh.L[0] === '見出しの字' && !dh.L.some(x => /Mew!/.test(x)) && dh.L.includes('本文'), 'v5.1.776 🚫で見出しを解除= FC と薄い線(⚪)も消える', dh.L); ok(ex.selection.active.line === 0 && ex.selection.active.character === 0, 'v5.1.777 解除の後のカーソル= 同じ字の所(### の中の3桁→字の頭)', ex.selection.active); } }
   // 2d. v5.1.773(俊克 バグ1): 次の行に停止線が在る行で見出しボタン= 停止線を消さない(FC は見出しと線の間)・空行を足す
   { const dk = doc(['見出しの字', '<!-- Mew!UFC --- -->', '本文']), ek = mkEd(dk, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0, character: 0 }, isEmpty: true }); stub.window.activeTextEditor = ek;
     try { await T.insertFormatTemplate('heading', ek, '白', 'Green', 2, { head: true }); } catch (e) { console.log('ERR', e && e.stack); } await settle();
