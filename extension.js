@@ -7511,11 +7511,16 @@ const MEOS_CLOCK_DD_RE = /(^|\s)dd(?=\s|$)/;
 function meosClockDdTitle(c) {   // ★v5.1.613(俊克 am10:36 バグ1「バッジのdd部分に予定時刻が表示されていない」): 描く側の c は本文を読み直した物(鍵なし)= 札の2か所は owner を渡してここを通す。一時停止中は「今再開すれば」の時刻 / v5.1.610: 本文は dd のまま・見せる時だけ消滅日時(WT と同じ作法)。「数字+.」は回数の器に読まれるので月/日
   // ★v5.1.623(俊克 11.09 pm06:02「通常のoneショットタイマーなどでも、ddと書くと、予定時刻を表示するようにしよう」): ♥膜だけの門を外す。予定時刻は鐘の計算と同じ1つから= 起点だけ→ その時刻 / 周期あり→ 次の鐘(meosCycleSeriesNext)。起点がまだ無い(待ち・連なりの2本目)は dd のまま
   // ★v5.1.711(俊克 pm10:29「oneショットタイマーの⏸️ボタンを押した時、バッジにddの時間が表示されている。その部分を修正可能にする。そこを修正した上で、▶️ボタンを押すと、それに合わせて(0y0d1h0m0s)を変更して再開する」): 休み中は本文が dd=日時(直せる字)= 見せる時は日時だけ
-  try { const _q = MEOS_CLOCK_DDQ_RE.exec((c && c.title) || ''); if (_q) return String(c.title).replace(MEOS_CLOCK_DDQ_RE, (m, p, f) => p + f);
+  // ★v5.1.790(俊克 789 改良1「dd= に当日でも日付を出すのはその通りだが、橙色の札やメニューバーでは24時間以内なら日付は要らない」): 本文の dd= は日付つき(直すための字・v5.1.719)、見せる札は24時間以内なら時刻だけ
+  try { const _q = MEOS_CLOCK_DDQ_RE.exec((c && c.title) || ''); if (_q) return String(c.title).replace(MEOS_CLOCK_DDQ_RE, (m, p, f) => p + meosClockDdShow(meosClockDdParse(f), f));
     if (!MEOS_CLOCK_DD_RE.test((c && c.title) || '')) return c.title;
     const end = meosClockDdEnd(c); if (!end) return c.title;
-    const face = meosClockDdFace(end);
+    const face = meosClockDdShow(end);
     return String(c.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + face); } catch (_) { return c.title; }
+}
+function meosClockDdShow(end, face) {   // v5.1.790: 札とメニューバーの顔= 24時間以内(これから)なら時刻だけ・それ以外は本文と同じ顔
+  const f = face || (end ? meosClockDdFace(end) : ''); if (!end) return f; const d = end - Date.now();
+  return (d > 0 && d < 864e5) ? f.replace(/^(?:\d{4}\/)?\d{1,2}\/\d{1,2}(?:\([SMTWtFs]\))?/, '') : f;
 }
 function meosClockDdEnd(c) {   // 札の dd と同じ1つの数え方= 起点だけ→ その時刻 / 周期あり→ 次の鐘(×N は全部鳴り終えた後だけ最後の鐘)
   try { const at = c.vAt || ((typeof c.vElapsed === 'number' && c.vElapsed >= 0) ? Date.now() - c.vElapsed : 0) || (meosParseStampLoose(c.when) || { getTime: () => 0 }).getTime(); if (!at) return 0;
