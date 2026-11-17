@@ -41434,13 +41434,14 @@ async function meosRuleGo(cmd, down, run) {
 // ★v5.1.585: 実機の手前の行は折り返しが多い= 押し直しの1打が同じ行の2段目に動くだけだと、もう一度止まっていた→ 押し直した行では止めない(pass)
 // ★v5.1.663(俊克 11.12 am10:23 改良1「Cmd+↓/↑で停止線にjumpできるようになったので、↓/↑での20行以内の仕組みが邪魔に思えてきた。押し続けた時に停止すると言う事だけを残して、他の機能を削除しよう」):
 //   離した後に線まで運ぶ(599)と、近づくと遅くなる(582)をやめた。残すのは押しっぱなしの一時停止だけ
-async function meosRuleStep(down) {
-  const cmd = down ? 'cursorDown' : 'cursorUp', ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
+// ★v5.1.781(俊克 11.17 pm07:10「shift+↓で選択範囲を広げていると、膜があると停止線があっても突き抜けて、選択が解除されておかしくなる。このときも停止線で一旦停止しよう」): Shift つきも同じ道= 動かすのは cursorDownSelect/UpSelect。押し続けの Cmd 跳びはしない(選択を伸ばす命令が無い)
+async function meosRuleStep(down, sel) {
+  const cmd = sel ? (down ? 'cursorDownSelect' : 'cursorUpSelect') : (down ? 'cursorDown' : 'cursorUp'), ed = vscode.window.activeTextEditor, now = Date.now(), gap = now - _meosRuleKey.at; _meosRuleKey.at = now;
   if (_meosRuleKey.busy) return;
   try {
     const cur = ed ? ed.selection.active.line : -1;
     if (_meosRuleKey.hold) {
-      if (gap < 150 && now - (_meosRuleKey.holdAt || now) >= MEOS_RULE_HOLD_JUMP_MS) {   // v5.1.665: 止まったまま押し続けた= Cmd+↓/↑ と同じ所へ
+      if (!sel && gap < 150 && now - (_meosRuleKey.holdAt || now) >= MEOS_RULE_HOLD_JUMP_MS) {   // v5.1.665: 止まったまま押し続けた= Cmd+↓/↑ と同じ所へ
         // ★v5.1.668(俊克 am11:25 バグ1「停止線の手前が空行の場合に、停止した後に押しっ放しだと、さらに次の停止線に飛んでしまう」): 空行は着いた時に既に着地点(桁0)= Cmd を打つと線を越える。もう着地点なら打たない
         let _there = false; try { const d = ed.document, nx = cur + (down ? 1 : -1); _there = nx >= 0 && nx < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(nx).text) && ed.selection.active.character === (down ? d.lineAt(cur).text.length : 0); } catch (_) { }
         if (!_there) { _meosRuleKey.busy = true; try { await vscode.commands.executeCommand(down ? 'laiMembrane.membraneEdgeDown' : 'laiMembrane.membraneEdgeUp'); } finally { _meosRuleKey.busy = false; } }
@@ -47324,7 +47325,11 @@ function activate(context) {
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));
-  context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { if (e && e.contentChanges && e.contentChanges.length) meosDdCycleSyncSoon(e.document); } catch (_) { } }));   // v5.1.778: 止めている間の周期の直し→ dd=
+  context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { if (e && e.contentChanges && e.contentChanges.length) meosDdCycleSyncSoon(e.document); } catch (_) { } }));
+  // v5.1.781 計測: Shift+↓ の選択が膜の所で外れる真因探し= 選択が「範囲あり→空」になった瞬間を、kind と行で記録(前後の他の札と並べて読む)
+  { const _selW = new WeakMap(); context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try { const s0 = e.selections && e.selections[0], p = _selW.get(e.textEditor); _selW.set(e.textEditor, s0);
+    if (p && !p.isEmpty && s0 && s0.isEmpty && e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) meosDbg('[selLost] kind=' + e.kind + ' 前=' + (p.anchor.line + 1) + '→' + (p.active.line + 1) + ' 今=' + (s0.active.line + 1) + ':' + s0.active.character + ' 行=' + JSON.stringify(e.textEditor.document.lineAt(s0.active.line).text.slice(0, 60)));
+    else if (s0 && !s0.isEmpty && e.kind === vscode.TextEditorSelectionChangeKind.Keyboard && p && p.active.line !== s0.active.line) meosDbg('[selStep] ' + (s0.anchor.line + 1) + '→' + (s0.active.line + 1)); } catch (_) { } })); }   // v5.1.778: 止めている間の周期の直し→ dd=
   // ★v5.1.720(俊克 719 バグ1「停止しても覗き窓が出なくなった」): 719 は「カーソルがその行に居れば覗き終わり」= ⏸️ボタン自体がその行にあり、押した瞬間に消していた。
   //   → 覗きが始まった**後**のクリック/キー移動でその行に入った時だけ終える(⏸️を押した選択は始まる前に届く)。終えたらふつうの Raw で直し続けられる(改良1)
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try {
@@ -47892,7 +47897,7 @@ function activate(context) {
   // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.membraneEdgeDown', () => meosMembraneEdge(true)), vscode.commands.registerCommand('laiMembrane.membraneEdgeUp', () => meosMembraneEdge(false)), vscode.commands.registerCommand('laiMembrane.ruleStepDown', () => meosRuleStep(true)), vscode.commands.registerCommand('laiMembrane.ruleStepUp', () => meosRuleStep(false)));   // v5.1.579
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.membraneEdgeDown', () => meosMembraneEdge(true)), vscode.commands.registerCommand('laiMembrane.membraneEdgeUp', () => meosMembraneEdge(false)), vscode.commands.registerCommand('laiMembrane.ruleStepDown', () => meosRuleStep(true)), vscode.commands.registerCommand('laiMembrane.ruleStepUp', () => meosRuleStep(false)), vscode.commands.registerCommand('laiMembrane.ruleStepDownSelect', () => meosRuleStep(true, true)), vscode.commands.registerCommand('laiMembrane.ruleStepUpSelect', () => meosRuleStep(false, true)));   // v5.1.579
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.optJumpDown', () => meosOptJump(true)), vscode.commands.registerCommand('laiMembrane.optJumpUp', () => meosOptJump(false)), vscode.window.onDidChangeTextEditorSelection(e => meosOptTrailOnSel(e))); try { vscode.commands.executeCommand('setContext', 'meos.optJump', !!context.globalState.get('fmtOptJump')); } catch (_) { }   // v5.1.603
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
