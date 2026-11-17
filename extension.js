@@ -15514,7 +15514,8 @@ function meosDdPeekWindows(doc, i, txt, items, caret, selA) {   // ★v5.1.721: 
     // ★v5.1.735(734 実測: 窓を上の段へ移すと本物のカーソルが3段目に丸見え= 左端 440・尻 848 と字に付いて動く)→ 3段目の窓は本物のカーソルを覆っていた(窓が上)。
     //   漏れたのは尻だけ= 本物の字の並びが窓より約3字右にずれ、尻のカーソルが窓の右端(780)の外へ出ていた。→ 3段目へ戻し、右に4字ぶんの余白で覆う
     q0 = null; if (win.cyc) { const r0 = at(s); q0 = { r: r0.r, x: r0.x + meosRenderColsF(txt.slice(win.cyc[0], win.cyc[1])), px: 6 }; }   // ★v5.1.740(俊克 738 改良1「橙枠と緑枠が少し被っている。きっちり接するように」): 緑の左= 橙の外寸(字の幅+枠1px+余白4px+枠1px)。v5.1.738: 緑は橙の右へ半字空けて。本物の dd のカーソル(段の頭から約6〜21字)は橙と緑の2枚で覆う(隙間は半字)
-    put(s, e, a + 1, today ? '63,185,80' : '224,128,58', q0, 'padding-right: 4ch;');
+    { const _rgb = today ? '63,185,80' : '224,128,58';   // ★v5.1.784(俊克 783 改良1「dd の右端の空白は見た目が良くないので、別の色の四角を重ねてデザインのように見せる。3つの短い四角を…のようにつなげる」): 右の余白4字に枠の色の短い四角3つ(…)。俊克 am00:01「点ではなく、高さは dd を囲む四角と同じ高さの四角を並べる。埋めるような感じで」= 高さいっぱい・幅1字・間0.3字で余白を埋める
+      put(s, e, a + 1, _rgb, q0, 'padding-right: 4ch; background-image: repeating-linear-gradient(90deg, rgba(' + _rgb + ',0.55) 0 1ch, transparent 1ch 1.3ch); background-size: 3.6ch 100%; background-position: right center; background-repeat: no-repeat;'); }
     // ★v5.1.779: 題の窓(青)= 緑の窓の右へ接して。★v5.1.782(781 のスクショ: 青い窓が出ない): ⏰の2つ後は止めた時の ⏸1 の隠した字= その上の飾りは消える→ 周期と同じ ⏰ の桁に置く
     const _ts = meosDdTitleSpan(txt); if (_ts && (_ts[1] > _ts[0] || typeof caret === 'number')) { win.ttl = _ts; const qd = q0 || at(s);
       put(_ts[0], _ts[1], a, '86,156,214', { r: qd.r, x: qd.x + meosRenderColsF(txt.slice(s, e)) + 4, px: (qd.px || 0) + 2 }); } }
