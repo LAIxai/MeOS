@@ -7559,7 +7559,7 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
       if (!simple || !MEOS_CLOCK_DD_RE.test(String(spec.title))) return spec;
       const base = own || _meosChainStart.get(lk) || cur.vAt || 0; if (!base) return spec;
       const end = own ? meosClockDdEnd(cur) : meosClockDdEnd(Object.assign({}, cur, { vAt: base })); if (!end) return spec;
-      const face = meosClockDdFace(end); _meosDdPauseFace.set(lk, { face, end, at: Date.now() });
+      const face = meosClockDdFace(end); _meosDdPauseFace.set(lk, { face, end, at: Date.now(), cyc: cy[0], base: own ? 0 : base, uri: doc.uri.toString(), key });   // v5.1.778: 止めた時の周期も控える(直されたかを比べる)
       try { const _pk = doc.uri.toString() + ' ' + atLine; _meosDdPeek.set(_pk, Date.now() + 10000); _meosDdPeekAt.set(_pk, Date.now()); setTimeout(() => { try { if ((_meosDdPeek.get(_pk) || 0) <= Date.now()) _meosDdPeek.delete(_pk); const _ed = vscode.window.activeTextEditor; if (_ed) { try { refresh(_ed); } catch (_) { } meosApplyTimerLineDecorations(_ed); } } catch (_) { } }, 10100); } catch (_) { }   // v5.1.717: 周期と dd= を見せる / v5.1.718(俊克「5秒は短いので10秒に」)
       meosDbg('[dd] ⏸️ 題に dd=' + face + ' key=' + key);
       return Object.assign({}, spec, { title: String(spec.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + 'dd=' + face) });
@@ -7571,6 +7571,11 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
       const D = meosClockDdParse(q[2]), now = Date.now();
       const _min = (t) => Math.floor(t / 60000), _endNow = meosClockDdEnd(cur);   // ★v5.1.721(720 の実測: 直さずに▶️でも 1h0m0s→0h58m30s= 顔は分まで): 分が同じなら直していない
       const edited = was ? (q[2] !== was.face && _min(D) !== _min(was.end)) : (!_endNow || _min(D) !== _min(_endNow));
+      // ★v5.1.778(俊克 11.17 pm05:11 バグ2「(0y0d1h...)の方を修正しても､橙色のハイライト部分が変わらない。▶️ボタンを押しても､1dが有効にならない」):
+      //   真因= ▶️は「dd を直していなければ、止めた時の dd +止めていた分」から周期を作り直していた= 直した周期を止める前の長さで上書き(実測 07:39:58 0y1d1h3m6s → 0y0d1h3m17s)。
+      //   → 周期が止めた時と違えば、直した周期をそのまま使う(dd を後から直した時だけ dd が勝つ)
+      const cycEd = !!(was && was.cyc && cy[0] && cy[0] !== was.cyc);
+      if (cycEd && !edited) { meosDbg('[dd] ▶️ 周期が直された ' + was.cyc + ' → ' + cy[0] + ' (そのまま) key=' + key); return out; }
       if (own && simple) {   // v5.1.723: 起点ありの dd の⏰(①・♥)= 起点はそのまま。直していれば dd へ、直していなければ止めていた分だけ先へ
         const T0 = meosCycleMs(cy[0]), pAt = was && was.at ? was.at : now, k = Math.max(1, Math.floor((pAt - own) / T0) + 1);
         const target = edited ? (D > now ? D : 0) : (was && was.end ? was.end + Math.max(0, now - was.at) : 0);
@@ -7593,6 +7598,27 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
     }
   } catch (_) { }
   return spec;
+}
+// ★v5.1.778: 止めている間に周期を直したら、dd= の時刻も直した周期で書き直す(橙の札と緑の窓が同じ1つを見せる)
+let _meosDdCycTimer = null;
+function meosDdCycleSyncSoon(doc) {
+  try { if (!_meosDdPauseFace.size || !doc || !doc.uri) return; const u = doc.uri.toString(); let any = false; for (const v of _meosDdPauseFace.values()) if (v && v.uri === u) any = true; if (!any) return;
+    if (_meosDdCycTimer) clearTimeout(_meosDdCycTimer); _meosDdCycTimer = setTimeout(() => { _meosDdCycTimer = null; meosDdCycleSync(doc); }, 400); } catch (_) { }
+}
+async function meosDdCycleSync(doc) {
+  try { const u = doc.uri.toString();
+    for (const [lk, v] of Array.from(_meosDdPauseFace)) { if (!v || v.uri !== u || !v.cyc) continue;
+      const cur = meosClockFcScan(doc).find(x => x.key === v.key && x.off); if (!cur) continue;
+      const cy = Array.isArray(cur.cycle) ? cur.cycle : []; if (cy.length !== 1 || meosCycleRules(cy).length || !(meosCycleMs(cy[0]) > 0) || cy[0] === (v.seen || v.cyc)) continue;   // seen= 最後に合わせた周期(cyc は止めた時のまま= ▶️が比べる)
+      const t = doc.lineAt(cur.line).text, q = MEOS_CLOCK_DDQ_RE.exec(t); if (!q || q[2] !== v.face) continue;   // dd を手で直していれば触らない
+      const end = v.base ? meosClockDdEnd(Object.assign({}, cur, { vAt: v.base })) : meosClockDdEnd(cur); if (!end) continue;
+      const face = meosClockDdFace(end); if (face === v.face) { v.seen = cy[0]; continue; }
+      const s0 = q.index + q[1].length + 3, we = new vscode.WorkspaceEdit(); we.replace(doc.uri, new vscode.Range(cur.line, s0, cur.line, s0 + q[2].length), face);
+      v.face = face; v.end = end; v.seen = cy[0];
+      meosDbg('[dd] 周期を直した→ dd=' + face + ' key=' + v.key);
+      await vscode.workspace.applyEdit(we);
+    }
+  } catch (_) { }
 }
 function meosFofClockOneShot(c) { const n = Array.isArray(c && c.cycle) ? c.cycle.length : 0; return !n || (n === 1 && Number(c.rounds) === 1) || meosClockIsFinalStep(c); }
 function meosFofClockLinesBelow(doc, ln) {
@@ -12822,7 +12848,10 @@ async function meosClockCaretBeforeClose(key) {
     const e = getMeDockTargetEditor() || meosCurrentEditor(); if (!e) return;
     const p = collectPairs(e.document, { excludeIndex: false }).find(q => String(q.id || '') === String(key));
     if (!p) return;
-    const ln = (p.end - 1 > p.start) ? p.end - 1 : p.end;
+    // ★v5.1.778(俊克 11.17 pm05:11 改良1「ワンショットタイマーを起動した時、文字カーソルが閉じ膜の1行前の一時停止線の上に表示されるので､停止線が見えない。♥️膜は開始膜の下の停止線の次の行に着地している。これが正しい」):
+    //   閉じ膜の1つ手前は、今は閉じ側の停止線(v5.1.575 の罫線)= そこに置くと線が字に変わって見えない。→ ♥膜と同じく、開始膜の下の停止線を1本飛ばした次の行へ
+    let ln = p.start + 1; if (ln < p.end && MEOS_RULE_LINE_RE.test(e.document.lineAt(ln).text)) ln++;
+    if (!(ln < p.end) || MEOS_RULE_LINE_RE.test(e.document.lineAt(ln).text)) ln = (p.end - 1 > p.start) ? p.end - 1 : p.end;
     const pos = new vscode.Position(ln, e.document.lineAt(ln).text.length);
     e.selection = new vscode.Selection(pos, pos);
     e.revealRange(new vscode.Range(ln, 0, Math.min(e.document.lineCount - 1, p.end + 3), 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
@@ -47278,6 +47307,7 @@ function activate(context) {
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));
+  context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { if (e && e.contentChanges && e.contentChanges.length) meosDdCycleSyncSoon(e.document); } catch (_) { } }));   // v5.1.778: 止めている間の周期の直し→ dd=
   // ★v5.1.720(俊克 719 バグ1「停止しても覗き窓が出なくなった」): 719 は「カーソルがその行に居れば覗き終わり」= ⏸️ボタン自体がその行にあり、押した瞬間に消していた。
   //   → 覗きが始まった**後**のクリック/キー移動でその行に入った時だけ終える(⏸️を押した選択は始まる前に届く)。終えたらふつうの Raw で直し続けられる(改良1)
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try {
