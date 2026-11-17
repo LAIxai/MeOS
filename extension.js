@@ -28567,7 +28567,13 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     //   見出しの FC 群の後ろに一時停止線(実線)。既に線があれば足さない(押し直しで積まない)
     if (_prose) try { const d2 = editor.document, L2 = meosDocLines(d2); let e2 = ln; while (e2 + 1 < L2.length && meosIsBoundSpecLine(L2[e2 + 1] || '')) e2++;
       const rule = meosFofRule(d2, _indent, true);   // v5.1.758: 見出しの線は薄く(⚪)
-      if (rule && !(e2 + 1 < L2.length && MEOS_RULE_LINE_RE.test(L2[e2 + 1] || ''))) { const we = new vscode.WorkspaceEdit(); we.insert(d2.uri, new vscode.Position(e2 + 1 < d2.lineCount ? e2 + 1 : e2, e2 + 1 < d2.lineCount ? 0 : d2.lineAt(e2).text.length), e2 + 1 < d2.lineCount ? rule : '\n' + rule.replace(/\n$/, '')); await vscode.workspace.applyEdit(we); meosDbg('[heading] 見出しの FC の後ろに停止線 行=' + (e2 + 2)); } } catch (_) { }
+      // ★v5.1.773(俊克 am11:10「ついでに、空行を1行追加しよう」): 見出し・FC・停止線の後ろに空行を1行(既に空行なら足さない)。オフの線(🚫)も線として数える(二本目を足さない)
+      if (rule) { const r0 = e2 + 1, has = r0 < L2.length && meosIsRuleAny(L2[r0] || ''), after = has ? r0 + 1 : r0, blankOk = after < L2.length && !String(L2[after] || '').trim();
+        let ins = (has ? '' : rule) + (blankOk ? '' : _indent + '\n');
+        if (ins) { const we = new vscode.WorkspaceEdit();
+          if (after < d2.lineCount) we.insert(d2.uri, new vscode.Position(after, 0), ins);
+          else { const last = d2.lineCount - 1; we.insert(d2.uri, new vscode.Position(last, d2.lineAt(last).text.length), '\n' + ins.replace(/\n$/, '')); }
+          await vscode.workspace.applyEdit(we); meosDbg('[heading] 見出しの FC の後ろに' + (has ? '' : '停止線') + (blankOk ? '' : '・空行') + ' 行=' + (e2 + 2)); } } } catch (_) { }
     const b = _prose ? (_indent.length + _blt.length + hashes.length + 1) : (_indent.length + cOpen.length + hashes.length + 1); // 本文の先頭 // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
     bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b)); // v0.9.999132: 見出しは選択しない(適用後カーソルが見出し内→⊘##表示)は残る
   } else {
@@ -29084,7 +29090,7 @@ async function meosApplySpecEdit(editor, range, text) {
   const r = canFC ? meosMoveSpecsOutOfLine(newLine) : null;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   const next = (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : '';
-  const merge = !!r && meosIsSpecLine(next);
+  const merge = !!r && meosIsBoundSpecLine(next);   // ★v5.1.773(俊克 11.17 am11:07 バグ1「見出しボタンを押す行の次の行に停止線があると、次の停止線が消える」): 停止線(UFC)も指定行と見て、そこへ合流= 線を FC で上書きしていた。合流するのは本物の FC だけ
   // ★v4.0.308: 塊(表/箇条書き)も**行末へ書いてから引っ越す**のをやめた= 書いたつもりの行を渡して、
   //   本文とFC群を1回の編集で書く。文書に中間状態が現れない(v4.0.210で決めたことを、最後の例外にも通す)。
   if (inTable || inList) {
