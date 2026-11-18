@@ -15786,7 +15786,8 @@ function meosStopSignal(next) { if (!next || !next.length) return 'none'; const 
 //   札が空白2つずつ(桁1/2/3)なら、押して落ちる桁の境は札の境から**空白半分だけ右**(🛑|↻= 2.5字・↻|⚫= 4.5字)。絵は 🛑 0〜2.16字・↻ 2〜3.84字・⚫ 4〜5.3字で、🛑の右端と⚫の左端が隣の当たりに入っていた。
 //   → 札は元の 2/2/2 に戻し、絵を当たりの内側へ動かす= ↻ を +0.6字(2.6〜4.44)・⚫ を +0.8字(4.8〜6.1)・線もその分右から。🛑と↻の食い込みも無くなる
 const MEOS_STOP_HIT_ROT = 0.6, MEOS_STOP_HIT_DOT = 0.8, MEOS_STOP_HIT_BULK = 0;   // ★v5.1.804: 0 に戻した(絵 57.84〜60字・札 58〜60字)。当たりは絵に重ねた手の幕が受ける(下の meosStopBulkMask)。802の記録→   // ★v5.1.802(俊克 801 改良1「右のボタンは左10%くらいを押すとRawになる」・別窓で実測): 右の札(空白2つ・58〜60字)の当たりは 58.45〜59.95字だけ(後ろは行末)・絵 57.84〜60字。→ 札を空白3つ(当たり 58.45〜60.95字)・箱を0.75字広げ(右の負の余白も同じ)絵を 58.6〜60.75字へ   // 実測: 境 2.5〜2.8字・4.3〜4.6字・6.4〜6.7字
-const MEOS_STOP_BOX_CH = 60, MEOS_STOP_BTN_CH = 2; const MEOS_STOP_BULK_PIC_CH = 2.16;   // v5.1.804: 右の信号の絵の幅(標識 1.3em ≈ 2.16ch)= 手の幕の幅   // 線の箱の幅(ch)・札1つの幅(ch)= 標識 1.3em ≈ 2.2ch
+const MEOS_STOP_BOX_CH = 60, MEOS_STOP_BTN_CH = 2; const MEOS_STOP_BULK_PIC_CH = 2.16, MEOS_STOP_GAP_CH = 0.1;   // v5.1.805: 詰め物(桁4)の幅 1→0.1字= ⚫⚪の札(桁3)の当たりが詰め物の真ん中(6.5字)まで伸びていた→ 6.05字へ
+   // v5.1.804: 右の信号の絵の幅(標識 1.3em ≈ 2.16ch)= 手の幕の幅   // 線の箱の幅(ch)・札1つの幅(ch)= 標識 1.3em ≈ 2.2ch
 function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑) / 次= オンなら 3(右端・2 は間の詰め物)・オフなら 2(左の隣)。次が無い(黒NONE)線は札なし
   try { const t = doc.lineAt(i).text || ''; const on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return null; if (t.length < 10) return null;
     try { if (meosModeAtLine(doc, i) === 'raw') return null; } catch (_) { }
@@ -16058,16 +16059,23 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               //   → 開始膜の線のオンは、箱そのものを札と札の間(桁2)に置き、左右に負の余白(札1つ分)= 箱は行頭から60ch に広がり、右の札は箱の右端(標識の所)から始まる。見積もりの詰め物は要らない
               const _mid46 = !!(_sb45 && _sb45.pad > 0);
               items.push({ range: new vscode.Range(i, _mid46 ? _sb45.pad : 0, i, _mid46 ? _sb45.pad : 0), renderOptions: { before: { contentText: '\u200b',
-                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + (MEOS_STOP_BTN_CH * (_sb45.dot > 0 ? 3 : _sb45.rot > 0 ? 2 : 1) + 1) + 'ch; margin-right: -' + (MEOS_STOP_BTN_CH + MEOS_STOP_HIT_BULK) + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + (MEOS_STOP_BOX_CH + (_mid46 ? MEOS_STOP_HIT_BULK : 0)) + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
+                textDecoration: 'none; ' + (_mid46 ? 'position: relative; margin-left: -' + (MEOS_STOP_BTN_CH * (_sb45.dot > 0 ? 3 : _sb45.rot > 0 ? 2 : 1) + (_sb45.gap > 0 ? MEOS_STOP_GAP_CH : 1)) + 'ch; margin-right: -' + (MEOS_STOP_BTN_CH + MEOS_STOP_HIT_BULK) + 'ch; vertical-align: middle; ' : 'position: absolute; top: 50%; transform: translateY(-50%); ') + 'display: inline-block; width: ' + (MEOS_STOP_BOX_CH + (_mid46 ? MEOS_STOP_HIT_BULK : 0)) + 'ch; height: ' + _S + 'em; background: ' + _bg45 + '; pointer-events: none;' } } });   // v5.1.593: 一時停止線= 標識＋線 / ★v5.1.594(俊克 am11:43 改良1「左右のスクロールをしたときに見えなくなるので、右端にも標識を」): 右端にも
               // ★v5.1.672(俊克 11.12 pm01:33 バグ1「停止線の線のところをクリックすると、OFFになってしまう。ここはRawにするべき」): 桁は隣り合う桁の位置の中点で分かれる(v5.1.571)= 線の右半分を押すと桁3(右の札)に落ちて信号が回っていた。
               //   箱を1ch縮め、桁3に幅1chの詰め物を置いて右の札を桁4へ= 線のどこを押しても桁2か3(何もしない→ ふつうに生になる)。右の札の手前0.5chだけが札
               // ★v5.1.673(俊克 pm03:54 バグ1「直ってない。線の右半分→Raw・左半分→OFF。両端の🛑だけが選択指=そこだけがボタン。選択指でなければRawに」): 実機の桁の位置は字の前の絵(before)の後ろで測られる= 桁2の箱は桁1と桁2の間に立ち、左半分が桁1(左の札)に落ちていた。
               //   → 桁2を幅1chの詰め物・箱を桁3へ= 箱は桁2と桁3(どちらも札でない)の間。左の札の右0.5chだけが桁1
-              if (_mid46 && _sb45.gap > 0) items.push({ range: new vscode.Range(i, _sb45.gap, i, _sb45.gap), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; display: inline-block; width: 1ch; pointer-events: none;' } } });
+              if (_mid46 && _sb45.gap > 0) items.push({ range: new vscode.Range(i, _sb45.gap, i, _sb45.gap), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; display: inline-block; width: ' + MEOS_STOP_GAP_CH + 'ch; pointer-events: none;' } } });
               // ★v5.1.804(俊克 803 改良1「右ボタンの左側は、まだ外側にかなり食み出ている」): 手は札(空白3つ=58〜61字)の全部に出る・絵は 58.6〜60.75字。
               //   札の左右の絵の無い所に文字カーソルの幕を置くと、幕を押しても信号になった(幕は札の直後の桁6の子= 押すと桁6)。→ 逆に使う: 絵と同じ所・同じ幅に
               //   手の幕を置く= 押す所・手・絵が一致(札は空白2つ 58〜60字・幕は札の尻から左へ絵の幅 57.84〜60字)。別窓で手の範囲と押した桁を実測
               if (_mid46 && _sb45.bulk > 0) items.push({ range: new vscode.Range(i, _sb45.bulk, i, _sb45.bulk), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; z-index: 5; margin-left: -' + MEOS_STOP_BULK_PIC_CH + 'ch; width: ' + MEOS_STOP_BULK_PIC_CH + 'ch; height: 100%; top: 0; cursor: ' + meosHandCursor() + '; pointer-events: auto' } } });   // meosStopBulkMask
+              // ★v5.1.805(俊克 804「右端ボタンは正確にボタンの幅で認識する。左のボタンはボタンの間が曖昧。右端と同様に」): 左の3つも同じ作り。
+              //   幕は桁 c の札の直後(x= 2c 字)に出て、押すと桁 c に落ちる → 🛑(桁1)・↻(桁2)・⚫⚪(桁3)の絵と同じ所・幅に手の幕。
+              //   絵と絵の間は桁4(詰め物= 押すと Raw・幕の根は6字= 実測)の文字カーソルの幕で埋める= 札(0〜6字)の手は全部どれかの幕の下になる
+              if (_mid46 && _sb45.rot > 0 && _sb45.dot > 0) { const _B = MEOS_STOP_BTN_CH, _xr = _B + MEOS_STOP_HIT_ROT, _xd = _B * 2 + MEOS_STOP_HIT_DOT, _wr = _S * 0.85, _wd = _S * 0.6;
+                const _mask = (col, left, width, hand) => items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; z-index: 5; margin-left: calc(' + left + ' - ' + (col === 4 ? _B * 3 : _B * col) + 'ch); width: ' + width + '; height: 100%; top: 0; cursor: ' + (hand ? meosHandCursor() : 'text') + '; pointer-events: auto' } } });
+                _mask(1, '0ch', _S + 'em', true); _mask(2, _xr + 'ch', _wr + 'em', true); _mask(3, _xd + 'ch', _wd + 'em', true);
+                _mask(4, _S + 'em', 'calc(' + _xr + 'ch - ' + _S + 'em)', false); _mask(4, 'calc(' + _xr + 'ch + ' + _wr + 'em)', 'calc(' + (_xd - _xr) + 'ch - ' + _wr + 'em)', false); }   // meosStopLeftMask(⚫⚪の右: 桁3と桁4の境は詰め物の真ん中= 詰め物を MEOS_STOP_GAP_CH に細くして境を絵の端へ寄せた)
             }
             continue;
           }
