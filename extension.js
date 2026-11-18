@@ -14599,6 +14599,7 @@ let _meosMbGo = [];   // v4.2.207: メニューの go:N → 飛び先
 function meosMenuBarPick(id) {
   try {
     id = String(id || '');
+    try { meosDbg('[mbPick] id=' + id + ' 窓の焦点=' + (vscode.window.state && vscode.window.state.focused) + (id.startsWith('go:') ? ' 行先=' + (_meosMbGo[parseInt(id.slice(3), 10)] ? 'あり' : 'なし(' + _meosMbGo.length + '本)') : '')); } catch (_) { }   // v5.1.806 計測(俊克 804 別件1「⏰一覧の1つ1つのタイマーで、1回目はワープしない」)
     if (id.startsWith('go:')) { const sc = _meosMbGo[parseInt(id.slice(3), 10)]; if (sc) { meosListStarSet('clk', sc); meosJumpToScope(sc); } return; }   // v5.1.479: ⭐️
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
     if (id === 'helper') { const c = vscode.workspace.getConfiguration('laiMembrane'); c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); return; }   // v4.2.311 改良2
@@ -17466,12 +17467,13 @@ async function meosJumpToScope(scope, byBell) {
       || await vscode.workspace.openTextDocument(vscode.Uri.parse(scope.uri));   // 閉じていても開いて行ける
     if (!doc) return;
     const rng = meosScopeRangeNow(doc, scope.key);
-    if (!rng) { _meosLastJump = 'NO RANGE (key=' + scope.key + ')'; return; }
+    if (!rng) { _meosLastJump = 'NO RANGE (key=' + scope.key + ')'; meosDbg('[jump] 範囲なし key=' + scope.key); return; }   // v5.1.806 計測
     // ★v5.1.709: CB付箋の鐘= 付箋の一覧から飛ぶ時と同じ口(紙の1つ上の行の末尾へ・紙は紙のまま見える)
     if (byBell && meosIsFusenClockKey(scope.key)) { try { const _fr0 = vscode.window.activeTextEditor; if (_fr0) meosNoteReturnMark(_fr0, meosMembraneNameAtLine(_fr0.document, _fr0.selection.active.line)); } catch (_) { } await meosFusenLand({ k: 'c', uri: doc.uri, line: rng.from, ch: 0, ts: String(scope.key).replace(/^FUSEN_/, '').replace(/\D/g, '').slice(0, 14) }); _meosLastJumpLine = Math.max(0, rng.from - 1); _meosLastJump = 'went to FUSEN ' + (rng.from + 1); return; }
     const from = vscode.window.activeTextEditor;
     try { if (byBell && from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
     const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });
+    try { meosDbg('[jump] ' + (scope.key || '') + ' 範囲=' + rng.from + '〜' + rng.to + ' 焦点=' + (vscode.window.state && vscode.window.state.focused) + ' 鐘=' + !!byBell); } catch (_) { }   // v5.1.806 計測
     try { if (ed && ed.selection) pushMeDockLineHistory(ed, ed.selection.active.line); } catch (_) { }
     // ★★★v4.1.38(俊克「なぜ、⏰リストをクリックして、その**間違って設定した場所にワープしない**のか?
     //   なぜ検索して見つけないといけないのか? **誰でも、このミスを犯すことがある**からね」):

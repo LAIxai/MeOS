@@ -305,6 +305,7 @@ function run(argv) {
   let menuOpenAt = 0, menuPickedAt = 0, menuOptAt = 0, reopenAt = 0, reopenTries = 0, renewItem = false, noRestartUntil = 0;   // v5.1.333〜335
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) { menuPickedAt = Date.now();
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
+    try { hlog('[menu] pick ' + id + ' 拡張=' + (ownerAlive(owner) ? '居る' : '居ない')); } catch (e) {}   // v5.1.806 計測(⏰一覧の1回目がワープしない)
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
       if (id === 'h:stop') { stopBell(); return; }
       if (id.indexOf('h:wk:') === 0) { const u = /^h:wk:use:([A-Z]+)$/.exec(id), q = /^h:wk:t:([A-Z]+):(.+)$/.exec(id) || [];   // v5.0.0-50: use= 切り替え / t= 時刻を覚える   // v5.0.0-47: 🌅 Wake / v5.0.0-48(俊克 バグ「7:00をクリックしても変更できない」): ':' で切ると 07:00 の中の ':' でも切れて時刻が「07」になっていた→ 曜日の後ろは丸ごと時刻
