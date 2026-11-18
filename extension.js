@@ -15499,8 +15499,12 @@ async function meosDdEditKey(k) {
 function meosDdPeekWindows(doc, i, txt, items, caret, selA) {   // ★v5.1.721: 周期と dd=日時 の窓の絵(飾りの上に被せる)
   const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt), a = txt.indexOf('\u23f0'); if (a < 0) return;
   const rows = meosRawRowsOf(txt, meosFenceWrapColumn(doc)), at = (p) => { let r = 0; while (r + 1 < rows.length && p >= rows[r + 1][0]) r++; return { r, x: meosRenderColsF(txt.slice(rows[r][0], p)) }; };
+  // ★v5.1.794(俊克 793 改良1「折返しを52にすると、3つの入力枠が行頭から始まらない。横に間延びして見難いし一貫性が無い。かすらず行頭から始まるように」):
+  //   窓は生の字の折り返しの段と桁に置く= 折返しの幅しだいで最初の窓(dd があれば dd の字の位置・無ければ周期)が段の途中に来る。
+  //   → 最初の窓が段の途中で、下にもう1段あれば、3つの窓を下の段の行頭へ同じだけ運ぶ(押した時の当たりは差した桁で決まるので絵だけ動かしてよい)
+  const _b0 = _dq ? at(_dq.index + _dq[1].length) : _cy ? at(_cy.index + _cy[0].search(/[^↺↻]/)) : null, _mv = !!_b0 && _b0.x > 0 && _b0.r + 1 < rows.length;
   const win = { a, cyc: null, dd: null }, put = (s, e, col, rgb, q0, padR, padL) => {
-    const q = q0 || at(s), pl = padL || 0;   // v5.1.789: pl= 字の左の余白(px)= 棒と選択も同じだけ右へ
+    let q = q0 || at(s); const pl = padL || 0; if (_mv && q.r === _b0.r) q = Object.assign({}, q, { r: _b0.r + 1, x: q.x - _b0.x });   // v5.1.789: pl= 字の左の余白(px)= 棒と選択も同じだけ右へ
     if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + ' + (1 + pl + (q.px || 0)) + 'px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad); animation: monaco-cursor-smooth 0.5s ease-in-out 0s infinite alternate;' } } });   // v5.1.725: 窓の中のカーソルの棒
     // ★v5.1.780(俊克 779 改良1「一部を選択状態にして別の字を入れようとする時、選択していることが見えにくい」): 本物の選択は隠した字の中= 見えない→ 窓の上に選んだ字を選択の色で描き直す
     if (typeof caret === 'number' && typeof selA === 'number' && selA !== caret) { const lo = Math.max(s, Math.min(selA, caret)), hi = Math.min(e, Math.max(selA, caret));
