@@ -15525,7 +15525,7 @@ function meosDdPeekWindows(doc, i, txt, items, caret, selA) {   // ★v5.1.721: 
   //   → 最初の窓が段の途中で、下にもう1段あれば、3つの窓を下の段の行頭へ同じだけ運ぶ(押した時の当たりは差した桁で決まるので絵だけ動かしてよい)
   //   ★v5.1.795(俊克 794 バグ1「Rawの行数が2行しかないから。こういうケースではダミーのUFCコメントを1つ追加すれば良い」→ 行の下に1行足す): 下に段が無ければ、すぐ下の行が
   //     MeOS の足したダミー(MEOS_DD_DUMMY)の時だけ、その行の頭へ運ぶ(足す/外すは meosDdDummySync)
-  const _b0 = meosDdWinBase(doc, txt), _mv = !!_b0 && _b0.x > 0 && (_b0.r + 1 < rows.length || meosDdHasDummy(doc, i));
+  const _b0 = meosDdWinBase(doc, txt), _mv = !!_b0 && _b0.x > 0;   /* ★v5.1.796(俊克 795「⏸️の直後、0.5秒くらい3つの入力枠が行の右側に出る。最初から行頭に」): ダミー行が着くのを待たない= 窓が出る時はダミーが必ず足される(meosDdDummySync)ので、最初の絵から下の段の頭へ */
   const win = { a, cyc: null, dd: null }, put = (s, e, col, rgb, q0, padR, padL) => {
     let q = q0 || at(s); const pl = padL || 0; if (_mv && q.r === _b0.r) q = Object.assign({}, q, { r: _b0.r + 1, x: q.x - _b0.x });   // v5.1.789: pl= 字の左の余白(px)= 棒と選択も同じだけ右へ
     if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + ' + (1 + pl + (q.px || 0)) + 'px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad); animation: monaco-cursor-smooth 0.5s ease-in-out 0s infinite alternate;' } } });   // v5.1.725: 窓の中のカーソルの棒
