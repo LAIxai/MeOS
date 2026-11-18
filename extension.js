@@ -47439,7 +47439,10 @@ function activate(context) {
     //   ⋯を約1.2字右へ押し、尻尾の頭に差した⛔(幅1.5em)からはみ出していた。折り返しの数で近道に入る/入らないが変わる= 起動直後や打って折り返した時だけずれた。
     //   → ⛔を差した場所から測らず、**行の箱の右端に寄せる**(right:0)。行の箱(.view-line > span)は Monaco 自身が position:absolute にしていて、その右端= ⋯の右端。
     //     境目に何が何字立っても⋯の上に乗る。
-    const _noEntry = vscode.window.createTextEditorDecorationType({ after: { contentText: '⛔', textDecoration: 'none; position: absolute; right: 0; z-index: 20; width: 1.5em; text-align: center; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
+    // ★v5.1.791(俊克 790テスト 改良1「膜を折り畳むと、⛔がcommentに被っている」): 頭の行が隠れた字ごと数えて折り返すと、⋯だけが2段目の頭へ落ちる。
+    //   right:0 は行の箱の右端= 一番長い1段目の端(comment の t の上)で、⋯から外れていた。→ 差した場所(尻尾の頭= ⋯の直前)へ戻す(right を外す)。
+    //   v5.1.9 の近道で⋯が約1.2字右へ押される分は、蓋を右へ1.5em広げて(padding-right)覆う。行は⋯で終わるので右に覆って困る物は無い。
+    const _noEntry = vscode.window.createTextEditorDecorationType({ after: { contentText: '⛔', textDecoration: 'none; position: absolute; z-index: 20; width: 1.5em; padding-right: 1.5em; text-align: left; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
     context.subscriptions.push(_noEntry);
     // v5.0.0-33(俊克 改良1「その行だけRawにすると⋯の位置が変わるので、そこにも⛔でフタを」): 生の行では尻尾 ` * } -->` が見えている= ⋯は本当の行末の後ろ。
     //   ⛔は最後の字(>)の手前に差し、1字分だけ右へずらして⋯の上に置く(押しても行末の1字手前= VS Code は開かない)
