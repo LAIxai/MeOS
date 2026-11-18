@@ -15496,13 +15496,36 @@ async function meosDdEditKey(k) {
   if (k === 'left') c = Math.max(sp[0], c - 1); else if (k === 'right') c = Math.min(sp[1], c + 1); else if (k === 'up' || k === 'home') c = sp[0]; else if (k === 'down' || k === 'end') c = sp[1];
   const P = new vscode.Position(L, c); ed.selection = new vscode.Selection(P, P);
 }
+// ★v5.1.795(俊克 794 バグ1「3つの入力枠が行頭から始まらない。Rawの行数が2行しかないから(50・51なら3行)。ダミーのUFCコメントを1つ追加すれば良い」):
+//   窓の段が無い時は、⏰の行のすぐ下にダミーの UFC 行を1行足して、その行の頭に窓を出す。足すのは窓が出ている間(⏸️の覗き・窓で直す間)だけ・窓が消えたら外す。
+//   覚えで持たず毎回「要る/在る」を突き合わせる(起動し直して残ったダミーも、窓が出ていなければ外れる)。ダミーの字は display:none で隠す
+const MEOS_DD_DUMMY = '<!-- Mew!UFC (dummy) -->', _meosDdDummyBusy = new Set();
+function meosDdWinBase(doc, txt) {   // 最初の窓の段と桁(dd があれば dd の字・無ければ周期)
+  const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt); if (!_cy && !_dq) return null;
+  const rows = meosRawRowsOf(txt, meosFenceWrapColumn(doc)), p = _dq ? _dq.index + _dq[1].length : _cy.index + _cy[0].search(/[^↺↻]/);
+  let r = 0; while (r + 1 < rows.length && p >= rows[r + 1][0]) r++; return { r, x: meosRenderColsF(txt.slice(rows[r][0], p)), n: rows.length };
+}
+function meosDdHasDummy(doc, i) { return i + 1 < doc.lineCount && doc.lineAt(i + 1).text === MEOS_DD_DUMMY; }
+function meosDdDummySync(ed, i, txt, want) {
+  try { const doc = ed.document, key = doc.uri.toString() + ' ' + i; if (_meosDdDummyBusy.has(key)) return;
+    const b = want ? meosDdWinBase(doc, txt) : null, need = !!b && b.x > 0 && b.r + 1 >= b.n, has = meosDdHasDummy(doc, i); if (need === has) return;
+    _meosDdDummyBusy.add(key); const v0 = doc.version;
+    setTimeout(() => { try { if (doc.version !== v0 || meosDdHasDummy(doc, i) !== has || doc.lineAt(i).text !== txt) { _meosDdDummyBusy.delete(key); return; }
+      const done = () => _meosDdDummyBusy.delete(key);
+      ed.edit(eb => { if (need) { if (i + 1 < doc.lineCount) eb.insert(new vscode.Position(i + 1, 0), MEOS_DD_DUMMY + '\n'); else eb.insert(doc.lineAt(i).range.end, '\n' + MEOS_DD_DUMMY); }
+        else { if (i + 2 < doc.lineCount) eb.delete(new vscode.Range(i + 1, 0, i + 2, 0)); else eb.delete(new vscode.Range(doc.lineAt(i).range.end, doc.lineAt(i + 1).range.end)); } }, { undoStopBefore: false, undoStopAfter: false }).then(done, done);
+      meosDbg('[dd] ダミー行 ' + (need ? '足す' : '外す') + ' 行=' + (i + 2)); } catch (_) { _meosDdDummyBusy.delete(key); } }, 0);
+  } catch (_) { }
+}
 function meosDdPeekWindows(doc, i, txt, items, caret, selA) {   // ★v5.1.721: 周期と dd=日時 の窓の絵(飾りの上に被せる)
   const _cy = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt), _dq = /(^|\s)(dd=\S+)/.exec(txt), a = txt.indexOf('\u23f0'); if (a < 0) return;
   const rows = meosRawRowsOf(txt, meosFenceWrapColumn(doc)), at = (p) => { let r = 0; while (r + 1 < rows.length && p >= rows[r + 1][0]) r++; return { r, x: meosRenderColsF(txt.slice(rows[r][0], p)) }; };
   // ★v5.1.794(俊克 793 改良1「折返しを52にすると、3つの入力枠が行頭から始まらない。横に間延びして見難いし一貫性が無い。かすらず行頭から始まるように」):
   //   窓は生の字の折り返しの段と桁に置く= 折返しの幅しだいで最初の窓(dd があれば dd の字の位置・無ければ周期)が段の途中に来る。
   //   → 最初の窓が段の途中で、下にもう1段あれば、3つの窓を下の段の行頭へ同じだけ運ぶ(押した時の当たりは差した桁で決まるので絵だけ動かしてよい)
-  const _b0 = _dq ? at(_dq.index + _dq[1].length) : _cy ? at(_cy.index + _cy[0].search(/[^↺↻]/)) : null, _mv = !!_b0 && _b0.x > 0 && _b0.r + 1 < rows.length;
+  //   ★v5.1.795(俊克 794 バグ1「Rawの行数が2行しかないから。こういうケースではダミーのUFCコメントを1つ追加すれば良い」→ 行の下に1行足す): 下に段が無ければ、すぐ下の行が
+  //     MeOS の足したダミー(MEOS_DD_DUMMY)の時だけ、その行の頭へ運ぶ(足す/外すは meosDdDummySync)
+  const _b0 = meosDdWinBase(doc, txt), _mv = !!_b0 && _b0.x > 0 && (_b0.r + 1 < rows.length || meosDdHasDummy(doc, i));
   const win = { a, cyc: null, dd: null }, put = (s, e, col, rgb, q0, padR, padL) => {
     let q = q0 || at(s); const pl = padL || 0; if (_mv && q.r === _b0.r) q = Object.assign({}, q, { r: _b0.r + 1, x: q.x - _b0.x });   // v5.1.789: pl= 字の左の余白(px)= 棒と選択も同じだけ右へ
     if (typeof caret === 'number' && caret >= s && caret <= e) items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; left: calc(' + (Math.round((q.x + meosRenderColsF(txt.slice(s, caret))) * 100) / 100) + 'ch + ' + (1 + pl + (q.px || 0)) + 'px); top: ' + (q.r * 100) + '%; height: 100%; width: 2px; z-index: 7; pointer-events: none; background-color: var(--vscode-editorCursor-foreground, #aeafad); animation: monaco-cursor-smooth 0.5s ease-in-out 0s infinite alternate;' } } });   // v5.1.725: 窓の中のカーソルの棒
@@ -16065,6 +16088,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   718〜720 は行を Raw の並びにしていた(飾りが消える)。→ ⏰ボタン・表の見せかけと同じ作り= 飾りはそのまま、Raw の位置に窓の絵を被せる。
           //   窓は ⏰ の桁(飾りの1段目)に置いた before を absolute で Raw の段/桁へ動かす。押すと before の桁にカーソル→ 選択の口がその窓の字へ運ぶ
           if (!_rawHere && (_meosDdPeek.get(uri + ' ' + i) || 0) > Date.now()) { try { meosDdPeekWindows(doc, i, txt, items); } catch (_) { } }
+          { const _pk = uri + ' ' + i; meosDdDummySync(editor, i, txt, (!_rawHere && (_meosDdPeek.get(_pk) || 0) > Date.now()) || _meosDdEdit.has(_pk)); if (meosDdHasDummy(doc, i)) ddEditHide.push(doc.lineAt(i + 1).range); }   // v5.1.795: 窓の段が無ければダミー行を足す/窓が消えたら外す
           if (_meosDdEdit.has(uri + ' ' + i)) { if (cur !== i) { _meosDdEdit.delete(uri + ' ' + i); meosDdEditCtxSync(editor); setTimeout(() => meosDdPadStrip(editor, i), 0); } else try { meosDdPeekWindows(doc, i, txt, items, editor.selection.active.character, (editor.selection.anchor && editor.selection.anchor.line === i) ? editor.selection.anchor.character : undefined);
             const _cyE = /[↺↻]+(\([^)]*\)\S*|\S+)/.exec(txt); if (_cyE) {   // v5.1.736 は dd を直す間は周期を隠さなかった(橙の窓の下に字を残す)→ ★v5.1.738: 橙は3段目へ移った= 1段目の周期の字が見えてしまう(737 の3枚目)ので、また常に隠す
             const e1 = _cyE.index + _cyE[0].length; ddEditHide.push(new vscode.Range(i, _cyE.index + _cyE[0].search(/[^↺↻]/), i, e1 + (txt[e1] === ' ' ? 1 : 0))); }
