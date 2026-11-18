@@ -15785,8 +15785,8 @@ function meosStopSignal(next) { if (!next || !next.length) return 'none'; const 
 // ★v5.1.799(俊克 798 バグ1「濃淡ボタンの左20%が↻・STOPのPから右が↻のように誤動作。普通にボタンの幅と位置が分っていれば誤認識するはずが無い」): 797/798 は推測で2度外した→ 別窓のVSCodiumで実測(CDPで0.3字刻みに押す)=
 //   札が空白2つずつ(桁1/2/3)なら、押して落ちる桁の境は札の境から**空白半分だけ右**(🛑|↻= 2.5字・↻|⚫= 4.5字)。絵は 🛑 0〜2.16字・↻ 2〜3.84字・⚫ 4〜5.3字で、🛑の右端と⚫の左端が隣の当たりに入っていた。
 //   → 札は元の 2/2/2 に戻し、絵を当たりの内側へ動かす= ↻ を +0.6字(2.6〜4.44)・⚫ を +0.8字(4.8〜6.1)・線もその分右から。🛑と↻の食い込みも無くなる
-const MEOS_STOP_HIT_ROT = 0.6, MEOS_STOP_HIT_DOT = 0.8, MEOS_STOP_HIT_BULK = 0.75;   // ★v5.1.802(俊克 801 改良1「右のボタンは左10%くらいを押すとRawになる」・別窓で実測): 右の札(空白2つ・58〜60字)の当たりは 58.45〜59.95字だけ(後ろは行末)・絵 57.84〜60字。→ 札を空白3つ(当たり 58.45〜60.95字)・箱を0.75字広げ(右の負の余白も同じ)絵を 58.6〜60.75字へ   // 実測: 境 2.5〜2.8字・4.3〜4.6字・6.4〜6.7字
-const MEOS_STOP_BOX_CH = 60, MEOS_STOP_BTN_CH = 2;   // 線の箱の幅(ch)・札1つの幅(ch)= 標識 1.3em ≈ 2.2ch
+const MEOS_STOP_HIT_ROT = 0.6, MEOS_STOP_HIT_DOT = 0.8, MEOS_STOP_HIT_BULK = 0;   // ★v5.1.804: 0 に戻した(絵 57.84〜60字・札 58〜60字)。当たりは絵に重ねた手の幕が受ける(下の meosStopBulkMask)。802の記録→   // ★v5.1.802(俊克 801 改良1「右のボタンは左10%くらいを押すとRawになる」・別窓で実測): 右の札(空白2つ・58〜60字)の当たりは 58.45〜59.95字だけ(後ろは行末)・絵 57.84〜60字。→ 札を空白3つ(当たり 58.45〜60.95字)・箱を0.75字広げ(右の負の余白も同じ)絵を 58.6〜60.75字へ   // 実測: 境 2.5〜2.8字・4.3〜4.6字・6.4〜6.7字
+const MEOS_STOP_BOX_CH = 60, MEOS_STOP_BTN_CH = 2; const MEOS_STOP_BULK_PIC_CH = 2.16;   // v5.1.804: 右の信号の絵の幅(標識 1.3em ≈ 2.16ch)= 手の幕の幅   // 線の箱の幅(ch)・札1つの幅(ch)= 標識 1.3em ≈ 2.2ch
 function meosStopBtnSpots(doc, i, editor) {   // 札の桁: 1= 自分(左の🛑) / 次= オンなら 3(右端・2 は間の詰め物)・オフなら 2(左の隣)。次が無い(黒NONE)線は札なし
   try { const t = doc.lineAt(i).text || ''; const on = MEOS_RULE_LINE_RE.test(t); if (!on && !MEOS_RULE_OFF_RE.test(t)) return null; if (t.length < 10) return null;
     try { if (meosModeAtLine(doc, i) === 'raw') return null; } catch (_) { }
@@ -16064,6 +16064,10 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v5.1.673(俊克 pm03:54 バグ1「直ってない。線の右半分→Raw・左半分→OFF。両端の🛑だけが選択指=そこだけがボタン。選択指でなければRawに」): 実機の桁の位置は字の前の絵(before)の後ろで測られる= 桁2の箱は桁1と桁2の間に立ち、左半分が桁1(左の札)に落ちていた。
               //   → 桁2を幅1chの詰め物・箱を桁3へ= 箱は桁2と桁3(どちらも札でない)の間。左の札の右0.5chだけが桁1
               if (_mid46 && _sb45.gap > 0) items.push({ range: new vscode.Range(i, _sb45.gap, i, _sb45.gap), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; display: inline-block; width: 1ch; pointer-events: none;' } } });
+              // ★v5.1.804(俊克 803 改良1「右ボタンの左側は、まだ外側にかなり食み出ている」): 手は札(空白3つ=58〜61字)の全部に出る・絵は 58.6〜60.75字。
+              //   札の左右の絵の無い所に文字カーソルの幕を置くと、幕を押しても信号になった(幕は札の直後の桁6の子= 押すと桁6)。→ 逆に使う: 絵と同じ所・同じ幅に
+              //   手の幕を置く= 押す所・手・絵が一致(札は空白2つ 58〜60字・幕は札の尻から左へ絵の幅 57.84〜60字)。別窓で手の範囲と押した桁を実測
+              if (_mid46 && _sb45.bulk > 0) items.push({ range: new vscode.Range(i, _sb45.bulk, i, _sb45.bulk), renderOptions: { before: { contentText: '\u200b', textDecoration: 'none; position: absolute; z-index: 5; margin-left: -' + MEOS_STOP_BULK_PIC_CH + 'ch; width: ' + MEOS_STOP_BULK_PIC_CH + 'ch; height: 100%; top: 0; cursor: ' + meosHandCursor() + '; pointer-events: auto' } } });   // meosStopBulkMask
             }
             continue;
           }
@@ -48475,7 +48479,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
                 _h1.tooltip = _sb.on ? 'Stop line | Click to turn it off (🚫): Cmd+↓/↑ and held arrows pass through. Click again to turn it on.' : 'Stop line — off | Click to turn it on again.'; out.push(_h1);
                 if (_sb.rot > 0) { const _h2 = new vscode.InlayHint(new vscode.Position(ln, _sb.rot), _bt); const _kn = meosStopKindOf(document.lineAt(ln).text); _h2.tooltip = 'Line style — ' + MEOS_STOP_KIND_NAMES[_kn] + ' | Click for ' + MEOS_STOP_KIND_NAMES[(_kn + 1) % MEOS_STOP_KIND_NAMES.length] + ' (8 styles in turn).'; out.push(_h2); }   // v5.1.739: ↺の札
                 if (_sb.dot > 0) { const _hd = new vscode.InlayHint(new vscode.Position(ln, _sb.dot), _bt); _hd.tooltip = meosStopIsFaint(document.lineAt(ln).text) ? 'Line — faint ⚪ (still stops) | Click for a dark line ⚫.' : 'Line — dark ⚫ | Click for a faint line ⚪ that still stops.'; out.push(_hd); }   // v5.1.753: ⚫⚪の札
-                if (_sb.bulk > 0) { const _h3 = new vscode.InlayHint(new vscode.Position(ln, _sb.bulk), _sb.on ? '\u00a0'.repeat(MEOS_STOP_BTN_CH + 1) : _bt);   /* v5.1.802: オンの線の右の札は空白3つ(実測= 右端の札の当たりは札の頭+0.5〜尻-0.05字= 2つでは1.5字幅で絵 2.16字が入らない) */ _h3.tooltip = ({ red: 'Next stop lines — red STOP: all on | Click to turn them all off (blue OFF).', blue: 'Next stop lines — blue OFF: all off, so Cmd+↓ passes them | Click to turn only the next one on (yellow STOP).', yellow: 'Next stop line — yellow STOP: on, some after it off | Click to turn only the next one off (yellow OFF).', yellowOff: 'Next stop line — yellow OFF: off, so Cmd+↓ passes it; some after it on | Click to turn them all on (red STOP).' })[_sb.sig] || ''; out.push(_h3); }   // v5.1.652: 右= 次の線の信号
+                if (_sb.bulk > 0) { const _h3 = new vscode.InlayHint(new vscode.Position(ln, _sb.bulk), _bt);   /* v5.1.804: 空白2つへ戻した(幕が当たりを受ける) / v5.1.802: オンの線の右の札は空白3つ(実測= 右端の札の当たりは札の頭+0.5〜尻-0.05字= 2つでは1.5字幅で絵 2.16字が入らない) */ _h3.tooltip = ({ red: 'Next stop lines — red STOP: all on | Click to turn them all off (blue OFF).', blue: 'Next stop lines — blue OFF: all off, so Cmd+↓ passes them | Click to turn only the next one on (yellow STOP).', yellow: 'Next stop line — yellow STOP: on, some after it off | Click to turn only the next one off (yellow OFF).', yellowOff: 'Next stop line — yellow OFF: off, so Cmd+↓ passes it; some after it on | Click to turn them all on (red STOP).' })[_sb.sig] || ''; out.push(_h3); }   // v5.1.652: 右= 次の線の信号
               } }
           }
 
