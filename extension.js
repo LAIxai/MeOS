@@ -12830,7 +12830,7 @@ async function meosUnfoldWakeIn(ed) {
     meosDbg('[wakeOpen] 畳まれていた⏰データベース/🌅を開いた 行=' + shut.map(x => x + 1).join(','));
   } catch (_) { }
 }
-function meosLaunchDInDoc(doc) { try { return collectPairs(doc, { excludeIndex: false }).some(p => meosIsLaunchDKey(p.id) && meosLaunchDTs(p.id)); } catch (_) { return false; } }
+function meosLaunchDInDoc(doc) { try { for (let i = 0; i < doc.lineCount; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf('LaunchD_') < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsLaunchDKey(o.id) && meosLaunchDTs(o.id)) return true; } catch (_) { } } return false; } catch (_) { return false; } }   // ★v5.1.821(俊克 820「インストール直後に Database を押したら4、5秒かかった」・実測= 拡張が受けてからワープまで5.7秒= 起動8秒後のこの確かめが37万行の膜を全部数えていた collectPairs): 字で拾って開き行だけ読む
 function meosTimerDbAtStart() {   // 起動時: 見えている md のうち mMETA の在る日記(下から2000行に mMETA)だけ
   try { if (!meosRealHost()) return;
     for (const e of vscode.window.visibleTextEditors || []) { const d = e.document; if (!d || d.languageId !== 'markdown') continue;
