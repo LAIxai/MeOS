@@ -33186,7 +33186,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn.raw-toggle.read-on{background:#1e4f8a;color:#e6f0ff;border-color:#16396b}/* v4.0.440(俊克): 読書モード中は青 */
 .fmt-btn.fmt-remove::before{content:"🚫";position:relative;top:1px}
 #fmt-table{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px}
-#fmt-table.in-table{background:#2f8f4c;border-color:#2f8f4c;color:#fff}#fmt-table.in-table:hover{background:#3fa85c}   /* v5.1.815: カーソルが表の中= 緑(押すとその表を揃える)・外= 今までの色(選んだ行を表にする) */
+#fmt-table.in-table{background:#217346;border-color:#17552f;color:#fff}#fmt-table.in-table:hover{background:#2a8a55}   /* v5.1.815: カーソルが表の中= 緑(押すとその表を揃える) / ★v5.1.816(俊克「中は森= 今までの緑・外はサバンナか砂漠= 何も無い所に新しく表を作る」): 外は砂の色(下の #fmt-table) */
 /* v4.0.268(俊克 8/19 改良1「一番横幅が長いのが not なので、この長さに合わせようよ」): 上付き/下付きボタンの面は
    A2 / not / ä と中身that変わる。min-width では中身次第で伸びるので、**面を固定幅の箱に入れる**=
    何を描いてもボタンの幅that1pxも動かない(↻の連打で位置thatズレない)。 */
@@ -33205,7 +33205,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-table-cell:has(#fmt-table-wwcycle:hover,#fmt-table-merge:hover) #fmt-table-merge{scale:1;z-index:50;transition:scale .15s ease 0s,z-index 0s}.format-tools .ww-cell:not(.os-cell){transition:translate .15s ease}.format-tools.tbl-big .ww-cell:not(.os-cell){translate:82px 0;z-index:51}/* ★v5.1.191(俊克 pm06:32「拡大が解けた後も、折り返しボタンにポインターを近づけようとすると、右にカクカクと移動して離れて行ってしまう」): v5.1.190 の「乗っている間はずらしたまま(:hover)」が、ずらす前にも効いた= 乗るとずれて外れ、戻ってまた乗る。CSS ではもうずれているかを見分けられない→ ずらすのは印 .tbl-big だけ(JS: 表の組に入ったら付け、表にも折り返しにも乗っていない状態が0.5秒続いたら外す)。折り返しボタンに乗るだけではずらさない *//* ★v5.1.190(俊克「おっきくなった時、折り返しボタンを右にずらそうよ。隠れて押し難い」): 表の組が2倍になると折り返しボタンを覆う(台で測った= 組の見える幅85px・2倍で右端が+85)→ 82px 右へ(覆った右端から6px空ける)。乗っている間はずらしたまま・戻るのは0.5秒後(表を出た瞬間に縮んで戻ると、ポインタの下から逃げる)。折り返しボタンの中身(スライダー)は今まで通り *//* ★v5.1.190(俊克 pm06:16 改良1「↻ボタンなどが、でっかくなっちゃった」): v4.2.776 の「↻か🤝に乗ると2つ揃って2倍」を止める= v5.1.189 で組ごと2倍にしたので掛け合わさって4倍になっていた */
 #fmt-table-merge{padding-left:17px}#fmt-table-merge .mg-pm{position:absolute;left:0;top:0;width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.45);font-size:0}#fmt-table-merge .mg-pm::before,#fmt-table-merge .mg-pm.mg-plus::after{content:'';position:absolute;left:50%;top:50%;width:9px;height:2.2px;margin:-1.1px 0 0 -4.5px;border-radius:1px;background:currentColor}#fmt-table-merge .mg-pm.mg-plus::after{width:2.2px;height:9px;margin:-4.5px 0 0 -1.1px}#fmt-table-merge .mg-plus{background:#28c840;color:#fff}#fmt-table-merge .mg-minus{background:#febc2e;color:#5a3d00}   /* v4.2.776-4(俊克 改良1「丸が角丸四角の左端にぴったりはまっていない」改良2「＋と−が中心からズレている」): 丸は角丸四角の左端に重ねる(同じ15px)・＋−は字でなく線で描く= 字の上下の余白に左右されない */   /* v4.2.776-3(俊克「⊖/⊕を角丸四角にぴったりはまるくらい大きく・macOSのOptコピーのように目立たせる」): 塗った丸に白い＋(Finder の Opt コピーの印)/黄の丸に−(信号の黄) */   /* v4.2.776-2: macOS の信号に倣う= ⊕緑(拡大)・⊖黄(しまう)。⊖の黄は ⌘ の色(G⌥Y⌘P⌃S⇧um)とも同じ */   /* v4.2.672: 右肩の↻(fmt-lvl)の置き場の基準(v4.2.671 は基準が無く↻が外へ飛んでいた) */
 #fmt-table svg{opacity:.9}
-#fmt-table{background:#217346;border-color:#17552f;color:#fff}#fmt-table:hover{background:#2a8a55}#fmt-table svg{opacity:1}   /* ★v4.2.662(俊克 改良1「テーブルボタンの格子縞に色を…ボタンの地を色付けして、格子を白に。少し目立たない」): 表計算の緑の地に白い格子 */
+#fmt-table{background:#d2a65a;border-color:#a87d36;color:#3b2a12}#fmt-table:hover{background:#ddb46c}#fmt-table svg{opacity:1}   /* ★v4.2.662(俊克 改良1「テーブルボタンの格子縞に色を…ボタンの地を色付けして、格子を白に。少し目立たない」): 表計算の緑の地に白い格子 */
 #fmt-table:hover svg{opacity:1}
 .fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-btn:active{background:rgba(210,132,0,.30)}
