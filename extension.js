@@ -25019,7 +25019,25 @@ async function meosLaunchDMarksAtStart() {
 let _meosLaunchDT = null, _meosLaunchDBusy = false, _meosLaunchDAgain = null;
 // ▶️/⏸ を人が押した後だけ呼ぶ(時刻が来て時計が回る時には呼ばない= 勝手にパスワード欄を出さない)
 let _meosLaunchDLoud = false;
-function meosLaunchDKick(doc, key, quiet) { if (!meosIsLaunchDKey(key)) return; if (!quiet) _meosLaunchDLoud = true; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(() => { const loud = _meosLaunchDLoud; _meosLaunchDLoud = false; meosLaunchDReconcile(doc, key, !loud); }, 2000); }   // v5.0.0-61: ⏸→▶️ の続け押しは2秒まとめて1回で比べる(同じなら何もしない)
+function meosLaunchDKick(doc, key, quiet) { if (!meosIsLaunchDKey(key)) return; if (!quiet) _meosLaunchDLoud = true; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(async () => { const loud = _meosLaunchDLoud; _meosLaunchDLoud = false; if (loud && !(await meosLaunchDStopOthers(doc, key))) return; meosLaunchDReconcile(doc, key, !loud); }, 2000); }
+// ★v5.1.809(俊克 11.19 am09:34「自分のファイルの🌅の ▶️ を押した時、起動中の🌅を停止していいか?と聞いて OK なら停止すればいい。その方がわかりやすい」):
+//   押した🌅が走り出したのに、よそ(別の膜・別のファイル)でも🌅が走っている→ 訊く。Stop= よその走っている行を ⏸ に(本文を書き換える)= 押した方が効く(最後に押した物が効く)。
+//   Cancel= 押した方を ⏸ に戻す(Mac の起動はそのまま)。返り値= 突き合わせへ進んでよいか
+function meosLaunchDRunningRows(d, key) { try { return meosClockFcScan(d).filter(x => (key ? x.key === key : meosIsLaunchDKey(x.key) && meosLaunchDTs(x.key)) && x.ufc && !x.off && !x.done); } catch (_) { return []; } }
+async function meosLaunchDStopOthers(doc, key) {
+  try {
+    const mine = meosLaunchDRunningRows(doc, key); if (!mine.length) return true;   // 押した方が止まった(⏸ を押した)= 訊かない
+    const others = [];
+    for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue; for (const r of meosLaunchDRunningRows(d, '')) if (!(d === doc && r.key === key)) others.push({ d, r }); }
+    if (!others.length) return true;
+    const names = Array.from(new Set(others.map(o => String(o.d.uri.path || '').split('/').pop() + ' \u203a ' + o.r.key))).join(', ');
+    const pick = await vscode.window.showWarningMessage('\ud83c\udf05 Another Mac start-up timer is running: ' + names + '. Stop it and use this one?', { modal: true }, 'Stop it');
+    meosDbg('[launchd] よそで走っている🌅 ' + names + ' → ' + (pick || '取り消し'));
+    if (pick !== 'Stop it') { for (const r of mine) { try { await meosClockStopHere(doc, key, r.line); } catch (_) { } } return false; }
+    for (const o of others.slice().sort((a, b) => b.r.line - a.r.line)) { try { await meosClockStopHere(o.d, o.r.key, o.r.line); } catch (_) { } }
+    return true;
+  } catch (e) { meosDbg('[launchd] よその🌅を止める err ' + (e && e.message)); return true; }
+}   // v5.0.0-61: ⏸→▶️ の続け押しは2秒まとめて1回で比べる(同じなら何もしない)
 // ★★v5.1.497(俊克 11.04 pm10:48〜11:07「weekendsになる度に暗証番号を入れて設定し直すのは面倒…連動があるはず」「⛓️⤴️2も必要」「×∞と書いておけば1でも3でも良いと分かる」):
 //   ⛓️ でつないだ🌅の行= 1つの組(⛓️⤵️2 + ⛓️⤴️2)×∞ = 平日→週末→平日…)。▶️ はどの行で押しても、組ごと走る(膜で走るのは1つ= 組を1つと数える)。
 //   ★macOS の繰り返し(pmset repeat)は1つしか持てない→ 組では「次の14日分の起動」を1回ずつ(pmset schedule … MeOS)入れる。
