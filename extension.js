@@ -7200,6 +7200,14 @@ async function meosDiaryNewDay(ed, latest, dt) {
     let past = null; try { if (latest) { const bd = meosPairBadgeAt(doc, latest), to = bd ? meosDiaryPastColor(bd.badge.colorCode) : ''; if (to) past = { line: bd.line, text: setMstatBadgeColorInText(bd.text, to) }; } } catch (_) { }
     await ed.edit(eb => { eb.insert(new vscode.Position(at, 0), block.join('\n') + '\n'); if (past) eb.replace(doc.lineAt(past.line).range, past.text); });
     meosDbg('[diaryNewDay] ' + (tpl ? '原型' + mode : '複製') + ' ' + oldId + ' → ' + newId + ' 行=' + (at + 1));
+    // ★v5.1.815(俊克 11.19「今日の日記を自動で生成する時に、ΔChar を自動でクリアし、ターゲットも自動で Set。毎回押し忘れる」):
+    //   新しい日の膜= 今の字数を基準(ΔChar 0)・的は前の日の的を引き継ぐ(前の日に的が無ければ、今の字数= Set を押した時の初期値と同じ)
+    try { const np = meosDiaryPairById(doc, newId); if (np) { const stats = getMeCharStats(doc), nk = meCharStatsKey(np); _meCharCache.uri = null; const n0 = countMembraneChars(doc, np);
+        let tg = null; try { const lp = latest ? meosDiaryPairById(doc, latest.id) : null, ls = lp ? stats[meCharStatsKey(lp)] : null; if (ls && Number(ls.target) > 0) tg = Number(ls.target); } catch (_) { }
+        stats[nk] = { base: n0, target: tg || n0 || null };
+        try { const data = await ensureHyperTocData(doc); await setHyperTocData(doc, data); } catch (_) { }
+        meosDbg('[diaryNewDay] ΔChar 0(基準=' + n0 + ') 的=' + stats[nk].target + (tg ? '(前の日から)' : '(今の字数)'));
+        try { postFixedWorkingTocSnapshot(); } catch (_) { } } } catch (e) { meosDbg('[diaryNewDay] 字数の基準 err ' + (e && e.message)); }
     ed.selection = new vscode.Selection(at, 0, at, 0);
     ed.revealRange(new vscode.Range(at, 0, at, 0), vscode.TextEditorRevealType.AtTop);
     vscode.window.setStatusBarMessage('MeOS: today’s diary made (' + (tpl ? 'template ' + '①②③'.charAt(mode - 1) : '⓪ copied from ' + oldId) + ')', 4000);
@@ -33178,6 +33186,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn.raw-toggle.read-on{background:#1e4f8a;color:#e6f0ff;border-color:#16396b}/* v4.0.440(俊克): 読書モード中は青 */
 .fmt-btn.fmt-remove::before{content:"🚫";position:relative;top:1px}
 #fmt-table{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px}
+#fmt-table.in-table{background:#2f8f4c;border-color:#2f8f4c;color:#fff}#fmt-table.in-table:hover{background:#3fa85c}   /* v5.1.815: カーソルが表の中= 緑(押すとその表を揃える)・外= 今までの色(選んだ行を表にする) */
 /* v4.0.268(俊克 8/19 改良1「一番横幅が長いのが not なので、この長さに合わせようよ」): 上付き/下付きボタンの面は
    A2 / not / ä と中身that変わる。min-width では中身次第で伸びるので、**面を固定幅の箱に入れる**=
    何を描いてもボタンの幅that1pxも動かない(↻の連打で位置thatズレない)。 */
@@ -36295,7 +36304,7 @@ var cy=document.getElementById('fmt-code-cycle');arm(document.querySelector('.fm
 var tb=document.getElementById('fmt-table');arm(document.querySelector('.fmt-table-cell'),'tb-big',function(){return (tb&&tb.offsetParent)?[tb.offsetLeft+tb.offsetWidth/2+5.5,tb.offsetTop+tb.offsetHeight/2+3.5]:null;},false);
 /* ★v5.1.527(俊克 am00:17「表ボタンと同様に、拡大するときに、ポインターの位置を「...」の少し上辺りに…どのボタンを押すにしても、最短距離で移動できる」): 軸は右上・行き先= … の少し上 */
 var ob=document.getElementById('os-btn');arm(document.querySelector('.os-split'),'os-big',function(){return (ob&&ob.offsetParent)?[ob.offsetLeft+ob.offsetWidth-14,ob.offsetTop+9]:null;},false,true);})();
-const fmtTableBtn=document.getElementById('fmt-table');if(fmtTableBtn)fmtTableBtn.addEventListener('click',()=>vscode.postMessage({type:'formatTable'}));(function(){const ft=document.getElementById('format-tools');if(!ft)return;const tc=ft.querySelector('.fmt-table-cell'),ww=ft.querySelector('.ww-cell:not(.os-cell)');if(!tc||!ww)return;let tm=null;const off=()=>{clearTimeout(tm);tm=setTimeout(()=>{if(!tc.matches(':hover')&&!ww.matches(':hover'))ft.classList.remove('tbl-big');},500);};tc.addEventListener('mouseenter',()=>{clearTimeout(tm);ft.classList.add('tbl-big');});tc.addEventListener('mouseleave',off);ww.addEventListener('mouseenter',()=>{if(ft.classList.contains('tbl-big'))clearTimeout(tm);});ww.addEventListener('mouseleave',()=>{if(ft.classList.contains('tbl-big'))off();});})();   /* v5.1.191: 表が2倍の間だけ折り返しボタンを右へ(印 .tbl-big)= ずれた折り返しボタンに乗っている間は保ち、どちらにも居ない状態が0.5秒続いたら戻す */
+const fmtTableBtn=document.getElementById('fmt-table');if(fmtTableBtn)fmtTableBtn.addEventListener('click',()=>vscode.postMessage({type:'formatTable'}));window.addEventListener('message',ev=>{const m=ev.data;if(m&&m.type==='inTable'&&fmtTableBtn){fmtTableBtn.classList.toggle('in-table',!!m.on);}});vscode.postMessage({type:'inTableReq'});(function(){const ft=document.getElementById('format-tools');if(!ft)return;const tc=ft.querySelector('.fmt-table-cell'),ww=ft.querySelector('.ww-cell:not(.os-cell)');if(!tc||!ww)return;let tm=null;const off=()=>{clearTimeout(tm);tm=setTimeout(()=>{if(!tc.matches(':hover')&&!ww.matches(':hover'))ft.classList.remove('tbl-big');},500);};tc.addEventListener('mouseenter',()=>{clearTimeout(tm);ft.classList.add('tbl-big');});tc.addEventListener('mouseleave',off);ww.addEventListener('mouseenter',()=>{if(ft.classList.contains('tbl-big'))clearTimeout(tm);});ww.addEventListener('mouseleave',()=>{if(ft.classList.contains('tbl-big'))off();});})();   /* v5.1.191: 表が2倍の間だけ折り返しボタンを右へ(印 .tbl-big)= ずれた折り返しボタンに乗っている間は保ち、どちらにも居ない状態が0.5秒続いたら戻す */
 /* v0.9.999150: 表整形ボタン */
 const fmtTableCaret=document.getElementById('fmt-table-caret'),tablePop=document.getElementById('table-pop');function closeTablePop(){if(typeof closeClkPop==='function')closeClkPop();if(tablePop)tablePop.classList.remove('on');
 }if(fmtTableCaret&&tablePop){fmtTableCaret.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const willOpen=!tablePop.classList.contains('on');
@@ -39383,6 +39392,7 @@ function toggleMeDock(editorOverride) {
       await cycleCurrentMembrane(getMeDockTargetEditor());
       return;
     }
+    if (message && message.type === 'inTableReq') { try { meDockPanel.webview.postMessage({ type: 'inTable', on: !!_meosInTableCtx }); } catch (_) { } return; }   // v5.1.815
     if (message && message.type === 'setMeCharTarget') {
       // v0.9.807: set / clear (null) the char target of the membrane the cursor is in.
       await setMeCharTargetForCurrent(getMeDockTargetEditor(), message.target);
@@ -41728,7 +41738,7 @@ function meosUpdateInTableContext(editor) {
   let v = false;
   try { if (editor && editor.document && editor.selection) v = !!meosTableInfoAny(editor.document, editor.selection.active.line); } catch (_) {}   // v5.1.279: 見せかけで描いている表でも、カーソルが居れば表の中
   if (MEOS_RELEASE_PHASE < 3) v = false; // v1.0.0: テーブル未解禁フェーズでは inTable を常にfalse=セル移動keybindingを無効化
-  if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} }
+  if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'inTable', on: v }); } catch (_) {} }   // ★v5.1.815(俊克 11.19「表の中か外かで、ボタンの色を変えれば分かりやすい」): Me Dock の表ボタンへ
   // v4.0.400: bs/改行/fs を横取りするかどうか。変わった時だけ送る(打鍵の道に仕事を足さない)。
   // ★v5.1.579→580: 罫線の近く(上下200行)に居る間だけ ↑↓ を預かる(打鍵の道に仕事を足さない)
   let rn = false; try { if (editor && editor.document && editor.selection && meosIsProseDoc(editor.document)) { const d = editor.document, l = editor.selection.active.line; for (let i = Math.max(0, l - 200), e = Math.min(d.lineCount - 1, l + 200); i <= e; i++) if (MEOS_RULE_LINE_RE.test(d.lineAt(i).text)) { rn = true; break; } } } catch (_) { }
