@@ -302,7 +302,7 @@ function run(argv) {
   //   メニューは今の姿を見せるだけ(ここでも決められると、本文と macOS の2つの道が食い違う)。-50〜57 の □/時刻の仕掛けは使わない。
   const wakeEntries = () => [{ id: 'launchd', title: '\ud83c\udf05 Wake   ' + wakeLabel() }, { sep: true }];   // v5.0.0-59: 押すと 🌅LaunchD の膜へ(他の時計の行と同じ)
   let menuUp = false, lastHoldN = -1;   // ★v5.1.619(俊克 am11:29 バグ1「メニューリストを表示したままにしてあると、やはり、まだゴミが残るよ。なぜ?」): 実測= 開いている間に events.log に「作り直す n=40 前=41」。wGATE は runUntilDate で回るので tracking() は開いていても偽= 作り替えが走り、画面の古いメニューは誰も更新しなくなっていた(614 の隠す口にも入らなかった)。開いているかは delegate の開閉で知る
-  let menuHi = '', menuHiAt = 0, menuEditN = 0, menuClosedAt = 0, menuTracked = false; const busyOpen = { fast: 0, fastN: 0, hand: 0, tick: 0, tickN: 0 };   // v5.1.823 計測: メニューを開いている間に V-helper が使った時間   // v5.1.812: menuClosedAt= mGATE が「メニューの項目を押した」押しを横取りしない(811 の 10:24:35 実測= 押しは届いていないが…受ける→ c へワープ)   // v5.1.810 計測(俊克 809 バグ1「Database メニューの1回目のクリックでワープせず、2回目でワープ」= 1回目は pick が来ていない)
+  let menuHi = '', menuHiAt = 0, menuEditN = 0, menuClosedAt = 0, menuTracked = false, menuTitleAt = 0; const costMin = { at: Date.now(), ms: 0, n: 0 }; const busyOpen = { fast: 0, fastN: 0, hand: 0, tick: 0, tickN: 0 };   // v5.1.823 計測: メニューを開いている間に V-helper が使った時間   // v5.1.812: menuClosedAt= mGATE が「メニューの項目を押した」押しを横取りしない(811 の 10:24:35 実測= 押しは届いていないが…受ける→ c へワープ)   // v5.1.810 計測(俊克 809 バグ1「Database メニューの1回目のクリックでワープせず、2回目でワープ」= 1回目は pick が来ていない)
   let menuOpenAt = 0, menuPickedAt = 0, menuOptAt = 0, reopenAt = 0, reopenTries = 0, renewItem = false, noRestartUntil = 0;   // v5.1.333〜335
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) { menuPickedAt = Date.now();
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
@@ -1120,7 +1120,9 @@ function run(argv) {
     }
     let reopenNow = false; if (reopenAt && Date.now() >= reopenAt && !tracking()) { reopenAt = 0; reopenNow = true; }   // v5.1.333: 作り直した後で開く   // v5.1.331: スイッチが変わったら作り直す
     if (mj !== lastMenu) {
-      if (lastEntries.length && nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {   // v4.2.499: 並びが同じ= 字だけ差し替える
+      if (lastEntries.length && nw.length === lastEntries.length && !menuUp && Date.now() - menuTitleAt < 15000 && sk(nw) === sk(lastEntries)) { /* ★v5.1.826(俊克 pm01:26「メニューの中の作り直しは、次の予定時間まで不要ではないのか? メニューバーの更新は時計と同じで1秒ごとでいい」): 閉じている間は行の字(残り時間)を差し替えない= 15秒に1回だけ・開いたら次の見回り(0.5秒)で今の字に */ }
+      else if (lastEntries.length && nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {   // v4.2.499: 並びが同じ= 字だけ差し替える
+        menuTitleAt = Date.now();
         for (let i = 0; i < nw.length; i++) { const e = nw[i], o = lastEntries[i], mi = lastItems[i];
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
           if (menuUp) menuEditN++; try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
@@ -1334,7 +1336,7 @@ function run(argv) {
 // {* ▼mCN=1700_TICKERS // タイマー / puzzle-last の読み取り / 構え armTick / ポインターを運ぶ warpPtr / 修飾キー (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v4.2.333(俊克 改良2「メニューを出しているとき、メニューバーの残時間が止まってしまう」): メニューを開いている間は macOS が
   //   runUntilDate を返さない(メニューの追跡の間は別の走り方)。→ 描く仕事を『どの走り方でも鳴る』タイマー(CommonModes)に載せる。
-  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { const t0 = Date.now(); try { step(); } catch (e) {} const t1 = Date.now(); if (menuUp) { busyOpen.tick += t1 - t0; busyOpen.tickN++; } try { cycIdle(); } catch (e) {} const t2 = Date.now(); if (t2 - t0 > 100) try { hlog('[slow] tick step=' + (t1 - t0) + 'ms cycIdle=' + (t2 - t1) + 'ms'); } catch (e) {} } },   // v5.1.767: 測り(100ms超えだけ)
+  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { const t0 = Date.now(); try { step(); } catch (e) {} const t1 = Date.now(); if (menuUp) { busyOpen.tick += t1 - t0; busyOpen.tickN++; } costMin.ms += t1 - t0; costMin.n++; if (t1 - costMin.at >= 60000) { try { hlog('[cost] 見回り 60秒で ' + costMin.ms + 'ms / ' + costMin.n + '回(1回 ' + Math.round(costMin.ms / Math.max(1, costMin.n)) + 'ms)= 手の ' + Math.round(costMin.ms / (t1 - costMin.at) * 100) + '%'); } catch (e) {} costMin.at = t1; costMin.ms = 0; costMin.n = 0; }   /* v5.1.826 計測 */ try { cycIdle(); } catch (e) {} const t2 = Date.now(); if (t2 - t0 > 100) try { hlog('[slow] tick step=' + (t1 - t0) + 'ms cycIdle=' + (t2 - t1) + 'ms'); } catch (e) {} } },   // v5.1.767: 測り(100ms超えだけ)
     'mods:': { types: ['void', ['id']], implementation: function (t) { const t0 = Date.now(); try { modsTick(); } catch (e) {} const d = Date.now() - t0; if (d > 100) try { hlog('[slow] mods ' + d + 'ms'); } catch (e) {} } },
     'bell:': { types: ['void', ['id']], implementation: function (t) { try { if (ringing && Date.now() < ringing.until) { playBell(); if (isGk()) armGk(); else if (isGrowl() || isPurrF()) armGrowl(); } } catch (e) {} } } } });
   const ticker = $.MeOSTickH.alloc.init;
