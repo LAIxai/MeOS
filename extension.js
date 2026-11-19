@@ -41547,9 +41547,10 @@ async function meosTableNav(editor, dir) {
     else { targetCell = 0; }
   } else if (dir === 'down') {
     // v0.9.999162(俊克 改良4): ↑↓は隣の行へ(区切り行|---|も飛ばさず入れる)。Tab/Cmd←→のセル移動は従来通り区切り行をスキップ。
-    if (cur.line + 1 <= info.blk.end) targetLine = cur.line + 1; else return;
+    // ★v5.1.817(俊克 816「↑/↓キーで表の中に入ると、二度と↑/↓キーで表の外に出られない」): 表の端の行では何もしなかった→ 端では VS Code の素の↓/↑(折り返した行は画面の段ごと・最後の段から表の外へ)
+    if (cur.line + 1 <= info.blk.end) targetLine = cur.line + 1; else { await vscode.commands.executeCommand('cursorDown'); return; }
   } else if (dir === 'up') {
-    if (cur.line - 1 >= info.blk.start) targetLine = cur.line - 1; else return;
+    if (cur.line - 1 >= info.blk.start) targetLine = cur.line - 1; else { await vscode.commands.executeCommand('cursorUp'); return; }
   }
   const tText = doc.lineAt(targetLine).text;
   const p = meosCellContentPos(tText, Math.min(targetCell, Math.max(0, meosRowCellCount(tText) - 1)));
