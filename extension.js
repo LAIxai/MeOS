@@ -7573,7 +7573,7 @@ function meosClockDdPauseResume(doc, key, spec, atLine) {
       const base = own || _meosChainStart.get(lk) || cur.vAt || 0; if (!base) return spec;
       const end = own ? meosClockDdEnd(cur) : meosClockDdEnd(Object.assign({}, cur, { vAt: base })); if (!end) return spec;
       const face = meosClockDdFace(end); _meosDdPauseFace.set(lk, { face, end, at: Date.now(), cyc: cy[0], base: own ? 0 : base, uri: doc.uri.toString(), key });   // v5.1.778: 止めた時の周期も控える(直されたかを比べる)
-      try { const _pk = doc.uri.toString() + ' ' + atLine; _meosDdPeek.set(_pk, Date.now() + 10000); _meosDdPeekAt.set(_pk, Date.now()); setTimeout(() => { try { if ((_meosDdPeek.get(_pk) || 0) <= Date.now()) _meosDdPeek.delete(_pk); const _ed = vscode.window.activeTextEditor; if (_ed) { try { refresh(_ed); } catch (_) { } meosApplyTimerLineDecorations(_ed); } } catch (_) { } }, 10100); } catch (_) { }   // v5.1.717: 周期と dd= を見せる / v5.1.718(俊克「5秒は短いので10秒に」)
+      try { const _pk = doc.uri.toString() + ' ' + atLine; _meosDdPeek.set(_pk, Date.now() + 10000); _meosDdPeekAt.set(_pk, Date.now()); meosDdPauseEnter(_pk, atLine, Date.now()); /* v5.1.831: 止めたら赤の dd= に直接カーソル(10秒の覗きは控えに残すだけ) */ setTimeout(() => { try { if ((_meosDdPeek.get(_pk) || 0) <= Date.now()) _meosDdPeek.delete(_pk); const _ed = vscode.window.activeTextEditor; if (_ed) { try { refresh(_ed); } catch (_) { } meosApplyTimerLineDecorations(_ed); } } catch (_) { } }, 10100); } catch (_) { }   // v5.1.717: 周期と dd= を見せる / v5.1.718(俊克「5秒は短いので10秒に」)
       meosDbg('[dd] ⏸️ 題に dd=' + face + ' key=' + key);
       return Object.assign({}, spec, { title: String(spec.title).replace(MEOS_CLOCK_DD_RE, (m, p) => p + 'dd=' + face) });
     }
@@ -15513,6 +15513,18 @@ function meosDdPadAdd(ed, L) { try { const k = ed.document.uri.toString() + ' ' 
   ed.edit(eb => eb.insert(new vscode.Position(L, t.length), '\u00a0'.repeat(MEOS_DD_PAD)), { undoStopBefore: false, undoStopAfter: false }); } catch (_) { } }
 function meosDdPadStrip(ed, L) { try { const k = ed.document.uri.toString() + ' ' + L; if (!_meosDdPad.delete(k)) return;
   ed.edit(eb => { const t = ed.document.lineAt(L).text; if (new RegExp('dd(=\\S+)?\u00a0{' + MEOS_DD_PAD + '}$').test(t)) eb.delete(new vscode.Range(L, t.length - MEOS_DD_PAD, L, t.length)); }, { undoStopBefore: false, undoStopAfter: false }); } catch (_) { } }
+// ★v5.1.831(俊克 830 改良1「⏸️ボタンを押してタイマを一時停止した時、赤のdd=に文字カーソルを出すようにしよう。左右どっちの枠に移動するにしても、効率がいいからだ。10秒で消すのは止めよう」):
+//   覗き(押して入る・10秒で消える)を飛ばし、止めた行の題に dd= が書かれたら、すぐ窓で直す姿へ入り、カーソルを赤(dd)の頭に置く。窓は外を押すまで消えない
+function meosDdPauseEnter(pk, L, t0) { setTimeout(() => { try {
+  const again = () => { if (Date.now() - t0 < 4000) meosDdPauseEnter(pk, L, t0); };
+  if (!_meosDdPeek.has(pk) || _meosDdEdit.has(pk)) return;
+  const ed = vscode.window.activeTextEditor; if (!ed || !ed.document || ed.document.uri.toString() + ' ' + L !== pk) return again();
+  if (L >= ed.document.lineCount) return; const S = meosDdEditSpans(ed.document.lineAt(L).text); if (!S.dd) return again();
+  _meosDdPeek.delete(pk); _meosDdPeekAt.delete(pk); _meosDdEdit.add(pk); _meosDdEditSp.set(pk, 'dd');
+  const P = new vscode.Position(L, S.dd[0]); ed.selection = new vscode.Selection(P, P);
+  meosDdEditCtxSync(ed); meosDbg('[dd] ⏸️→ 赤(dd)の窓へカーソル 行=' + (L + 1) + ' 桁=' + S.dd[0]);
+  try { refresh(ed); } catch (_) { } meosApplyTimerLineDecorations(ed);
+} catch (_) { } }, 120); }
 let _meosDdEditCtx = false;
 function meosDdEditCtxSync(ed) {
   let v = false; try { ed = ed || vscode.window.activeTextEditor; if (ed && ed.document) v = _meosDdEdit.has(ed.document.uri.toString() + ' ' + ed.selection.active.line); } catch (_) { }
