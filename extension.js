@@ -15649,6 +15649,9 @@ function meosScopeOwnsLine(sc, c, line) {
     if (!sc) return false;
     if (sc.synth) return sc.line === line;                 // 起点は覚えの中にしか無い= 行で見分ける
     if (!sc.when) return false;
+    // ★v5.1.812(俊克 811 バグ2「MTWtF という起動していない設定が表示される」): 🌅は曜日違いで同じ時刻の行が並ぶ(F 06:30 と MTWtF 06:30)。
+    //   「同じ起点= 同じ時計の別の顔」(v4.1.1119)は🌅には当てはまらない→ 🌅は曜日(周期)まで同じ行だけ
+    if (meosIsLaunchDKey(sc.key) && sc.sig) { const cy = String(sc.sig).split('|')[1] || ''; if ((Array.isArray(c && c.cycle) ? c.cycle.join('/') : '') !== cy) return false; }
     return String(c && c.when) === String(sc.when);
   } catch (_) { return false; }
 }
