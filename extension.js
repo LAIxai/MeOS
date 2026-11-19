@@ -12792,8 +12792,10 @@ function meosTimerDbLineOf(doc) { for (let i = 0; i < doc.lineCount; i++) { cons
 function meosTimerDbEnsure(doc, why) {
   const k = doc.uri.toString(); if (_meosTimerDbMaking.has(k)) return _meosTimerDbMaking.get(k);
   const job = (async () => { try {
-    if (meosTimerDbLineOf(doc) >= 0) return;
-    const t0 = Date.now(), eol = _vaultEol(doc.getText()), db = meosTimerDbText(eol, meosLaunchDWanted());
+    const _ld = process.platform === 'darwin' && !meosLaunchDInDoc(doc);   // ★v5.1.808: 🌅の見本= この日記に🌅が1つも無ければ(よそで走っていても)入れる
+    const _dl = meosTimerDbLineOf(doc);
+    if (_dl >= 0) { if (_ld) { const cl = meosTimerDbCloseLine(doc, _dl); if (cl >= 0) { const eol = _vaultEol(doc.getText()), we = new vscode.WorkspaceEdit(); we.insert(doc.uri, new vscode.Position(cl, 0), meosLaunchDInnerLines().join(eol) + eol); const ok = await vscode.workspace.applyEdit(we); meosDbg('[timerDb] 🌅の見本を足す(' + why + ') 閉じ膜=' + (cl + 1) + ' ok=' + ok); } } return; }
+    const t0 = Date.now(), eol = _vaultEol(doc.getText()), db = meosTimerDbText(eol, _ld);
     let mmLine = -1; for (let i = doc.lineCount - 1; i >= 0; i--) { if (isHtocMetaOpenAt(doc, i)) { mmLine = i; break; } }
     const we = new vscode.WorkspaceEdit();
     if (mmLine >= 0) we.insert(doc.uri, new vscode.Position(mmLine, 0), db.text + eol + eol);
@@ -12803,11 +12805,12 @@ function meosTimerDbEnsure(doc, why) {
   } catch (e) { meosDbg('[timerDb] 作る err ' + (e && e.message)); } finally { _meosTimerDbMaking.delete(k); } })();
   _meosTimerDbMaking.set(k, job); return job;
 }
+function meosLaunchDInDoc(doc) { try { return collectPairs(doc, { excludeIndex: false }).some(p => meosIsLaunchDKey(p.id) && meosLaunchDTs(p.id)); } catch (_) { return false; } }
 function meosTimerDbAtStart() {   // 起動時: 見えている md のうち mMETA の在る日記(下から2000行に mMETA)だけ
   try { if (!meosRealHost()) return;
     for (const e of vscode.window.visibleTextEditors || []) { const d = e.document; if (!d || d.languageId !== 'markdown') continue;
       let mm = false; for (let i = d.lineCount - 1; i >= Math.max(0, d.lineCount - 2000); i--) if (isHtocMetaOpenAt(d, i)) { mm = true; break; }
-      if (mm && meosTimerDbLineOf(d) < 0) meosTimerDbEnsure(d, '起動'); } } catch (_) { }
+      if (mm && (meosTimerDbLineOf(d) < 0 || (process.platform === 'darwin' && !meosLaunchDInDoc(d)))) meosTimerDbEnsure(d, '起動'); } } catch (_) { }
 }
 async function meosOpenTimerDb() {
   try {
@@ -12820,7 +12823,7 @@ async function meosOpenTimerDb() {
     //   → 膜の行として読める物だけを見る(isHtocMetaOpenAt / parseOpenLine)。mMETA は日記の末尾に居るので、下から探して最初の本物。
     const _dbLine = () => { for (let i = 0; i < doc.lineCount; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf(MEOS_TIMER_DB_PREFIX) < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsTimerDbKey(o.id)) return i; } catch (_) { } } return -1; };
     let line = _dbLine();
-    if (line < 0) { await meosTimerDbEnsure(doc, 'メニュー'); line = _dbLine(); }   // ★v5.1.807: 作るのは1つの口(起動時と同じ)
+    if (line < 0) { await meosTimerDbEnsure(doc, 'メニュー'); line = _dbLine(); }   // 押した時は無い時だけ(🌅の見本を足すのは起動時= 押す度に37万行を数えない)   // ★v5.1.807: 作るのは1つの口(起動時と同じ)
     // ★v5.1.95(俊克 10.20 am10:12 バグ1「なぜまだ、mMETAの手前に移動しないのか?」): 5.1.93 は「無ければ mMETA の手前に作る」だけで、
     //   既に違う所に在る膜は動かさなかった(消せば作り直す、と言っただけ)。→ 押した時に mMETA の手前でなければ、膜ごと(⏰の行まで)そこへ移す。
     //   走っている⏰も覚えは膜の名前で持っているので、行が動いても止まらない(行は走査のたびに読み直す)。
@@ -24930,7 +24933,9 @@ function meosLaunchDSample(id) {
 function meosLaunchDNewest() {
   let newest = null;
   for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
-    try { for (const p of collectPairs(d, { excludeIndex: false })) if (meosIsLaunchDKey(p.id)) { const ts = meosLaunchDTs(p.id); if (!ts) continue; if (!newest || ts > newest.ts) newest = { doc: d, id: p.id, ts }; } } catch (_) { } }   // ★v5.1.551: 本物の膜名は必ず日時つき= 説明文の見本(…2010xx・_TS)を拾わない(真因は Reconcile の注)
+    try { let _scan = null; for (const p of collectPairs(d, { excludeIndex: false })) if (meosIsLaunchDKey(p.id)) { const ts = meosLaunchDTs(p.id); if (!ts) continue;
+        if (!_scan) _scan = meosClockFcScan(d); const run = _scan.some(x => x.key === p.id && x.ufc && !x.off && !x.done);
+        if (!newest || (run && !newest.run) || (run === newest.run && ts > newest.ts)) newest = { doc: d, id: p.id, ts, run }; } } catch (_) { } }   // ★v5.1.808(俊克 11.19「走っていても、自分のファイルに無ければ見本を入れておけばいい」): 走っている🌅を先に選ぶ= 後から入った ⏸ だけの見本が、走っている🌅を古くしない   // ★v5.1.551: 本物の膜名は必ず日時つき= 説明文の見本(…2010xx・_TS)を拾わない(真因は Reconcile の注)
   return newest;
 }
 // ★v5.0.0-59(俊克 pm08:14 改良1「他のタイマー設定と同様に、メニューをクリックすると、設定している膜にワープ。初期膜は、メタ膜の近くに配置」):
@@ -25134,7 +25139,7 @@ async function meosLaunchDReconcile(doc, key, quiet) {
   // 一番新しい 🌅LaunchD(開いている md の中で)
   const newest = meosLaunchDNewest();
   try { if (newest && newest.doc.uri.scheme === 'file') extensionContext.globalState.update('meosLaunchDUri', newest.doc.uri.toString()); } catch (_) { }   // v5.1.505: 起動の時に開く
-  if (newest && (newest.id !== key || newest.doc !== doc)) { await meosLaunchDSyncMarks(doc, key, null); say('\ud83c\udf05 This LaunchD is not the newest one (' + newest.id + ' is) \u2014 press \u21bb on its name in Me Dock to make it current.'); return; }
+  if (newest && newest.run && (newest.id !== key || newest.doc !== doc)) { await meosLaunchDSyncMarks(doc, key, null); /* v5.1.808: 走っていない一番新しい(⏸だけの見本)は、押した🌅を止めない */ say('\ud83c\udf05 This LaunchD is not the newest one (' + newest.id + ' is) \u2014 press \u21bb on its name in Me Dock to make it current.'); return; }
   let grp = meosLaunchDGroupOf(doc, key);
   // ★v5.1.499(俊克 11.05 am09:20 改良1「木曜の設定が繰り返されてしまう。なぜ明日金曜の設定を実行しなかったのか?」):
   //   真因= 渡すのは鐘の時だけ。🌅の時刻は Mac が切れている/起動の途中= 鐘が鳴らず、⏰は自分の ↺ で来週の木曜へ回った。
