@@ -12805,6 +12805,23 @@ function meosTimerDbEnsure(doc, why) {
   } catch (e) { meosDbg('[timerDb] 作る err ' + (e && e.message)); } finally { _meosTimerDbMaking.delete(k); } })();
   _meosTimerDbMaking.set(k, job); return job;
 }
+// ★v5.1.813(俊克 812 👍2「システム起動用の設定が膜の中に入っていることを忘れやすい。閉じた状態ではなく必ず開いた状態で表示」):
+//   その文書の窓が手前に来た時、⏰データベースの膜と、その中の🌅の膜が畳まれていれば開く(畳まれていなければ何もしない= 見えている所で判定)
+let _meosWakeOpenT = null; const _meosWakeDbCache = new Map();
+async function meosUnfoldWakeIn(ed) {
+  try { if (!ed || !ed.document || ed.document.languageId !== 'markdown') return; const doc = ed.document;
+    const _ck = doc.uri.toString(), _c0 = _meosWakeDbCache.get(_ck); let dl; if (_c0 && _c0.v === doc.version) dl = _c0.dl; else { dl = meosTimerDbLineOf(doc); _meosWakeDbCache.set(_ck, { v: doc.version, dl }); }   // スクロールの度に37万行を数えない
+    if (dl < 0) return; const cl = meosTimerDbCloseLine(doc, dl); if (cl < 0) return;
+    const heads = [dl]; for (let i = dl + 1; i < cl; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf('LaunchD_') < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsLaunchDKey(o.id)) heads.push(i); } catch (_) { } }
+    if (heads.length < 2) return;   // 🌅が入っていないデータベースは今までどおり
+    const vis = (n) => (ed.visibleRanges || []).some(r => n >= r.start.line && n <= r.end.line);
+    const shut = heads.filter(h => vis(h) && !vis(h + 1));
+    if (!shut.length) return;
+    if (vscode.window.activeTextEditor !== ed) return;
+    await vscode.commands.executeCommand('editor.unfold', { selectionLines: shut, levels: 1 });
+    meosDbg('[wakeOpen] 畳まれていた⏰データベース/🌅を開いた 行=' + shut.map(x => x + 1).join(','));
+  } catch (_) { }
+}
 function meosLaunchDInDoc(doc) { try { return collectPairs(doc, { excludeIndex: false }).some(p => meosIsLaunchDKey(p.id) && meosLaunchDTs(p.id)); } catch (_) { return false; } }
 function meosTimerDbAtStart() {   // 起動時: 見えている md のうち mMETA の在る日記(下から2000行に mMETA)だけ
   try { if (!meosRealHost()) return;
@@ -41687,19 +41704,21 @@ function meosOptUturn() {
     vscode.window.showTextDocument(d, { viewColumn: ed.viewColumn, preserveFocus: false, selection: ed.selection }); } catch (_) { }
 }
 function meosOptJumpOn() { try { return !!extensionContext.globalState.get('fmtOptJump'); } catch (_) { return false; } }
-async function meosMembraneEdge(down) {
-  const ed = vscode.window.activeTextEditor, native = down ? 'cursorBottom' : 'cursorTop';
+// ★v5.1.813(俊克 812「Shift+↓の選択は停止線で止まる。Cmd+Shift+↓/↑でも停止するように。これができれば完璧」): sel= 選択を伸ばす(錨は動かさず、着く所は Cmd+↓/↑ と同じ)
+async function meosMembraneEdge(down, sel) {
+  const ed = vscode.window.activeTextEditor, native = down ? (sel ? 'cursorBottomSelect' : 'cursorBottom') : (sel ? 'cursorTopSelect' : 'cursorTop');
+  const _to = (p) => { ed.selection = new vscode.Selection(sel ? ed.selection.anchor : p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport); };
   try {
     if (ed && meosIsProseDoc(ed.document) && ed.selections.length === 1) {
       const doc = ed.document, cur = ed.selection.active.line, edge = meosMemEdgeAt(doc.lineAt(cur).text, false), head = down ? 1 : -1;
       // ★v5.1.666(俊克 11.12 am11:03 改良1「1つ手前の行から Cmd+↓/↑ を実行すると、その停止線を飛び越えて次の停止線にワープしてしまう…行頭以外にいるときは一旦行頭に飛ぶ。入力枠で↑/↓キーで頭と最後に移動するのと同じ」):
       //   停止線のすぐ手前の行に居て、まだ着地点(下へは行末・上へは行頭= Cmd+↓/↑ が着く所)でなければ、先にそこへ。もう一度押すと線を越える
       { const nx = cur + head, col = down ? doc.lineAt(cur).text.length : 0;
-        if (nx >= 0 && nx < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(nx).text) && !meosRuleHidden(ed, nx) && ed.selection.isEmpty && ed.selection.active.character !== col) {
-          const p = new vscode.Position(cur, col); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport); return; } }
+        if (nx >= 0 && nx < doc.lineCount && MEOS_RULE_LINE_RE.test(doc.lineAt(nx).text) && !meosRuleHidden(ed, nx) && (sel || ed.selection.isEmpty) && ed.selection.active.character !== col) {
+          _to(new vscode.Position(cur, col)); return; } }
       if (!(edge === head && meosRuleHidden(ed, cur + head))) {   // 畳んだ膜の見出しから中へは入らない
         const to = meosMembraneRuleTarget(doc, cur, down, ed);
-        if (to >= 0) { const p = new vscode.Position(to, down ? doc.lineAt(to).text.length : 0); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenterIfOutsideViewport); return; }
+        if (to >= 0) { _to(new vscode.Position(to, down ? doc.lineAt(to).text.length : 0)); return; }
       }
     }
   } catch (_) { }
@@ -48072,7 +48091,7 @@ function activate(context) {
   // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.membraneEdgeDown', () => meosMembraneEdge(true)), vscode.commands.registerCommand('laiMembrane.membraneEdgeUp', () => meosMembraneEdge(false)), vscode.commands.registerCommand('laiMembrane.ruleStepDown', () => meosRuleStep(true)), vscode.commands.registerCommand('laiMembrane.ruleStepUp', () => meosRuleStep(false)), vscode.commands.registerCommand('laiMembrane.ruleStepDownSelect', () => meosRuleStep(true, true)), vscode.commands.registerCommand('laiMembrane.ruleStepUpSelect', () => meosRuleStep(false, true)));   // v5.1.579
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.membraneEdgeDown', () => meosMembraneEdge(true)), vscode.commands.registerCommand('laiMembrane.membraneEdgeUp', () => meosMembraneEdge(false)), vscode.commands.registerCommand('laiMembrane.membraneEdgeDownSelect', () => meosMembraneEdge(true, true)), vscode.commands.registerCommand('laiMembrane.membraneEdgeUpSelect', () => meosMembraneEdge(false, true)), vscode.commands.registerCommand('laiMembrane.ruleStepDown', () => meosRuleStep(true)), vscode.commands.registerCommand('laiMembrane.ruleStepUp', () => meosRuleStep(false)), vscode.commands.registerCommand('laiMembrane.ruleStepDownSelect', () => meosRuleStep(true, true)), vscode.commands.registerCommand('laiMembrane.ruleStepUpSelect', () => meosRuleStep(false, true)));   // v5.1.579
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.optJumpDown', () => meosOptJump(true)), vscode.commands.registerCommand('laiMembrane.optJumpUp', () => meosOptJump(false)), vscode.window.onDidChangeTextEditorSelection(e => meosOptTrailOnSel(e))); try { vscode.commands.executeCommand('setContext', 'meos.optJump', !!context.globalState.get('fmtOptJump')); } catch (_) { }   // v5.1.603
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
@@ -48133,7 +48152,8 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));
   // ★v5.0.0-58: 🌅LaunchD の見本を書く(俊克「標準的な例をデフォルトで用意しておけば、わずかな修正で使える」)。カーソルの行の上に置く。
   setTimeout(() => { try { meosLaunchDMarksAtStart(); } catch (_) { } }, 8000);
-  setTimeout(() => { try { meosTimerDbAtStart(); } catch (_) { } }, 8000);   // v5.1.807: ⏰データベースが無ければ起動時に作っておく(押した時すぐ行ける)   // v5.0.0-63: 🍎を macOS に合わせる(起動の8秒後に一度)
+  setTimeout(() => { try { meosTimerDbAtStart(); } catch (_) { } }, 8000);
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e && e.textEditor === vscode.window.activeTextEditor) { clearTimeout(_meosWakeOpenT); _meosWakeOpenT = setTimeout(() => meosUnfoldWakeIn(e.textEditor), 400); } } catch (_) { } }));   // v5.1.813: 🌅は開いたまま   // v5.1.807: ⏰データベースが無ければ起動時に作っておく(押した時すぐ行ける)   // v5.0.0-63: 🍎を macOS に合わせる(起動の8秒後に一度)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.newLaunchD', async () => {
     const ed = vscode.window.activeTextEditor; if (!ed) { vscode.window.showInformationMessage('MeOS: open a Markdown file first.'); return; }
     const id = '🌅LaunchD_' + meosMembraneStamp(new Date());
