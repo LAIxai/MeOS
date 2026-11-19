@@ -15215,7 +15215,9 @@ function meosPuzzleArmMods(m) {
     if (wasHolding && _meosArm.on && !_meosArm.offT) _meosArm.offT = setTimeout(() => { _meosArm.offT = null; meosPuzzleArmSet(false); }, Math.max(MEOS_ARM_GRACE * 1000, Math.min(MEOS_ARM_MAX, held)));   // v5.1.378: 押した長さだけ字を待つ
   } catch (_) { }
 }
-function meosRealHost() { try { return !!(process.versions && process.versions.electron); } catch (_) { return false; } }
+// ★v5.1.832(俊克 pm07:44「なぜ時々、メニューバーが再描画されるのか?」): 私の試験用 VSCodium(--extensionDevelopmentPath)も本物と見て、同じ V-helper の置き場(state.json)へ自分の⏰の表を書き、閉じる時に引き渡していた= 起動/⏸️/終了のたびに俊克のメニューバーが描き直された。
+//   → 開発用の窓(extensionMode=Development)は本物の機械に触らない。試験で V-helper を触りたい時だけ MEOS_REAL_HOST=1
+function meosRealHost() { try { if (!(process.versions && process.versions.electron)) return false; if (process.env.MEOS_REAL_HOST === '1') return true; return !(extensionContext && extensionContext.extensionMode === 2); } catch (_) { return false; } }
 // ★v5.1.367: MW-GATE ロゴ(v5.1.368: 俊克の絵 mGATEver2(v5.1.369 pm06:53「mGATEver2.pngにしよう」) = media/logo/mgate-original.png を縮めただけ・l/d 同じ)をヘルパーの置き場へ写す= VSCodium を閉じていても、版が替わって古い拡張の所が消えても読める
 function meosGateLogoCopy(dir) {
   try { const fs = require('fs'), path = require('path'); fs.mkdirSync(dir, { recursive: true });
