@@ -12796,7 +12796,7 @@ function meosTimerDbMovePlan(doc, openLine) {
 //   実測(11.19 08:30)= 1回目の押し(:23)は edit が返らず、2回目(:49)と一緒に :51 に2つ作った(重複)。editor.edit は窓の都合を待つ→ WorkspaceEdit で文書に直接書く。
 //   同じ文書へ同時に2つ作らない(作っている間の2回目は、その終わりを待つ)。起動の8秒後にも、mMETA の在る日記で無ければ作る(移動はしない)。
 const _meosTimerDbMaking = new Map();
-function meosTimerDbLineOf(doc) { for (let i = 0; i < doc.lineCount; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf(MEOS_TIMER_DB_PREFIX) < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsTimerDbKey(o.id)) return i; } catch (_) { } } return -1; }
+function meosTimerDbLineOf(doc) { for (let i = doc.lineCount - 1; i >= 0; i--) {   /* v5.1.822: 下から(データベースは mMETA の手前= 日記の末尾) */ const t = doc.lineAt(i).text || ''; if (t.indexOf(MEOS_TIMER_DB_PREFIX) < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsTimerDbKey(o.id)) return i; } catch (_) { } } return -1; }
 function meosTimerDbEnsure(doc, why) {
   const k = doc.uri.toString(); if (_meosTimerDbMaking.has(k)) return _meosTimerDbMaking.get(k);
   const job = (async () => { try {
@@ -12842,11 +12842,11 @@ async function meosOpenTimerDb() {
     let ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
     if (!ed || ed.document.languageId !== 'markdown') ed = (vscode.window.visibleTextEditors || []).find(e => e.document.languageId === 'markdown') || ed;
     if (!ed || ed.document.languageId !== 'markdown') { vscode.window.showInformationMessage('MeOS ⏰: open a diary (.md) first — the timer database lives in it.'); return; }
-    const doc = ed.document, all = doc.getText();
+    const doc = ed.document, _t0 = Date.now(), _eolD = (doc.eol === 2 ? '\r\n' : '\n');   // ★v5.1.822(俊克 821「メニューを出してすぐ押しても4、5秒」・実測= 受けてからワープまで2.7秒): 13M字の getText と上からの37万行走査をやめる
     // ★v5.1.93(俊克 10.20 am08:45 バグ1「mMETAの手前にしようと言ったのに、なぜ中途半端な位置に?」):
     //   真因= mMETA の開始膜を「字」で探していた(indexOf の最初の1つ)= 本文に引用された同じ字の所へ入れていた。
     //   → 膜の行として読める物だけを見る(isHtocMetaOpenAt / parseOpenLine)。mMETA は日記の末尾に居るので、下から探して最初の本物。
-    const _dbLine = () => { for (let i = 0; i < doc.lineCount; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf(MEOS_TIMER_DB_PREFIX) < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsTimerDbKey(o.id)) return i; } catch (_) { } } return -1; };
+    const _dbLine = () => { for (let i = doc.lineCount - 1; i >= 0; i--) { const t = doc.lineAt(i).text || ''; if (t.indexOf(MEOS_TIMER_DB_PREFIX) < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsTimerDbKey(o.id)) return i; } catch (_) { } } return -1; };
     let line = _dbLine();
     if (line < 0) { await meosTimerDbEnsure(doc, 'メニュー'); line = _dbLine(); }   // 押した時は無い時だけ(🌅の見本を足すのは起動時= 押す度に37万行を数えない)   // ★v5.1.807: 作るのは1つの口(起動時と同じ)
     // ★v5.1.95(俊克 10.20 am10:12 バグ1「なぜまだ、mMETAの手前に移動しないのか?」): 5.1.93 は「無ければ mMETA の手前に作る」だけで、
@@ -12856,7 +12856,7 @@ async function meosOpenTimerDb() {
       try {
         const mv = meosTimerDbMovePlan(doc, line);
         if (mv) {
-          const eol = _vaultEol(all);
+          const eol = _eolD;
           const body = []; for (let i = mv.from; i < mv.blockEnd; i++) body.push(doc.lineAt(i).text);
           const we = new vscode.WorkspaceEdit();
           we.insert(doc.uri, new vscode.Position(mv.mmLine, 0), body.join(eol) + eol + eol);
@@ -12876,7 +12876,7 @@ async function meosOpenTimerDb() {
           const _be = meosTimerDbBlockEnd(doc, _cl);
           let _has = false; for (let i = _cl + 1; i < _be; i++) if (MEOS_CHAIN_RE.test(doc.lineAt(i).text || '')) { _has = true; break; }
           if (!_has) {
-            const eol = _vaultEol(doc.getText());
+            const eol = _eolD;
             const we = new vscode.WorkspaceEdit();
             we.insert(doc.uri, new vscode.Position(_be - 1, (doc.lineAt(_be - 1).text || '').length), eol + [MEOS_TIMER_DB_RULE].concat(meosTimerDbChainExLines()).join(eol))   // v5.1.113: 足す例の前にも区切り;
             const okEx = await vscode.workspace.applyEdit(we);
@@ -12887,7 +12887,9 @@ async function meosOpenTimerDb() {
       } catch (e) { meosDbg('[timerDb] 例 err ' + (e && e.message)); }
     }
     if (line < 0) return;
+    const _t1 = Date.now();
     await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false });
+    meosDbg('[timerDb] 行先まで ' + (_t1 - _t0) + 'ms 窓を出すまで ' + (Date.now() - _t1) + 'ms 行=' + (line + 1));
     const e2 = vscode.window.activeTextEditor || ed;
     const tgt = new vscode.Position(Math.min(doc.lineCount - 1, line + 1), 0);
     e2.selection = new vscode.Selection(tgt, tgt);
