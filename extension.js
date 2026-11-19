@@ -12784,6 +12784,31 @@ function meosTimerDbMovePlan(doc, openLine) {
   let from = openLine;
   return { from, blockEnd, to, mmLine };
 }
+// ★v5.1.807(俊克 11.19 am08:45 改良1「⏰データベースを削除して、メニューを押しても10秒以上かかった。起動した時に有無を確かめ、無ければ書いておけば、押した時すぐ移動できる」):
+//   実測(11.19 08:30)= 1回目の押し(:23)は edit が返らず、2回目(:49)と一緒に :51 に2つ作った(重複)。editor.edit は窓の都合を待つ→ WorkspaceEdit で文書に直接書く。
+//   同じ文書へ同時に2つ作らない(作っている間の2回目は、その終わりを待つ)。起動の8秒後にも、mMETA の在る日記で無ければ作る(移動はしない)。
+const _meosTimerDbMaking = new Map();
+function meosTimerDbLineOf(doc) { for (let i = 0; i < doc.lineCount; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf(MEOS_TIMER_DB_PREFIX) < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsTimerDbKey(o.id)) return i; } catch (_) { } } return -1; }
+function meosTimerDbEnsure(doc, why) {
+  const k = doc.uri.toString(); if (_meosTimerDbMaking.has(k)) return _meosTimerDbMaking.get(k);
+  const job = (async () => { try {
+    if (meosTimerDbLineOf(doc) >= 0) return;
+    const t0 = Date.now(), eol = _vaultEol(doc.getText()), db = meosTimerDbText(eol, meosLaunchDWanted());
+    let mmLine = -1; for (let i = doc.lineCount - 1; i >= 0; i--) { if (isHtocMetaOpenAt(doc, i)) { mmLine = i; break; } }
+    const we = new vscode.WorkspaceEdit();
+    if (mmLine >= 0) we.insert(doc.uri, new vscode.Position(mmLine, 0), db.text + eol + eol);
+    else { const last = doc.lineCount - 1; we.insert(doc.uri, new vscode.Position(last, (doc.lineAt(last).text || '').length), eol + eol + db.text + eol); }
+    const ok = await vscode.workspace.applyEdit(we);
+    meosDbg('[timerDb] 作った(' + why + ') ' + db.id + ' mMETA行=' + (mmLine + 1) + ' ok=' + ok + ' ' + (Date.now() - t0) + 'ms');
+  } catch (e) { meosDbg('[timerDb] 作る err ' + (e && e.message)); } finally { _meosTimerDbMaking.delete(k); } })();
+  _meosTimerDbMaking.set(k, job); return job;
+}
+function meosTimerDbAtStart() {   // 起動時: 見えている md のうち mMETA の在る日記(下から2000行に mMETA)だけ
+  try { if (!meosRealHost()) return;
+    for (const e of vscode.window.visibleTextEditors || []) { const d = e.document; if (!d || d.languageId !== 'markdown') continue;
+      let mm = false; for (let i = d.lineCount - 1; i >= Math.max(0, d.lineCount - 2000); i--) if (isHtocMetaOpenAt(d, i)) { mm = true; break; }
+      if (mm && meosTimerDbLineOf(d) < 0) meosTimerDbEnsure(d, '起動'); } } catch (_) { }
+}
 async function meosOpenTimerDb() {
   try {
     let ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
@@ -12795,17 +12820,7 @@ async function meosOpenTimerDb() {
     //   → 膜の行として読める物だけを見る(isHtocMetaOpenAt / parseOpenLine)。mMETA は日記の末尾に居るので、下から探して最初の本物。
     const _dbLine = () => { for (let i = 0; i < doc.lineCount; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf(MEOS_TIMER_DB_PREFIX) < 0) continue; try { const o = parseOpenLine(t); if (o && meosIsTimerDbKey(o.id)) return i; } catch (_) { } } return -1; };
     let line = _dbLine();
-    if (line < 0) {
-      const eol = _vaultEol(all);
-      const db = meosTimerDbText(eol, meosLaunchDWanted());
-      let mmLine = -1;
-      for (let i = doc.lineCount - 1; i >= 0; i--) { if (isHtocMetaOpenAt(doc, i)) { mmLine = i; break; } }
-      let pos;
-      if (mmLine >= 0) { pos = new vscode.Position(mmLine, 0); await ed.edit(eb => eb.insert(pos, db.text + eol + eol)); }
-      else { const last = doc.lineCount - 1; pos = new vscode.Position(last, (doc.lineAt(last).text || '').length); await ed.edit(eb => eb.insert(pos, eol + eol + db.text + eol)); }
-      meosDbg('[timerDb] 作った ' + db.id + ' mMETA行=' + (mmLine + 1));
-      line = _dbLine();
-    }
+    if (line < 0) { await meosTimerDbEnsure(doc, 'メニュー'); line = _dbLine(); }   // ★v5.1.807: 作るのは1つの口(起動時と同じ)
     // ★v5.1.95(俊克 10.20 am10:12 バグ1「なぜまだ、mMETAの手前に移動しないのか?」): 5.1.93 は「無ければ mMETA の手前に作る」だけで、
     //   既に違う所に在る膜は動かさなかった(消せば作り直す、と言っただけ)。→ 押した時に mMETA の手前でなければ、膜ごと(⏰の行まで)そこへ移す。
     //   走っている⏰も覚えは膜の名前で持っているので、行が動いても止まらない(行は走査のたびに読み直す)。
@@ -24904,9 +24919,13 @@ function meosLaunchDSample(id) {
     '<!-- {* \u25b2mCN=' + id + ' *} -->',
     meosPairBadgeLineText(id, '', '(📊⊕0+0D1O)'),   // v5.1.495(俊克「灰色は地味過ぎるので橙色に。朝に起動するのが普通だから」): O= 橙
       // ★v5.1.493(俊克 バグ1「New.md①で、システム起動用の膜にバッジFCが付いてない→残り時間が出ない」): ⏰の残り時間はバッジ行に出る
+    // ★v5.1.807(俊克 11.19「月曜〜木曜・金曜・土日の例がいい。毎日同じの例も。もう1つくらい別の例」): ①月〜木/金/土日の3行の組 ②毎日 ③平日と週末の2行の組
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWt 07:00 \u26d3\ufe0f\u2935\ufe0f // WT -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baF 06:30 \u26d3\ufe0f\u2935\ufe0f // WT -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:30 \u26d3\ufe0f\u2934\ufe0f3)\u00d7\u221e // WT -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // WT -->',
     '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 \u26d3\ufe0f\u2935\ufe0f // WT -->',   // v5.1.497: 平日と週末を ⛓️ で1組(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
-    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 \u26d3\ufe0f\u2934\ufe0f)\u00d7\u221e // WT -->',
-    '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // WT -->', ''].join('\n');
+    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 \u26d3\ufe0f\u2934\ufe0f)\u00d7\u221e // WT -->', ''].join('\n');
 }
 function meosLaunchDNewest() {
   let newest = null;
@@ -48083,7 +48102,8 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));
   // ★v5.0.0-58: 🌅LaunchD の見本を書く(俊克「標準的な例をデフォルトで用意しておけば、わずかな修正で使える」)。カーソルの行の上に置く。
-  setTimeout(() => { try { meosLaunchDMarksAtStart(); } catch (_) { } }, 8000);   // v5.0.0-63: 🍎を macOS に合わせる(起動の8秒後に一度)
+  setTimeout(() => { try { meosLaunchDMarksAtStart(); } catch (_) { } }, 8000);
+  setTimeout(() => { try { meosTimerDbAtStart(); } catch (_) { } }, 8000);   // v5.1.807: ⏰データベースが無ければ起動時に作っておく(押した時すぐ行ける)   // v5.0.0-63: 🍎を macOS に合わせる(起動の8秒後に一度)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.newLaunchD', async () => {
     const ed = vscode.window.activeTextEditor; if (!ed) { vscode.window.showInformationMessage('MeOS: open a Markdown file first.'); return; }
     const id = '🌅LaunchD_' + meosMembraneStamp(new Date());
