@@ -272,6 +272,16 @@ it, even to next year, press ▶️, and the length is rewritten to ring then, c
 is the bridge between the two ways of saying it. To add a day, change the `d`; when the date itself moves, pause and change
 the `dd`. ① starts it at one hour — set it roughly, or to the minute; it is up to you.
 
+**Pause, and only what you can change is left.** Press ⏸️ and the line clears down to ▶️ and three boxes: green for
+the length, red for the moment it rings (`dd=`), blue for the title — the words the menu bar shows. The cursor is
+already in the red box. Change either the length or the moment — MeOS works out the other — and press ▶️ to carry on.
+The old way still works: put the cursor on the ⏰ line and edit `↺↻(…)` or `dd=…` in Raw view by hand.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.1-oneshot-timer.png" alt="How to use a one-shot timer - press pause on a running one-hour timer; the line clears down to the play button and three boxes: the length (0y1d7h20m52s)x2 in green, dd=11/21(F)am09:00 in red and the title Time up in blue, which the menu bar also shows; set either the length or the end time, then press play to start" width="80%"><br>
+  <sub><b>NEW in v5.1 — a one-shot timer, paused.</b> ⏸️ leaves ▶️ and three boxes: the length, the end time, the title. Set either the length or the end time, then press ▶️.</sub>
+</p>
+
 **The version tells you what changed.** Most apps show a version number, and when it goes up you have to remember
 the old one to see which digit moved. After MeOS updates itself, the digits that changed blink in the version under
 ♥ in mGATE (macOS) and in the Me Dock header — big and red three times — and then stay red for an hour. Look away
