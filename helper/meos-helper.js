@@ -356,7 +356,7 @@ function run(argv) {
   // ★v5.1.330(俊克 10.30 am11:23 バグ1「スクショを macOS のプレビューの『削除』で捨てた後、メニューバーが開かなくなった・前の版も同じ所で」): 測る口= 開く/閉じる/Optで取り消した/作り直した を events.log へ([menu])
   ObjC.registerSubclass({ name: 'MeOSMenuDelH', protocols: ['NSMenuDelegate'], methods: { 'menuWillOpen:': { types: ['void', ['id']], implementation: function (m) {
     let fl = 0; try { fl = Number($.NSEvent.modifierFlags); } catch (e) {}
-    menuOpenAt = Date.now(); menuUp = true; menuTracked = false; menuHi = '';   // v5.1.619 / v5.1.821: 光るまでは手を描かない
+    menuOpenAt = Date.now(); menuUp = true; menuTracked = false; menuHi = ''; try { fastSet(true); } catch (e) {}   // v5.1.619 / v5.1.821: 光るまでは手を描かない
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
@@ -1022,6 +1022,18 @@ function run(argv) {
       const dn = dockOutCnt(1); if (dn === logoCmd.dn) return; logoCmd.dn = dn;
     if ((Number($.NSEvent.modifierFlags) & 0x100000) === 0) return; if (pieceHit() !== '\u0000logo') return; hlog('[menu] 札のロゴを Cmd クリック→ エディターを終える'); edQuit(); } catch (e) {} } } } });
   try { logoCmd.tg = $.MeOSLogoCmdT.alloc.init; logoCmd.t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.03, logoCmd.tg, 'tick:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(logoCmd.t, $.NSRunLoopCommonModes); } catch (e) {}
+  // ★v5.1.828(俊克 pm02:10「ブランチの間に進めておいて」・826 実測= 見回り(0.5秒)は3%・残りの約12%は速いタイマーが1秒に20〜50回起きる手間そのもの):
+  //   ポインターが mGATE にも札にも近くない・メニューも閉じている・掴み/押し/点滅も無い間は、速いタイマー3本(mGATE 0.02秒・手 0.05秒・ロゴ 0.03秒)を止める。
+  //   0.2秒ごとの位置読み1本で見張り、近づいたら作り直す(作り直す時に押した数を読み直す= 遠くの押しを数えない)
+  const fastCtl = { on: true, n: 0 };
+  const fastWant = () => { try { return menuUp || !!dockOut.drag || !!dockOut.glide || !!dockOut.prLive || dockOut.downAt !== -1 || !!dockOut.vb || nearBar() || nearGate(); } catch (e) { return true; } };
+  const fastSet = (on) => { if (on !== fastCtl.on) { fastCtl.on = on; fastCtl.n++; }   /* 覚えでなく今の姿と突き合わせる(mGATE を出した時に別の道で作られたタイマーも止める) */
+    if (!on) { try { if (logoCmd.t) { logoCmd.t.invalidate; logoCmd.t = null; } } catch (e) {} try { if (cycHovTimer) { cycHovTimer.invalidate; cycHovTimer = null; fastCtl.cyc = true; } } catch (e) {} try { if (dockOut.ft) { dockOut.ft.invalidate; dockOut.ft = null; } } catch (e) {} try { if (handOn || arrOn || moveOn) { handOn = false; arrOn = false; moveOn = false; $.NSCursor.arrowCursor.set; } } catch (e) {} return; }   /* 止める */
+    try { if (!logoCmd.t) { logoCmd.dn = -1; logoCmd.t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.03, logoCmd.tg, 'tick:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(logoCmd.t, $.NSRunLoopCommonModes); } } catch (e) {}
+    try { if (fastCtl.cyc && !cycHovTimer) { cycHovTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.05, pgt, 'cycHov:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(cycHovTimer, $.NSRunLoopCommonModes); } } catch (e) {}
+    try { if (dockOut.shown && !dockOut.ft) { try { dockOutDrain(); } catch (e) {} dockOut.dnN = dockOutCnt(1); dockOut.upN = dockOutCnt(2); try { dockOut.prLive = (Number($.NSEvent.pressedMouseButtons) & 1) !== 0; } catch (e) {} dockOut.downAt = -1; dockOut.far = false; dockOut.ft = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.02, dockOutTgt, 'fast:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(dockOut.ft, $.NSRunLoopCommonModes); } } catch (e) {} };
+  ObjC.registerSubclass({ name: 'MeOSFastGateT', methods: { 'gate:': { types: ['void', ['id']], implementation: function (t) { try { fastSet(fastWant()); } catch (e) {} } } } });
+  try { fastCtl.tg = $.MeOSFastGateT.alloc.init; fastCtl.t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.2, fastCtl.tg, 'gate:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(fastCtl.t, $.NSRunLoopCommonModes); } catch (e) {}
   const dockOutBuild = () => { if (dockOut.win) return dockOut.win; const n = 8, W = DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP, H = DO_TH + DO_PAD * 2, rc = $.NSMakeRect(0, 0, W, H);
     const w = $.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(rc, 128, 2, false);   // 128= 前に出ない窓(枠なし)
     w.level = 101; w.opaque = false; w.backgroundColor = $.NSColor.clearColor; w.hasShadow = true; w.hidesOnDeactivate = false; w.becomesKeyOnlyIfNeeded = true; w.floatingPanel = true; w.collectionBehavior = 1 | 16 | 256;
@@ -1336,7 +1348,7 @@ function run(argv) {
 // {* ▼mCN=1700_TICKERS // タイマー / puzzle-last の読み取り / 構え armTick / ポインターを運ぶ warpPtr / 修飾キー (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
   // ★v4.2.333(俊克 改良2「メニューを出しているとき、メニューバーの残時間が止まってしまう」): メニューを開いている間は macOS が
   //   runUntilDate を返さない(メニューの追跡の間は別の走り方)。→ 描く仕事を『どの走り方でも鳴る』タイマー(CommonModes)に載せる。
-  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { const t0 = Date.now(); try { step(); } catch (e) {} const t1 = Date.now(); if (menuUp) { busyOpen.tick += t1 - t0; busyOpen.tickN++; } costMin.ms += t1 - t0; costMin.n++; if (t1 - costMin.at >= 60000) { try { hlog('[cost] 見回り 60秒で ' + costMin.ms + 'ms / ' + costMin.n + '回(1回 ' + Math.round(costMin.ms / Math.max(1, costMin.n)) + 'ms)= 手の ' + Math.round(costMin.ms / (t1 - costMin.at) * 100) + '%'); } catch (e) {} costMin.at = t1; costMin.ms = 0; costMin.n = 0; }   /* v5.1.826 計測 */ try { cycIdle(); } catch (e) {} const t2 = Date.now(); if (t2 - t0 > 100) try { hlog('[slow] tick step=' + (t1 - t0) + 'ms cycIdle=' + (t2 - t1) + 'ms'); } catch (e) {} } },   // v5.1.767: 測り(100ms超えだけ)
+  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { const t0 = Date.now(); try { step(); } catch (e) {} const t1 = Date.now(); if (menuUp) { busyOpen.tick += t1 - t0; busyOpen.tickN++; } costMin.ms += t1 - t0; costMin.n++; if (t1 - costMin.at >= 60000) { try { hlog('[cost] 見回り 60秒で ' + costMin.ms + 'ms / ' + costMin.n + '回(1回 ' + Math.round(costMin.ms / Math.max(1, costMin.n)) + 'ms)= 手の ' + Math.round(costMin.ms / (t1 - costMin.at) * 100) + '% 速い見張り=' + (fastCtl.on ? '動' : '休') + ' 切替' + fastCtl.n + '回'); fastCtl.n = 0; } catch (e) {} costMin.at = t1; costMin.ms = 0; costMin.n = 0; }   /* v5.1.826 計測 */ try { cycIdle(); } catch (e) {} const t2 = Date.now(); if (t2 - t0 > 100) try { hlog('[slow] tick step=' + (t1 - t0) + 'ms cycIdle=' + (t2 - t1) + 'ms'); } catch (e) {} } },   // v5.1.767: 測り(100ms超えだけ)
     'mods:': { types: ['void', ['id']], implementation: function (t) { const t0 = Date.now(); try { modsTick(); } catch (e) {} const d = Date.now() - t0; if (d > 100) try { hlog('[slow] mods ' + d + 'ms'); } catch (e) {} } },
     'bell:': { types: ['void', ['id']], implementation: function (t) { try { if (ringing && Date.now() < ringing.until) { playBell(); if (isGk()) armGk(); else if (isGrowl() || isPurrF()) armGrowl(); } } catch (e) {} } } } });
   const ticker = $.MeOSTickH.alloc.init;
