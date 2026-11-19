@@ -7643,7 +7643,10 @@ async function meosDdCycleSync(doc) {
         continue;
       }
       if (ddEd && !cycEd) {   // dd→ 周期
-        const D = meosClockDdParse(q[2]); if (!D) continue; if (Math.floor(D / 60000) === Math.floor((v.end || 0) / 60000)) { v.face = q[2]; continue; }
+        const D = meosClockDdParse(q[2]); if (!D) continue;
+        // ★v5.1.838(俊克 11.20 am02:36「11/21(F)は間違いで、11/21(s)とすべき。なぜここだけ変換が間違ったのか」): 読む口は曜日を見ない(日付が真実)ので、日を直しても曜日の字は▶️まで古いまま残った。→ 日付が変わったら曜日の字も日付に合わせて書き直す(この後の周期の書き直しは次の回)
+        { const w = /\(([SMTWtFs])\)/.exec(q[2]), wd = 'SMTWtFs'[new Date(D).getDay()]; if (w && w[1] !== wd) { const p0 = q.index + q[1].length + 3 + w.index + 1; const ok = doc.version === ver && await put(p0, p0 + 1, wd); meosDbg('[dd] 曜日を日付に合わせた ' + w[1] + '→' + wd + ' ok=' + !!ok + ' key=' + v.key); meosDdCycleSyncSoon(doc); continue; } }
+        if (Math.floor(D / 60000) === Math.floor((v.end || 0) / 60000)) { v.face = q[2]; continue; }
         const own = cur.when ? ((meosParseStampLoose(cur.when) || { getTime: () => 0 }).getTime()) : 0, org = own || v.base; if (!org || !(D > org)) continue;
         const T0 = meosCycleMs(cycNow), k = Math.max(1, Math.floor(((v.at || Date.now()) - org) / T0) + 1), step = meosClockFmtCycle(Math.ceil((D - org) / k / 1000) * 1000);
         if (step === cycNow) { v.face = q[2]; v.end = D; continue; }
