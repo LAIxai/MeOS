@@ -38525,7 +38525,10 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'fusenColor') { try { if (MEOS_FUSEN_COLORS[message.c]) await extensionContext.globalState.update('meosFusenColor', message.c); } catch (_) {} return; }   // v5.1.315: 次に取る付箋の色
     if (message && message.type === 'fmtCodeMode') { try { extensionContext.globalState.update('fmtCodeMode', Math.max(0, Math.min(3, Number(message.mode) || 0))); } catch (_) {} return; }   // v5.1.286: fmtCodeFence(真偽)の後継= 0〜3
     if (message && message.type === 'formatTable') {
-      await meosFormatTableAtCursor(getMeDockTargetEditor() || vscode.window.activeTextEditor);
+      const _ft = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+      await meosFormatTableAtCursor(_ft);
+      // ★v5.1.827(俊克 11.19 pm01:55「緑の表ボタンを押して整形すると砂色に変わる。押したらエディターをアクティブにすれば、緑のままで表の中の修正もできる」): 押した後は焦点をエディターへ戻す
+      try { if (_ft) { const _fr = vscode.window.activeTextEditor; if (_fr && _fr.document === _ft.document) await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); else await vscode.window.showTextDocument(_ft.document, { viewColumn: _ft.viewColumn, preserveFocus: false }); meosUpdateInTableContext(vscode.window.activeTextEditor || _ft); } } catch (_) { }
       return;
     }
     if (message && message.type === 'recalcAll') { await meosRecalcAllInScope(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v3.1.64: 膜内の全テーブルを再計算
@@ -48140,7 +48143,7 @@ function activate(context) {
   //   ★シフト同時押しで起きないのは、選択を作る鍵に MeOS が一切割り込んでいないから(v0.9.216以来)。
   const _meosCaretNow = (ed) => ({ ln: ed.selection.active.line, ch: ed.selection.active.character });
   const _meosPass = (cmd) => { vscode.commands.executeCommand(cmd); };
-  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (ed) meosUpdateInTableContext(ed); }));   // v5.1.827: Me Dock を押して焦点が移った(エディターが無くなった)だけでは「表の外」にしない(表ボタンが砂色に変わっていた)
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => { _meosPuzzleDotsLast = null; meosPostPuzzleDots(false); }));   // v4.2.593
   context.subscriptions.push(vscode.window.onDidChangeActiveColorTheme(() => { try { if (_meosThemeOrig == null) meosThemeRemember(meosThemeNow()); meosThemePost(); } catch (_) { } try { const _ed = vscode.window.activeTextEditor; if (_ed) meosApplyTimerLineDecorations(_ed); } catch (_) { } }));   // v5.1.757: 停止線の灰もテーマに合わせて描き直す   // v4.2.243: VS Codeのメニューで替えてもダーク/ライトの控えを取る(試し着せの間は取らない)
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeSpanDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeFenceDecorations(e.textEditor); } catch (_) {} try { meosApplyQuoteDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
