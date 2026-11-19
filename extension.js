@@ -12888,7 +12888,9 @@ async function meosOpenTimerDb() {
     }
     if (line < 0) return;
     const _t1 = Date.now();
-    await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false });
+    // ★v5.1.825(俊克 824「Database で移動した後、マウスの動きが超遅くなり10秒くらいで復帰」・実測= 窓を出すまで 37775ms): 既に手前に出ている日記でも showTextDocument を頼んでいた= 37万行の文書を出し直して VSCodium ごと固まった→ 手前に出ていれば頼まない
+    const _front = vscode.window.activeTextEditor;
+    if (!(_front && _front.document === doc)) await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false }); else { try { await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); } catch (_) { } }
     meosDbg('[timerDb] 行先まで ' + (_t1 - _t0) + 'ms 窓を出すまで ' + (Date.now() - _t1) + 'ms 行=' + (line + 1));
     const e2 = vscode.window.activeTextEditor || ed;
     const tgt = new vscode.Position(Math.min(doc.lineCount - 1, line + 1), 0);
@@ -17520,8 +17522,10 @@ async function meosJumpToScope(scope, byBell) {
     if (byBell && meosIsFusenClockKey(scope.key)) { try { const _fr0 = vscode.window.activeTextEditor; if (_fr0) meosNoteReturnMark(_fr0, meosMembraneNameAtLine(_fr0.document, _fr0.selection.active.line)); } catch (_) { } await meosFusenLand({ k: 'c', uri: doc.uri, line: rng.from, ch: 0, ts: String(scope.key).replace(/^FUSEN_/, '').replace(/\D/g, '').slice(0, 14) }); _meosLastJumpLine = Math.max(0, rng.from - 1); _meosLastJump = 'went to FUSEN ' + (rng.from + 1); return; }
     const from = vscode.window.activeTextEditor;
     try { if (byBell && from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
-    const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });
-    try { meosDbg('[jump] ' + (scope.key || '') + ' 範囲=' + rng.from + '〜' + rng.to + ' 焦点=' + (vscode.window.state && vscode.window.state.focused) + ' 鐘=' + !!byBell); } catch (_) { }   // v5.1.806 計測
+    const _fr825 = vscode.window.activeTextEditor, _tj = Date.now();
+    if (_fr825 && _fr825.document === doc) { try { await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); } catch (_) { } }
+    const ed = (_fr825 && _fr825.document === doc) ? _fr825 : await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });   // v5.1.825: 手前に出ていれば出し直さない(37万行で37秒固まった)
+    try { meosDbg('[jump] 窓 ' + (Date.now() - _tj) + 'ms ' + (scope.key || '') + ' 範囲=' + rng.from + '〜' + rng.to + ' 焦点=' + (vscode.window.state && vscode.window.state.focused) + ' 鐘=' + !!byBell); } catch (_) { }   // v5.1.806 計測
     try { if (ed && ed.selection) pushMeDockLineHistory(ed, ed.selection.active.line); } catch (_) { }
     // ★★★v4.1.38(俊克「なぜ、⏰リストをクリックして、その**間違って設定した場所にワープしない**のか?
     //   なぜ検索して見つけないといけないのか? **誰でも、このミスを犯すことがある**からね」):
