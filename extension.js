@@ -15507,7 +15507,7 @@ function meosDdTitleSpan(t) {
 }
 const MEOS_DD_SPAN_ORDER = ['cyc', 'dd', 'ttl'];
 // ★v5.1.830(俊克 829 バグ1「赤い枠をクリックしたのに青の枠に文字カーソル」バグ2「その後、赤と青の枠をクリックしても文字カーソルが移動しない」): 窓の絵の根(押すと落ちる桁)= 緑は⏰・赤は⏰の次・青は⏰の後ろの最初の空白(⏸N の次)。青は緑と同じ⏰の桁に根を張っていて、押すと周期と読まれた
-function meosDdWinAt(w, c) { return !w ? null : c === w.a ? 'cyc' : c === w.a + 1 ? 'dd' : (w.t != null && c === w.t) ? 'ttl' : null; }   // v5.1.779: 窓の並び(左→右)= ←→で渡る順
+function meosDdWinAt(w, c) { return !w ? null : (w.c != null ? c === w.c : c === w.a) ? 'cyc' : c === w.a + 1 ? 'dd' : (w.t != null && c === w.t) ? 'ttl' : null; }   // v5.1.779: 窓の並び(左→右)= ←→で渡る順
 // ★v5.1.731(俊克 730 改良3「pm0 の右端なら外側に文字カーソルが出ない。pm06 の右端なら僅かに見える」「スペースを4文字足して、四角枠はそのままで止めれば、うまく行くんじゃないか?」):
 //   dd が行の最後の字だと、尻の桁=行末で本物のカーソルが描かれる。→ 窓で直す間だけ行末に空白4つを足し(隠す)、窓を出たら外す。窓とキーの範囲は dd の字まで
 const _meosDdPad = new Set(); const MEOS_DD_PAD = 15;   // ★v5.1.733(俊克 732「全く変わらない。Rawデータの折返しがそこまでしかないからだ。Rawデータを水増しすれば」): 空白は折り返しの段の外へぶら下がり段を延ばさない→ 折れない空白(U+00A0)で dd の語ごと延ばす(\S にも当たらない= dd=\S+ は壊れない) / v5.1.732(俊克 pm07:09「極端に10〜15文字くらいスペースを足して試そう」): 4→15
@@ -15580,7 +15580,7 @@ function meosDdDummySync(ed, i, txt, want) {
       const done = () => _meosDdDummyBusy.delete(key);
       ed.edit(eb => { if (need) { if (i + 1 < doc.lineCount) eb.insert(new vscode.Position(i + 1, 0), MEOS_DD_DUMMY + '\n'); else eb.insert(doc.lineAt(i).range.end, '\n' + MEOS_DD_DUMMY); }
         else { if (i + 2 < doc.lineCount) eb.delete(new vscode.Range(i + 1, 0, i + 2, 0)); else eb.delete(new vscode.Range(doc.lineAt(i).range.end, doc.lineAt(i + 1).range.end)); } }, { undoStopBefore: false, undoStopAfter: false }).then(done, done);
-      meosDbg('[dd] ダミー行 ' + (need ? '足す' : '外す') + ' 行=' + (i + 2)); } catch (_) { _meosDdDummyBusy.delete(key); } }, 0);
+      meosDbg('[dd] ダミー行 ' + (need ? '足す' : '外す') + ' 行=' + (i + 2)); } catch (_) { _meosDdDummyBusy.delete(key); } }, need ? 0 : 700);   // ★v5.1.835(試験台の実測): 窓から▶️を押すと、外すのが▶️の書き換えと同時に走り ▶️が「★書けなかった」→ 外すのは0.7秒待つ(その間に本文が変われば見送り、次の描き直しで外す)
   } catch (_) { }
 }
 const MEOS_DD_REACH_CH = 60;   // v5.1.830: 窓の段を延ばす幅(字)
@@ -15606,7 +15606,7 @@ function meosDdPeekWindows(doc, i, txt, items, caret, selA) {   // ★v5.1.721: 
   if (_cy) { const s = _cy.index + _cy[0].search(/[^↺↻]/), e = _cy.index + _cy[0].length; win.cyc = [s, e];
     // ★v5.1.737(俊克 736 改良1「橙枠を緑枠の段に移動して横並びにしたら、見た目が整う」): dd の窓がある時は、橙の窓を緑の窓(dd の字+右の余白4字)の右へ1字空けて並べる。緑は動かさない(本物のカーソルを覆う位置)
     let qc = null; if (_dq) { const ds = _dq.index + _dq[1].length, dq0 = at(ds); qc = { r: dq0.r, x: dq0.x }; }   // ★v5.1.738(俊克 737 改良1「橙枠が右側になった。順番は逆の方が良い」): 橙を段の頭・緑をその右へ(本物の字の順)
-    put(s, e, a, '63,185,80', qc); }   // ★v5.1.788(俊克 11.18 am00:37「3つの枠の色は緑/赤/青の固定でいい。文字カーソルの色が橙なので三色国旗も緑/赤/青に。赤と橙が似ているので真中が赤」): 周期= 緑
+    win.c = s; put(s, e, s, '63,185,80', qc); }   // ★v5.1.835(俊克 834 改良1「再生ボタンが見えているのに押せないのは理不尽」): 緑の根は⏰の桁(=▶️の当たり 0〜13)だった= ▶️を押すと緑と読まれ周期へ引き戻された→ 根を周期の字の頭へ   // ★v5.1.788(俊克 11.18 am00:37「3つの枠の色は緑/赤/青の固定でいい。文字カーソルの色が橙なので三色国旗も緑/赤/青に。赤と橙が似ているので真中が赤」): 周期= 緑
   if (_dq) { const s = _dq.index + _dq[1].length, e = s + _dq[2].length; win.dd = [s, e];
     let today = false; try { today = new Date(meosClockDdParse(_dq[2].slice(3))).toDateString() === new Date().toDateString(); } catch (_) { }   // v5.1.719: 今日の dd= は緑
     // ★v5.1.734(俊克 733「緑色の枠を次の行に出すから駄目。橙枠のように見せかけの行に被せるように表示すればいい」): dd の窓は1つ上の段(見せかけの日時の段)の字の後ろへ
@@ -47589,7 +47589,7 @@ function activate(context) {
     if (!e.kind || !_meosDdPeek.size) return; const u = e.textEditor.document.uri.toString() + ' ', ln = e.textEditor.selection.active.line, k = u + ln;
     // v5.1.721: 窓を押した時だけ= カーソルが窓の桁(⏰の桁=周期 / その次=dd)に落ちた時。他の動き(⏸️の約1秒後に MeOS が動かすカーソル等)では消さない(720 の実測)
     const w = _meosDdPeekWin.get(k), ch = e.textEditor.selection.active.character;
-    const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = ch === w.a || inS(w && w.cyc), hitD = !hitC && (ch === w.a + 1 || inS(w && w.dd)), hitT0 = !hitC && !hitD && !!(w && w.ttl) && (ch === (w.t != null ? w.t : w.a + 2) || inS(w.ttl)), _eol = !!w && !hitC && !hitD && !hitT0 && ch >= e.textEditor.document.lineAt(ln).text.length, hitT = hitT0;   // v5.1.779: 題の窓
+    const inS = (sp) => !!sp && ch >= sp[0] && ch <= sp[1], hitC = (w && w.c != null ? ch === w.c : ch === w.a) || inS(w && w.cyc), hitD = !hitC && (ch === w.a + 1 || inS(w && w.dd)), hitT0 = !hitC && !hitD && !!(w && w.ttl) && (ch === (w.t != null ? w.t : w.a + 2) || inS(w.ttl)), _eol = !!w && !hitC && !hitD && !hitT0 && ch >= e.textEditor.document.lineAt(ln).text.length, hitT = hitT0;   // v5.1.779: 題の窓
     // ★v5.1.782(俊克 781 バグ1「♥膜は枠をクリックすると Raw になる」): 窓は ::before の絵= 押すとカーソルは下の本物の字に落ちる。♥膜はその段の字が短く(×1 v6m44s)、窓の下に字が無い= 行末(83桁)に落ちて窓と読めなかった(実測 14:11:07 caretCh=83)。
     //   ワンショットは下に周期の字があり偶然当たっていた。→ 覗いている行の行末に落ちた= 窓を押した(どの窓かは分からない= dd)。←→で隣の窓へ   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
     if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD || hitT || _eol)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
