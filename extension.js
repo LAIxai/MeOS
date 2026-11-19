@@ -24689,6 +24689,9 @@ function membraneArrowToggleHitInfo(editor) {
 let _meosPrevCaretPos = null, _meosParkBack = null;
 function meosParkCaretAfterPress(editor, line) {
   try {
+    // ★v5.1.833(俊克 832 バグ1「⏸️ を押すと、赤の dd= の頭にカーソルが入ったのが見えた瞬間に、Raw表示になってしまう」): ⏸️の約0.4秒後にこの手がカーソルを行頭(0桁)へ置き、窓の直しが「窓の外を押した」と読んで終わっていた(実測 [ddSel] c=0 終わり=true)。
+    //   → その行を窓で直している間は、行頭へ置かない(カーソルは赤の窓に居る= 次の押しも届く)
+    if (editor && editor.document && _meosDdEdit.has(editor.document.uri.toString() + ' ' + line)) { meosDbg('[park] 窓で直している行= 行頭へ置かない 行=' + (line + 1)); return; }
     const a = editor && editor.selection ? editor.selection.active : null;
     if (a && a.line === line && a.character !== 0) editor.selection = new vscode.Selection(line, 0, line, 0);
     if (!editor) return;
