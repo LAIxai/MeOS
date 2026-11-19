@@ -302,6 +302,7 @@ function run(argv) {
   //   メニューは今の姿を見せるだけ(ここでも決められると、本文と macOS の2つの道が食い違う)。-50〜57 の □/時刻の仕掛けは使わない。
   const wakeEntries = () => [{ id: 'launchd', title: '\ud83c\udf05 Wake   ' + wakeLabel() }, { sep: true }];   // v5.0.0-59: 押すと 🌅LaunchD の膜へ(他の時計の行と同じ)
   let menuUp = false, lastHoldN = -1;   // ★v5.1.619(俊克 am11:29 バグ1「メニューリストを表示したままにしてあると、やはり、まだゴミが残るよ。なぜ?」): 実測= 開いている間に events.log に「作り直す n=40 前=41」。wGATE は runUntilDate で回るので tracking() は開いていても偽= 作り替えが走り、画面の古いメニューは誰も更新しなくなっていた(614 の隠す口にも入らなかった)。開いているかは delegate の開閉で知る
+  let menuHi = '', menuHiAt = 0, menuEditN = 0;   // v5.1.810 計測(俊克 809 バグ1「Database メニューの1回目のクリックでワープせず、2回目でワープ」= 1回目は pick が来ていない)
   let menuOpenAt = 0, menuPickedAt = 0, menuOptAt = 0, reopenAt = 0, reopenTries = 0, renewItem = false, noRestartUntil = 0;   // v5.1.333〜335
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) { menuPickedAt = Date.now();
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
@@ -372,8 +373,9 @@ function run(argv) {
       try { if (!dockOut.shown) dockOutShow(); if (!dockOut.pin) dockOut.pin = 'piece'; dockOutPaint(); hlog('[dockOut] ピースで出しっぱなし'); } catch (x) {}   // v5.1.441: 札のピースでは(構えで出した時も)消さない   // v5.1.438 / ★v5.1.440(俊克 pm01:04「マウスをエディターのほうに移動すると、mGATEが閉じてしまう」→「出しっぱなしにして」): ピースを押したら出しっぱなし(pin='piece')= ワープでも字が変わっても消さない・消すのはメニューバーの地とメニュー
       openWarp(scheme + '://' + ext + '/puzzle?ch=' + encodeURIComponent(hc)); return; } } catch (e) {}   // v5.1.402
     try { if ((fl & 0x80000) === 0) return; hlog('[menu] Opt が押されている→ 閉じて膜へ'); menuOptAt = Date.now(); m.cancelTracking; optWarp(); } catch (e) {}
-  } }, 'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { menuUp = false; const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
-    try { hlog('[menu] close' + (quick ? ' (' + (now - menuOpenAt) + 'ms= 指を放した所で閉じた)' : '')); } catch (e) {} freshMenu = true;
+  } }, 'menu:willHighlightItem:': { types: ['void', ['id', 'id']], implementation: function (m, it) { try { menuHi = (it && !it.isNil()) ? (ObjC.unwrap(it.title) || ObjC.unwrap(it.representedObject) || '(絵の行)') : ''; menuHiAt = Date.now(); } catch (e) {} } },   // v5.1.810 計測: 閉じた時に光っていた行
+  'menuDidClose:': { types: ['void', ['id']], implementation: function (m) { menuUp = false; const now = Date.now(), quick = now - menuOpenAt < 150 && menuPickedAt < menuOpenAt && menuOptAt < menuOpenAt;
+    try { hlog('[menu] close' + (quick ? ' (' + (now - menuOpenAt) + 'ms= 指を放した所で閉じた)' : '') + ' 光っていた行=' + (menuHi ? String(menuHi).slice(0, 40) + ' (' + (now - menuHiAt) + 'ms前)' : 'なし') + ' 選んだ=' + (menuPickedAt >= menuOpenAt ? 'はい' : 'いいえ') + ' 押している=' + Number($.NSEvent.pressedMouseButtons) + ' 開いている間に字を差し替えた=' + menuEditN); } catch (e) {} menuHi = ''; menuEditN = 0; freshMenu = true;
     if (quick && now > noRestartUntil) { renewItem = true; reopenAt = now + 60; } } } } });   // v5.1.334〜335: すぐ閉じた= V-helper ごと起こし直す(起こし直した直後30秒はしない= 回り続けない)
 // {* ▲mCN=0650_MENU_OPEN // end [cGJF=h] *}
 // {* ▼mCN=0700_MENU_PARTS // 付箋の絵 / 🔴▶ / ⭐️ / 見出しの部品 (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
@@ -1113,7 +1115,7 @@ function run(argv) {
       if (lastEntries.length && nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {   // v4.2.499: 並びが同じ= 字だけ差し替える
         for (let i = 0; i < nw.length; i++) { const e = nw[i], o = lastEntries[i], mi = lastItems[i];
           if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
-          try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
+          if (menuUp) menuEditN++; try { const _s = String(e.title || '').indexOf(STAR) === 0; starRow(mi, e.title, !e.check); styleItem(mi, _s ? Object.assign({}, e, { title: starStrip(e.title) }) : e); } catch (x) {} }
         lastEntries = nw; lastMenu = mj;
       } else if (menuUp && menuShrink(lastEntries, nw, (e) => shrinkKey(e, sk))) {
         const map = menuShrink(lastEntries, nw, (e) => shrinkKey(e, sk)), keep = [], pull = (arr, x) => { const k = arr.indexOf(x); if (k >= 0) arr.splice(k, 1); };
