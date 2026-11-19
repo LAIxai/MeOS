@@ -24923,12 +24923,12 @@ function meosLaunchDSample(id) {
     meosPairBadgeLineText(id, '', '(📊⊕0+0D1O)'),   // v5.1.495(俊克「灰色は地味過ぎるので橙色に。朝に起動するのが普通だから」): O= 橙
       // ★v5.1.493(俊克 バグ1「New.md①で、システム起動用の膜にバッジFCが付いてない→残り時間が出ない」): ⏰の残り時間はバッジ行に出る
     // ★v5.1.807(俊克 11.19「月曜〜木曜・金曜・土日の例がいい。毎日同じの例も。もう1つくらい別の例」): ①月〜木/金/土日の3行の組 ②毎日 ③平日と週末の2行の組
-    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWt 07:00 \u26d3\ufe0f\u2935\ufe0f // WT -->',
-    '<!-- Mew!UFC \u23f0\u23f8 \u21baF 06:30 \u26d3\ufe0f\u2935\ufe0f // WT -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWt 07:00 \u26d3\ufe0f\u2935\ufe0f3 // WT -->',   // ★v5.1.811(俊克 810「⛓️に3や2の数字が入ってない・⚠️」): 数字=自分を含めた本数(v5.1.94)。3行の組= ⤵️3 と ⤴️3
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baF 06:30 // WT -->',
     '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:30 \u26d3\ufe0f\u2934\ufe0f3)\u00d7\u221e // WT -->',
     '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // WT -->',
-    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 \u26d3\ufe0f\u2935\ufe0f // WT -->',   // v5.1.497: 平日と週末を ⛓️ で1組(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
-    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 \u26d3\ufe0f\u2934\ufe0f)\u00d7\u221e // WT -->', ''].join('\n');
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 \u26d3\ufe0f\u2935\ufe0f2 // WT -->',   // v5.1.497: 平日と週末を ⛓️ で1組(俊克「×∞と書いておけば、1でも3でも良いと分かる」)
+    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 \u26d3\ufe0f\u2934\ufe0f2)\u00d7\u221e // WT -->', ''].join('\n');
 }
 function meosLaunchDNewest() {
   let newest = null;
@@ -25027,8 +25027,12 @@ function meosLaunchDRunningRows(d, key) { try { return meosClockFcScan(d).filter
 async function meosLaunchDStopOthers(doc, key) {
   try {
     const mine = meosLaunchDRunningRows(doc, key); if (!mine.length) return true;   // 押した方が止まった(⏸ を押した)= 訊かない
-    const others = [];
-    for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue; for (const r of meosLaunchDRunningRows(d, '')) if (!(d === doc && r.key === key)) others.push({ d, r }); }
+    const others = [], uris = new Set(vscode.workspace.textDocuments.filter(d => isMarkdownDocument(d)).map(d => d.uri.toString()));
+    // ★v5.1.811(俊克 810「何も確認パネルは出ずに起動してしまった」): 走っていた🌅(New.md の…20261104W…)は開いている文書に無かった→ 走っている⏰の覚え(_meosPseudoScopes= 閉じたファイルの分も)からも拾う
+    try { for (const [lk, sc] of _meosPseudoScopes) { const k = sc && sc.key; if (k && meosIsLaunchDKey(k) && meosLaunchDTs(k) && sc.uri) uris.add(sc.uri); } } catch (_) { }
+    for (const u of uris) { let d = null; try { d = vscode.workspace.textDocuments.find(x => x.uri.toString() === u) || await vscode.workspace.openTextDocument(vscode.Uri.parse(u)); } catch (_) { } if (!d) continue;
+      for (const r of meosLaunchDRunningRows(d, '')) if (!(d.uri.toString() === doc.uri.toString() && r.key === key)) others.push({ d, r }); }
+    meosDbg('[launchd] よその🌅を探す 文書=' + uris.size + ' 走っている行=' + others.length);
     if (!others.length) return true;
     const names = Array.from(new Set(others.map(o => String(o.d.uri.path || '').split('/').pop() + ' \u203a ' + o.r.key))).join(', ');
     const pick = await vscode.window.showWarningMessage('\ud83c\udf05 Another Mac start-up timer is running: ' + names + '. Stop it and use this one?', { modal: true }, 'Stop it');
