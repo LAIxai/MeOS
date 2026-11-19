@@ -15517,12 +15517,13 @@ function meosDdPadStrip(ed, L) { try { const k = ed.document.uri.toString() + ' 
   ed.edit(eb => { const t = ed.document.lineAt(L).text; if (new RegExp('dd(=\\S+)?\u00a0{' + MEOS_DD_PAD + '}$').test(t)) eb.delete(new vscode.Range(L, t.length - MEOS_DD_PAD, L, t.length)); }, { undoStopBefore: false, undoStopAfter: false }); } catch (_) { } }
 // ★v5.1.831(俊克 830 改良1「⏸️ボタンを押してタイマを一時停止した時、赤のdd=に文字カーソルを出すようにしよう。左右どっちの枠に移動するにしても、効率がいいからだ。10秒で消すのは止めよう」):
 //   覗き(押して入る・10秒で消える)を飛ばし、止めた行の題に dd= が書かれたら、すぐ窓で直す姿へ入り、カーソルを赤(dd)の頭に置く。窓は外を押すまで消えない
+const _meosDdEnterAt = new Map();   // v5.1.834: ⏸️で窓へ入った時刻
 function meosDdPauseEnter(pk, L, t0) { setTimeout(() => { try {
   const again = () => { if (Date.now() - t0 < 4000) meosDdPauseEnter(pk, L, t0); };
   if (!_meosDdPeek.has(pk) || _meosDdEdit.has(pk)) return;
   const ed = vscode.window.activeTextEditor; if (!ed || !ed.document || ed.document.uri.toString() + ' ' + L !== pk) return again();
   if (L >= ed.document.lineCount) return; const S = meosDdEditSpans(ed.document.lineAt(L).text); if (!S.dd) return again();
-  _meosDdPeek.delete(pk); _meosDdPeekAt.delete(pk); _meosDdEdit.add(pk); _meosDdEditSp.set(pk, 'dd');
+  _meosDdPeek.delete(pk); _meosDdPeekAt.delete(pk); _meosDdEdit.add(pk); _meosDdEditSp.set(pk, 'dd'); _meosDdEnterAt.set(pk, Date.now());
   const P = new vscode.Position(L, S.dd[0]); ed.selection = new vscode.Selection(P, P);
   meosDdEditCtxSync(ed); meosDbg('[dd] ⏸️→ 赤(dd)の窓へカーソル 行=' + (L + 1) + ' 桁=' + S.dd[0]);
   try { refresh(ed); } catch (_) { } meosApplyTimerLineDecorations(ed);
@@ -47567,6 +47568,9 @@ function activate(context) {
     { const u0 = e.textEditor.document.uri.toString() + ' ', l0 = e.textEditor.selection.active.line, c = e.textEditor.selection.active.character, kb = e.kind === vscode.TextEditorSelectionChangeKind.Keyboard; let gone = false;
       // ★v5.1.728(俊克 pm00:49「2つの枠で←/→キーを押して行くと、枠から出ると枠が消えてしまう。枠の中から出ないように」「↓/↑を押すと端に移動するように。普通の入力枠と同様に」): 窓は入力枠= キーでは出ない
       for (const k0 of Array.from(_meosDdEdit)) if (k0.startsWith(u0)) { const L0 = Number(k0.slice(u0.length)); let out = false, to = -1;
+        // ★v5.1.834(俊克 833「全く直ってないよ」): 833 の守りは効く前だった= ⏸️の処理が先に行頭(0桁)へ置き、その知らせが重い文書(38万行)では赤の窓へ入った後に遅れて届いた(実測 入り 09.407→ c=0 の知らせ 09.724・[park]の守りは出ず)。
+        //   → 窓へ入って2秒の間、MeOS 自身が動かした選択(マウスでもキーでもない)の知らせは数えない= 人の押し(マウス)とキーだけで出入りを決める
+        if (!kb && e.kind !== vscode.TextEditorSelectionChangeKind.Mouse && Date.now() - (_meosDdEnterAt.get(k0) || 0) < 2000) { meosDbg('[ddSel] 入った直後の遅れた知らせ kind=' + e.kind + ' c=' + c + '→ 数えない'); continue; }
         try { const S = meosDdEditSpans(e.textEditor.document.lineAt(L0).text);   // v5.1.729: 周期は ( の後ろから・dd は = の後ろから(キーの口と同じ1つの物差し)
           const inn = (sp) => !!sp && c >= sp[0] && c <= sp[1], act = _meosDdEditSp.get(k0) || 'dd', w0 = _meosDdPeekWin.get(k0);
           if (l0 === L0 && !kb && S.cyc && c === S.cyc[0] - 1) { _meosDdEditSp.set(k0, 'cyc'); to = S.cyc[0]; }   // v5.1.736: 窓の ( の上を押した= 周期の窓の頭
