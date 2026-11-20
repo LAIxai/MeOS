@@ -15522,12 +15522,39 @@ function meosDdPadStrip(ed, L) { try { const k = ed.document.uri.toString() + ' 
 // ★v5.1.831(俊克 830 改良1「⏸️ボタンを押してタイマを一時停止した時、赤のdd=に文字カーソルを出すようにしよう。左右どっちの枠に移動するにしても、効率がいいからだ。10秒で消すのは止めよう」):
 //   覗き(押して入る・10秒で消える)を飛ばし、止めた行の題に dd= が書かれたら、すぐ窓で直す姿へ入り、カーソルを赤(dd)の頭に置く。窓は外を押すまで消えない
 const _meosDdEnterAt = new Map();   // v5.1.834: ⏸️で窓へ入った時刻
+// ★v5.1.849(俊克 11.20 pm03:57「⏸️枠をEscで抜けるだけは、入れておこうよ。編集を無効にしてタイマを再起動するってことだよね?」):
+//   窓へ入った時の行を控え(_meosDdOrig)、Esc= 窓で直した字を捨ててその行へ戻し、▶️と同じ道(meosChainStartHere)で走らせる。
+//   戻した dd= は止めた時の顔のまま= ▶️は「直していない」と読み、止めていた分だけ先へ延ばす(v5.1.721 / 723 と同じ)
+const _meosDdOrig = new Map();
+async function meosDdEditEsc() {
+  const ed = vscode.window.activeTextEditor; if (!ed || !ed.document) return;
+  const doc = ed.document, L = ed.selection.active.line, pk = doc.uri.toString() + ' ' + L;
+  if (!_meosDdEdit.has(pk)) { meosDdEditCtxSync(ed); try { await vscode.commands.executeCommand('cancelSelection'); } catch (_) { } return; }   // 文脈キーの遅れ= 窓の外なら素の Esc
+  const orig = _meosDdOrig.get(pk); _meosDdOrig.delete(pk);
+  _meosDdEdit.delete(pk); _meosDdEditSp.delete(pk); _meosDdEnterAt.delete(pk); meosDdEditCtxSync(ed);
+  try {
+    if (orig != null && L < doc.lineCount && doc.lineAt(L).text !== orig) { _meosDdPad.delete(pk); await ed.edit(eb => eb.replace(doc.lineAt(L).range, orig), { undoStopBefore: true, undoStopAfter: true }); }
+    else meosDdPadStrip(ed, L);
+  } catch (_) { }
+  meosDbg('[dd] Esc→ 窓の字を捨てて▶️ 行=' + (L + 1) + ' 戻した=' + (orig != null));
+  const own = meosClockOwnerKeyForLine(doc, L); if (!own) return;
+  if (!meosClockLineRunning(doc, own, L)) {
+    setRefNoRaw(doc, L);
+    const hd = meosClockHoldOf(doc.uri.toString() + ' ' + own);
+    await meosChainStartHere(doc, own, L);
+    try { meosLaunchDKick(doc, own); } catch (_) { }
+    setRefNoRaw(doc, L);
+    meosParkCaretAfterPress(ed, L);
+    meosShowPlayTip(ed, L, '▶️ Going on — Esc left the boxes as they were' + (hd ? ' (the schedule moved back by ' + meosMmSs(Math.max(0, Date.now() - Number(hd.at))) + ')' : '') + '.');
+  }
+  try { refresh(ed); } catch (_) { } try { meosTickTimerLines(); } catch (_) { }
+}
 function meosDdPauseEnter(pk, L, t0) { setTimeout(() => { try {
   const again = () => { if (Date.now() - t0 < 4000) meosDdPauseEnter(pk, L, t0); };
   if (!_meosDdPeek.has(pk) || _meosDdEdit.has(pk)) return;
   const ed = vscode.window.activeTextEditor; if (!ed || !ed.document || ed.document.uri.toString() + ' ' + L !== pk) return again();
   if (L >= ed.document.lineCount) return; const S = meosDdEditSpans(ed.document.lineAt(L).text); if (!S.dd) return again();
-  _meosDdPeek.delete(pk); _meosDdPeekAt.delete(pk); _meosDdEdit.add(pk); _meosDdEditSp.set(pk, 'dd'); _meosDdEnterAt.set(pk, Date.now());
+  _meosDdPeek.delete(pk); _meosDdPeekAt.delete(pk); _meosDdEdit.add(pk); _meosDdEditSp.set(pk, 'dd'); _meosDdEnterAt.set(pk, Date.now()); _meosDdOrig.set(pk, ed.document.lineAt(L).text.replace(/\u00a0+$/, ''));   // v5.1.849: Esc で戻す姿
   const P = new vscode.Position(L, S.dd[0]); ed.selection = new vscode.Selection(P, P);
   meosDdEditCtxSync(ed); meosDbg('[dd] ⏸️→ 赤(dd)の窓へカーソル 行=' + (L + 1) + ' 桁=' + S.dd[0]);
   try { refresh(ed); } catch (_) { } meosApplyTimerLineDecorations(ed);
@@ -47606,7 +47633,7 @@ function activate(context) {
     // ★v5.1.782(俊克 781 バグ1「♥膜は枠をクリックすると Raw になる」): 窓は ::before の絵= 押すとカーソルは下の本物の字に落ちる。♥膜はその段の字が短く(×1 v6m44s)、窓の下に字が無い= 行末(83桁)に落ちて窓と読めなかった(実測 14:11:07 caretCh=83)。
     //   ワンショットは下に周期の字があり偶然当たっていた。→ 覗いている行の行末に落ちた= 窓を押した(どの窓かは分からない= dd)。←→で隣の窓へ   // ★v5.1.726(725 実測: 周期の窓を押すとカーソルは下の周期の字に落ち、窓の桁と読まずに Raw へ): 窓の字の上に落ちても窓を押したと読む
     if ((_meosDdPeek.get(k) || 0) > Date.now() && Date.now() - (_meosDdPeekAt.get(k) || 0) > 1300 && w && (hitC || hitD || hitT || _eol)) {   // 1.3秒の猶予= ⏸️の後に届く動きを数えない
-      const nmH = hitC ? 'cyc' : hitD ? 'dd' : 'ttl'; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k); _meosDdEditSp.set(k, nmH);
+      const nmH = hitC ? 'cyc' : hitD ? 'dd' : 'ttl'; _meosDdPeek.delete(k); _meosDdPeekAt.delete(k); _meosDdEdit.add(k); _meosDdEditSp.set(k, nmH); _meosDdOrig.set(k, e.textEditor.document.lineAt(ln).text.replace(/\u00a0+$/, ''));   /* v5.1.849 */
       meosDdEditCtxSync(e.textEditor); /* v5.1.734: 水増しは効かなかった(俊克の tttttttt でも同じ)→ 足さない */ { const sp2 = meosDdEditSpans(e.textEditor.document.lineAt(ln).text)[nmH]; if (sp2 && (ch < sp2[0] || ch > sp2[1])) { const P = new vscode.Position(ln, sp2[0]); e.textEditor.selection = new vscode.Selection(P, P); } }   // v5.1.729: 同じ物差しで頭へ   // 字の上に落ちていればその桁のまま   // 周期は ( の後ろ・dd は = の後ろへ
       meosDbg('[dd] 覗き窓を押した(' + ({ cyc: '周期', dd: 'dd', ttl: '題' })[nmH] + ')→ 10秒を取り消し 行=' + (ln + 1)); try { refresh(e.textEditor); } catch (_) { } meosApplyTimerLineDecorations(e.textEditor); }
   } catch (_) { } }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
@@ -49092,6 +49119,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
     vscode.commands.registerCommand('laiMembrane.aliasMe', aliasMe),
     vscode.commands.registerCommand('laiMembrane.enterAtCloseRightEdge', handleEnterAtMembraneRightEdge),
     vscode.commands.registerCommand('laiMembrane.ddEditKey', (a) => meosDdEditKey(a && a.k)),
+    vscode.commands.registerCommand('laiMembrane.ddEditEsc', () => meosDdEditEsc()),   // v5.1.849
     vscode.commands.registerCommand('laiMembrane.stopKindDigit', (a) => meosStopDigitKey(a && a.n)),   // v5.1.745: ↻の後1秒の数字   // v5.1.729: 窓は入力枠= キーを先に受け取る
     vscode.commands.registerCommand('laiMembrane.backspaceJoinSpecLines', handleBackspaceJoinSpecLines), // v4.0.179: 段落を結ぶ時、FC指定も結ぶ
     vscode.commands.registerCommand('laiMembrane.deleteJoinSpecLines', handleDeleteJoinSpecLines), // v4.0.183: Forward space(Delete)も同じ口へ

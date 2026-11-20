@@ -275,6 +275,7 @@ the `dd`. ① starts it at one hour — set it roughly, or to the minute; it is 
 **Pause, and only what you can change is left.** Press ⏸️ and the line clears down to ▶️ and three boxes: green for
 the length, red for the moment it rings (`dd=`), blue for the title — the words the menu bar shows. The cursor is
 already in the red box. Change either the length or the moment — MeOS works out the other — and press ▶️ to carry on.
+Changed your mind? Esc drops what you typed in the boxes and carries on as if you had not paused to edit.
 The old way still works: put the cursor on the ⏰ line and edit `↺↻(…)` or `dd=…` in Raw view by hand.
 
 <p align="center">
