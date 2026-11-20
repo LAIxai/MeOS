@@ -103,7 +103,7 @@ const R = '<!-- Mew!UFC --- -->', RO = '<!-- Mew!UFC --- 🚫 -->', W = '<!-- Me
   d5.L[6] = R; d5.L[8] = RO; d5.version++; ok(st(4) === 'yellow', '手で次だけオンにしても黄', st(4));
   d5.L[6] = RO; d5.L[8] = R; d5.version++; ok(st(4) === 'yellowOff', 'v5.1.653 手で次だけオフにすると黄OFF', st(4));
   ok(await T.meosStopCycleNext(e5, 13) === false, '次が無い線(黒NONE)は押しても何もしない', 0);
-  ok(T.meosStopLineNear(doc(['x', RO, 'y']), 0) === 1, 'Format Me の🛑/🚫 はオフの線も見つける(消せる)', 0);
+  ok(T.meosStopLineNear(doc(['x', RO, 'y']), 1) === 1, 'Format Me の🛑/🚫 はオフの線も見つける(消せる)', 0);
   // 5b. v5.1.753 ⚪= 薄い線(止まる)・🚫はその意味を含む・解除すると濃い線
   { const F = '<!-- Mew!UFC --- \u26aa -->', D = '<!-- Mew!UFC --- -->';
     ok(T.MEOS_RULE_LINE_RE.test(F) && T.meosStopIsFaint(F) && !T.meosStopIsFaint(D), 'v5.1.753 ⚪ の線はオンで薄い・素の線は濃い', 0);
