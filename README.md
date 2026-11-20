@@ -33,11 +33,15 @@ file, too, carries two layers in one — the text you read, and the comments tha
 >
 > **It never stains your code or your manuscript — not by a millimeter.**
 >
-> **The lightest OS. Warp anywhere and jump both ways with the Hyper TOC.**
+> **The lightest OS. Warp from mGATE by timer, sticky note or tag.**
+>
+> **When a timer rings, it takes you to the spot — even with VSCodium closed.**
 >
 > **Your code undergoes cleavage (卵割) and becomes a single living organism.**
 >
 > **The ultimate environment for creation!!!**
+>
+> **The one-file lifelong diary comes down into the real world.**
 >
 > **And the future is in view: every membrane on Earth, connected.**
 >
