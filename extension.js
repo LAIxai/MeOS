@@ -15964,9 +15964,10 @@ const MEOS_STOP_NONE_URL = meosStopSignSvg('#1a1a1a', 'NONE', '#fff', 66);   // 
 // ★v5.1.595(俊克 11.08 pm00:27「Cmd+↑/↓で一時停止線までジャンプできることは、エディターを使っている人が歓喜する機能だよ。なので、一時停止線を入れるボタンをFormat Meに追加しよう。
 //   一時停止線の上、あるいは、前後の行に文字カーソルがあるときは、他のボタン同様に、🚫ボタンにして、取消もできるようにする。キーボード派は、直接コピペすればいいしね」):
 //   探す= カーソルの行→上の行→下の行の順(囲いの中は文字そのもの)。入れる= 今の行の下に一時停止線だけ(v5.1.630 空行は足さない)。外す= 線と、その分の空行1つ
+// ★v5.1.841(俊克 11.20 am10:08 改良1「一時停止線の前後の行にあると、このボタンが🚫マークになってしまうのが使い難い。停止線上にいるときだけにしようよ」): 探すのはカーソルの行だけ(🚫の見た目と押した時の外す口が、この1つの判定を共に使う)
 function meosStopLineNear(doc, line) {
   try { if (!doc || line < 0 || line >= doc.lineCount) return -1; let fence = null;
-    for (const l of [line, line - 1, line + 1]) { if (l < 0 || l >= doc.lineCount || !meosIsRuleAny(doc.lineAt(l).text)) continue; if (!fence) { try { fence = meosFenceLines(doc); } catch (_) { fence = new Set(); } } if (!fence.has(l)) return l; }
+    for (const l of [line]) { if (l < 0 || l >= doc.lineCount || !meosIsRuleAny(doc.lineAt(l).text)) continue; if (!fence) { try { fence = meosFenceLines(doc); } catch (_) { fence = new Set(); } } if (!fence.has(l)) return l; }
   } catch (_) { } return -1;
 }
 function meosStopKindNow() { try { const v = Number(extensionContext.globalState.get('fmtStopKind')); return v >= 0 && v <= 7 ? v : 0; } catch (_) { return 0; } }

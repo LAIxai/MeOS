@@ -162,7 +162,7 @@ Type it, or press it. A line holding only one of the eight marks becomes that st
 line is added, and Cmd+Z gives back the plain text. A list item such as `- - item`, or a line that starts with `...`,
 stays as you typed it. In Japanese input, `~` three times gives `〜〜〜` (`～～～` works too). The 🛑 button in
 **Format Me** puts a stop line under the cursor: its ↻ goes solid → dashed → dotted → wavy and remembers your choice,
-and holding Opt over 🛑 turns solid into double and wavy into double wavy. With the cursor on or next to a stop line,
+and holding Opt over 🛑 turns solid into double and wavy into double wavy. With the cursor on a stop line,
 🛑 turns into 🚫 and takes it off.
 
 A new membrane gets a faint line under its opening edge and a dark one above its closing edge; a line you type by hand
