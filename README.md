@@ -278,7 +278,7 @@ already in the red box. Change either the length or the moment — MeOS works ou
 The old way still works: put the cursor on the ⏰ line and edit `↺↻(…)` or `dd=…` in Raw view by hand.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.1-oneshot-timer.png" alt="How to use a one-shot timer - press pause on a running one-hour timer; the line clears down to the play button and three boxes: the length (0y1d7h20m52s)x2 in green, dd=11/21(F)am09:00 in red and the title Time up in blue, which the menu bar also shows; set either the length or the end time, then press play to start" width="80%"><br>
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.1-oneshot-timer.png" alt="How to use a one-shot timer - press pause on a running one-hour timer; the line clears down to the play button and three boxes: the length (0y1d0h57m52s)x2 in green, dd=11/21(s)am10:00 in red and the title Time up in blue, which the menu bar also shows; set either the length or the end time, then press play to start again" width="80%"><br>
   <sub><b>NEW in v5.1 — a one-shot timer, paused.</b> ⏸️ leaves ▶️ and three boxes: the length, the end time, the title. Set either the length or the end time, then press ▶️.</sub>
 </p>
 
