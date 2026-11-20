@@ -41,7 +41,7 @@ file, too, carries two layers in one — the text you read, and the comments tha
 >
 > **The ultimate environment for creation!!!**
 >
-> **The one-file lifelong diary comes down into the real world.**
+> **The one-file lifelong diary descends upon the real world.**
 >
 > **And the future is in view: every membrane on Earth, connected.**
 >
