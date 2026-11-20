@@ -33236,7 +33236,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 #fmt-metex{min-width:0}/* v4.0.270(俊克「まだ長いので、もう少し短く」): 兄弟と同じ min-width(32px)を外して、面の箱の幅だけで決める */
 #fmt-metex .mtx-face{display:inline-block;width:22px;text-align:center}/* v4.0.269(俊克 改良1「少し過剰に長い」): 26px= .fmt-btn の min-width(32px)の内側に収まるso、ボタンの幅は他の兄弟と同じになる(中身thatが変わっても動かない、は据え置き) */
 .fmt-table-cell{margin-left:16px;margin-right:36px;position:relative}
-#fmt-table-wwcycle{top:-5px;right:auto;left:calc(100% - 2px)}   /* v4.2.776: ↻と🤝を▼の右に縦に並べる(▼に少し食い込ませる) */
+#fmt-table-wwcycle{top:-5px;right:auto;left:calc(100% - 21px)}/* ★v5.1.847(俊克 846 改良1「隣の見出しボタンなどと同様に、▼ボタンに被るように」): 19px 左へ= 見出しの↻と同じく▼の右上に被る */   /* v4.2.776: ↻と🤝を▼の右に縦に並べる(▼に少し食い込ませる) */
 #fmt-table-merge{top:auto;bottom:-5px;right:auto;left:calc(100% - 2px);width:auto;height:15px;padding:0 3px;border-radius:8px;background:#2f7f86;font-size:9px;letter-spacing:-1px;white-space:nowrap}
 #fmt-table-merge:hover{background:#3d98a0}
 /* v4.2.776-21(俊克「テーブルボタンの↻と🤝にホーバーした時、2つとも一緒に拡大。別のほうに移りたい時に、ほとんど被って選択し難い」):
