@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.864 (2026-11-22)
+- **A 👻 next to the fold.** A folded 👻 line was easy to miss, since it no longer leaves blank rows. A small 👻 now sits right of the `⋯` on that line. Point at it and the hand shows; click it and the hidden line opens as raw text.
+
 ### v5.1.863 (2026-11-22)
 - **The two grown buttons touch, as they do at rest.** When the FUSEN and strikethrough buttons grow together, the small gap between them is gone.
 

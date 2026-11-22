@@ -43592,6 +43592,7 @@ function meosApplyFcRowDecorations(editor) {
 // v5.1.861(俊克 改良2/3「⋯の行(停止線)をクリックした時に、隠したのが見えるように。2回クリックしないと見えないのは分り難い」):
 //   ln が「👻の行を畳み込んだ頭」なら、その👻の行とFC行の範囲 {from,to} を返す。違えば null。
 //   安い足切り= 真下の行に ~~ が無ければ読まない(meosRawLines はカーソル行ごとに呼ばれる)。
+const _meosGhostHeadCache = new Map();   // v5.1.864: uri → { ver, heads:[👻の行を畳み込んだ頭の行] }(meosFcFoldShape が書く)
 function meosGhostFoldMate(document, ln) {
   try {
     const lines = meosDocLines(document), L = ln + 1;
@@ -43683,6 +43684,7 @@ function meosFcFoldShape(document, caretLine) {
       try { if (!_opens126) { _opens126 = new Set(); for (const pr of collectPairs(document, { excludeIndex: false })) _opens126.add(pr.start); } _onOpen126 = _opens126.has(head); } catch (_) { }
       out.push({ b, head, end, shift, open, hasRange: (end > head) && !_keepOpen51 && !_onOpen126, keepOpen: _keepOpen51 });
     }
+    try { _meosGhostHeadCache.set(String(document.uri), { ver: document.version, heads: out.filter(it => it.b.ghostHead != null && it.hasRange).map(it => it.head) }); } catch (_) { }   // v5.1.864: ⋯の右の👻を描く所が読む
   } catch (_) { }
   return out;
 }
@@ -47810,6 +47812,31 @@ function activate(context) {
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => _paintNoEntry(ed)));
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => { try { if (e.affectsConfiguration('editor.showFoldingControls')) for (const ed of vscode.window.visibleTextEditors) _paintNoEntry(ed); } catch (_) { } }));   // v5.0.0-44: Standards を押したら貼る/剥がす
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { clearTimeout(_neT); _neT = setTimeout(() => _paintNoEntry(e.textEditor), 80); }));   // v5.0.0-33: 生になる/戻るのはカーソルの出入り
+    // ★v5.1.864(俊克 11.22 pm04:30「折り畳まれていると気づき難いので、「⋯」の右横に👻を表示しよう。その👻にホーバーすると選択指になって、押せる事を示して」):
+    //   👻の行を畳み込んだ頭(meosGhostFoldHead)が実際に畳まれている時だけ、⋯の右に👻。押す= 頭の行末にカーソルが落ちる= 1回で開いて中身が生(v5.1.861 の道)。
+    //   ★行末に差した absolute の飾りは⋯の上に乗る(⛔と同じ)→ ⋯の幅だけ右へ(margin-left)。字の幅は取らない= ⋯の位置は動かない。
+    const _ghostMark = vscode.window.createTextEditorDecorationType({ after: { contentText: '\ud83d\udc7b', textDecoration: 'none; position: absolute; z-index: 20; margin-left: 1.6em; font-size: 0.85em; cursor: ' + meosHandCursor() + '; pointer-events: auto' } });
+    context.subscriptions.push(_ghostMark);
+    let _gmT = null;
+    const _paintGhostMark = (ed) => {
+      try {
+        if (!ed || !ed.document || !meosIsRealFileDoc(ed.document)) return;
+        const doc = ed.document, u = String(doc.uri);
+        let c = _meosGhostHeadCache.get(u);
+        if (!c || c.ver !== doc.version) { meosFcFoldShape(doc, ed.selection ? ed.selection.active.line : -1); c = _meosGhostHeadCache.get(u); }
+        const rs = [];
+        if (c && c.heads.length) {
+          const vis = (ln) => (ed.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line);
+          for (const h of c.heads) if (vis(h) && !vis(h + 1)) { const at = doc.lineAt(h).range.end; rs.push(new vscode.Range(at, at)); }
+        }
+        ed.setDecorations(_ghostMark, rs);
+      } catch (_) { }
+    };
+    const _gmLater = (ed) => { clearTimeout(_gmT); _gmT = setTimeout(() => _paintGhostMark(ed), 80); };
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => _gmLater(e.textEditor)));
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => _gmLater(ed)));
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => _gmLater(e.textEditor)));
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { const ed = vscode.window.activeTextEditor; if (ed && ed.document === e.document) { clearTimeout(_gmT); _gmT = setTimeout(() => _paintGhostMark(ed), 400); } } catch (_) { } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor !== vscode.window.activeTextEditor) return; _vrPrev = _vrCur; _vrCur = _snap(e.textEditor); _vrAt = Date.now(); } catch (_) { } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
       try {
