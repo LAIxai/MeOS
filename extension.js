@@ -27732,6 +27732,11 @@ async function meosJoinSpecsOnBackspace(editor) {
   const doc = editor.document, pos = editor.selection.active;
   if (pos.character !== 0 || pos.line === 0) return false;
   const lowText = doc.lineAt(pos.line).text;
+  // v5.1.855: 膜の行の真下の指定行(閉じ膜のバッジ行など)の頭でも、膜の行へ吸い込ませない
+  if (lowText.trim() && meosIsSpecLine(lowText)) {
+    const _above = doc.lineAt(pos.line - 1).text;
+    if (parseOpenLine(_above) || parseCloseLine(_above)) { try { meosDbg('[fcJoin] 膜の行とは繋がない(指定行の頭) low=' + (pos.line + 1)); } catch (_) { } return true; }
+  }
   if (!lowText.trim() || meosIsSpecLine(lowText)) return false;   // 空行/指定行の頭では既定のBackspaceに譲る
   // v4.0.184(バグ1): **見出しの頭でのBSは「結合」ではない**= 見出しを前の行にくっつけるのは書き手の意図ではない
   //   (行頭マーカー `#` that文中へ移って意味を失う)。→ 触らず既定のBackspaceに譲る。
@@ -27742,6 +27747,16 @@ async function meosJoinSpecsOnBackspace(editor) {
   if (sTop < 0) return false;
   const upLn = sTop, upText = doc.lineAt(upLn).text;
   if (!upText.trim()) return false;                                // 空行との結合は既定どおり
+  // ★★v5.1.855(俊克 11.22 am09:30 改良1「改行が自動で足されて…自動で折り畳んでくれた方が良いよね?」):
+  //   ★真因= 閉じ膜の下のバッジ行(Mew!FC mCN (📊…))を本文の指定行と見て飛び越え、**閉じ膜の行を「上の本文」**
+  //     として結んでいた= `…*} -->am09:13.47〜 MeOS` と本文が閉じ膜に入り、バッジだけ下へ出し直す(足されたように見えた)。
+  //     その書き換えが畳みの境に触れるので VSCodium が畳みを開き、▲も消えた(854)。
+  //   ★直し= 膜の行(開始/閉じ)と本文は**繋がない**。Backspace/Delete は何もしない(既定にも渡さない
+  //     =既定だと本文がバッジ行のコメントへ入る)。書き換えないので畳みも開かない=畳み直す必要が無い。
+  if (parseOpenLine(upText) || parseCloseLine(upText) || parseOpenLine(lowText) || parseCloseLine(lowText)) {
+    try { meosDbg('[fcJoin] 膜の行とは繋がない up=' + (upLn + 1) + ' low=' + (pos.line + 1)); } catch (_) { }
+    return true;
+  }
   if (MEOS_LIST_ITEM_RE.test(upText) || MEOS_LIST_ITEM_RE.test(lowText)) return false; // 箇条書きは触らない
   // 下の指定行(あれば)
   let lowSpecEnd = pos.line;

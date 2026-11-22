@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.855 (2026-11-22)
+- **A membrane line no longer swallows the next line.** Backspace at the head of the line under a closing membrane (or under its badge line) used to pull that text into the closing line — `… *} -->text` — and VSCodium then reopened the folded membrane. Backspace and Delete now leave membrane lines alone, so nothing is rewritten and the fold stays as it was.
+
 ### v5.1.854 (2026-11-22)
 - **▲ on the closing line no longer goes missing.** When the opening line was scrolled off the top, a membrane that VSCodium had reopened (for example after joining a nearby line) still counted as folded, and its closing line lost the ▲. Now a closing line with its line above in view always counts as open.
 
