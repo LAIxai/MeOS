@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.861 (2026-11-22)
+- **One click shows the hidden 👻 line.** Clicking the line that holds a folded 👻 line (the `⋯` line, or the stop line above it) now opens the fold and shows the hidden line and its FC line as raw text at once. Before, it took a second click.
+- **The strikethrough button grows as much as the FUSEN button.** The FUSEN button shrinks a little as it grows, so it ends up about 1.7×, while the strikethrough button next to it grew to 2× and looked oversized. Both now grow by the same amount.
+
 ### v5.1.860 (2026-11-22)
 - **Strikethrough with nothing selected takes the whole line.** Like the heading button, pressing strikethrough (or 👻 with Opt) without a selection now wraps the text of the caret line. The indent, the list mark and the `#` stay outside. On an empty line, or a line that already has a strikethrough, it works as before.
 - **A 👻 line folds under a stop line too.** The faint stop line the heading button adds can now hold a fully hidden 👻 line under it. The stop line stays visible.
