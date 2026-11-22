@@ -356,7 +356,7 @@ function run(argv) {
   // ★v5.1.330(俊克 10.30 am11:23 バグ1「スクショを macOS のプレビューの『削除』で捨てた後、メニューバーが開かなくなった・前の版も同じ所で」): 測る口= 開く/閉じる/Optで取り消した/作り直した を events.log へ([menu])
   ObjC.registerSubclass({ name: 'MeOSMenuDelH', protocols: ['NSMenuDelegate'], methods: { 'menuWillOpen:': { types: ['void', ['id']], implementation: function (m) {
     let fl = 0; try { fl = Number($.NSEvent.modifierFlags); } catch (e) {}
-    menuOpenAt = Date.now(); menuUp = true; menuTracked = false; menuPreSet = false; menuHi = ''; try { fastSet(true); } catch (e) {}   // v5.1.619 / v5.1.821: 光るまでは手を描かない
+    menuOpenAt = Date.now(); menuUp = true; menuTracked = false; menuPreSet = false; menuHi = ''; try { fastSet(true); } catch (e) {} try { menuPreArr(true); } catch (e) {}   // v5.1.857: 開く直前に白い45°↖   // v5.1.619 / v5.1.821: 光るまでは手を描かない
     cycRevLoad();   // v5.1.364
     dashFit(m);   // ★v5.1.405(俊克 11.02 am11:31「一点鎖線の長さを変えているのは意図的か?」= 意図ではない): 線の絵の幅は作った時の幅のまま、後でメニューが広がっても伸びなかった(全部同じ所で止まり、区切り線より短い)＋淡い灰で背景に溶けて長さが違って見えた→ 開く直前に今のメニューの幅へ伸ばす・絵はテンプレート(明暗に合わせて黒/白)×0.45= 区切り線と同じ調子
     try { hlog('[menu] open flags=0x' + fl.toString(16) + ' items=' + m.numberOfItems + (m.isEqual(item.menu) ? '' : ' (古いメニュー)')); } catch (e) {}
@@ -532,6 +532,13 @@ function run(argv) {
   // ★v5.1.856(俊克 11.22 am10:37 バグ「札をクリックしてメニューが出た瞬間、白い45°↖が黒い22.5°↖に変わる。メニューへ動けば直る」):
   //   ★真因= 821 の「光るまでは描かない」の入口で、手/45°↖を出していた時に OS の↖(黒)を1回置いていた。
   //   ★直し= 置くのは開いた時の1回だけ(menuPreSet)のまま、BTRON 指定なら白い45°↖を置く。繰り返し描かないので 821 の一発ワープは守る
+  // ★v5.1.857(俊克 856テスト「一瞬、黒い22.5°↖が見えてから白い↖に変わる。一瞬たりとも出ないようにできないのか?」):
+  //   ★黒は macOS がメニューを開く時に置く。856 は 0.05秒の見張りで置き直していたので、その間だけ黒が見えた。
+  //   ★直し= 開く直前(menuWillOpen)に置き、開いた直後の約60msに決まった4回だけ置き直す(0/16/33/60ms)。
+  //     数を決めてあるので、821 の「光るまで描き続けてメニューの追い始めを邪魔する」にはならない
+  const menuPreArr = (first) => { try { if (!menuUp || menuTracked) return; if (first) { menuPreSet = true; menuPreArr.go = !!(handOn || arrOn || moveOn); if (!menuPreArr.go) return; handOn = false; moveOn = false; } if (!menuPreArr.go) return;
+    const a45 = (handCur.n || 'btron') === 'btron' ? arrow45() : null; if (a45) { a45.set; arrOn = true; } else { arrOn = false; $.NSCursor.arrowCursor.set; }
+    if (first) for (const dl of [0, 0.016, 0.033, 0.06]) { const t = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(dl, pgt, 'preArr:', $(), false); $.NSRunLoop.currentRunLoop.addTimerForMode(t, $.NSRunLoopCommonModes); } } catch (e) {} };
   const menuHandStep = () => { try { if (menuUp && !menuTracked) { if (!menuPreSet) { menuPreSet = true; if (handOn || arrOn || moveOn) { handOn = false; moveOn = false; const a45 = (handCur.n || 'btron') === 'btron' ? arrow45() : null; if (a45) { a45.set; arrOn = true; } else { arrOn = false; $.NSCursor.arrowCursor.set; } } } return; } const b = clockAll.cyc, w = b ? b.window : null, s = item.button.window, mp = $.NSEvent.mouseLocation; let on = false, tagIn = false, menuIn = false;
     if (s && !s.isNil() && s.isVisible) { const f = s.frame; on = mp.x >= f.origin.x && mp.x <= f.origin.x + f.size.width && mp.y >= f.origin.y && mp.y <= f.origin.y + f.size.height; tagIn = on; if (on) { const ph = pieceHit(); on = typeof ph === 'string' && !!ph && (ph === '\u0000logo' || ph.charAt(0) !== '\u0000'); } }   /* v5.1.522(俊克 pm06:59 改良1「MeOS はロゴで終了でき、パズル2つで操作できるので手を出す必然がある。⏰と離席タイマーは他のアプリと同様の操作対象なので↖」): 札の中で指はロゴとパズルの2枚だけ */   // v5.1.517(俊克 pm06:13 改良2「メニューバーの中のクリックできるところでも」): メニューバーの札の上は、メニューを開いていても閉じていても指
     if (!on && w && !w.isNil() && w.isVisible) { const v = w.contentView, h = v.hitTest(v.superview.convertPointFromView(w.convertPointFromScreen(mp), $())); on = !!h && !h.isNil() && h.isKindOfClass($.NSButton) && h.isEnabled; if (!on) { const hi = b.superview.enclosingMenuItem.menu.highlightedItem; on = !!hi && !hi.isNil() && (!hi.view || hi.view.isNil()); } }   // v5.1.517(改良1「ボタンの範囲外の所では↖に」): ボタンを載せた見出しの行(絵の部品の行)も選ばれた扱いになるので除く
@@ -622,6 +629,7 @@ function run(argv) {
       clockFold = foldMode !== 1; fusenFold['\u0000all'] = foldMode !== 2; tagAll.fold = foldMode !== 3;
       clockPaint(); allTitle(); for (const p of pagers) pgPaint(p); for (const sp of fusenAll.seps) sp.hidden = !!fusenFold['\u0000all']; tagTitle(); tagPaint(); ptrDiag = 8; ptrTo(s);   /* v5.1.374(改良1「ポインターの先が円のギリギリ外…少しだけ円の中に」): 10→8(半径14の内側 11.3) */   // ★v5.1.371(俊克 pm10:08「↻を連続して押せるように…ポインターを追従」): 畳み替えで↻が動く→▲▼と同じく↻の真ん中へ運ぶ
       hlog('[menu] \u21bb 姿=' + ['全部畳む', '\u23f0だけ', 'FUSENだけ', 'TAGだけ'][foldMode] + ' \u23f0行=' + clockAll.rows.length + (clockFold ? '畳' : '開') + ' FUSEN=' + (fusenFold['\u0000all'] ? '畳' : '開') + ' TAG=' + (tagAll.fold ? '畳' : '開')); } catch (e) { hlog('[menu] \u21bb 例外 ' + e); } } },
+    'preArr:': { types: ['void', ['id']], implementation: function (t) { menuPreArr(false); } },   // v5.1.857
     'cycHov:': { types: ['void', ['id']], implementation: function (t) { const _t = Date.now(); if (!menuUp && !dockOut.drag && !nearBar() && !nearGate()) { if (handOn || arrOn || moveOn) { handOn = false; arrOn = false; moveOn = false; try { $.NSCursor.arrowCursor.set; } catch (e) {} } return; }   /* v5.1.824: 札にも mGATE にも近くない= 何もしない */ if (menuUp) cycHoverStep(); menuHandStep(); if (menuUp) busyOpen.hand += Date.now() - _t; } },   // ★v5.1.374: ↻のポイント見張り(0.05秒ごと)
     'pgKind:': { types: ['void', ['id']], implementation: function (s) { try { const p0 = pagers[Number(s.tag)]; if (!p0) return; const kd = String(p0.name).slice(0, 2), g = pagers.filter(q => String(q.name).slice(0, 2) === kd), k = pgCovK(kd); fusenFold[k] = !fusenFold[k]; if (!fusenFold[k]) lidOpen(g); for (const p of g) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },
     'pgGrp:': { types: ['void', ['id']], implementation: function (s) { try { const k = pgCovK('All'); fusenFold[k] = !fusenFold[k]; if (!fusenFold[k]) lidOpen(pagers.filter(q => !pgCover(q))); for (const p of pagers) pgPaint(p); grpPaint(); kindPaint(); } catch (e) {} } },

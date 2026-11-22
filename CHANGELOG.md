@@ -4,8 +4,8 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
-### v5.1.856 (2026-11-22)
-- **The white ↖ stays when the menu opens.** With the BTRON pointer, clicking the menu bar tag turned the white 45° ↖ into the black system arrow until you moved into the menu. It now stays white.
+### v5.1.857 (2026-11-22)
+- **The white ↖ stays when the menu opens.** With the BTRON pointer, clicking the menu bar tag turned the white 45° ↖ into the black system arrow until you moved into the menu. It now stays white, without even a flash of black (v5.1.857).
 
 ### v5.1.855 (2026-11-22)
 - **A membrane line no longer swallows the next line.** Backspace at the head of the line under a closing membrane (or under its badge line) used to pull that text into the closing line — `… *} -->text` — and VSCodium then reopened the folded membrane. Backspace and Delete now leave membrane lines alone, so nothing is rewritten and the fold stays as it was.
