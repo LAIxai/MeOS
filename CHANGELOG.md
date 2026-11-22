@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.858 (2026-11-22)
+- **The strikethrough button grows with the FUSEN button.** In Format Me, the FUSEN (code) button doubles in size under the pointer and used to hide the strikethrough button next to it. Now the strikethrough button doubles too and moves just right of it, and the FUSEN button stays big while you move onto it.
+
 ### v5.1.857 (2026-11-22)
 - **The white ↖ stays when the menu opens.** With the BTRON pointer, clicking the menu bar tag turned the white 45° ↖ into the black system arrow until you moved into the menu. It now stays white, without even a flash of black (v5.1.857).
 
