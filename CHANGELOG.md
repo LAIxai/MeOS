@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.863 (2026-11-22)
+- **The two grown buttons touch, as they do at rest.** When the FUSEN and strikethrough buttons grow together, the small gap between them is gone.
+
 ### v5.1.862 (2026-11-22)
 - **The strikethrough button grows a little less.** Even at the same rate it looked bigger than the FUSEN button, being wider and darker, so it now grows to about 1.45×.
 
