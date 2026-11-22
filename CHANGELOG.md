@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.854 (2026-11-22)
+- **▲ on the closing line no longer goes missing.** When the opening line was scrolled off the top, a membrane that VSCodium had reopened (for example after joining a nearby line) still counted as folded, and its closing line lost the ▲. Now a closing line with its line above in view always counts as open.
+
 ### v5.1.853 (2026-11-20) — the first public v5.1
 - **🔐 Encrypt a membrane.** **Encrypt Me** locks a membrane with a passphrase. The file only ever holds the ciphertext; the plain text lives on the screen while it is unlocked, and Raw mode shows the ciphertext.
 - **🙈 A blind over what you unlocked.** An unlocked membrane stays covered by a white blind — only the line with the cursor shows. The 🙈 on its first line shows everything. After a short time away, the whole membrane is covered, the cursor line too.

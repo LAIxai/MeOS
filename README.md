@@ -15,11 +15,13 @@ Markdown Warpup: Cell Merge &amp; Wrap, Sticky Notes Anywhere, ⏰DB</p>
 シン・Markdown セル結合/折返、どこでも付箋、⏰DB</sub></p>
 
 <p align="center">
-  <!-- 記念碑: 4K記念(2026.11.05 俊克が更新・v5.1公開の前日・Open VSX 実数4406)。DL数=4.4K と release=v5.1 の**2つとも**意図的に固定。
+  <!-- 記念碑: v5.1公開記念(2026.11.22 俊克が決めて更新・v5.1.853公開時 Open VSX 実数4699→4.7K)＋socket.dev の点(v5.1.853時点で固定)。DL数=4.7K・release=v5.1・socket の**3つとも**意図的に固定。
+       その前= 4K記念(2026.11.05・実数4406→4.4K)。
        実数や最新版と合わなくても、俊克が言うまで更新しないこと(v4.0.108で一度間違えて release を v4.0 にしてしまった)。
        前の記念碑= 1014 / v2.0(2026.07.20 Open VSX v2.0.63公開)。 -->
-  <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-4.4K-4caf50" alt="Downloads on Open VSX (4.4K at the v5.1 release)"></a>
+  <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-4.7K-4caf50" alt="Downloads on Open VSX (4.7K at the v5.1 release)"></a>
   <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v5.1-2196f3" alt="Latest Release (v5.1)"></a>
+  <a href="https://socket.dev/openvsx/package/lai.lai-membrane"><img src="https://img.shields.io/badge/socket.dev-98%C2%B7100%C2%B7100%C2%B7100%C2%B7100-7c3aed" alt="Socket scores at v5.1.853: Supply Chain 98, Vulnerability 100, Quality 100, Maintenance 100, License 100"></a>
 </p>
 
 ### **M↓Ⓦ↗ — Markdown Warpup** — *down to lighten, up to warp.*

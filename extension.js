@@ -6683,6 +6683,16 @@ function isPairFolded(editor, pair, options) {
   if (!(options && options.ignoreViewport) && Date.now() >= suppressViewportFoldUntil) {
     const vpFact = meosViewportFoldFactAt(editor, pair.start);
     if (typeof vpFact === 'boolean') return vpFact;
+    // ★★v5.1.854(俊克 11.22 am09:15 バグ1「閉じ膜の▲ボタンが出ないことがある」・前にも報告あり):
+    //   ★真因= 開始膜が画面の外(上)にあると上の事実は「分らない」になり、下の覚え/バッジ⊖へ落ちる。
+    //     畳んだ後に近くの行を結合する等で VSCode が畳みを開いても、覚えとバッジは「畳んだ」のまま
+    //     → 目の前に中身と閉じ膜が見えているのに ▲ だけ描かれなかった(閉じ膜の ▲ は !folded の時だけ)。
+    //   ★直し= 閉じ膜とその1つ上の行が両方見えていれば、畳みの中身が見えている＝確かに開いている。
+    //     見えている事実だけで「開いている」と言う(画面の外を畳んだと読むことはしない＝v0.9.216 を守る)。
+    if (pair.end - 1 > pair.start) {
+      const _f = meosViewportFoldFacts(editor);
+      if (_f && _f.open.has(pair.end - 1)) return false;
+    }
   }
 
   // v0.9.216:
