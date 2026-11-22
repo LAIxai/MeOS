@@ -43305,6 +43305,7 @@ function meosFcWantsOpen(doc, block, caretLine) {
   const top = (block.ownTop != null) ? block.ownTop : ((block.top == null) ? block.start : block.top);
   const end = (block.openEnd == null) ? block.end : block.openEnd;   // v4.1.106: ⏰(UFC)行も塊の一員
   const op = (block.open != null) ? block.open : block.ownOpen;
+  if (block.ghostHead != null && caretLine === block.ghostHead) return true;   // v5.1.859: 👻の行を畳み込んだ上の行= そこに置けば開く(畳まれた👻の行には置けない)
   return (op != null && caretLine === op) || (caretLine >= top && caretLine <= end);
 }
 // ★v4.1.1101: 第3引数 `caretAt` ＝ **カーソルthatその行に在ったとしたら**の答えを返す(既定＝今の位置)。
@@ -43557,6 +43558,34 @@ function meosApplyFcRowDecorations(editor) {
 //   頭を▲からバッジ行へずらす＝ **頭は畳んでも隠れない**ので、膜を畳んでいてもバッジthat膜の直下に見える。
 //   ★ずらすと「開く/畳む」の宛先も変わる。so範囲を渡す側(provider)と、開閉を打つ側(fcSync)は
 //     **必ずこの1つの関数から引く**。別々に数えると、開けるつもりで膜を開いてしまう。
+// ★★v5.1.859(俊克 11.22「折り返された1つの行を全て、👻で隠した時、それを1行に折り畳むことはできないのか?」→「上の行へ畳み込む」):
+//   👻は字の大きさを0にして隠すが、VS Code は**飾る前の元の字の長さで折り返す**ので、長い行は空白の段が何段も残る。
+//   1つの行そのものを1段に縮める口は無い(畳みは「ある行の下に続く行を隠す」物)。
+//   → **行の全部が👻の行は、畳みの頭を1つ上の行へずらす**= 👻の行と真下のFC行を、上の行の下へ一緒に畳み込む。
+//   ★形はカーソルで変えない(v5.0.0-26 と同じ= 形が変わると VS Code は別の畳みと見なす)。開け閉めは meosFcWantsOpen が決める。
+//   ★上の行が膜の▼▲・FC/リンクの定義行なら、ずらさない(同じ行から始まる畳みが2つになる・入れ子が崩れる= VS Code が捨てる)。
+//   ★戻り道= 👻の行は畳まれてクリックできないので、**上の行(頭)にカーソルを置けば開く**。
+//   返すのは新しい頭の行。ずらさない時は -1。
+function meosGhostFoldHead(document, b, lines) {
+  try {
+    if (!b || !b.fc || b.open != null || b.ownTop != null) return -1;
+    if (b.top != null && b.top !== b.start) return -1;                 // 表・箇条書きの塊は数え方が別= 触らない
+    const L = b.start;
+    if (!(L >= 1)) return -1;
+    const t = String(lines[L] || '');
+    if (t.indexOf('~~') < 0 || !/^[ \t]*(?:~~(?!\{)[^~\n]+?~~[ \t]*)+$/.test(t)) return -1;   // 行の全部が素の ~~…~~
+    const k = (t.match(/~~(?!\{)[^~\n]+?~~/g) || []).length;
+    if (!k) return -1;
+    const spec = meosSpecLineFor(lines, L);
+    if (!spec) return -1;
+    for (let i = 1; i <= k; i++) if (!meosFcFmtIsGhost(spec, '~~', i)) return -1;   // 1つでも見える取消線があれば、行は残す
+    const H = L - 1, h = String(lines[H] || '');
+    if (h.indexOf('<!--') >= 0 && (meosIsSpecLine(h) || meosIsFcIcLine(h))) return -1;
+    if (h.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(h)) return -1;
+    if (parseOpenLine(h) || parseCloseLine(h)) return -1;
+    return H;
+  } catch (_) { return -1; }
+}
 function meosFcFoldShape(document, caretLine) {
   const out = [];
   let _opens126 = null;   // v5.1.126: 膜の開始行(1回だけ数える)
@@ -43577,13 +43606,17 @@ function meosFcFoldShape(document, caretLine) {
     //       → ログの `[host-blocked] 5596ms`。カウントダウンthat止まって見えたのはこれ。
     //   ★★→ **その塊の行だけを見る**= 走査ゼロ。⏰thatが在って ✓ thatが無ければ「まだ鳴る時計」。
     //     時計の行を含む塊だけ開けたまま、メッセージだけの塊は今までどおり畳む。
-    for (const b of meosDefBlocks(document)) {
+    let _lines859 = null;
+    for (let b of meosDefBlocks(document)) {
+      // v5.1.859: 行の全部が👻の行は、頭を1つ上へ(meosGhostFoldHead)。行は👻の行にだけ要る= ~~ の無い塊は読まない
+      let _gh859 = -1;
+      if (b.fc && b.open == null) { if (!_lines859) _lines859 = meosDocLines(document); if (String(_lines859[b.start] || '').indexOf('~~') >= 0) { _gh859 = meosGhostFoldHead(document, b, _lines859); if (_gh859 >= 0) b = Object.assign({}, b, { ghostHead: _gh859 }); } }
       const open = meosFcWantsOpen(document, b, caretLine);   // 訊くのは1回だけ(塊の数だけ走る道なので)
       // ★v5.0.0-26(俊克 バグ1「畳んだのにバッジが消えない・943行目をクリックすると膜が開く」「v4.1.104〜105はタイマー表示のため。タイマーの無い膜は範囲外で、閉じるべき」):
       //   バッジ行を畳みの外へ出すのは、⏰の在る膜(バッジ行が動く数字の置き場)だけ。⏰の無い膜は、カーソルがどこでもバッジ行まで畳む
       //   = 畳みの形がカーソルで変わらない(形が変わると VS Code は別の畳みと見なして開いてしまう)
       const shift = open && (b.open != null) && meosClockBadgeRow(document, { end: b.start }) >= 0;
-      const head = shift ? b.start + 1 : b.start;
+      const head = shift ? b.start + 1 : (_gh859 >= 0 ? _gh859 : b.start);   // v5.1.859: 👻の行は上の行が頭
       // ★★★v4.1.147: 畳みを止めた行は、**塊の側でも畳まない**= 膜の範囲だけ縮めても、
       //   FCの塊thatその行を畳んでしまえば同じこと(2つの物差しthat食い違う=今日6回踏んだ形)。
       //   → 畳むか否かは meosClockBadgeRow 1つthat決める。
@@ -43892,7 +43925,7 @@ async function meosSyncFcFoldForCursor(editor) {
       if (it.hasRange) {
         _headEnd.set(it.b.start, it.end); _target.set(it.b.start, it.head);
         // v4.1.107: 膜の塊だけは**終わりの行**へ打つ(古い形の時に膜を畳まないため)。他の塊は今までどおり頭へ。
-        _foldAt.set(it.b.start, (it.b.open != null) ? it.end : it.b.start);
+        _foldAt.set(it.b.start, (it.b.open != null) ? it.end : it.head);   // v5.1.859: 👻の行は上の行(頭)へ打つ
       }
       else _target.set(it.b.start, -1);                           // 範囲that無い= バッジ行はもう畳みの外
       if (it.open) want.add(it.b.start);

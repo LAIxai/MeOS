@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.859 (2026-11-22)
+- **A line hidden whole with 👻 folds away.** A long line where every strikethrough is 👻 used to leave its wrapped rows behind as blank space, because VSCodium wraps by the raw text. Now that line and its FC line fold under the line above, so the gap is gone. Put the caret on the line above to open it again.
+
 ### v5.1.858 (2026-11-22)
 - **The strikethrough button grows with the FUSEN button.** In Format Me, the FUSEN (code) button doubles in size under the pointer and used to hide the strikethrough button next to it. Now the strikethrough button doubles too and moves just right of it, and the FUSEN button stays big while you move onto it.
 
