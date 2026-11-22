@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.860 (2026-11-22)
+- **Strikethrough with nothing selected takes the whole line.** Like the heading button, pressing strikethrough (or 👻 with Opt) without a selection now wraps the text of the caret line. The indent, the list mark and the `#` stay outside. On an empty line, or a line that already has a strikethrough, it works as before.
+- **A 👻 line folds under a stop line too.** The faint stop line the heading button adds can now hold a fully hidden 👻 line under it. The stop line stays visible.
+
 ### v5.1.859 (2026-11-22)
 - **A line hidden whole with 👻 folds away.** A long line where every strikethrough is 👻 used to leave its wrapped rows behind as blank space, because VSCodium wraps by the raw text. Now that line and its FC line fold under the line above, so the gap is gone. Put the caret on the line above to open it again.
 

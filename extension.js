@@ -28927,6 +28927,28 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
         try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
         return;
       }
+      // ★v5.1.860(俊克 11.22 改良1「見出しボタンのように、選択しないケースで、その行全体を取り消すようにしようよ」):
+      //   取消線だけ= 何も選ばずに押したら、カーソルの行の字を丸ごと包む(行頭の字下げ・箇条書きの印・# は外に残す= 複数行の時と同じ)。
+      //   行が空・指定行/コメント・囲いの行・既に ~~ が在る行(入れ子になる)は、今までどおり「取消線」の字を置く。
+      if (kind === 'strike' && sel.isEmpty) {
+        try {
+          const _tx = doc.lineAt(sel.start.line).text;
+          if (_tx.trim() && _tx.indexOf('~~') < 0 && !meosIsSpecLine(_tx) && !/^\s*<!--/.test(_tx) && !/^\s*(```|~~~)/.test(_tx) && !parseOpenLine(_tx) && !parseCloseLine(_tx)) {
+            const _lead = (/^(\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|>\s*|#{1,6}\s+)?)/.exec(_tx) || [''])[0].length;
+            let _b = _tx.length; while (_b > _lead && /\s/.test(_tx[_b - 1])) _b--;
+            if (_b > _lead) {
+              const _ws = new vscode.Selection(sel.start.line, _lead, sel.start.line, _b), _t = _tx.slice(_lead, _b);
+              await meosWriteMarkAndSpec(editor, _ws, mk + _t + mk, mk, _dir + ' ' + spec);
+              try { meosDbg('[fmt] strike 選択なし= 行全体を包んだ 行=' + (sel.start.line + 1) + (_ghost ? ' 👻' : '')); } catch (_) { }
+              const _p0 = new vscode.Position(sel.start.line, _lead);
+              editor.selection = new vscode.Selection(_p0, _p0);
+              editor = await meosFocusBack(editor, editor.selection);
+              try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
+              return;
+            }
+          }
+        } catch (_) { }
+      }
       // v4.0.210(俊克): **中間状態を作らない**= 本文に印・指定行に指定を、1回の編集で同時に書く。
       const _mark = mk + body + mk;
       // ★★v4.0.434(俊克 8/27 am01:42「**お化けにも、色指定を付けておく**。そうすれば、FCコメントで👻を消せば、
@@ -43580,6 +43602,9 @@ function meosGhostFoldHead(document, b, lines) {
     if (!spec) return -1;
     for (let i = 1; i <= k; i++) if (!meosFcFmtIsGhost(spec, '~~', i)) return -1;   // 1つでも見える取消線があれば、行は残す
     const H = L - 1, h = String(lines[H] || '');
+    // ★v5.1.860(俊克 11.22 pm02:31 の実物= 見出しボタンが入れる薄い罫線 `<!-- Mew!UFC --- ⚪ -->` の直下に👻の行): 罫線の行は見えたまま残る行
+    //   (畳む塊に入らない UFC)= 頭にしてよい。罫線は消えず、その下へ👻の行が畳み込まれる。
+    if (MEOS_RULE_LINE_RE.test(h)) return H;
     if (h.indexOf('<!--') >= 0 && (meosIsSpecLine(h) || meosIsFcIcLine(h))) return -1;
     if (h.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(h)) return -1;
     if (parseOpenLine(h) || parseCloseLine(h)) return -1;
