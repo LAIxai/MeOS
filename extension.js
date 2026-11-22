@@ -43605,6 +43605,17 @@ function meosGhostFoldMate(document, ln) {
     return (meosGhostFoldHead(document, b, lines) === ln) ? { from: L, to: e } : null;
   } catch (_) { return null; }
 }
+// ★v5.1.866(俊克 11.23 am03:04「外気温**2℃↘**。~~湿度30%→。~~ の時、👻マークが出ない」):
+//   行の一部だけが👻でも、その行のFC行が畳まれていれば⋯の右に👻(しまった物がそこに在る印)。押す= 行末にカーソル= 行が生になり中身が見える
+function meosGhostPartLine(lines, L) {
+  try {
+    const t = String(lines[L] || ''); if (t.indexOf('~~') < 0) return false;
+    const k = (t.match(/~~(?!\{)[^~\n]+?~~/g) || []).length; if (!k) return false;
+    const spec = meosSpecLineFor(lines, L); if (!spec) return false;
+    for (let i = 1; i <= k; i++) if (meosFcFmtIsGhost(spec, '~~', i)) return true;
+    return false;
+  } catch (_) { return false; }
+}
 function meosGhostFoldHead(document, b, lines) {
   try {
     if (!b || !b.fc || b.open != null || b.ownTop != null) return -1;
@@ -43652,7 +43663,7 @@ function meosFcFoldShape(document, caretLine) {
     for (let b of meosDefBlocks(document)) {
       // v5.1.859: 行の全部が👻の行は、頭を1つ上へ(meosGhostFoldHead)。行は👻の行にだけ要る= ~~ の無い塊は読まない
       let _gh859 = -1;
-      if (b.fc && b.open == null) { if (!_lines859) _lines859 = meosDocLines(document); if (String(_lines859[b.start] || '').indexOf('~~') >= 0) { _gh859 = meosGhostFoldHead(document, b, _lines859); if (_gh859 >= 0) b = Object.assign({}, b, { ghostHead: _gh859 }); } }
+      if (b.fc && b.open == null) { if (!_lines859) _lines859 = meosDocLines(document); if (String(_lines859[b.start] || '').indexOf('~~') >= 0) { _gh859 = meosGhostFoldHead(document, b, _lines859); if (_gh859 >= 0) b = Object.assign({}, b, { ghostHead: _gh859 }); else if (meosGhostPartLine(_lines859, b.start)) b = Object.assign({}, b, { ghostPart: true }); } }
       const open = meosFcWantsOpen(document, b, caretLine);   // 訊くのは1回だけ(塊の数だけ走る道なので)
       // ★v5.0.0-26(俊克 バグ1「畳んだのにバッジが消えない・943行目をクリックすると膜が開く」「v4.1.104〜105はタイマー表示のため。タイマーの無い膜は範囲外で、閉じるべき」):
       //   バッジ行を畳みの外へ出すのは、⏰の在る膜(バッジ行が動く数字の置き場)だけ。⏰の無い膜は、カーソルがどこでもバッジ行まで畳む
@@ -43684,7 +43695,7 @@ function meosFcFoldShape(document, caretLine) {
       try { if (!_opens126) { _opens126 = new Set(); for (const pr of collectPairs(document, { excludeIndex: false })) _opens126.add(pr.start); } _onOpen126 = _opens126.has(head); } catch (_) { }
       out.push({ b, head, end, shift, open, hasRange: (end > head) && !_keepOpen51 && !_onOpen126, keepOpen: _keepOpen51 });
     }
-    try { _meosGhostHeadCache.set(String(document.uri), { ver: document.version, heads: out.filter(it => it.b.ghostHead != null && it.hasRange).map(it => it.head) }); } catch (_) { }   // v5.1.864: ⋯の右の👻を描く所が読む
+    try { _meosGhostHeadCache.set(String(document.uri), { ver: document.version, heads: out.filter(it => (it.b.ghostHead != null || it.b.ghostPart) && it.hasRange).map(it => it.head) }); } catch (_) { }   // v5.1.864: ⋯の右の👻を描く所が読む(v5.1.866: 一部👻の行も)
   } catch (_) { }
   return out;
 }

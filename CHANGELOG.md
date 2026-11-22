@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.866 (2026-11-23)
+- **The 👻 by the fold also shows for a partly hidden line.** When only part of a line is 👻 and its comment lines are folded, the small 👻 now sits right of the `⋯` too. Click it and the line opens as raw text.
+
 ### v5.1.865 (2026-11-23)
 - **The grown strikethrough button no longer turns see-through.** Pointing at it while it was grown over the ⏰ button let the ⏰ show through. It now stays solid.
 
