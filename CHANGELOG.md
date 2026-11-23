@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.869 (2026-11-23)
+- **Three 👻 colours out of the box.** The strikethrough button's three saved slots now start as 👻 on blue, 👻 on red and 👻 on yellow. Before, all three were the same red with no background, so ↻ seemed to do nothing. Saved settings are kept.
+
 ### v5.1.868 (2026-11-23)
 - **CB sticky notes are now `FUSEN-cb_`.** A new code-block FUSEN comment reads `<!-- Mew!UFC FUSEN-cb_<time> … -->`, matching `FUSEN-ic_` for inline code. Search `FUSEN-` to find every sticky note, or `FUSEN-cb_` / `FUSEN-ic_` for one kind. Notes written as `FUSEN_` still work as before.
 
