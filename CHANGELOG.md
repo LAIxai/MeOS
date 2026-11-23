@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.870 (2026-11-23)
+- **👻 no longer leaves a gap mid-line.** When you select words and press 👻, the words move into the FC line below (`~~👻 (colour)//words`), and only `~~👻~~` stays in the text. VS Code wraps by the raw text, so hidden words used to leave an empty run at the end of a wrapped row; now they take no room. The 👻 shows in place as a button: hover shows the words, click opens the line as Raw. 🚫, or ↻ to a normal strikethrough, puts the words back. Whole-line 👻 and old 👻 marks work as before.
+
 ### v5.1.869 (2026-11-23)
 - **Three 👻 colours out of the box.** The strikethrough button's three saved slots now start as 👻 on blue, 👻 on red and 👻 on yellow. Before, all three were the same red with no background, so ↻ seemed to do nothing. Saved settings are kept.
 

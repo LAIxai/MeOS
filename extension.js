@@ -3283,6 +3283,7 @@ function parseColorSpec(content, single, scan) {
 // 記号として隠す。タイムスタンプはプレーンテキストとして残る(grep可・往復で壊れない)。
 let strikeBodyDecoration;     // 旧形 ~~text~~ 用: 赤い取消線(line-through)
 let strikeMarkerDecoration;   // ~~ と (日時) と { } を隠す
+let ghostInlineBtnDecoration; // v5.1.870: 本文の ~~👻~~ の👻= 押すとその行が Raw(手のポインター)
 // v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ 用。線色別の line-through 装飾。
 // 背景色は highlightBodyByColor を、暗背景の白文字は highlightFgByColor['white'] を再利用。
 let strikeColorByKey = null;  // Map<色キー, 装飾型(指定色の line-through)>。既定線色=red。
@@ -3845,6 +3846,7 @@ function disposeDecorations() {
   strikeBodyDecoration = undefined;
   if (strikeMarkerDecoration) strikeMarkerDecoration.dispose();
   strikeMarkerDecoration = undefined;
+  if (ghostInlineBtnDecoration) { ghostInlineBtnDecoration.dispose(); ghostInlineBtnDecoration = undefined; } // v5.1.870
   if (refPointHideDecoration) { refPointHideDecoration.dispose(); refPointHideDecoration = undefined; } // v0.9.99967
   if (refPointLabelDecoration) { refPointLabelDecoration.dispose(); refPointLabelDecoration = undefined; } // v0.9.99967
   if (refFrontGutterDecoration) { refFrontGutterDecoration.dispose(); refFrontGutterDecoration = undefined; } // v0.9.99969
@@ -4259,6 +4261,12 @@ function makeDecorations() {
   // v0.9.658: 取消線の `~~` と `(日時)` と `{ }` を font-size:0 で隠す。
   strikeMarkerDecoration = vscode.window.createTextEditorDecorationType({
     textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+  // ★v5.1.870(俊克 11.23 pm05:04「取消線を入れた部分に、👻マークを埋込む…この👻ボタンをクリックする事で、Rawデータに切り替る…ホーバーすると、選択指にする」):
+  //   👻の字そのものが本文に居る(~~👻~~)= 押せば文字カーソルがその行に入り、行が Raw になる(行をクリックするのと同じ道)。見た目は手のポインターだけ
+  ghostInlineBtnDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: 'none; cursor: ' + meosHandCursor() + ';',
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
   });
   // v0.9.99967: 参照符=点膜▶◀。生データ {* ▶◀mRn=… *} を font-size:0 で隠し(タイムスタンプ非表示=
@@ -8672,6 +8680,7 @@ function applyPrettyLabels(editor) {
   // 本体はホバーで日時を出すため DecorationOptions({range, hoverMessage}) で push。
   const strikeBodyItems = [];
   const strikeMarkerRanges = [];
+  const ghostInlineBtnItems = [];   // v5.1.870: ~~👻~~ の👻(押すと Raw)
   // v0.9.699: 新形取消線 ~~{本文(線色/背景色)//コメント}~~ の線色別範囲。
   const strikeColorItemsByKey = {}; // { red:[{range,hoverMessage?}...], ... }
   for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) strikeColorItemsByKey[key] = [];
@@ -9122,6 +9131,17 @@ function applyPrettyLabels(editor) {
           //   ★v4.0.441: Pseudo-WYSIWYG も同じ枝へ合流(俊克「通常の取消線も、👻同様に、見えなくする」)。
           //     ただし `~~not` は**取消線を名乗っていない**(色だけの運び屋・v4.0.238)so消さない＝
           //     消してよいのは「取り消した」と言っている印だけ。直後の仕様コメントも一緒に伏せる。
+          // ★v5.1.870(俊克 11.23 pm05:04): しまった👻= 本文は ~~👻~~ だけ・字は真下の FC 行(`~~👻 (色)//字`)に住む。
+          //   折り返しは本文の字数で決まる(飾りでは詰められない)ので、字そのものを本文から出した= 途中の空きが出ない。
+          //   ~~ だけ隠し、👻は残して押せる印に。乗せると、しまった字を tip で見せる
+          if (_fcGhost && inner === '👻') {
+            strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
+            strikeMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
+            const _gs = meosFcFmtGhostStore(_fcL(), '~~', _fcN('~~', _fcSt));
+            let _hv = null; if (_gs) { _hv = new vscode.MarkdownString(); _hv.appendText('👻 ' + _gs); _hv.isTrusted = false; }
+            ghostInlineBtnItems.push(_hv ? { range: new vscode.Range(line, innerStart, line, bodyEnd), hoverMessage: _hv } : { range: new vscode.Range(line, innerStart, line, bodyEnd) });
+            continue;
+          }
           if (_fcGhost || (_pseudoLine(line) && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
           const _st = (_sc || _fcRaw) ? parseColorSpec(_sc ? _sc.raw : _fcRaw, 'fg', _sc ? _sc.raw : _fcRaw) : null;
           if (bodyEnd > innerStart) {
@@ -9746,6 +9766,7 @@ function applyPrettyLabels(editor) {
   if (strikeMarkerDecoration) {
     setDecoCached(editor, strikeMarkerDecoration, 'stMarker', strikeMarkerRanges);
   }
+  if (ghostInlineBtnDecoration) setDecoCached(editor, ghostInlineBtnDecoration, 'ghostBtn', ghostInlineBtnItems);   // v5.1.870
   // v0.9.99967: 参照符(点膜▶◀)適用(生データ隠し+記号チップ)。
   if (refPointHideDecoration) {
     setDecoCached(editor, refPointHideDecoration, 'refPtHide', refPointHideItems);
@@ -28900,6 +28921,13 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       // v4.0.416: Opt押しの取消ボタン= 👻(コメント化)。色は持たない= 見えない物に色は要らない。
       const _ghost = !!(opt && opt.ghost) && kind === 'strike';
       const _dir = _ghost ? '~~👻' : (kind === 'highlight') ? '***not' : '~~';
+      // ★v5.1.870(俊克 11.23 pm05:00〜05:14「元のデータを…保存して、本文を書換えよう」→ FC 行にしまう形で合意): 👻は字を本文から出して FC 行へしまう。
+      //   本文= ~~👻~~ / FC = `~~👻 (色)//字`。折り返しは本文の字数で決まるので、隠した字の分の空きがもう出ない。
+      //   🚫(解除)・↻で普通の取消線に替えた時に字を本文へ戻す(formatSpanAtCursor が字を本文として返す)。カーソルでは書き換えない
+      //   FC で書かない設定・字が -- > を含む時・行全体/複数行(👻の畳みで行ごと消える= 今のまま)は今までの形(字は本文のまま隠す)
+      const _gStow = (t) => _ghost && meosFormatWritesFC() && t && t.indexOf('-->') < 0 && t.indexOf('<!--') < 0 && t !== '👻';
+      const _gMark = (t) => _gStow(t) ? (mk + '👻' + mk) : (mk + t + mk);
+      const _gDir = (t) => _gStow(t) ? (_dir + ' ' + spec + '//' + t) : (_dir + ' ' + spec);
       // ★★v4.2.383(俊克 別件1「最近、取消線ボタンが、複数行に対応しなくなっている」):
       //   ★ログ= 空行と箇条書きをまたいで何段落も選んだまま押していた(sel に \n\n- が入っている)。
       //     Markdown の ~~ / *** は**段落や項目をまたげない**= 範囲全体を1組で包んでも線は引かれない。
@@ -28955,6 +28983,14 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       //   通常の取消線に変身できる」): ★★**戻る道を1手にする**。色を落とすと、普通の取消線にしたい時に
       //   色を選び直すことになる。命令はコメントに書いてあるので、**👻の2文字を消すだけで戻れる**のが筋。
       //   ★v4.0.416で「見えない物に色は要らない」と落としたのは、**見えない間のことしか考えていなかった**。
+      if (_gStow(body)) {   // v5.1.870: しまった👻= 本文に残るのは👻1字。カーソルは👻の後ろへ(選んでおく字が本文に無い)
+        await meosWriteMarkAndSpec(editor, sel, _gMark(body), mk, _gDir(body));
+        const _ap = new vscode.Position(sel.start.line, sel.start.character + _gMark(body).length);
+        editor.selection = new vscode.Selection(_ap, _ap); editor = await meosFocusBack(editor, editor.selection);
+        try { meosDbg('[fmt] 👻しまう 行=' + (sel.start.line + 1) + ' 字=' + body.length); } catch (_) { }
+        try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
+        return;
+      }
       await meosWriteMarkAndSpec(editor, sel, _mark, mk, _dir + ' ' + spec);
       const bs = new vscode.Position(sel.start.line, sel.start.character + mk.length);
       bodySel = new vscode.Selection(bs, new vscode.Position(sel.start.line, sel.start.character + mk.length + body.length));
@@ -29939,9 +29975,20 @@ function formatSpanAtCursor(editor, kind) {
     // v4.0.56(俊克): 新形は素の記法＋後置きコメント so、解除では**コメントも一緒に**落とす。
     const sc = meosSpecCommentAfter(text, e);
     if (sc) e = sc.end;
-    if (pos.character >= s && pos.character <= e) return { kind, range: new vscode.Range(line, s, line, e), body: String(m[1] || '').trim() };
+    if (pos.character >= s && pos.character <= e) {
+      // ★v5.1.870: しまった👻(~~👻~~)= 外す時は、FC にしまった字を本文として返す= 🚫で字が戻る・↻で付け直す時もその字を包む
+      if (m[1] === '👻' && kind === 'strike') { const _gs = sc ? meosGhostStoreOfRaw(sc.raw) : meosGhostStoreAt(doc, line, text, s); if (_gs != null) return { kind, range: new vscode.Range(line, s, line, e), body: _gs, ghostStore: true }; }
+      return { kind, range: new vscode.Range(line, s, line, e), body: String(m[1] || '').trim() };
+    }
   }
   return null;
+}
+// ★v5.1.870: しまった👻の字を引く口2つ= ①行末形のコメントの中身から ②FC 行(本文の何個目の ~~ か)から
+function meosGhostStoreOfRaw(raw) { const m = MEOS_GHOST_STORE_RE.exec(String(raw == null ? '' : raw)); return m ? m[2] : null; }
+function meosGhostStoreAt(doc, line, text, at) {
+  try { const spec = meosSpecLineFor(meosDocLines(doc), line); if (!spec) return null;
+    const ms = []; const re = /~~(?!\{)([^~\n]+?)~~/g; let m; const t = meosScanText(text); while ((m = re.exec(t)) !== null) ms.push(m.index);
+    const ord = ms.indexOf(at) + 1; return ord > 0 ? meosFcFmtGhostStore(spec, '~~', ord) : null; } catch (_) { return null; }
 }
 async function removeFormatAtCursor(editor, span) {
   if (!editor || !span) return;
@@ -42650,6 +42697,19 @@ function meosFcFmtIsGhost(spec, kind, ord) {
   }
   return false;
 }
+// ★v5.1.870: しまった👻の字(`~~👻 (色)//字` の字)。数え方は meosFcFmtIsGhost と同じ。無ければ null
+const MEOS_GHOST_STORE_RE = /^([ \t]*~~(?:#\d{1,3})?[ \t]*👻[ \t]*(?:\([^()\n]*\))?[ \t]*)\/\/([\s\S]*)$/u;
+function meosFcFmtGhostStore(spec, kind, ord) {
+  if (!spec || !spec.fmt || !spec.fmt.length) return null;
+  let n = 0;
+  for (const it of spec.fmt) {
+    if (it.kind !== kind) continue;
+    if (it.nth > 0) { if (it.nth === ord) return it.ghost && it.store != null ? it.store : null; continue; }
+    n++;
+    if (n === ord) return it.ghost && it.store != null ? it.store : null;
+  }
+  return null;
+}
 function meosFcFmtIsNot(spec, kind, ord) {
   if (!spec || !spec.fmt || !spec.fmt.length) return false;
   let n = 0;
@@ -42685,6 +42745,10 @@ function meosParseSpecPayload(payload) {
   // ★**リンクは常に先に判定**(この鉄則を破ると、行先の中の記号を別の記法として拾ってしまう)。
   const _lk = meosLinkSpecFromComment(rest);
   if (_lk) return { metex: [], fmt: [], link: [_lk], line: '' };
+  // ★v5.1.870: しまった👻= `~~👻 (色)//字`。// の後ろは本文から出した字そのもの= 記法として読まない(字の中の ** や ( ) を項目に拾わない)
+  { const _gm = MEOS_GHOST_STORE_RE.exec(rest);
+    if (_gm) { const one = meosParseSpecPayload(_gm[1]);
+      if (one.fmt.length === 1 && one.fmt[0].ghost && !one.metex.length) { one.fmt[0].store = _gm[2]; one.fmt[0].inner = (one.fmt[0].inner || '') + '//' + _gm[2]; one.line = ''; return one; } } }
   const metex = [];
   // ★v4.0.231(俊克 8/16 am11:00 バグ1「最後の本命=帽子に色が乗らない」): **帽子の控えも先に判定する**(リンクと同じ扱い)。
   //   真因= 項目の文字集合 `[^\s{}<>#()]*` は `<` `(` `)` `>` を**わざと外して**ある(v4.0.222: 外さないと `(白/緑)` まで
@@ -43610,9 +43674,9 @@ function meosGhostFoldMate(document, ln) {
 function meosGhostPartLine(lines, L) {
   try {
     const t = String(lines[L] || ''); if (t.indexOf('~~') < 0) return false;
-    const k = (t.match(/~~(?!\{)[^~\n]+?~~/g) || []).length; if (!k) return false;
+    const ms = t.match(/~~(?!\{)[^~\n]+?~~/g) || [], k = ms.length; if (!k) return false;
     const spec = meosSpecLineFor(lines, L); if (!spec) return false;
-    for (let i = 1; i <= k; i++) if (meosFcFmtIsGhost(spec, '~~', i)) return true;
+    for (let i = 1; i <= k; i++) if (ms[i - 1] !== '~~👻~~' && meosFcFmtIsGhost(spec, '~~', i)) return true;   // v5.1.870: しまった👻(~~👻~~)はその場に👻が居る= 行末の印は要らない
     return false;
   } catch (_) { return false; }
 }
