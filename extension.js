@@ -20010,6 +20010,7 @@ function meosVeilPaint(editor) {
       const folded = (i) => { for (let j = 0; j + 1 < vis.length; j++) if (i > vis[j][1] && i < vis[j + 1][0]) return true; return false; };
       for (const p of collectPairs(doc, { excludeIndex: false })) {
         if (!keys.has(p.id) || p.end - p.start < 2 || p.id === open) continue;
+        if (!_meosVeilOn && !_meosVeilCovered.has(doc.uri.toString() + '#' + p.id)) continue;   // v5.1.875: 板は小さい🙈で掛けた膜だけ(無操作の🙈は全部)
         const cols = [];
         for (let i = p.start + 1; i < p.end; i++) cols.push(meosRenderCols(doc.lineAt(i).text || ''));
         const W = wrap > 0 ? wrap : Math.max(12, Math.max.apply(null, cols) + 2);   // v5.1.130(俊克 👍1「白い板の横幅は、折り返し幅と同じでもいいよ」): 折り返し幅が有れば板はその幅
@@ -20074,6 +20075,9 @@ const _meosVeilLast = new WeakMap();   // editor -> 最後に描いた時のカ�
 //   無操作の🙈の見猿を押した時も同じ(🙈を外して、その膜は全部見せる)。
 const _meosVeilAnchors = new WeakMap();   // editor -> [{ line, id }]= 最後に描いた見猿の駒の行
 let _meosVeilBare = null;                 // { uri, id, line }= 見猿を押して全部見せている膜(カーソルが line に居る間だけ)
+// ★v5.1.875(俊克 11.24 am02:42「本当に隠したいのは、パスワードとかの一部分だけ…そこだけを👻にしておけばいい」「白いカバーの中に1行だけ覗くと言うのは、前後が見えないので、扱い難い」):
+//   常の目隠し(解錠中ずっと白い板)をやめる= 解錠した膜はふつうに見え、隠したい所は👻でしまう。白い板は小さい🙈で掛ける/外すの切替(v5.1 マイナーの宿題①)と、無操作の🙈だけ
+const _meosVeilCovered = new Set();       // 'uri#膜id'= 小さい🙈で白い板を掛けた膜
 function meosVeilMonkeyHit(e) {   // 見猿を押した= マウスで、駒の行の0桁にカーソルが落ちた
   try {
     const ed = e.textEditor, sel = ed.selection;
@@ -25811,7 +25815,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         const _ch = meosAwayChairSpot(editor.document, _ln, editor);   // v5.1.19: 🪑を押した= 🪑→🛋️→💺 を巡る(全体で1つの設定)
         if (_ch && editor.selection.active.character === _ch.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosAwaySetSlot(meosAwaySlot() % 3 + 1); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; }
         const _vbs = meosVeilBtnSpot(editor.document, _ln, editor);   // v5.1.175: 小さい🙈を押した= その膜を全部見せる
-        if (_vbs && editor.selection.active.character === _vbs.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); _meosVeilBare = { uri: editor.document.uri.toString(), id: _vbs.id, line: _ln }; meosVeilPaint(editor);
+        if (_vbs && editor.selection.active.character === _vbs.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln);
+          { const _vk = editor.document.uri.toString() + '#' + _vbs.id; if (_meosVeilCovered.has(_vk)) _meosVeilCovered.delete(_vk); else _meosVeilCovered.add(_vk); meosDbg('[veilBtn] 小さい🙈 膜=' + _vbs.id + ' → ' + (_meosVeilCovered.has(_vk) ? '白い板を掛ける' : '外す')); }   // v5.1.875: 掛ける/外すの切替
+          _meosVeilBare = null; meosVeilPaint(editor);
           // ★v5.1.179(俊克 am11:33 改良2「折り畳んだ状態で小さい🙈をクリックしても何も起きない。膜を展開して、中を丸見えにしたほうが良い」): 畳んでいたら▼と同じ口で開く(バッジの⊖/⊕も揃う)
           try { const _pv = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === _ln && p.id === _vbs.id); if (_pv && isPairFolded(editor, _pv)) await setPairFoldStateAndMstat(editor, _pv, false); } catch (_) { }
           meosCalmRefresh(editor); return; }

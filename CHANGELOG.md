@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.875 (2026-11-24)
+- **Unlocked membranes are no longer always covered.** An unlocked encrypted membrane now shows its contents normally, so you can see the lines around the part you are editing. Hide only the secret parts (a password, for example) with 👻: the stowed text sits in the FC line inside the membrane, so it is encrypted too.
+- **The small cover button on the start line is now an on/off switch.** Click it to cover the whole membrane, and click it again to uncover it. The idle cover is unchanged.
+
 ### v5.1.874 (2026-11-24)
 - **Click a stand-in 👻 to peek at the text it stows.** Clicking the 👻 button shows the stowed text right after it, drawn as a strike in its own colours. The line stays in the normal view (not Raw), and the 👻 stays where it is. Click it again to hide the text. With several 👻 on a line, each one is shown or hidden on its own. The body is never rewritten, and editing the note hides them all again.
 

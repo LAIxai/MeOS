@@ -38,7 +38,7 @@ Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.a
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_vault_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn, _vaultParked, meosVaultRawSync, _meosViewMem, meosVaultUnlockedCount, meosVaultLock, bumpMode: () => { _meosModeEpoch++; }, meosVeilMonkeyHit, meosVeilRepaintIfMoved, setBare: (b) => { _meosVeilBare = b; }, getBare: () => _meosVeilBare, meosVeilBtnSpot, _vaultWriteKeys };
+module.exports.__t = { meosVaultBtnSpot, MeosVaultFs, meosEncryptText, meosDecryptText, _vaultKeys, _vaultSeen, _vaultPairs, _MEOS_ENC_PREFIX, _MEOS_SHIELD, _vaultShield, meosPassStrongEnough, meosEncLineShield, meosVeilMs, meosVeilPaint, meosVeilSet, getVeil: () => _meosVeilOn, _vaultParked, meosVaultRawSync, _meosViewMem, meosVaultUnlockedCount, meosVaultLock, bumpMode: () => { _meosModeEpoch++; }, meosVeilMonkeyHit, meosVeilRepaintIfMoved, setBare: (b) => { _meosVeilBare = b; }, getBare: () => _meosVeilBare, meosVeilBtnSpot, _vaultWriteKeys, _meosVeilCovered };
 `);
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
@@ -177,7 +177,11 @@ const SECRET_A = 'PIN 4321 銀行🏦', SECRET_B = '2FA seed JBSWY3DPEHPK3PXP';
       ok(K > 0 && Math.abs(L * K - 7.5) < 0.01 && /top: 0\.75em|top: [\d.]+em/.test(td), '🙈: 横は板の真ん中(左から7.5桁= 字の大きさで割り戻す)'); }
     T.meosVeilSet(false);
     { const all2 = Array.from(got.values()); const c2 = all2.find(r => r.length && r[0] instanceof Range) || [];
-      ok(!T.getVeil() && c2.length === 3, 'v5.1.171: 🙈を外しても、カーソルが膜の外なら中身は覆ったまま(解錠中は常に目隠し)'); }
+      ok(!T.getVeil() && !c2.length, 'v5.1.875: 🙈を外すと、小さい🙈で掛けていない膜は覆わない(常の目隠しはやめた)'); }
+    // v5.1.875: 小さい🙈で掛けた膜は、今までの常の目隠しと同じ姿(カーソルの行だけ見せる)
+    T._meosVeilCovered.add(VU3.toString() + '#V_open'); got.clear(); T.meosVeilPaint(ed);
+    { const all2 = Array.from(got.values()); const c2 = all2.find(r => r.length && r[0] instanceof Range) || [];
+      ok(c2.length === 3, 'v5.1.875: 小さい🙈で掛けた膜は、カーソルが膜の外なら中身を覆う'); }
     // v5.1.171: カーソルの行だけ板を外し、膜の中にカーソルが居る間は見猿を出さない
     got.clear(); ed.selections = [{ active: new Position(3, 0) }, { active: new Position(3, 4) }];
     T.meosVeilPaint(ed);
