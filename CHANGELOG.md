@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.873 (2026-11-24)
+- **A stowed 👻 stays a button even when 👻 is missing from its FC box.** If the FC box reads `~~ (colour)//text` and the body is `~~👻~~`, the text after `//` is still read as the stowed text. The 👻 stays a clickable button, and 🚫 puts the text back. A tip (`//[]tip=`) is not affected.
+
 ### v5.1.872 (2026-11-23)
 - **No hover tint on the enlarged 👻 button.** A button with a preset colour now looks the same on hover whether it is enlarged or not: the colour stays as it is.
 

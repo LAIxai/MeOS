@@ -9134,10 +9134,12 @@ function applyPrettyLabels(editor) {
           // ★v5.1.870(俊克 11.23 pm05:04): しまった👻= 本文は ~~👻~~ だけ・字は真下の FC 行(`~~👻 (色)//字`)に住む。
           //   折り返しは本文の字数で決まる(飾りでは詰められない)ので、字そのものを本文から出した= 途中の空きが出ない。
           //   ~~ だけ隠し、👻は残して押せる印に。乗せると、しまった字を tip で見せる
-          if (_fcGhost && inner === '👻') {
+          // ★v5.1.873: FC の箱の👻が抜けても(`~~ (色)//字`)、しまった字があれば同じボタンに(loose)
+          const _gsL = (!_sc && !_fcNot && inner === '👻') ? meosFcFmtGhostStore(_fcL(), '~~', _fcN('~~', _fcSt), true) : null;
+          if ((_fcGhost || _gsL != null) && inner === '👻') {
             strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
             strikeMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
-            const _gs = meosFcFmtGhostStore(_fcL(), '~~', _fcN('~~', _fcSt));
+            const _gs = _gsL != null ? _gsL : meosFcFmtGhostStore(_fcL(), '~~', _fcN('~~', _fcSt));
             let _hv = null; if (_gs) { _hv = new vscode.MarkdownString(); _hv.appendText('👻 ' + _gs); _hv.isTrusted = false; }
             ghostInlineBtnItems.push(_hv ? { range: new vscode.Range(line, innerStart, line, bodyEnd), hoverMessage: _hv } : { range: new vscode.Range(line, innerStart, line, bodyEnd) });
             continue;
@@ -29984,11 +29986,12 @@ function formatSpanAtCursor(editor, kind) {
   return null;
 }
 // ★v5.1.870: しまった👻の字を引く口2つ= ①行末形のコメントの中身から ②FC 行(本文の何個目の ~~ か)から
-function meosGhostStoreOfRaw(raw) { const m = MEOS_GHOST_STORE_RE.exec(String(raw == null ? '' : raw)); return m ? m[2] : null; }
+function meosGhostStoreOfRaw(raw) { const r = String(raw == null ? '' : raw); const m = MEOS_GHOST_STORE_RE.exec(r); if (m) return m[2];
+  const l = /^[ \t]*~~(?:#\d{1,3})?([\s\S]*)$/u.exec(r); if (!l) return null; const m2 = MEOS_GHOST_LOOSE_RE.exec(l[1]); return m2 ? m2[1] : null; }   // v5.1.873: 👻抜けも
 function meosGhostStoreAt(doc, line, text, at) {
   try { const spec = meosSpecLineFor(meosDocLines(doc), line); if (!spec) return null;
     const ms = []; const re = /~~(?!\{)([^~\n]+?)~~/g; let m; const t = meosScanText(text); while ((m = re.exec(t)) !== null) ms.push(m.index);
-    const ord = ms.indexOf(at) + 1; return ord > 0 ? meosFcFmtGhostStore(spec, '~~', ord) : null; } catch (_) { return null; }
+    const ord = ms.indexOf(at) + 1; return ord > 0 ? meosFcFmtGhostStore(spec, '~~', ord, true) : null; } catch (_) { return null; }   // v5.1.873: 本文が👻の時だけ呼ばれる= loose
 }
 async function removeFormatAtCursor(editor, span) {
   if (!editor || !span) return;
@@ -42699,14 +42702,23 @@ function meosFcFmtIsGhost(spec, kind, ord) {
 }
 // ★v5.1.870: しまった👻の字(`~~👻 (色)//字` の字)。数え方は meosFcFmtIsGhost と同じ。無ければ null
 const MEOS_GHOST_STORE_RE = /^([ \t]*~~(?:#\d{1,3})?[ \t]*👻[ \t]*(?:\([^()\n]*\))?[ \t]*)\/\/([\s\S]*)$/u;
-function meosFcFmtGhostStore(spec, kind, ord) {
+// ★v5.1.873(俊克 11.24 am00:48 バグ1「なぜボタン化しないのか?」): FC の箱から👻が抜けた `~~ (色)//字` も、本文が ~~👻~~ ならしまった字と読む(loose)。
+//   本文が👻1字なのに // の後ろに字がある= 字をしまった跡。tip(`//[]tip=`)は除く
+const MEOS_GHOST_LOOSE_RE = /^[ \t]*(?:\([^()\n]*\))?[ \t]*\/\/(?!\[\])([\s\S]+)$/u;
+function meosGhostItemStore(it, loose) {
+  if (!it) return null;
+  if (it.ghost) return it.store != null ? it.store : null;
+  if (!loose || it.not) return null;
+  const m = MEOS_GHOST_LOOSE_RE.exec(String(it.inner || '')); return m ? m[1] : null;
+}
+function meosFcFmtGhostStore(spec, kind, ord, loose) {
   if (!spec || !spec.fmt || !spec.fmt.length) return null;
   let n = 0;
   for (const it of spec.fmt) {
     if (it.kind !== kind) continue;
-    if (it.nth > 0) { if (it.nth === ord) return it.ghost && it.store != null ? it.store : null; continue; }
+    if (it.nth > 0) { if (it.nth === ord) return meosGhostItemStore(it, loose); continue; }
     n++;
-    if (n === ord) return it.ghost && it.store != null ? it.store : null;
+    if (n === ord) return meosGhostItemStore(it, loose);
   }
   return null;
 }
