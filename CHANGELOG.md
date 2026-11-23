@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.874 (2026-11-24)
+- **Click a stand-in 👻 to peek at the text it stows.** Clicking the 👻 button shows the stowed text right after it, drawn as a strike in its own colours. The line stays in the normal view (not Raw), and the 👻 stays where it is. Click it again to hide the text. With several 👻 on a line, each one is shown or hidden on its own. The body is never rewritten, and editing the note hides them all again.
+
 ### v5.1.873 (2026-11-24)
 - **A stowed 👻 stays a button even when 👻 is missing from its FC box.** If the FC box reads `~~ (colour)//text` and the body is `~~👻~~`, the text after `//` is still read as the stowed text. The 👻 stays a clickable button, and 🚫 puts the text back. A tip (`//[]tip=`) is not affected.
 

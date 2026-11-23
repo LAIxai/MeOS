@@ -7998,6 +7998,29 @@ let _refNoRawAt = 0;   // v5.0.0-32: 抑止を張った時刻
 function setRefNoRaw(doc, line) { _refNoRawAt = Date.now(); try { _refNoRawUri = doc.uri.toString(); _refNoRawLine = Number(line); } catch (_) { _refNoRawUri = ''; _refNoRawLine = -1; } }
 // ★v4.2.759: 抑止を解いた時の控え(押す直前にまだ効いていたかを、押した後から訊くため)
 let _refNoRawPrevUri = '', _refNoRawPrevLine = -1, _refNoRawPrevAt = 0;
+// ★v5.1.874(俊克 11.24 am02:07 改良1「身代りの👻ボタンをクリックすると、隠れた文字が一時的に戻るように…再度クリックすると、再び隠れる」・Gemini の提案):
+//   Raw にせず、通常の見え方のまま、その👻1つだけ字を見せる。控えは「文書の版#行#桁」= 本文を書き換えたら全部隠れる(一時的)
+const _meosGhostShown = new Set();
+function meosGhostShownKey(doc, line, col) { try { return doc.uri.toString() + '#' + doc.version + '#' + line + '#' + col; } catch (_) { return ''; } }
+// その桁が ~~👻~~ の上か(マウスの着地は👻の左右で ~~ の端に落ちる= 6字の範囲で見る)。当たれば ~~ の頭の桁
+function meosGhostBtnHit(doc, ln, col) {
+  try { if (ln < 0 || ln >= doc.lineCount) return -1; const t = doc.lineAt(ln).text; if (t.indexOf('~~👻~~') < 0) return -1;
+    const sc = meosScanText(t), re = /~~👻~~/g; let m; while ((m = re.exec(sc)) !== null) { if (col >= m.index && col < m.index + m[0].length) return meosGhostStoreAt(doc, ln, t, m.index) != null ? m.index : -1; } } catch (_) { }
+  return -1;
+}
+function meosGhostBtnClick(e) {
+  try {
+    if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
+    const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
+    const doc = ed.document, ln = sel.active.line; if (meosModeAtLine(doc, ln) !== 'normal') return false;
+    const at = meosGhostBtnHit(doc, ln, sel.active.character); if (at < 0) return false;
+    const k = meosGhostShownKey(doc, ln, at); if (_meosGhostShown.has(k)) _meosGhostShown.delete(k); else _meosGhostShown.add(k);
+    setRefNoRaw(doc, ln);   // 行は Raw にしない(着地の抑止と同じ道)。行の他の所を押し直せば今までどおり Raw
+    meosDbg('[ghostBtn] 行=' + (ln + 1) + ' 桁=' + at + ' → ' + (_meosGhostShown.has(k) ? '見せる' : '隠す'));
+    setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0);
+    return true;
+  } catch (_) { return false; }
+}
 function meosRefNoRawWasOn(doc, line) {
   try {
     const u = doc.uri.toString();
@@ -9141,7 +9164,14 @@ function applyPrettyLabels(editor) {
             strikeMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
             const _gs = _gsL != null ? _gsL : meosFcFmtGhostStore(_fcL(), '~~', _fcN('~~', _fcSt));
             let _hv = null; if (_gs) { _hv = new vscode.MarkdownString(); _hv.appendText('👻 ' + _gs); _hv.isTrusted = false; }
-            ghostInlineBtnItems.push(_hv ? { range: new vscode.Range(line, innerStart, line, bodyEnd), hoverMessage: _hv } : { range: new vscode.Range(line, innerStart, line, bodyEnd) });
+            const _gItem = _hv ? { range: new vscode.Range(line, innerStart, line, bodyEnd), hoverMessage: _hv } : { range: new vscode.Range(line, innerStart, line, bodyEnd) };
+            // ★v5.1.874: 押して見せている👻= 👻の後ろに、しまった字を取消線の色で描く(本文は書き換えない)
+            if (_gs && _meosGhostShown.has(meosGhostShownKey(editor.document, line, openStart))) {
+              const _gst = _fcRaw ? parseColorSpec(_fcRaw, 'fg', _fcRaw) : null, _lc = HIGHLIGHT_FG_COLORS[(_gst && _gst.fgKey) || 'red'] || HIGHLIGHT_FG_COLORS.red;
+              const _bgc = _gst && _gst.bgKey ? HIGHLIGHT_COLORS[_gst.bgKey] : null;
+              _gItem.renderOptions = { after: { contentText: _gs, textDecoration: 'line-through; text-decoration-color: ' + _lc + '; text-decoration-thickness: 2px;', backgroundColor: _bgc || undefined, color: (_gst && _gst.bgKey && DARK_BG_KEYS.has(_gst.bgKey)) ? '#ffffff' : undefined } };
+            }
+            ghostInlineBtnItems.push(_gItem);
             continue;
           }
           if (_fcGhost || (_pseudoLine(line) && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
@@ -47782,6 +47812,7 @@ function activate(context) {
   //     拡張パネルに在るので空振りしていた。★**焦点は奪わない**(読んでいる所から勝手に飛ばすのは行儀が悪い)。
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosGhostBtnClick));   // ★v5.1.874: 身代りの👻= 押すと字を見せる/隠す(Raw にしない)。他の選択の口より先に抑止を張る
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { if (e && e.contentChanges && e.contentChanges.length) meosDdCycleSyncSoon(e.document); } catch (_) { } }));
   // v5.1.781 計測: Shift+↓ の選択が膜の所で外れる真因探し= 選択が「範囲あり→空」になった瞬間を、kind と行で記録(前後の他の札と並べて読む)
@@ -47932,7 +47963,7 @@ function activate(context) {
         // v5.0.0-32(俊克 バグ1「膜をクリックしても全体がRaw表示にならない。最初の1回だけRawになった」): ▼で畳むと、頭の行に着地の抑止(setRefNoRaw)が張られ、
         //   カーソルがその行を出るまで生にならない= 同じ行を何度押しても生にならなかった。人がマウスで押し直したら抑止を解く(張った直後の0.4秒は▼自身の着地なので解かない)
         try {
-          if (ed && sel && _refNoRawLine === sel.active.line && _refNoRawUri === ed.document.uri.toString() && Date.now() - _refNoRawAt > 400) {
+          if (ed && sel && _refNoRawLine === sel.active.line && _refNoRawUri === ed.document.uri.toString() && Date.now() - _refNoRawAt > 400 && meosGhostBtnHit(ed.document, sel.active.line, sel.active.character) < 0) {   // v5.1.874: 👻ボタンの押し直しは抑止を解かない(隠すだけ)
             meosDbg('[noRaw] マウスで同じ行を押し直した 行=' + (sel.active.line + 1) + ' → 着地の抑止を解く');
             // ★v5.1.649(俊克 11.11 am01:42 バグ1「閉じ膜の▲で展開した直後、カーソルがその左で点滅している状態で再度▲をクリックすると、閉じずに閉じ膜がRaw化」= ログで確定):
             //   01:42:54.149 [noRaw] 押し直した → 着地の抑止を解く / 01:42:54.151 [arrow] hit=true なのに [arrowToggle] が無い。
