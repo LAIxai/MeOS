@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.871 (2026-11-23)
+- **The enlarged 👻 button keeps its colour on hover.** With a preset background (for example blue), pointing at the enlarged 👻 turned it plain. The v5.1.865 fix for see-through buttons laid an opaque layer over the preset colour. Buttons with their own colour now get only the orange hover tint.
+
 ### v5.1.870 (2026-11-23)
 - **👻 no longer leaves a gap mid-line.** When you select words and press 👻, the words move into the FC line below (`~~👻 (colour)//words`), and only `~~👻~~` stays in the text. VS Code wraps by the raw text, so hidden words used to leave an empty run at the end of a wrapped row; now they take no room. The 👻 shows in place as a button: hover shows the words, click opens the line as Raw. 🚫, or ↻ to a normal strikethrough, puts the words back. Whole-line 👻 and old 👻 marks work as before.
 
