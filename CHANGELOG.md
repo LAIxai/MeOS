@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.867 (2026-11-23)
+- **One line per IC FUSEN comment.** When a paragraph holds two or more IC sticky notes, each `<!-- Mew!FC-ic … -->` now goes on its own line instead of all on one. Old one-line groups still read fine, and they are rewritten this way the next time you add or remove a note there.
+
 ### v5.1.866 (2026-11-23)
 - **The 👻 by the fold also shows for a partly hidden line.** When only part of a line is 👻 and its comment lines are folded, the small 👻 now sits right of the `⋯` too. Click it and the line opens as raw text.
 

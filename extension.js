@@ -46539,7 +46539,7 @@ function meosFcIcPara(lines, L) {
 async function meosFcIcWrite(editor, P, boxes) {
   const doc = editor.document;
   while (boxes.length && /^not$/i.test(boxes[boxes.length - 1])) boxes.pop();
-  const line = boxes.map(b => '<!-- ' + MEOS_MEW_SIG + 'FC-ic ' + b + ' -->').join('');
+  const line = boxes.map(b => '<!-- ' + MEOS_MEW_SIG + 'FC-ic ' + b + ' -->').join('\n');   // v5.1.867(俊克 11.23 am09:41「ICのFCコメントを改行しようよ」): 箱は1つずつ別の行(読む側は前から群の行を全部読む= 前の1行の形もそのまま読める・次に足す/外す時に1つずつの行へ書き直る)
   const sel = editor.selection;
   await editor.edit(eb => {
     if (P.e > P.s) { const r = new vscode.Range(P.s, 0, P.e - 1, doc.lineAt(P.e - 1).text.length); if (line) eb.replace(r, line); else eb.delete(new vscode.Range(P.s - 1, doc.lineAt(P.s - 1).text.length, P.e - 1, doc.lineAt(P.e - 1).text.length)); }
