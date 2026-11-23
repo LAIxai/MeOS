@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.868 (2026-11-23)
+- **CB sticky notes are now `FUSEN-cb_`.** A new code-block FUSEN comment reads `<!-- Mew!UFC FUSEN-cb_<time> … -->`, matching `FUSEN-ic_` for inline code. Search `FUSEN-` to find every sticky note, or `FUSEN-cb_` / `FUSEN-ic_` for one kind. Notes written as `FUSEN_` still work as before.
+
 ### v5.1.867 (2026-11-23)
 - **One line per IC FUSEN comment.** When a paragraph holds two or more IC sticky notes, each `<!-- Mew!FC-ic … -->` now goes on its own line instead of all on one. Old one-line groups still read fine, and they are rewritten this way the next time you add or remove a note there.
 

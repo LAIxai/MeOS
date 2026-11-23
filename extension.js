@@ -7499,9 +7499,9 @@ function meosFofClockOwner(doc, closeLine) {
 // ★v5.1.709(俊克 11.14 pm05:24「CB付箋は一種の膜なので(CB付箋膜)、タイマーを設定できるようにしよう」「⏰FCを削除すると⏰リストから消えるけど、付箋リストには残る」「IC付箋は未対応」):
 //   持ち主= 付箋の印 FUSEN_<日時>(膜名と同じく一意)。⏰の行は付箋の塊(閉じ ``` ・FUSEN の行・足場の行)の後ろに積む= ♥膜(v5.1.609)と同じ作り。
 //   上へ指定行を飛び越えて着く行が閉じ ``` で、その直下が FUSEN の行なら、その付箋の⏰。囲いの中には書けない(囲いの中は全部文字)。
-function meosIsFusenClockKey(k) { return /^FUSEN_\S/.test(String(k || '')); }
+function meosIsFusenClockKey(k) { return /^FUSEN(?:-cb)?_\S/.test(String(k || '')); }
 function meosFusenClockBlock(doc, b, lines) {   // 囲い b が CB付箋なら {key, start, end, cap, last, name}
-  const ct = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+(FUSEN_\S+)\s*(.*?)\s*-->/.exec(ct); if (!m || /^FUSEN_\S*-->/.test(m[1])) return null;
+  const ct = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+(FUSEN(?:-cb)?_\S+)\s*(.*?)\s*-->/.exec(ct); if (!m || /^FUSEN(?:-cb)?_\S*-->/.test(m[1])) return null;
   const key = m[1].replace(/-->$/, ''); let last = b.close + 1; while (last + 1 < lines.length && MEOS_FUSEN_ROW_RE.test(lines[last + 1] || '')) last++;
   let body = ''; for (let i = b.open + 1; i < b.close; i++) { if ((lines[i] || '').trim()) { body = lines[i].trim(); break; } }
   const cmt = String(m[2] || '').replace(/^(?:[(（][^()（）]*[)）]\s*){1,2}/, '').replace(/^(?:LL|L|M|S|F)(?=\s|$)\s*/, '').trim(), t = b.info || cmt || body || 'FUSEN';
@@ -7512,7 +7512,7 @@ function meosFusenClockAt(doc, line) {   // その行が CB付箋の塊(開き `
   try { const L = meosDocLines(doc); for (const b of meosFenceBlocks(doc)) { if (b.open > line) break; if (b.close < 0 || line > b.close + 60) continue; const f = meosFusenClockBlock(doc, b, L); if (f && f.start <= line && line <= f.last) return f; } } catch (_) { } return null;
 }
 function meosFusenClockOwner(doc, closeLine) {
-  try { const L = meosDocLines(doc); if ((L[closeLine + 1] || '').indexOf('FUSEN_') < 0) return null; const b = meosFenceBlocks(doc).find(x => x.close === closeLine); const f = b && meosFusenClockBlock(doc, b, L); return f ? { id: f.key, fofName: f.name, start: f.start, end: f.end } : null; } catch (_) { return null; }
+  try { const L = meosDocLines(doc); if (!/FUSEN(?:-cb)?_/.test(L[closeLine + 1] || '')) return null; const b = meosFenceBlocks(doc).find(x => x.close === closeLine); const f = b && meosFusenClockBlock(doc, b, L); return f ? { id: f.key, fofName: f.name, start: f.start, end: f.end } : null; } catch (_) { return null; }
 }
 // ★v5.1.710(俊克 11.14 pm06:57 改良1「カーソルが入っても、クリーム色の枠が出ていて読み難い。膜と同様に、開始膜と閉じ膜のどっちに入っても両方をRaw化し、FCコメントもRaw化」「CB膜にとっての開始膜は冒頭のタイトル部分、閉じ膜はUFCコメント」「クリーム色を本文だけ出しておくのも意味がない」):
 //   付箋の縁= 開きの ``` ・閉じの ``` ・FUSEN の行・足場・その下に続く指定行(バッジ/⏰)。縁のどれかにカーソル→ 付箋の全部の行を生に(▼▲バッジが3つで1つなのと同じ)・紙は敷かない。本文の行に居る時は今までどおり
@@ -14752,8 +14752,8 @@ function meosFusenList() {
     for (const d of docs) {
       const txt = d.getText(); if (txt.indexOf('FUSEN') < 0) continue;
       const lines = meosDocLines(d);
-      if (txt.indexOf('FUSEN_') >= 0) for (const b of meosFenceBlocks(d)) {
-        const t = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+FUSEN_(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})\S*\s*(.*?)\s*-->/.exec(t);
+      if (txt.indexOf('FUSEN_') >= 0 || txt.indexOf('FUSEN-cb_') >= 0) for (const b of meosFenceBlocks(d)) {
+        const t = lines[b.close + 1] || '', m = /<!--\s*Mew!UFC\s+FUSEN(?:-cb)?_(\d{4})(\d{2})(\d{2})[SMTWtFs]?(\d{2})(\d{2})(\d{2})\S*\s*(.*?)\s*-->/.exec(t);
         if (!m) continue;
         let body = ''; for (let i = b.open + 1; i < b.close; i++) { if ((lines[i] || '').trim()) { body = lines[i].trim(); break; } }
         let clk = false; for (let q = b.close + 2; q < lines.length && q < b.close + 80 && meosIsSpecLine(lines[q] || ''); q++) { const t9 = lines[q] || ''; if (t9.indexOf('\u23f0') < 0) continue; const c9 = meosClockFcParse(t9); if (c9 && !c9.done && (c9.when || (Array.isArray(c9.cycle) && c9.cycle.length))) { clk = true; break; } }   // v5.1.709: ⏰の付いた付箋
@@ -17590,7 +17590,7 @@ async function meosJumpToScope(scope, byBell) {
     const rng = meosScopeRangeNow(doc, scope.key);
     if (!rng) { _meosLastJump = 'NO RANGE (key=' + scope.key + ')'; meosDbg('[jump] 範囲なし key=' + scope.key); return; }   // v5.1.806 計測
     // ★v5.1.709: CB付箋の鐘= 付箋の一覧から飛ぶ時と同じ口(紙の1つ上の行の末尾へ・紙は紙のまま見える)
-    if (byBell && meosIsFusenClockKey(scope.key)) { try { const _fr0 = vscode.window.activeTextEditor; if (_fr0) meosNoteReturnMark(_fr0, meosMembraneNameAtLine(_fr0.document, _fr0.selection.active.line)); } catch (_) { } await meosFusenLand({ k: 'c', uri: doc.uri, line: rng.from, ch: 0, ts: String(scope.key).replace(/^FUSEN_/, '').replace(/\D/g, '').slice(0, 14) }); _meosLastJumpLine = Math.max(0, rng.from - 1); _meosLastJump = 'went to FUSEN ' + (rng.from + 1); return; }
+    if (byBell && meosIsFusenClockKey(scope.key)) { try { const _fr0 = vscode.window.activeTextEditor; if (_fr0) meosNoteReturnMark(_fr0, meosMembraneNameAtLine(_fr0.document, _fr0.selection.active.line)); } catch (_) { } await meosFusenLand({ k: 'c', uri: doc.uri, line: rng.from, ch: 0, ts: String(scope.key).replace(/^FUSEN(?:-cb)?_/, '').replace(/\D/g, '').slice(0, 14) }); _meosLastJumpLine = Math.max(0, rng.from - 1); _meosLastJump = 'went to FUSEN ' + (rng.from + 1); return; }
     const from = vscode.window.activeTextEditor;
     try { if (byBell && from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
     const _fr825 = vscode.window.activeTextEditor, _tj = Date.now();
@@ -36405,7 +36405,7 @@ if(s)s.textContent=c>0?String(c):'';};
 (function(){const ch=document.getElementById('fmt-fusen-color'),bt=document.getElementById('fmt-code');if(!ch)return;const C=['yellow','pink','blue'];
 ch.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const i=C.indexOf(ch.getAttribute('data-c'));const n=C[((i<0?0:i)+(ev.shiftKey?2:1))%3];
 ch.setAttribute('data-c',n);if(bt)bt.setAttribute('data-fc',n);vscode.postMessage({type:'fusenColor',c:n});});})();
-/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す。v5.1.291: tip は IC/CB の短い名だけ(俊克「分かる人は分かる・ハイライト代わりに使う人は意味を知らなくても構わない」)。v5.1.286: ↻は4つ(0 インライン/1 ブロック/2 赤1個/3 赤3個= その記号そのものを板にして置く)・Shift で逆回り */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96),Q3=Q+Q+Q;var mode=Number(b.getAttribute('data-mode'))||0;window.__codeFace=paint;var TIPS=['IC | Use it as a highlight, too.','CB · FUSEN | Use it as a FUSEN, too: the comment under it carries FUSEN_ + the time, so you can search for every FUSEN.','Backtick as code | Puts '+Q+Q+' '+Q+' '+Q+Q+' at the caret = one '+Q+' shown as inline code (the outer run is one longer than the inside, with a space on each side) · ↻ next: red '+Q3,'Three backticks as code | Puts '+Q3+Q+' '+Q3+' '+Q3+Q+' at the caret = '+Q3+' shown as inline code · ↻ next: '+Q+' inline code'];function paint(){if(window.__fmtActionable&&window.__fmtActionable.code){b.textContent='';b.classList.add('fmt-remove');b.classList.remove('code-lit');b.setAttribute('data-tip','Remove code | The caret is inside inline code or a code block → click to take the backticks off');return;}b.classList.remove('fmt-remove');b.classList.toggle('code-lit',mode>=2);b.textContent=(mode%2)?Q3:Q;b.setAttribute('data-mode',mode);b.setAttribute('data-tip',TIPS[mode]);}paint();b.addEventListener('click',function(){var rm=!!(window.__fmtActionable&&window.__fmtActionable.code);vscode.postMessage({type:'fmtCode',fence:mode===1,lit:(!rm&&mode>=2)?(mode===2?1:3):0,remove:rm});});   /* v5.1.297: Opt は廃止(CB はいつも説明付き) */if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();mode=(mode+(ev&&ev.shiftKey?3:1))%4;paint();vscode.postMessage({type:'fmtCodeMode',mode:mode});});})();
+/* v5.1.280: Format Me のコードボタン(インライン⇄ブロック)。↻ で切り替え(覚えるのは拡張の globalState)・押すと拡張が付ける⇄外す。v5.1.291: tip は IC/CB の短い名だけ(俊克「分かる人は分かる・ハイライト代わりに使う人は意味を知らなくても構わない」)。v5.1.286: ↻は4つ(0 インライン/1 ブロック/2 赤1個/3 赤3個= その記号そのものを板にして置く)・Shift で逆回り */(function(){var b=document.getElementById('fmt-code'),cy=document.getElementById('fmt-code-cycle');if(!b)return;var Q=String.fromCharCode(96),Q3=Q+Q+Q;var mode=Number(b.getAttribute('data-mode'))||0;window.__codeFace=paint;var TIPS=['IC | Use it as a highlight, too.','CB · FUSEN | Use it as a FUSEN, too: the comment under it carries FUSEN-cb_ + the time. Search FUSEN- to find every FUSEN (CB and IC).','Backtick as code | Puts '+Q+Q+' '+Q+' '+Q+Q+' at the caret = one '+Q+' shown as inline code (the outer run is one longer than the inside, with a space on each side) · ↻ next: red '+Q3,'Three backticks as code | Puts '+Q3+Q+' '+Q3+' '+Q3+Q+' at the caret = '+Q3+' shown as inline code · ↻ next: '+Q+' inline code'];function paint(){if(window.__fmtActionable&&window.__fmtActionable.code){b.textContent='';b.classList.add('fmt-remove');b.classList.remove('code-lit');b.setAttribute('data-tip','Remove code | The caret is inside inline code or a code block → click to take the backticks off');return;}b.classList.remove('fmt-remove');b.classList.toggle('code-lit',mode>=2);b.textContent=(mode%2)?Q3:Q;b.setAttribute('data-mode',mode);b.setAttribute('data-tip',TIPS[mode]);}paint();b.addEventListener('click',function(){var rm=!!(window.__fmtActionable&&window.__fmtActionable.code);vscode.postMessage({type:'fmtCode',fence:mode===1,lit:(!rm&&mode>=2)?(mode===2?1:3):0,remove:rm});});   /* v5.1.297: Opt は廃止(CB はいつも説明付き) */if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();mode=(mode+(ev&&ev.shiftKey?3:1))%4;paint();vscode.postMessage({type:'fmtCodeMode',mode:mode});});})();
 /* v5.1.603: Opt+↑/↓ の役の切替 */(function(){var b=document.getElementById('fmt-optjump');if(!b)return;var T0='Opt+↑/↓ | Now: move the line up/down (the editor default). Click → Jump to M-🛑: in Markdown, Opt+↓ jumps to the closing membrane and Opt+↑ to the opening one, like clicking ♥ or P1.',T1='Jump to M-🛑 | Opt+↓ jumps to the closing membrane, Opt+↑ to the opening one; on a membrane line, to its mate. Each press climbs outward, and from outside it walks only the membrane ends - so the way back is not the way there. U-turn retraces it. Click → back to Opt+↑/↓ moving the line.';function paint(){var on=b.getAttribute('data-on')==='1';b.classList.toggle('oj-on',on);b.textContent=on?'Jump to M-🛑':'Opt+↑/↓';b.setAttribute('data-tip',on?T1:T0);}paint();b.addEventListener('click',function(){var on=b.getAttribute('data-on')!=='1';b.setAttribute('data-on',on?'1':'0');paint();vscode.postMessage({type:'fmtOptJump',on:on});});var u=document.getElementById('fmt-optuturn');if(u)u.addEventListener('click',function(){if(u.getAttribute('data-n')!=='0')vscode.postMessage({type:'fmtOptUturn'});});window.addEventListener('message',function(e){var m=e.data;if(m&&m.type==='ojTrail'&&u){u.setAttribute('data-n',String(m.n||0));u.classList.toggle('ut-lit',!!m.lit);u.setAttribute('data-tip','U-turn | Steps back along the way you came with Opt+↑/↓ - one jump per click.'+(m.n?' ('+m.n+' to go)':''));}});})();/* v5.1.595: 一時停止線ボタン= コードボタンと同じ作り(カーソルが線の上か前後の行なら🚫・押すと拡張が入れる⇄外す) */(function(){var b=document.getElementById('fmt-stopline'),cy=document.getElementById('fmt-stop-cycle');if(!b)return;var TIP=b.getAttribute('data-tip'),NM=['solid ---','double ===','dash-dot -.-','two-dot -..-','dashed - -','dotted ...','wavy 〜〜〜','double wavy ≈≈≈'],RING=[0,2,3,4,5,6],BASE={1:0,7:6}/* ★v5.1.844(俊克 843 バグ1「一点鎖線と二点鎖線がMe Dockの🛑ボタンに実装されていない」): ↻の巡りに -.- と -..- を足す */,kind=Number(b.getAttribute('data-kind'))||0;if(RING.indexOf(kind)<0)kind=BASE[kind]||0;var aw={on:function(){return false;}};function eff(){return aw.on()?(kind===0?1:(kind===6?7:kind)):kind;}if(cy)cy.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();kind=RING[(RING.indexOf(kind)+(ev&&ev.shiftKey?RING.length-1:1))%RING.length];paint();vscode.postMessage({type:'fmtStopKind',kind:kind});});function paint(){var rm=!!(window.__fmtActionable&&window.__fmtActionable.stopline);b.classList.toggle('fmt-remove',rm);var sk=window.__fmtActionable&&window.__fmtActionable.stopKind;b.setAttribute('data-kind',(rm&&sk>=0)?sk:eff());b.setAttribute('data-faint',(rm&&window.__fmtActionable.stopFaint)?'1':'0');/* v5.1.842: 🚫の時はカーソルの線の種類を描く */b.setAttribute('data-tip',rm?'Remove stop line | The caret is on this stop line → click to take it off':TIP.replace('Puts a stop line','Puts a '+NM[eff()]+' stop line'));}window.__stopFace=paint;aw=fmtAltWatch(b,paint);paint();/* v5.1.641: Opt の裏の顔は家の口(fmtAltWatch= V-helper の修飾キーの見張りからも届く・緑の当たりは OPT_SEL) */b.addEventListener('click',function(ev){vscode.postMessage({type:'fmtStopLine',remove:!!(window.__fmtActionable&&window.__fmtActionable.stopline),kind:eff()});});})();
 /* ★v5.1.387(俊克 11.02 am04:41 改良1「付箋ボタンの拡大のときに、ポインターを↻ボタンの右下に移動しよう」): 🔰のポインター運び(v5.1.237〜266)と同じ作り= 外から組に乗った時に1回だけ、膨らんだ後の↻の右下(丸の中・45°)へ V-helper に運んでもらう。
    片道= 行き先−乗った点(組の物差し)×Me Dock の zoom×画素。軸は組の左下(0,高さ)・2倍。運んだら fc-big で膨らみを保ち、組から出て0.35秒たっても戻らない時に外す */
@@ -46515,7 +46515,7 @@ async function meosFenceCaptionAt(editor, blk) {
   const doc = editor.document, lines = meosDocLines(doc), cap = meosFenceCaption(lines, blk);
   if (cap) { editor.selection = new vscode.Selection(new vscode.Position(cap.line, cap.at), new vscode.Position(cap.line, cap.end)); return; }
   const ln = blk.close, end = doc.lineAt(ln).text.length; let head = '<!-- Mew!UFC ';
-  const ex = 'Comment'; head = head + 'FUSEN_' + meosMembraneStamp(new Date()) + ' (F/SML/LL)' + meosFusenColorSpec(meosFusenColorNow()) + ' ';   /* v5.1.702: 大きさ F(フリー= 本文の一番長い行)を書いておく= S/M/L/LL に書き換えられると分かる */   // v5.1.315: 今の付箋の色   // v5.1.304: 付箋の印(FUSEN_ で全部探せる)   // v5.1.295(俊克 バグ1「コメントの例文が書かれてない」): 例文を選んだ状態で置く= 打てば置き換わる・空だと説明と読まれず紙の外に生の行が出た(バグ2)
+  const ex = 'Comment'; head = head + 'FUSEN-cb_' + meosMembraneStamp(new Date()) + ' (F/SML/LL)' + meosFusenColorSpec(meosFusenColorNow()) + ' ';   /* v5.1.702: 大きさ F(フリー= 本文の一番長い行)を書いておく= S/M/L/LL に書き換えられると分かる */   // v5.1.315: 今の付箋の色   // v5.1.304: 付箋の印(FUSEN_ で全部探せる)   // v5.1.295(俊克 バグ1「コメントの例文が書かれてない」): 例文を選んだ状態で置く= 打てば置き換わる・空だと説明と読まれず紙の外に生の行が出た(バグ2)
   await editor.edit(eb => eb.insert(new vscode.Position(ln, end), '\n' + head + ex + ' -->'));
   editor.selection = new vscode.Selection(new vscode.Position(ln + 1, head.length), new vscode.Position(ln + 1, head.length + ex.length));
 }
@@ -46953,13 +46953,13 @@ const MEOS_FUSEN_SIZES = { F: 0, S: 20, M: 30, L: 40, LL: 50 };   // v5.1.702(�
 const MEOS_FUSEN_ROW = '<!-- Mew!UFC FUSEN-row -->', MEOS_FUSEN_ROW_RE = /^\s*<!--\s*Mew!UFC\s+FUSEN-row\s*-->\s*$/;
 // ★v5.1.703(俊克 am11:25「単独のFはコメントの一部に見える・色指定と同様に (SML/LL/F) と書いて先頭に書いたサイズに」): 大きさの括弧= S M L F と / だけ(全角も)。先頭が LL なら LL・ほかは先頭の1字
 function meosFusenIsSizeParen(p) { const c = String(p || '').normalize('NFKC').replace(/^[(]|[)]$/g, '').trim(); return /^[SMLF][SMLF\/\s]*$/i.test(c) && /\//.test(c); }
-function meosFusenSizeOf(t) { const s = String(t || ''), head = /FUSEN_\S*((?:\s*[(（][^()（）]*[)）]){0,2})/.exec(s);
+function meosFusenSizeOf(t) { const s = String(t || ''), head = /FUSEN(?:-cb)?_\S*((?:\s*[(（][^()（）]*[)）]){0,2})/.exec(s);
   if (head) { const ps = head[1].match(/[(（][^()（）]*[)）]/g) || []; for (const p of ps) if (meosFusenIsSizeParen(p)) { const c = p.normalize('NFKC').replace(/^[(]\s*/, '').toUpperCase(); return MEOS_FUSEN_SIZES[c.startsWith('LL') ? 'LL' : c[0]] || 0; } }
-  const m = /FUSEN_\S*(?:\s*[(（][^()（）]*[)）]){0,2}\s+(LL|L|M|S|F)(?=\s|-->|$)/.exec(s); return m ? MEOS_FUSEN_SIZES[m[1]] : 0; }   // v5.1.702 の単独の字も読む
+  const m = /FUSEN(?:-cb)?_\S*(?:\s*[(（][^()（）]*[)）]){0,2}\s+(LL|L|M|S|F)(?=\s|-->|$)/.exec(s); return m ? MEOS_FUSEN_SIZES[m[1]] : 0; }   // v5.1.702 の単独の字も読む
 function meosFusenFakeLayout(lines, b, wrapCol) {
   try {
     const capLn = b.close + 1, ct = lines[capLn] || '';
-    if (!(wrapCol > 0) || b.close <= b.open || !/<!--\s*Mew!UFC\s+FUSEN_/.test(ct)) return null;
+    if (!(wrapCol > 0) || b.close <= b.open || !/<!--\s*Mew!UFC\s+FUSEN(?:-cb)?_/.test(ct)) return null;
     const cap = meosFenceCaption(lines, b), text = cap ? cap.text : '';
     let bodyMax = 0; for (let i = b.open + 1; i < b.close; i++) bodyMax = Math.max(bodyMax, meosRenderCols(lines[i] || ''), Math.ceil(meosStrWidth(lines[i] || '') - 0.1));   // v5.1.708: 割る物差し(meosStrWidth)でも収まる幅
     const size = meosFusenSizeOf(ct), W = Math.min(wrapCol, Math.max(7, size || bodyMax));
@@ -47003,7 +47003,7 @@ function meosFusenFitSoon(doc, z) {
 }
 // v5.1.304: 空の説明の欄= <!-- Mew!UFC --> か <!-- Mew!UFC FUSEN_<日時> -->。返すのは打ち始める桁(-1= 空の欄ではない)
 function meosFenceCapEmpty(t) {
-  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN_\S*(?:\s*[(（][^()（）]*[)）]){0,2}(?:\s+(?:LL|L|M|S|F)(?=\s|-->))?)?(\s*)-->\s*$/.exec(String(t || ''));   // v5.1.701: 大きさ(S/M/L/LL)も印のうち   // v5.1.315: 印の後ろの色(/pink)も印のうち
+  const m = /^(\s*<!--\s*Mew!UFC)(\s+FUSEN(?:-cb)?_\S*(?:\s*[(（][^()（）]*[)）]){0,2}(?:\s+(?:LL|L|M|S|F)(?=\s|-->))?)?(\s*)-->\s*$/.exec(String(t || ''));   // v5.1.701: 大きさ(S/M/L/LL)も印のうち   // v5.1.315: 印の後ろの色(/pink)も印のうち
   return m ? m[1].length + (m[2] ? m[2].length : 0) + Math.min(1, m[3].length) : -1;
 }
 function meosFenceCaption(lines, b) {
@@ -47013,7 +47013,7 @@ function meosFenceCaption(lines, b) {
     const m = /^(\s*<!--\s*Mew!UFC\s+)(.*?)(\s*-->\s*)$/.exec(t);
     if (!m || !m[2] || m[2].indexOf('\u23f0') >= 0 || meosIsRuleAny(t)) return null;
     // ★v5.1.304(俊克 pm03:46「堂々と FUSEN と名乗る・付箋で検索できるようにコメントに FUSEN_TS を付けよう」): 先頭の FUSEN_<日時> は印= 紙には出さない
-    const f = /^FUSEN_\S*(?:\s*[(（][^()（）]*[)）]){0,2}(?:\s+(?:LL|L|M|S|F)(?=\s|$))?(?:\s+|$)/.exec(m[2]);   /* v5.1.701: 大きさも印 */ const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
+    const f = /^FUSEN(?:-cb)?_\S*(?:\s*[(（][^()（）]*[)）]){0,2}(?:\s+(?:LL|L|M|S|F)(?=\s|$))?(?:\s+|$)/.exec(m[2]);   /* v5.1.701: 大きさも印 */ const at = m[1].length + (f ? f[0].length : 0), text = f ? m[2].slice(f[0].length) : m[2];
     // v5.1.315: 印の後ろの色 (/pink) も紙には出さない
     if (!text) return null;   // 印だけ= 空の欄(meosFenceCapEmpty)
     return { line: i, text, at, end: at + text.length };
@@ -47085,7 +47085,7 @@ function meosApplyCodeFenceDecorations(editor) {
         // ★v5.1.299(俊克 pm02:00「母親がコメント空欄のまま『おやつは冷蔵庫に』と書く。子が『美味しかったよ』とコメントを書く」→ pm02:05「空欄の時は薄い色の枠・見せかけの字で薄く」):
         //   空の説明の行(<!-- Mew!UFC  -->)= まだ書いていない返事の欄。今までは説明と読まず紙の外に生の行が出た→ 紙の足に入れ、閉じの行に薄い点線の枠と見せかけの字。
         const _capE = (!_cap && b.close > b.open && meosFenceCapEmpty(lines[b.close + 1]) >= 0) ? { line: b.close + 1 } : null;
-        const _fcol = (_cap || _capE) && /FUSEN_/.test(lines[b.close + 1] || '') ? meosFusenColorOf(lines[b.close + 1]) : 'yellow';   // v5.1.315: 付箋の色
+        const _fcol = (_cap || _capE) && /FUSEN(?:-cb)?_/.test(lines[b.close + 1] || '') ? meosFusenColorOf(lines[b.close + 1]) : 'yellow';   // v5.1.315: 付箋の色
         let _capW = 0;
         const _w = (() => {
           let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, meosRenderCols(lines[i] || ''));

@@ -236,10 +236,11 @@ inside a code block stay plain text — they never run, and they do not flicker 
 ```Bank
 Call the bank before Friday.
 ```
-<!-- Mew!UFC FUSEN_20261112t094702JST (F/SML/LL) (/YRB黄赤青) Called. They open at 9 on Friday. -->
+<!-- Mew!UFC FUSEN-cb_20261112t094702JST (F/SML/LL) (/YRB黄赤青) Called. They open at 9 on Friday. -->
 
 Buy `oat milk` and `coffee filters` on the way home.
-<!-- Mew!FC-ic FUSEN-ic_20261112t094702JST (/YRB黄赤青) --><!-- Mew!FC-ic FUSEN-ic_20261112t094723JST (/YRB黄赤青) -->
+<!-- Mew!FC-ic FUSEN-ic_20261112t094702JST (/YRB黄赤青) -->
+<!-- Mew!FC-ic FUSEN-ic_20261112t094723JST (/YRB黄赤青) -->
 ````
 
 A code block makes a square note; an inline code makes a long one. Several inline codes on one line pair with the
