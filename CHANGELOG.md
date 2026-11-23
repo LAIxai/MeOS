@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.872 (2026-11-23)
+- **No hover tint on the enlarged 👻 button.** A button with a preset colour now looks the same on hover whether it is enlarged or not: the colour stays as it is.
+
 ### v5.1.871 (2026-11-23)
 - **The enlarged 👻 button keeps its colour on hover.** With a preset background (for example blue), pointing at the enlarged 👻 turned it plain. The v5.1.865 fix for see-through buttons laid an opaque layer over the preset colour. Buttons with their own colour now get only the orange hover tint.
 
