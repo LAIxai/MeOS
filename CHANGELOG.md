@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.902 (2026-11-25)
+- **Select a link's URL and press 👻 to stow it as a link 👻.** Before, this made a strikethrough 👻 inside the link's brackets, which could not be clicked open again and broke Cmd+click. Now the text becomes `[label](👻)` and the URL goes into the FC line as `[](URL)`. If the link button already left an empty box `[]()(2)(白/黄)//tip`, the URL fills it and the underline, colours and tip stay.
+- **Cmd+click works on a stowed link.** `[label](👻)` opens the URL kept in the FC line.
+
 ### v5.1.901 (2026-11-25)
 - **A link can keep its URL in the FC line, behind a 👻.** Write `[label](👻)` in the text and `<!-- Mew!FC [](URL)(2)(白/黄)//tip -->` below it. MeOS draws the label as a link with a 👻 after it, and the line stays short because the URL is not in it, so long URLs no longer leave gaps. Click the 👻 and the URL moves into the text, `[label](URL)`, a plain Markdown link that works in any app; the FC line keeps the underline, colours and tip as `[](👻)…`. Click the 👻 again to put the URL back into the FC line.
 

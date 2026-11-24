@@ -29245,6 +29245,10 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       //   通常の取消線に変身できる」): ★★**戻る道を1手にする**。色を落とすと、普通の取消線にしたい時に
       //   色を選び直すことになる。命令はコメントに書いてあるので、**👻の2文字を消すだけで戻れる**のが筋。
       //   ★v4.0.416で「見えない物に色は要らない」と落としたのは、**見えない間のことしか考えていなかった**。
+      // ★v5.1.902(俊克 901 バグ1「従来の記法のURL部分を選択して、👻ボタンを押して設定したもの…Cmdクリックで飛ばない・FCの中の👻がクリックできない」):
+      //   リンク `[表示](URL)` の URL を選んで👻= 取消線の👻でなく、リンクの👻(v5.1.901)にする= 本文 `[表示](👻)`・FC `[](URL)`。
+      //   リンクボタンで作った空の箱 `[]()(2)(色)//tip` が在れば、そこへ URL を入れる(下線・色・tip はそのまま)
+      if (_ghost && sel.start.line === sel.end.line && !sel.isEmpty && await meosLinkStowUrl(editor, sel)) return;
       if (_gStow(body)) {   // v5.1.870: しまった👻= 本文に残るのは👻1字。カーソルは👻の後ろへ(選んでおく字が本文に無い)
         await meosWriteMarkAndSpec(editor, sel, _gMark(body), mk, _gDir(body));
         const _ap = new vscode.Position(sel.start.line, sel.start.character + _gMark(body).length);
@@ -46366,6 +46370,30 @@ function meosFindMembraneLineByName(doc, name) { const needle = String(name || '
 let _meosDockStateTimer = null; // v4.0.236: Me Dockのボタンの姿を計算し直す待ち
 let meLinkHideDeco = null; const meLinkStyleCache = new Map();
 let meosLinkGhostBtnDeco = null;   // v5.1.901
+// v5.1.902: リンクの URL を選んで👻を押した= URL を FC の箱へしまい、本文には👻を残す。リンクの URL でなければ false
+async function meosLinkStowUrl(editor, sel) {
+  try {
+    const doc = editor.document, ln = sel.start.line, t = doc.lineAt(ln).text, a = sel.start.character, z = sel.end.character;
+    const url = t.slice(a, z).trim(); if (!url || url === '\u{1F47B}' || /[\s()<>]/.test(url)) return false;
+    let lk = null; MEOS_LEL_ANY_RE.lastIndex = 0; let m;
+    while ((m = MEOS_LEL_ANY_RE.exec(t)) !== null) { const us = m.index + m[0].length - 1 - m[2].length, ue = m.index + m[0].length - 1; if (a >= us && z <= ue && t.slice(us, ue).trim() === url) { lk = { start: m.index, us, ue }; break; } }
+    if (!lk) return false;
+    let k = 0; MEOS_EMPTY_LINK_RE.lastIndex = 0; while ((m = MEOS_EMPTY_LINK_RE.exec(t)) !== null) { if (m.index < lk.start) k++; else break; }   // この行で前に在る印(箱を持つリンク)の数
+    const boxes = meosLinkFcBoxes(doc, ln), we = new vscode.WorkspaceEdit();
+    we.replace(doc.uri, new vscode.Range(ln, lk.us, ln, lk.ue), '\u{1F47B}');
+    const bx = boxes[k];
+    if (bx && !bx.target.trim()) we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), url);   // 空の箱へ入れる
+    else {
+      let L = ln + 1; while (L < doc.lineCount && meosIsSpecLine(doc.lineAt(L).text || '')) L++;
+      const at = bx ? bx.line : L;   // 後ろのリンクの箱が在ればその前・無ければ FC 群の最後
+      we.insert(doc.uri, new vscode.Position(at, 0), '<!-- Mew!FC [](' + url + ') -->\n');
+    }
+    await vscode.workspace.applyEdit(we);
+    try { const P = new vscode.Position(ln, lk.us + 3); editor.selection = new vscode.Selection(P, P); } catch (_) { }   // 書いた後は必ず true= 取消線の👻を重ねて書かない
+    try { meosDbg('[linkGhost] URL をしまう 行=' + (ln + 1) + (bx && !bx.target.trim() ? ' 空の箱へ' : ' 箱を足す')); } catch (_) { }
+    return true;
+  } catch (_) { return false; }
+}
 // v5.1.901: 本文の行 ln の真下の FC 行に並ぶリンクの箱 `[](行先)` を順に(行先の桁つき)
 function meosLinkFcBoxes(doc, ln) {
   const out = [];
@@ -48655,7 +48683,7 @@ function activate(context) {
           const masked = maskedFull();
           let b; MEOS_MD_LINK_RE.lastIndex = 0;
           while ((b = MEOS_MD_LINK_RE.exec(masked)) !== null) {
-            const label = b[1] || '', target = String(b[2] != null ? b[2] : (b[3] || '')).trim(); if (!target || !label) continue; // v4.0.81
+            const label = b[1] || '', target = String(b[2] != null ? b[2] : (b[3] || '')).trim(); if (!target || !label || target === '\u{1F47B}') continue; // v4.0.81 / v5.1.902: `(👻)` は行先が FC に在る(下の行末一括の口で張る)
             const ts = b.index + 1, te = ts + label.length;
             const dl2 = new vscode.DocumentLink(new vscode.Range(document.positionAt(ts), document.positionAt(te)));
             if (/^https?:\/\//i.test(target)) { dl2.target = vscode.Uri.parse(target); dl2.tooltip = 'Open: ' + target; }
@@ -48666,10 +48694,11 @@ function activate(context) {
           }
         }
         // v4.0.94: 行末一括コメント方式。対応が行の中で閉じているso行ごとに見る(全文一括だと順番が混ざる)。
-        if (full.indexOf(']()') >= 0) {
+        if (meosHasEmptyLink(full)) {
           // ★`]()` が在る行だけを、出現位置から逆算して拾う(14.7万行のなめ回しをやめる)。
           const _lines = new Set();
           for (let i = full.indexOf(']()'); i >= 0; i = full.indexOf(']()', i + 3)) _lines.add(document.positionAt(i).line);
+          for (let i = full.indexOf('](\u{1F47B})'); i >= 0; i = full.indexOf('](\u{1F47B})', i + 3)) _lines.add(document.positionAt(i).line);   // v5.1.902: しまったリンク= 行先は FC
           for (const ln of _lines) {
             {
               const lt = document.lineAt(ln).text;
