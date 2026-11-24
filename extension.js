@@ -29495,7 +29495,7 @@ function meosRowMarksInOrder(text) {
     //   橙の「中に居るか」が記号の外側まで広がってしまう。
     for (const e of meosInlineMarkEnds(masked)) out.push({ kind: e.kind, start: e.start, end: e.end, bodyStart: e.bodyStart, bodyEnd: e.bodyEnd });
     for (const tk of (meosMeTexTokens(masked, null) || [])) out.push({ kind: (tk.kind === 'sup') ? 'sup' : 'sub', start: (typeof tk.tokStart === 'number' ? tk.tokStart : tk.opStart), end: tk.opEnd });
-    if (raw.indexOf(']()') >= 0) {
+    if (meosHasEmptyLink(raw)) {
       let t = raw;
       if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
       if (t.indexOf('-->[') >= 0) { MEOS_MELINK_RE.lastIndex = 0; let w; while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); } }
@@ -40812,7 +40812,7 @@ function meosStripHiddenForWidth(s) {
   if (t.indexOf('-->[') >= 0) t = t.replace(MEOS_MELINK_RE, (m, label) => label);
   if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label, cmt, url) => (_meosTableLinksBare && !cmt && !String(url || '').trim()) ? m : label);   // v4.2.776-9: 行先の空の印 [表示]() は FC群が無ければ括弧も見えている(776-8 はこの手前で外されて効かなかった) // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
   // v4.0.94: 行末一括コメント方式。指定コメントは①で消えるので、ここでは印 `[表示]()` を表示文字に戻すだけ。
-  if (t.indexOf(']()') >= 0 && !_meosTableLinksBare) t = t.replace(/(?<!\!)\[([^\]\n]*)\]\(\)/g, (m, label) => label);   // v4.2.776-8: 表の後に FC群が無ければ印は描かれない= 括弧も見えている
+  if (meosHasEmptyLink(t) && !_meosTableLinksBare) t = t.replace(/(?<!!)\[([^\]\n]*)\]\((?:\u{1F47B})?\)/gu, (m, label) => label);   // v4.2.776-8: 表の後に FC群が無ければ印は描かれない= 括弧も見えている
   // v4.0.93: 参照形式 `[表示][ref]` も表示文字だけ。ここには定義表が無いので、定義の有無は見ない
   //   (表の中で未定義の参照を書くのは病的so、定義済みに寄せる方が実害が小さい)。
   if (t.indexOf('][') >= 0) t = t.replace(MEOS_MD_REFLINK_RE, (m, label) => label);
@@ -43179,7 +43179,7 @@ function meosListSpecsToBlockPlan(lines, ln) {
 // (meosInlineMarkEnds=語に効く記法／meosMeTexTokens=上付下付／`[表示]()`=リンク)。
 function meosEmptyLinkCount(text) {
   let t = String(text == null ? '' : text);
-  if (t.indexOf(']()') < 0) return 0;
+  if (!meosHasEmptyLink(t)) return 0;
   if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
   if (t.indexOf('-->[') >= 0) { MEOS_MELINK_RE.lastIndex = 0; let w; while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); } }
   for (const c of meosTrailingComments(t)) t = t.slice(0, c.start) + ' '.repeat(c.end - c.start) + t.slice(c.end);
@@ -46179,7 +46179,11 @@ function meosLinkSpecFromComment(payload) {
   return { mark: /^\*{1,3}$/.test(mk) ? mk : '', target: String(m[2] || '').trim(), spec: String(m[3] || '').trim() };
 }
 // 本文側の印 `[表示]()`(行先が空)。コードスパン・画像・他形式のリンク・行末コメント群は先に外す(鉄則=リンクは先にマスク)。
-const MEOS_EMPTY_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\(\)/g;
+const MEOS_EMPTY_LINK_RE = /(?<!!)\[([^\]\n]*)\]\((?:\u{1F47B})?\)/gu;   // v5.1.901: `[表示](👻)`(URL を FC にしまったリンク)も同じ印
+// ★v5.1.901(俊克 11.25 am00:49「URLの部分を身代わり👻にして、FCの中にURLを保存する…MeOS以外で見れば通常のリンク」→ am01:15「進めて」):
+//   しまった形= 本文 `[表示](👻)` ・FC `[](URL)(色)//tip`(今のリンク記法そのもの)。👻を押すと開いた形= 本文 `[表示](URL)`(素の Markdown)・FC `[](👻)…`
+const MEOS_LEL_ANY_RE = /(?<!\!)\[([^\]\n]*)\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)/g;
+function meosHasEmptyLink(t) { t = String(t || ''); return t.indexOf('](' + ')') >= 0 || t.indexOf('](\u{1F47B})') >= 0; }
 // v4.0.190(俊克): 指定は**行末のコメント群**からでも**真下のFC指定行**からでも引ける。
 //   `fcLinks` = meosSpecLineFor(...).link(真下の指定行のリンク項目)。
 // ★引く口は2つだが、**数える単位は1つ**= この行の何個目の `[表示]()` か。行末の分を先に、FC行の分を後に並べる
@@ -46187,7 +46191,8 @@ const MEOS_EMPTY_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\(\)/g;
 // ★FC行から来た指定には**この行に消すコメントが無い**so `c` は null。使う側は必ず `b.comment` を確かめる。
 function meosLineEndLinks(text, fcLinks) {
   const raw = String(text == null ? '' : text);
-  if (raw.indexOf(']()') < 0) return [];
+  const _fcGhost = !!(fcLinks && fcLinks.some(x => x && x.target === '\u{1F47B}'));   // v5.1.901: 開いたリンク(FC が `[](👻)`)が在り得る
+  if (!meosHasEmptyLink(raw) && !_fcGhost) return [];
   const tail = meosTrailingComments(raw);
   const specs = [];
   for (const c of tail) { const sp = meosLinkSpecFromComment(c.payload); if (sp) specs.push({ c, sp }); }
@@ -46197,11 +46202,17 @@ function meosLineEndLinks(text, fcLinks) {
   if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
   if (t.indexOf('-->[') >= 0) { MEOS_MELINK_RE.lastIndex = 0; let w; while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); } }
   for (const c of tail) t = t.slice(0, c.start) + ' '.repeat(c.end - c.start) + t.slice(c.end); // 行末コメント群を外す
-  const out = []; let m; MEOS_EMPTY_LINK_RE.lastIndex = 0; let i = 0;
-  while ((m = MEOS_EMPTY_LINK_RE.exec(t)) !== null) {
+  const out = []; let m; let i = 0; const nTail = specs.filter(x => x.c).length;
+  const RE = _fcGhost ? MEOS_LEL_ANY_RE : MEOS_EMPTY_LINK_RE; RE.lastIndex = 0;
+  while ((m = RE.exec(t)) !== null) {
     if (i >= specs.length) break; // 指定より印が多い=余った印はただの文字のまま
     const label = m[1] || '', start = m.index, end = start + m[0].length;
-    out.push({ start, end, label, textStart: start + 1, textEnd: start + 1 + label.length, target: specs[i].sp.target, spec: specs[i].sp.spec, mark: specs[i].sp.mark || '', comment: specs[i].c }); // v4.0.243: mark=名指しされた印
+    const _tg = _fcGhost ? String(m[2] || '') : (m[0].indexOf('\u{1F47B}') >= 0 ? '\u{1F47B}' : '');
+    if (_tg !== '' && _tg !== '\u{1F47B}') {   // v5.1.901: 素のリンク= 次の指定が `[](👻)`(FC)の時だけ「開いたリンク」として対にする
+      if (!specs[i].c && specs[i].sp.target === '\u{1F47B}') { out.push({ start, end, label, textStart: start + 1, textEnd: start + 1 + label.length, target: _tg, spec: specs[i].sp.spec, mark: specs[i].sp.mark || '', comment: null, opened: true, fcIdx: i - nTail }); i++; }
+      continue;
+    }
+    out.push({ ghost: _tg === '\u{1F47B}', fcIdx: i - nTail, start, end, label, textStart: start + 1, textEnd: start + 1 + label.length, target: specs[i].sp.target, spec: specs[i].sp.spec, mark: specs[i].sp.mark || '', comment: specs[i].c }); // v4.0.243: mark=名指しされた印
     i++;
   }
   return out;
@@ -46322,11 +46333,11 @@ function meLinkSpanAtCursor(editor) {
   if (!editor) return null;
   const doc = editor.document, pos = editor.selection.active, line = pos.line;
   const text = doc.lineAt(line).text || '';
-  if (text.indexOf('-->[') < 0 && text.indexOf('](') < 0 && text.indexOf('][') < 0 && text.indexOf(']()') < 0) return null; // v4.0.78/93/94: 素のMarkdownリンク・参照形式・行末一括も解除対象
+  if (text.indexOf('-->[') < 0 && text.indexOf('](') < 0 && text.indexOf('][') < 0 && !meosHasEmptyLink(text)) return null; // v4.0.78/93/94: 素のMarkdownリンク・参照形式・行末一括も解除対象
   // v4.0.94: 行末一括コメント方式=印と**その指定コメントを一緒に**落とす(片方だけ残すと相手のいない指定が残る)。
   // v4.0.190: FC方式では🚫の直前に `meosEnsureInlineBeforeEdit` が指定行を行末形式へ戻すso、ここへ来る時は
   //   必ず行末コメントの形になっている。それでも `b.comment` が無い形(手書き等)では**この行だけでは外せない**so譲る。
-  for (const b of meosLineEndLinks(text, text.indexOf(']()') >= 0 ? _fcLinksFor(doc, line) : null)) {
+  for (const b of meosLineEndLinks(text, text.indexOf('](') >= 0 ? _fcLinksFor(doc, line) : null)) {
     if (pos.character < b.start || pos.character > b.end) continue;
     if (!b.comment) break;
     const body = meosUnwrapEmphasis(b.label);
@@ -46354,14 +46365,48 @@ function meLinkSpanAtCursor(editor) {
 function meosFindMembraneLineByName(doc, name) { const needle = String(name || '').trim(); if (!doc || !needle) return -1; for (let i = 0; i < doc.lineCount; i++) { const info = membraneLineInfo(doc, i); if (info && info.kind === 'open' && info.id === needle) return i; } return -1; }
 let _meosDockStateTimer = null; // v4.0.236: Me Dockのボタンの姿を計算し直す待ち
 let meLinkHideDeco = null; const meLinkStyleCache = new Map();
+let meosLinkGhostBtnDeco = null;   // v5.1.901
+// v5.1.901: 本文の行 ln の真下の FC 行に並ぶリンクの箱 `[](行先)` を順に(行先の桁つき)
+function meosLinkFcBoxes(doc, ln) {
+  const out = [];
+  for (let L = ln + 1; L < doc.lineCount; L++) {
+    const t = doc.lineAt(L).text || ''; if (!meosIsSpecLine(t)) break;
+    const re = /<!--[ \t]*[Mm][Ee][Ww]!(?![ \t]*[Ff][Cc]-[Ii][Cc]\b)[ \t]*(?:UFC|ufc|FC|fc|\^)?[ \t]*\[[^\]\n]*\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)/g; let m;
+    while ((m = re.exec(t)) !== null) { const te = m.index + m[0].length - 1, ts = te - m[1].length; out.push({ line: L, ts, te, target: m[1] }); }
+  }
+  return out;
+}
+const _meosLinkPrevSel = new WeakMap();
+// v5.1.901: リンクの👻を押す= URL を本文と FC の間で出し入れ(しまった形 ⇄ 開いた形)。身代り👻(v5.1.885)と同じく、押した後は押す前の所へカーソルを戻す
+function meosLinkGhostClick(e) {
+  const ed = e && e.textEditor; if (!ed) return;
+  const prev = _meosLinkPrevSel.get(ed); try { if (e.selections && e.selections[0]) _meosLinkPrevSel.set(ed, e.selections[0]); } catch (_) { }
+  try {
+    if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
+    const sel = e.selections && e.selections[0]; if (!sel || !sel.isEmpty || e.selections.length > 1) return;
+    const doc = ed.document, ln = sel.active.line, c = sel.active.character;
+    if (prev && prev.active.line === ln) return;   // 押す前からこの行に居た= 生の字を直している最中
+    if (!meosIsProseDoc(doc) || meosModeAtLine(doc, ln) !== 'normal') return;
+    const text = doc.lineAt(ln).text || ''; if (text.indexOf('](') < 0) return;
+    const b = meosLineEndLinks(text, _fcLinksFor(doc, ln)).find(x => (x.ghost && c > x.textEnd && c < x.end) || (x.opened && c > x.textEnd && c <= x.end));
+    if (!b) return;
+    const bx = meosLinkFcBoxes(doc, ln)[b.fcIdx]; if (!bx) return;
+    const G = '\u{1F47B}', we = new vscode.WorkspaceEdit();
+    if (b.ghost) { if (bx.target === G || !bx.target) return; we.replace(doc.uri, new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1), bx.target); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), G); }
+    else { if (bx.target !== G) return; we.replace(doc.uri, new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1), G); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), b.target); }
+    meosDbg('[linkGhost] 行=' + (ln + 1) + (b.ghost ? ' 開く' : ' しまう'));
+    setRefNoRaw(doc, ln);
+    vscode.workspace.applyEdit(we).then(() => { setTimeout(() => { try { if (prev && ed.selection && ed.selection.active.line === ln) { setRefNoRaw(doc, ln); ed.selection = new vscode.Selection(prev.anchor, prev.active); } } catch (_) { } }, 250); });
+  } catch (_) { }
+}
 function meosApplyMeLinkDecorations(editor) {
   const _t0meosApplyMeLinkDecorations = Date.now();
   try {
   if (!editor || !editor.document) return;
-  const clearAll = () => { if (meLinkHideDeco) editor.setDecorations(meLinkHideDeco, []); for (const d of meLinkStyleCache.values()) editor.setDecorations(d, []); };
+  const clearAll = () => { if (meosLinkGhostBtnDeco) editor.setDecorations(meosLinkGhostBtnDeco, []); if (meLinkHideDeco) editor.setDecorations(meLinkHideDeco, []); for (const d of meLinkStyleCache.values()) editor.setDecorations(d, []); };
   try {
     if (!meLinkHideDeco) meLinkHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    const doc = editor.document, hideRanges = [], styleRanges = new Map();
+    const doc = editor.document, hideRanges = [], styleRanges = new Map(), linkGhostBtn = [];   // v5.1.901: linkGhostBtn= リンクの👻(押せる)
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const _lTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _lTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
@@ -46408,12 +46453,15 @@ function meosApplyMeLinkDecorations(editor) {
         //   GFMは先に `|` で割るのでリンクは成立しない(外の世界では壊れている)。MeOSだけthat繋げて描くと、
         //   ①外と食い違い ②整形はセル単位で測るので**表that凸凹**になる。→ 描かない=書き手that `\|` に直せる。
         const raw = _lTblRows.has(ln) ? meosMaskCellBarriers(doc.lineAt(ln).text) : doc.lineAt(ln).text;
-        if (raw.indexOf('](') < 0 && raw.indexOf('][') < 0 && raw.indexOf(']()') < 0) continue;
+        if (raw.indexOf('](') < 0 && raw.indexOf('][') < 0) continue;
         // v4.0.94: 行末一括コメント方式 `[表示]()` ＋ 行末の `<!-- Mew! [](行先)(色)(N)//tip -->`。
         // v4.0.190: 指定が真下のFC行に在っても描く。FC行を読みに行くのは**印 `[表示]()` が在る行だけ**(無駄打ちしない)。
-        for (const b of meosLineEndLinks(raw, raw.indexOf(']()') >= 0 ? _fcLinksFor(doc, ln) : null)) {
+        const _lel = meosLineEndLinks(raw, _fcLinksFor(doc, ln)), _claimed = new Set(_lel.map(b => b.start));   // v5.1.901: 開いたリンクは素のリンクの方では描かない
+        for (const b of _lel) {
           hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
-          hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));     // ]() を隠す
+          if (b.ghost) { hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.textEnd + 2)); hideRanges.push(new vscode.Range(ln, b.end - 1, ln, b.end)); linkGhostBtn.push({ range: new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1) }); }   // v5.1.901: しまった形= 👻 は見せて押せる
+          else if (b.opened) { hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end)); linkGhostBtn.push({ range: new vscode.Range(ln, b.end - 1, ln, b.end), renderOptions: { after: { contentText: '\u{1F47B}' } } }); }   // 開いた形= URL は隠し、後ろに押せる 👻
+          else hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));     // ]() を隠す
           if (b.comment) hideRanges.push(new vscode.Range(ln, b.comment.start, ln, b.comment.end)); // 行末の指定コメント(FC行から来た分は隠す相手が居ない)
           if (b.textEnd <= b.textStart) continue;
           const sp0 = meosMeLinkSpec(b.spec);
@@ -46439,6 +46487,7 @@ function meosApplyMeLinkDecorations(editor) {
           styleRanges.get(st2).push(it2);
         }
         for (const b of meosBareMdLinks(raw)) {
+          if (_claimed.has(b.start)) continue;   // v5.1.901
           if (b.textEnd > b.textStart) hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
           hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end)); // ](行先) をまとめて隠す
           if (b.textEnd <= b.textStart) continue; // 表示文字が空=下線を引く相手がいない
@@ -46451,6 +46500,8 @@ function meosApplyMeLinkDecorations(editor) {
       }
     }
     editor.setDecorations(meLinkHideDeco, hideRanges);
+    if (!meosLinkGhostBtnDeco) meosLinkGhostBtnDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosLinkGhostBtnDeco, linkGhostBtn);   // v5.1.901
     for (const [style, type] of meLinkStyleCache) editor.setDecorations(type, styleRanges.get(style) || []);
     for (const [style, ranges] of styleRanges) { if (meLinkStyleCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meLinkStyleCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
@@ -48131,6 +48182,7 @@ function activate(context) {
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosGhostBtnClick));
   // v5.1.899: 「色」ボタンはやめた(本物を塗る= meosFcColorPreview)
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosLinkGhostClick));   // v5.1.901: リンクの👻
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { _meosGhostVr.set(e.textEditor, { n: e.textEditor.document.lineCount, ch: [] }); if (Date.now() - _meosGhostChAt < 1500) meosDbg('[ghostPen] 範囲が届いた 行数=' + e.textEditor.document.lineCount + ' 範囲=' + (e.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',')); } catch (_) { } }));   // v5.1.882: 範囲を受け取った時の行数
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { for (const ed of vscode.window.visibleTextEditors) { if (ed.document !== e.document) continue; let st = _meosGhostVr.get(ed); if (!st) continue;
     for (const c of e.contentChanges) { const add = (c.text.match(/\n/g) || []).length, del = c.range.end.line - c.range.start.line; if (add || del) { st.ch.push({ at: c.range.start.line, add, del }); _meosGhostChAt = Date.now(); } } } } catch (_) { } }));   // v5.1.882: 範囲の後の行の増減   // ★v5.1.874: 身代りの👻= 押すと字を見せる/隠す(Raw にしない)。他の選択の口より先に抑止を張る

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.901 (2026-11-25)
+- **A link can keep its URL in the FC line, behind a 👻.** Write `[label](👻)` in the text and `<!-- Mew!FC [](URL)(2)(白/黄)//tip -->` below it. MeOS draws the label as a link with a 👻 after it, and the line stays short because the URL is not in it, so long URLs no longer leave gaps. Click the 👻 and the URL moves into the text, `[label](URL)`, a plain Markdown link that works in any app; the FC line keeps the underline, colours and tip as `[](👻)…`. Click the 👻 again to put the URL back into the FC line.
+
 ### v5.1.900 (2026-11-25)
 - **The real text is painted only while the cursor is inside the colour spec.** With the cursor between `(` and `)` of `(text/background)`, the real text shows its colours. Elsewhere on the FC line, the orange pairing shows as before.
 
