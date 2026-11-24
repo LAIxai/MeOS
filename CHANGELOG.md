@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.880 (2026-11-24)
+- **Selecting down past a stand-in 👻 line now takes its folded FC lines with it.** When a selection extended downwards ends at the end of such a line, it now reaches the end of the last FC line. A copy and paste therefore keeps the stowed text, and the ✏️ still works on the pasted line.
+- **The FC lines of a stand-in 👻 line open only through ✏️.** They stay folded even when the text cursor or a selection enters them. While a line is open through ✏️, you can move down into its FC lines to edit the stowed text, and they stay open.
+
 ### v5.1.879 (2026-11-24)
 - **Holding ↓ (or Shift+↓) now pauses at a stop line that sits below folded FC lines.** Before, the pause looked only at the very next line, so a stop line after a line with folded FC lines (such as a stand-in 👻 line) was passed through. The next line is now the next visible line.
 

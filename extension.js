@@ -8019,6 +8019,10 @@ function meosLineHasGhostStore(doc, ln) {
   return false;
 }
 function meosGhostRawIsOpen(doc, ln) { try { return !!_meosGhostRawOpen && _meosGhostRawOpen.line === ln && _meosGhostRawOpen.uri === doc.uri.toString(); } catch (_) { return false; } }
+// ★v5.1.880: 身代り👻の行の FC 行の最後(しまった字の住所)。無ければ ln
+function meosGhostFcEnd(doc, ln) { let k = ln; try { while (k + 1 < doc.lineCount && meosIsBoundSpecLine(doc.lineAt(k + 1).text)) k++; } catch (_) { } return k; }
+// ✏️で開いた行とその FC 行の中に居るか(FC 行へ降りて字を直している間は閉じない)
+function meosGhostRawCovers(doc, ln) { try { if (!_meosGhostRawOpen || _meosGhostRawOpen.uri !== doc.uri.toString()) return false; const a = _meosGhostRawOpen.line; return ln >= a && ln <= meosGhostFcEnd(doc, a); } catch (_) { return false; } }
 // 身代り👻の行に居ても Raw にしない(✏️で開いた行だけ Raw)。カーソル行の特例から外すかどうか
 function meosGhostLineStaysCooked(doc, ln) { return meosModeAtLine(doc, ln) === 'normal' && !meosGhostRawIsOpen(doc, ln) && meosLineHasGhostStore(doc, ln); }   // ★v5.1.876: { uri, line }= 👻を押した行。押しただけ= FC 行を開かない(抑止が効いている間)
 function meosGhostShownKey(doc, line, col) { try { return doc.uri.toString() + '#' + doc.version + '#' + line + '#' + col; } catch (_) { return ''; } }
@@ -8033,7 +8037,14 @@ function meosGhostBtnClick(e) {
   const _prevSel = (e && e.textEditor) ? _meosGhostPrevSel.get(e.textEditor) : null;
   try { if (e && e.textEditor && e.selections && e.selections[0]) _meosGhostPrevSel.set(e.textEditor, e.selections[0]); } catch (_) { }
   try {
-    try { if (e && _meosGhostRawOpen && e.textEditor && e.selections && e.selections[0] && !meosGhostRawIsOpen(e.textEditor.document, e.selections[0].active.line)) { _meosGhostRawOpen = null; const _ed0 = e.textEditor; setTimeout(() => { try { refresh(_ed0); } catch (_) { } }, 0); } } catch (_) { }   // v5.1.877: 行を出たら(キーでも)✏️の Raw を閉じる
+    try { if (e && _meosGhostRawOpen && e.textEditor && e.selections && e.selections[0] && !meosGhostRawCovers(e.textEditor.document, e.selections[0].active.line)) { _meosGhostRawOpen = null; const _ed0 = e.textEditor; setTimeout(() => { try { refresh(_ed0); } catch (_) { } }, 0); } } catch (_) { }   // v5.1.877: 行を出たら(キーでも)✏️の Raw を閉じる
+    // ★v5.1.880(俊克 879 バグ1「Shift+↓ で身代り👻の次の行の停止線まで選択すると、✏️の手前までが選択される…コピーしてペーストすると FC 行が入っていない」):
+    //   下へ伸ばした選択の端が身代り👻の行の行末なら、畳んだ FC 行の最後まで伸ばす= しまった字ごと運ぶ(見た目の端は同じ= 畳みの頭の行末)
+    try { const ed0 = e && e.textEditor, s0 = e && e.selections && e.selections[0];
+      if (ed0 && s0 && e.selections.length === 1 && !s0.isEmpty && e.kind !== vscode.TextEditorSelectionChangeKind.Mouse && s0.active.isAfter(s0.anchor)) {
+        const d0 = ed0.document, l0 = s0.active.line;
+        if (s0.active.character === d0.lineAt(l0).text.length && meosGhostLineStaysCooked(d0, l0)) { const k = meosGhostFcEnd(d0, l0);
+          if (k > l0) { const P = new vscode.Position(k, d0.lineAt(k).text.length); setTimeout(() => { try { const s1 = ed0.selection; if (s1 && s1.active.line === l0 && s1.anchor.isEqual(s0.anchor)) { ed0.selection = new vscode.Selection(s0.anchor, P); meosDbg('[ghostSel] 選択の端を FC 行の最後へ 行=' + (l0 + 1) + '→' + (k + 1)); } } catch (_) { } }, 0); } } } } catch (_) { }
     if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
     const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
     const doc = ed.document, ln = sel.active.line;
@@ -43482,7 +43493,8 @@ function meosFcWantsOpen(doc, block, caretLine) {
   if (m === 'pseudo') return false;
   if (!(caretLine >= 0)) return false;
   if (meosModeAtLine(doc, caretLine) !== 'normal') return false;   // 読む所に居る間は、命令を開かない
-  try { if (meosGhostLineStaysCooked(doc, caretLine)) return false; } catch (_) { }   // v5.1.877: 身代り👻の行に居るだけでは FC 行(しまった字)を開かない
+  try { if (meosGhostLineStaysCooked(doc, caretLine)) return false; } catch (_) { }
+  try { if (block.fc && meosModeAtLine(doc, block.start) === 'normal' && !meosGhostRawIsOpen(doc, block.start) && meosLineHasGhostStore(doc, block.start)) return false; } catch (_) { }   // v5.1.880: 身代り👻の行の FC(しまった字)は✏️の時だけ開く= 選択でFC行に入っても開かない   // v5.1.877: 身代り👻の行に居るだけでは FC 行(しまった字)を開かない
   try { if (_meosGhostPress && _meosGhostPress.line === caretLine && _refNoRawLine === caretLine && _meosGhostPress.uri === doc.uri.toString() && _refNoRawUri === _meosGhostPress.uri) return false; } catch (_) { }   // v5.1.876: 👻を押しただけ= FC 行を開かない
   // ★v4.2.54: 頭thatUFCで切られた塊は、持ち主(ownTop/ownOpen)から合図を出す= 膜に居れば開く。
   const top = (block.ownTop != null) ? block.ownTop : ((block.top == null) ? block.start : block.top);
