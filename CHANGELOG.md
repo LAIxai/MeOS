@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.900 (2026-11-25)
+- **The real text is painted only while the cursor is inside the colour spec.** With the cursor between `(` and `)` of `(text/background)`, the real text shows its colours. Elsewhere on the FC line, the orange pairing shows as before.
+
 ### v5.1.899 (2026-11-25)
 - **While the cursor is on an FC line, the real text shows its colours.** The text the FC line colours is painted, all of it, with the text colour and background it names: the opened 👻 answer, the text of a highlight or strikethrough, or the heading text. A stowed 👻 has its text in the FC line, so that text is painted instead. Change a colour name and the result shows at once. Markers stay raw. The "色" sample button is gone.
 

@@ -43969,7 +43969,11 @@ function meosFcColorPreview(editor) {
   const line = sel.active.line, ch = sel.active.character;
   if (!meosIsProseDoc(doc) || meosModeAtLine(doc, line) !== 'normal') return res;
   const ft = doc.lineAt(line).text; if (ft.indexOf(MEOS_MEW_SIG) < 0) return res;
-  const colOf = (pay) => { const sp = parseColorSpec(pay, 'fg', pay); if (!sp.fgKey && !sp.bgKey) return null; const ss = meosStrikeSpec(sp);
+  // ★v5.1.900(俊克 899 改良1「色指定の(白/赤)の中に入った時だけ色見本として表示し、それ以外は今まで通り橙色で対応関係を示す」):
+  //   塗るのはカーソルが箱の (色) の括弧の中に居る時だけ。off= その箱が行の何桁目から始まるか
+  const colOf = (pay, off) => { const sp = parseColorSpec(pay, 'fg', pay); if (!sp.fgKey && !sp.bgKey) return null;
+    const o = off + sp.bodyLen, cl = ft.indexOf(')', o); if (!(ch > o && cl >= 0 && ch <= cl)) return null;
+    const ss = meosStrikeSpec(sp);
     return { fg: ss.fgKey ? HIGHLIGHT_FG_COLORS[ss.fgKey] : '', bg: ss.bgKey ? (HIGHLIGHT_COLORS[ss.bgKey] || '') : '' }; };
   const storeRange = (bx) => { const t = doc.lineAt(bx.line).text.slice(bx.start, bx.end), i = t.indexOf('//'); if (i < 0) return null;
     let a = bx.start + i + 2, e = bx.end - 3; const tt = doc.lineAt(bx.line).text; while (e > a && /\s/.test(tt[e - 1])) e--; return e > a ? new vscode.Range(bx.line, a, bx.line, e) : null; };
@@ -43978,14 +43982,14 @@ function meosFcColorPreview(editor) {
   if (hm) {
     let L = line - 1; while (L >= 0 && meosIsSpecLine(doc.lineAt(L).text || '')) L--;
     if (L >= 0) { const ht = doc.lineAt(L).text, h = /^(\s*#{1,6}\s+)(.*?)\s*$/.exec(ht);
-      const c = colOf(ft.slice(hm.index)); if (h && c && h[2]) res.push({ range: new vscode.Range(L, h[1].length, L, h[1].length + h[2].length), fg: c.fg, bg: c.bg }); }
+      const c = colOf(ft.slice(hm.index), hm.index); if (h && c && h[2]) res.push({ range: new vscode.Range(L, h[1].length, L, h[1].length + h[2].length), fg: c.fg, bg: c.bg }); }
     return res;
   }
   // ②段落の印 ⇄ 箱(meosFcMarkPairRanges と同じ組み方)
   const pr = meosFcMarkPairRanges(doc, line, ch); if (!pr || pr.length < 2) return res;
   const mkR = pr[0], bxR = pr[1]; if (bxR.start.line !== line) return res;
   const bx = { line, start: bxR.start.character, end: bxR.end.character };
-  const c = colOf(ft.slice(bx.start, bx.end)); if (!c) return res;
+  const c = colOf(ft.slice(bx.start, bx.end), bx.start); if (!c) return res;
   const bt = doc.lineAt(mkR.start.line).text;
   const mk = (meosRowMarksInOrder(bt) || []).find(m => m.start === mkR.start.character && m.end === mkR.end.character);
   let a = mk && typeof mk.bodyStart === 'number' ? mk.bodyStart : mkR.start.character, e = mk && typeof mk.bodyEnd === 'number' ? mk.bodyEnd : mkR.end.character;
