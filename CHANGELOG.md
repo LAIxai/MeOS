@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.894 (2026-11-24)
+- **A colour sample in FC lines.** The colour names in `(text/background)` are no longer painted. Instead, MeOS draws a small "色" in front of the `(`, with the background as its ground and the text colour as its ink. It is drawn on the cursor line too, so you see the result while you change the colour names. The text itself is unchanged. One-sided specs such as `(/紺)` and `(赤/)` get a sample too.
+
 ### v5.1.893 (2026-11-24)
 - **The grey ground behind text colour names now depends on the colour.** Yellow, white and aqua sit on a darker grey (120); the other colours sit on a lighter grey (175). The values were chosen by comparing samples.
 

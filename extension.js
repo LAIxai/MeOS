@@ -11733,6 +11733,7 @@ function meosReadableInkFor(css) {
 }
 let meosCodedColorDecos = null;
 let meosPlainColorDecos = null;
+let meosColorSampleDeco = null;   // v5.1.894: FC 行の (文字色/地の色) の手前の「色」の見本
 // v5.1.892→893(俊克 11.24 pm10:16 見本で見比べて「黄・白・水は rgb(120)、他は rgb(175)」): 明るい字は暗めの灰・他は明るめの灰
 const MEOS_FG_NAME_GROUND_DARK = 'rgba(120, 120, 120, 1)', MEOS_FG_NAME_GROUND = 'rgba(175, 175, 175, 1)';
 const MEOS_FG_NAME_DARK_GROUND_FOR = new Set([HIGHLIGHT_FG_COLORS.yellow, HIGHLIGHT_FG_COLORS.white, HIGHLIGHT_FG_COLORS.aqua]);
@@ -11829,7 +11830,7 @@ function meosApplyNameStampDecorations(editor) {
   const types = meosStampDecoTypes();
   const ed2 = meosEditableDecoTypes();
   const buckets = types.map(() => []);
-  const nameRanges = [], cmtRanges = [], codedRanges = [], fgSpecRanges = [];
+  const nameRanges = [], cmtRanges = [], codedRanges = [], fgSpecRanges = [], sampleItems = [];
   let rawSet = new Set();
   try {
     if (!editor || !editor.document) return;
@@ -11859,6 +11860,7 @@ function meosApplyNameStampDecorations(editor) {
         // v4.0.371: バッジの中身。色指定はその色で、他はモザイクと同じ巡回で。飾りの行でも出す
         //   (バッジは畳んでいる時こそ読む物なので、カーソルが無くても見えていてよい)。
         for (const [f, t, css] of roles.colorFg) fgSpecRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
+        for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: '色', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px;' } } });   // v5.1.894
         for (const [f, t, css] of roles.colorBg) codedRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
         for (let i = 0; i < roles.badge.length; i++) {
           const [f, t, code] = roles.badge[i];
@@ -11880,6 +11882,8 @@ function meosApplyNameStampDecorations(editor) {
     for (const it of fgSpecRanges) { if (!byFg.has(it.css)) byFg.set(it.css, []); byFg.get(it.css).push(it.range); }
     if (meosPlainColorDecos) for (const [css, d] of meosPlainColorDecos) if (!byFg.has(css)) editor.setDecorations(d, []);
     for (const [css, rs] of byFg) editor.setDecorations(meosPlainColorDeco(css), rs);
+    if (!meosColorSampleDeco) meosColorSampleDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosColorSampleDeco, sampleItems);
   } catch (_) { }
 }
 // {* ▲mCN=0355_NAME_STAMP_COLORS *}
@@ -43702,7 +43706,7 @@ function meosRawLines(editor, skipCaret, caretAt) {
 //     判定はここ1か所なので、橙もモザイクも名前もコメントも**同じ割り方**から出る。
 function meosRawLineRoles(doc, ln) {
   const text = doc.lineAt(ln).text || '';
-  const roles = { stamps: [], name: [], comment: [], shell: [], badge: [], colorFg: [], colorBg: [] };  // badge/color の3つ目は色
+  const roles = { stamps: [], name: [], comment: [], shell: [], badge: [], colorFg: [], colorBg: [], colorSample: [] };  // badge/color の3つ目は色
   const holes = [];
   try {
     for (const segs of meosVisStampSegments(text)) for (const [f, l] of segs) { roles.stamps.push([f, f + l]); holes.push([f, f + l]); }
@@ -43743,18 +43747,21 @@ function meosRawLineRoles(doc, ln) {
     //     **文字色はその色の字・背景色はその色の地**にする＝ 指定した通りの姿が、その場に出る。
     //   ★FC の名乗り(Mew!)が在る行だけ見る＝ ただの括弧を色指定と読み違えない。
     if (text.indexOf(MEOS_MEW_SIG) >= 0) {
-      const cm = text.match(/[（(]\s*([^/／）)]{1,6})\s*[/／]\s*([^（）()]{1,6}?)\s*[）)]/);
+      const cm = text.match(/[（(]\s*([^/／）)（(]{0,6})\s*[/／]\s*([^（）()]{0,6}?)\s*[）)]/);   // v5.1.894: 片方を省いた (/紺)・(赤/) も読む
       if (cm) {
         const at0 = text.indexOf(cm[0]);
         // normalizeHighlightColor は未知名を 'yellow' に丸めるので、ここでは**表に在る時だけ**色と読む
         //   (色でない括弧を黄で塗ってしまわないため)。
         const key = (w) => HIGHLIGHT_COLOR_ALIASES[String(w).trim()] || HIGHLIGHT_COLOR_ALIASES[String(w).trim().toLowerCase()] || '';
-        const fgCss = key(cm[1]) ? (HIGHLIGHT_FG_COLORS[key(cm[1])] || '') : '';
-        const bgCss = key(cm[2]) ? (HIGHLIGHT_COLORS[key(cm[2])] || '') : '';
-        const f1 = at0 + cm[0].indexOf(cm[1]);
-        if (fgCss) { roles.colorFg.push([f1, f1 + cm[1].length, fgCss]); holes.push([f1, f1 + cm[1].length]); }
-        const f2 = at0 + cm[0].lastIndexOf(cm[2]);
-        if (bgCss) { roles.colorBg.push([f2, f2 + cm[2].length, bgCss]); holes.push([f2, f2 + cm[2].length]); }
+        // ★v5.1.894(俊克 893 改良1「色指定を変更している時に、その結果が見れない」→ 11.24 pm11:0x「本文を変えず見本を描く」):
+        //   色名そのものは塗らない(白/紺 の字は殻と同じ= カーソルの行では橙)。代わりに `(` の手前に「色」の見本を描く
+        //   = 地は地の色・字は文字色(省けば暗い地=白/明るい地=黒)。本文は1文字も変わらない。カーソルの行でも描くので、直すとすぐ見本が変わる
+        const fk = key(cm[1]) && HIGHLIGHT_FG_COLORS[key(cm[1])] ? key(cm[1]) : '';
+        const bk0 = key(cm[2]) && HIGHLIGHT_COLORS[key(cm[2])] ? key(cm[2]) : '';
+        if (fk || bk0) {
+          const fk2 = fk || (DARK_BG_KEYS.has(bk0) ? 'white' : 'black'), bk = bk0 ? meosHiBgKey(bk0, fk2) : '';
+          roles.colorSample.push([at0, HIGHLIGHT_FG_COLORS[fk2], bk ? HIGHLIGHT_COLORS[bk] : '']);
+        }
       }
     }
     const info = membraneLineInfo(doc, ln);
