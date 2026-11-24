@@ -11882,7 +11882,7 @@ function meosApplyNameStampDecorations(editor) {
         //   → 見えている行(visibleRanges= 畳んだ中を含まない)だけに描く
         // ★v5.1.897(俊克 896 改良1「見出しにも色見本サンプルが毎回出るのが今一…通常は「色」・クリックで「色見本サンプル」」/ 改良2「かかか(Raw)でも見えてしまう」):
         //   Raw の行には描かない。押した行だけ長い見本(_meosColorSampleOpen)
-        if (_visLn(ln) && meosModeAtLine(doc, ln) === 'normal') for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: _meosColorSampleOpen.has(doc.uri.toString() + '#' + ln) ? '色見本サンプル' : '色', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px; cursor: ' + meosHandCursor() + ';' } } });   // v5.1.898: 押せる物= 選択指(✏️と同じ)   // v5.1.894
+        if (false && _visLn(ln) && meosModeAtLine(doc, ln) === 'normal') for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: _meosColorSampleOpen.has(doc.uri.toString() + '#' + ln) ? '色見本サンプル' : '色', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px; cursor: ' + meosHandCursor() + ';' } } });   // v5.1.898: 押せる物= 選択指(✏️と同じ)   // v5.1.894
         for (const [f, t, css] of roles.colorBg) codedRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
         for (let i = 0; i < roles.badge.length; i++) {
           const [f, t, code] = roles.badge[i];
@@ -43930,7 +43930,69 @@ function meosApplyFcRowDecorations(editor) {
     }
     out.length = 0; for (const r of carved) out.push(r);
   } catch (_) { }
+  // ★v5.1.899(俊克 11.24 pm11:55「その色が出る本物の…全部を色見本にしよう」→ 11.25 am00:01「全部塗る」):
+  //   FC 行にカーソルがある間、その指定が効く相手の字を、全部、指定の色で塗る(Raw の行の例外= 色が付く字だけ・記号は生のまま)。
+  //   橙は `!important` なので、塗る字は橙の範囲から抜く(外側を割る= v4.1.19)
+  const _pv = []; try { for (const it of meosFcColorPreview(editor)) _pv.push(it); } catch (_) { }
+  if (_pv.length) {
+    const cut = [];
+    for (const r of out) {
+      let segs = [r];
+      for (const it of _pv) { const q = it.range, nx = [];
+        for (const g of segs) { if (g.start.line !== q.start.line || g.end.line !== q.end.line || g.end.character <= q.start.character || g.start.character >= q.end.character) { nx.push(g); continue; }
+          if (g.start.character < q.start.character) nx.push(new vscode.Range(g.start.line, g.start.character, g.start.line, q.start.character));
+          if (g.end.character > q.end.character) nx.push(new vscode.Range(g.start.line, q.end.character, g.start.line, g.end.character)); }
+        segs = nx; }
+      for (const g of segs) cut.push(g);
+    }
+    out.length = 0; for (const r of cut) out.push(r);
+  }
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
+  try {
+    const by = new Map(); for (const it of _pv) { const k = it.fg + '|' + it.bg; if (!by.has(k)) by.set(k, []); by.get(k).push(it.range); }
+    if (meosFcPreviewDecos) for (const [k, d] of meosFcPreviewDecos) if (!by.has(k)) editor.setDecorations(d, []);
+    for (const [k, rs] of by) editor.setDecorations(meosFcPreviewDeco(k), rs);
+  } catch (_) { }
+}
+let meosFcPreviewDecos = null;   // v5.1.899: 'fg|bg' → 装飾
+function meosFcPreviewDeco(k) {
+  if (!meosFcPreviewDecos) meosFcPreviewDecos = new Map();
+  if (!meosFcPreviewDecos.has(k)) { const [fg, bg] = k.split('|');
+    meosFcPreviewDecos.set(k, vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed, backgroundColor: bg || undefined,
+      textDecoration: 'none !important;' + (fg ? ' color: ' + fg + ' !important;' : '') })); }
+  return meosFcPreviewDecos.get(k);
+}
+// v5.1.899: カーソルの FC 行の箱 → 塗る相手(本文の印の中身・しまった👻なら箱の中の字・見出しなら見出しの字)と色
+function meosFcColorPreview(editor) {
+  const res = [];
+  const doc = editor.document, sel = editor.selection; if (!sel || !sel.isEmpty) return res;
+  const line = sel.active.line, ch = sel.active.character;
+  if (!meosIsProseDoc(doc) || meosModeAtLine(doc, line) !== 'normal') return res;
+  const ft = doc.lineAt(line).text; if (ft.indexOf(MEOS_MEW_SIG) < 0) return res;
+  const colOf = (pay) => { const sp = parseColorSpec(pay, 'fg', pay); if (!sp.fgKey && !sp.bgKey) return null; const ss = meosStrikeSpec(sp);
+    return { fg: ss.fgKey ? HIGHLIGHT_FG_COLORS[ss.fgKey] : '', bg: ss.bgKey ? (HIGHLIGHT_COLORS[ss.bgKey] || '') : '' }; };
+  const storeRange = (bx) => { const t = doc.lineAt(bx.line).text.slice(bx.start, bx.end), i = t.indexOf('//'); if (i < 0) return null;
+    let a = bx.start + i + 2, e = bx.end - 3; const tt = doc.lineAt(bx.line).text; while (e > a && /\s/.test(tt[e - 1])) e--; return e > a ? new vscode.Range(bx.line, a, bx.line, e) : null; };
+  // ①見出しの FC(H1_〜H6_)= 上の見出しの字
+  const hm = /<!--\s*Mew!FC\s+(H[1-6])_/i.exec(ft);
+  if (hm) {
+    let L = line - 1; while (L >= 0 && meosIsSpecLine(doc.lineAt(L).text || '')) L--;
+    if (L >= 0) { const ht = doc.lineAt(L).text, h = /^(\s*#{1,6}\s+)(.*?)\s*$/.exec(ht);
+      const c = colOf(ft.slice(hm.index)); if (h && c && h[2]) res.push({ range: new vscode.Range(L, h[1].length, L, h[1].length + h[2].length), fg: c.fg, bg: c.bg }); }
+    return res;
+  }
+  // ②段落の印 ⇄ 箱(meosFcMarkPairRanges と同じ組み方)
+  const pr = meosFcMarkPairRanges(doc, line, ch); if (!pr || pr.length < 2) return res;
+  const mkR = pr[0], bxR = pr[1]; if (bxR.start.line !== line) return res;
+  const bx = { line, start: bxR.start.character, end: bxR.end.character };
+  const c = colOf(ft.slice(bx.start, bx.end)); if (!c) return res;
+  const bt = doc.lineAt(mkR.start.line).text;
+  const mk = (meosRowMarksInOrder(bt) || []).find(m => m.start === mkR.start.character && m.end === mkR.end.character);
+  let a = mk && typeof mk.bodyStart === 'number' ? mk.bodyStart : mkR.start.character, e = mk && typeof mk.bodyEnd === 'number' ? mk.bodyEnd : mkR.end.character;
+  if (bt.slice(a, a + 2) === '👻') a += 2;   // 👻はボタン= 塗るのは後ろの字
+  if (e > a) res.push({ range: new vscode.Range(mkR.start.line, a, mkR.start.line, e), fg: c.fg, bg: c.bg });
+  else { const r = storeRange(bx); if (r) res.push({ range: r, fg: c.fg, bg: c.bg }); }   // しまった👻= 箱の中の字が本物
+  return res;
 }
 // ★★★v4.1.105: **畳みの形を決める場所は、ここ1つ**。
 //   塊ごとに「頭の行」と「畳む中身thatが在るか」を返す。膜の塊(open != null)でカーソルthat中に居る時だけ、
@@ -48064,7 +48126,7 @@ function activate(context) {
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosGhostBtnClick));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosColorSampleClick));   // v5.1.897
+  // v5.1.899: 「色」ボタンはやめた(本物を塗る= meosFcColorPreview)
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { _meosGhostVr.set(e.textEditor, { n: e.textEditor.document.lineCount, ch: [] }); if (Date.now() - _meosGhostChAt < 1500) meosDbg('[ghostPen] 範囲が届いた 行数=' + e.textEditor.document.lineCount + ' 範囲=' + (e.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',')); } catch (_) { } }));   // v5.1.882: 範囲を受け取った時の行数
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { for (const ed of vscode.window.visibleTextEditors) { if (ed.document !== e.document) continue; let st = _meosGhostVr.get(ed); if (!st) continue;
     for (const c of e.contentChanges) { const add = (c.text.match(/\n/g) || []).length, del = c.range.end.line - c.range.start.line; if (add || del) { st.ch.push({ at: c.range.start.line, add, del }); _meosGhostChAt = Date.now(); } } } } catch (_) { } }));   // v5.1.882: 範囲の後の行の増減   // ★v5.1.874: 身代りの👻= 押すと字を見せる/隠す(Raw にしない)。他の選択の口より先に抑止を張る
