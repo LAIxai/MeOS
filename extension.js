@@ -9972,6 +9972,9 @@ function applyPrettyLabels(editor) {
     setDecoCached(editor, strikeMarkerDecoration, 'stMarker', strikeMarkerRanges);
   }
   if (ghostInlineBtnDecoration) setDecoCached(editor, ghostInlineBtnDecoration, 'ghostBtn', ghostInlineBtnItems);
+  // ★v5.1.890(俊克 11.24 pm05:38 改良1「✏️ボタンを押して、1行分のRawとFC行が出たとき、身代わり👻に白い取消線が入るのは、入れないようにしよう」):
+  //   Raw の行は MeOS が何も描かない= テーマの ~~…~~ の線(字の色)だけが残る。✏️で開いた行の ~~👻…~~ は線を消す
+  try { if (_meosGhostRawOpen && _meosGhostRawOpen.uri === editor.document.uri.toString()) { const _gl = _meosGhostRawOpen.line; if (_gl >= 0 && _gl < editor.document.lineCount) { const _gt = editor.document.lineAt(_gl).text, _gre = /~~👻[^~\n]*?~~/gu; let _gm; while ((_gm = _gre.exec(_gt)) !== null) ghostOpenNoLineItems.push({ range: new vscode.Range(_gl, _gm.index, _gl, _gm.index + _gm[0].length) }); } } } catch (_) { }
   if (ghostOpenNoLineDecoration) setDecoCached(editor, ghostOpenNoLineDecoration, 'ghostNoLine', ghostOpenNoLineItems);   // v5.1.889   // v5.1.870
   if (ghostRawBtnDecoration) setDecoCached(editor, ghostRawBtnDecoration, 'ghostRawBtn', ghostRawBtnItems);   // v5.1.877
   // v0.9.99967: 参照符(点膜▶◀)適用(生データ隠し+記号チップ)。

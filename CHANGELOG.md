@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.890 (2026-11-24)
+- **No strike line on the 👻 in a line opened with ✏️.** A Raw line gets no MeOS drawing, so only the colour theme's own line on `~~…~~` showed, across the 👻 and its markers, in the text colour. MeOS now removes that line from the `~~👻…~~` parts of the line opened with ✏️.
+
 ### v5.1.889 (2026-11-24)
 - **Fixed: holding ← or → still ran past the ends of an opened 👻 answer.** MeOS did stop at the end, but redrawing a very large note right after the stop made the editor stall for about 0.2 seconds. The first key repeat after the stall looked like a fresh press, so the cursor crossed. Now, when a key arrives after a gap while the cursor is stopped, MeOS waits a moment. If more repeats follow, the key is still held and the cursor stays. Reaching an end always counts as a stop; the next fresh press crosses it in one visible step.
 - **Fixed: a white strike line showed on an opened answer once the cursor left it.** The colour theme draws its own line on Markdown `~~…~~`, and it showed through after v5.1.888 removed MeOS's red line. MeOS now removes that line too.
