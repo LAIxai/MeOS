@@ -8032,7 +8032,21 @@ function meosGhostBtnHit(doc, ln, col) {
     const sc = meosScanText(t), re = /~~👻~~/g; let m; while ((m = re.exec(sc)) !== null) { if (col >= m.index && col < m.index + m[0].length) return meosGhostStoreAt(doc, ln, t, m.index) != null ? m.index : -1; } } catch (_) { }
   return -1;
 }
-const _meosGhostPrevSel = new WeakMap();   // ★v5.1.878: editor → 押す前のカーソル(自分で控える= 他の口の更新順に左右されない)
+const _meosGhostPrevSel = new WeakMap();
+// ★v5.1.882(俊克 881 改良1「ペーストすると0.1〜0.2秒くらい✏️が表示されてから消える」): 行が増減した直後の描き直しは、見えている範囲(visibleRanges)がまだ前の姿=
+//   畳みの位置がずれて、貼ったばかりの(見えている)FC 行を「隠れている」と読んでいた。範囲を受け取った後の行の増減を控え、その分ずらして読む。
+//   増えた行(貼った所)は畳まれていない。増減が2回以上重なったら読めない→ ✏️は前のまま出さず、0.3秒後に描き直す
+const _meosGhostVr = new WeakMap(); let _meosGhostVrT = null;   // editor → { n: 範囲を受け取った時の行数, ch: [{ at, add, del }] }
+function meosGhostFcHidden(ed, line) {
+  try { const st = _meosGhostVr.get(ed), n = ed.document.lineCount;
+    if (!st || st.n === n || !st.ch.length) return meosRuleHidden(ed, line + 1);
+    if (st.ch.length === 1) { const c = st.ch[0], l = line + 1;
+      if (l < c.at) return meosRuleHidden(ed, l);
+      if (l <= c.at + c.add) return false;                       // 書き換えた/貼った所= 畳まれていない
+      return meosRuleHidden(ed, l - c.add + c.del); }
+    clearTimeout(_meosGhostVrT); _meosGhostVrT = setTimeout(() => { try { refresh(ed); } catch (_) { } }, 300); return false;
+  } catch (_) { return meosRuleHidden(ed, line + 1); }
+}
 function meosGhostBtnClick(e) {
   const _prevSel = (e && e.textEditor) ? _meosGhostPrevSel.get(e.textEditor) : null;
   try { if (e && e.textEditor && e.selections && e.selections[0]) _meosGhostPrevSel.set(e.textEditor, e.selections[0]); } catch (_) { }
@@ -9226,7 +9240,7 @@ function applyPrettyLabels(editor) {
             }
             ghostInlineBtnItems.push(_gItem);
             // ★v5.1.881(俊克 880 スクショ2「FC 行が見えている時に✏️が表示されるのはおかしい」): ✏️は FC 行(しまった字)が畳まれて見えない時だけ
-            if (_gs && !_ghostRawBtnLines.has(line) && meosRuleHidden(editor, line + 1)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
+            if (_gs && !_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
             continue;
           }
           if (_fcGhost || (_pseudoLine(line) && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
@@ -47884,7 +47898,10 @@ function activate(context) {
   //     拡張パネルに在るので空振りしていた。★**焦点は奪わない**(読んでいる所から勝手に飛ばすのは行儀が悪い)。
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosGhostBtnClick));   // ★v5.1.874: 身代りの👻= 押すと字を見せる/隠す(Raw にしない)。他の選択の口より先に抑止を張る
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosGhostBtnClick));
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { _meosGhostVr.set(e.textEditor, { n: e.textEditor.document.lineCount, ch: [] }); } catch (_) { } }));   // v5.1.882: 範囲を受け取った時の行数
+  context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { for (const ed of vscode.window.visibleTextEditors) { if (ed.document !== e.document) continue; let st = _meosGhostVr.get(ed); if (!st) continue;
+    for (const c of e.contentChanges) { const add = (c.text.match(/\n/g) || []).length, del = c.range.end.line - c.range.start.line; if (add || del) st.ch.push({ at: c.range.start.line, add, del }); } } } catch (_) { } }));   // v5.1.882: 範囲の後の行の増減   // ★v5.1.874: 身代りの👻= 押すと字を見せる/隠す(Raw にしない)。他の選択の口より先に抑止を張る
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { if (e && e.contentChanges && e.contentChanges.length) meosDdCycleSyncSoon(e.document); } catch (_) { } }));
   // v5.1.781 計測: Shift+↓ の選択が膜の所で外れる真因探し= 選択が「範囲あり→空」になった瞬間を、kind と行で記録(前後の他の札と並べて読む)

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.882 (2026-11-24)
+- **No ✏️ flash after pasting a stand-in 👻 line.** Right after lines are added or removed, the editor still reports the old visible area, so freshly pasted, unfolded FC lines were read as folded. MeOS now shifts the old visible area by the lines that changed and treats the pasted lines as unfolded.
+
 ### v5.1.881 (2026-11-24)
 - **✏️ appears only while the FC lines are folded.** When the FC lines holding the stowed text are already visible (for example just after pasting), there is nothing to open, so the ✏️ is not shown.
 
