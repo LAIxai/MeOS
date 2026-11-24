@@ -8036,10 +8036,14 @@ const _meosGhostPrevSel = new WeakMap();
 // ★v5.1.882(俊克 881 改良1「ペーストすると0.1〜0.2秒くらい✏️が表示されてから消える」): 行が増減した直後の描き直しは、見えている範囲(visibleRanges)がまだ前の姿=
 //   畳みの位置がずれて、貼ったばかりの(見えている)FC 行を「隠れている」と読んでいた。範囲を受け取った後の行の増減を控え、その分ずらして読む。
 //   増えた行(貼った所)は畳まれていない。増減が2回以上重なったら読めない→ ✏️は前のまま出さず、0.3秒後に描き直す
-const _meosGhostVr = new WeakMap(); let _meosGhostVrT = null;   // editor → { n: 範囲を受け取った時の行数, ch: [{ at, add, del }] }
+const _meosGhostVr = new WeakMap(); let _meosGhostVrT = null; let _meosGhostChAt = 0;   // v5.1.883: 最後に行が増減した時刻(計測用)   // editor → { n: 範囲を受け取った時の行数, ch: [{ at, add, del }] }
 function meosGhostFcHidden(ed, line) {
   try { const st = _meosGhostVr.get(ed), n = ed.document.lineCount;
-    if (!st || st.n === n || !st.ch.length) return meosRuleHidden(ed, line + 1);
+    if (!st || st.n === n) return meosRuleHidden(ed, line + 1);
+    // ★v5.1.883(俊克 882 バグ1「ペーストした瞬間、まだ✏️が一瞬だけ見える」): 描き直しが、行の増減の控え(この口の知らせ)より先に走ると、控えが空のまま古い範囲で読んでいた
+    //   → 行数が違うのに控えで説明がつかない時は「分からない」= 出さずに 0.3秒後に描き直す
+    let _sum = 0; for (const c of st.ch) _sum += c.add - c.del;
+    if (st.n + _sum !== n) { clearTimeout(_meosGhostVrT); _meosGhostVrT = setTimeout(() => { try { refresh(ed); } catch (_) { } }, 300); return false; }
     if (st.ch.length === 1) { const c = st.ch[0], l = line + 1;
       if (l < c.at) return meosRuleHidden(ed, l);
       if (l <= c.at + c.add) return false;                       // 書き換えた/貼った所= 畳まれていない
@@ -9240,6 +9244,7 @@ function applyPrettyLabels(editor) {
             }
             ghostInlineBtnItems.push(_gItem);
             // ★v5.1.881(俊克 880 スクショ2「FC 行が見えている時に✏️が表示されるのはおかしい」): ✏️は FC 行(しまった字)が畳まれて見えない時だけ
+            if (_gs && !_ghostRawBtnLines.has(line) && Date.now() - _meosGhostChAt < 1500) try { const _st = _meosGhostVr.get(editor); meosDbg('[ghostPen] 行=' + (line + 1) + ' ✏️=' + meosGhostFcHidden(editor, line) + ' 行数=' + editor.document.lineCount + ' 範囲の時の行数=' + (_st ? _st.n : '-') + ' 増減=' + JSON.stringify(_st ? _st.ch : null) + ' 範囲=' + (editor.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',') + ' 変更から=' + (Date.now() - _meosGhostChAt) + 'ms'); } catch (_) { }   // v5.1.883 計測
             if (_gs && !_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
             continue;
           }
@@ -47899,9 +47904,9 @@ function activate(context) {
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosGhostBtnClick));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { _meosGhostVr.set(e.textEditor, { n: e.textEditor.document.lineCount, ch: [] }); } catch (_) { } }));   // v5.1.882: 範囲を受け取った時の行数
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { _meosGhostVr.set(e.textEditor, { n: e.textEditor.document.lineCount, ch: [] }); if (Date.now() - _meosGhostChAt < 1500) meosDbg('[ghostPen] 範囲が届いた 行数=' + e.textEditor.document.lineCount + ' 範囲=' + (e.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',')); } catch (_) { } }));   // v5.1.882: 範囲を受け取った時の行数
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { for (const ed of vscode.window.visibleTextEditors) { if (ed.document !== e.document) continue; let st = _meosGhostVr.get(ed); if (!st) continue;
-    for (const c of e.contentChanges) { const add = (c.text.match(/\n/g) || []).length, del = c.range.end.line - c.range.start.line; if (add || del) st.ch.push({ at: c.range.start.line, add, del }); } } } catch (_) { } }));   // v5.1.882: 範囲の後の行の増減   // ★v5.1.874: 身代りの👻= 押すと字を見せる/隠す(Raw にしない)。他の選択の口より先に抑止を張る
+    for (const c of e.contentChanges) { const add = (c.text.match(/\n/g) || []).length, del = c.range.end.line - c.range.start.line; if (add || del) { st.ch.push({ at: c.range.start.line, add, del }); _meosGhostChAt = Date.now(); } } } } catch (_) { } }));   // v5.1.882: 範囲の後の行の増減   // ★v5.1.874: 身代りの👻= 押すと字を見せる/隠す(Raw にしない)。他の選択の口より先に抑止を張る
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { if (e && e.contentChanges && e.contentChanges.length) meosDdCycleSyncSoon(e.document); } catch (_) { } }));
   // v5.1.781 計測: Shift+↓ の選択が膜の所で外れる真因探し= 選択が「範囲あり→空」になった瞬間を、kind と行で記録(前後の他の札と並べて読む)

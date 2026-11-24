@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.883 (2026-11-24)
+- **One more guard against the ✏️ flash after pasting.** If the line count changed but MeOS has not yet seen which lines changed, the ✏️ is held back until the editor reports the new visible area.
+- Added a debug-log line (`[ghostPen]`) to measure the remaining flash, if there is one.
+
 ### v5.1.882 (2026-11-24)
 - **No ✏️ flash after pasting a stand-in 👻 line.** Right after lines are added or removed, the editor still reports the old visible area, so freshly pasted, unfolded FC lines were read as folded. MeOS now shifts the old visible area by the lines that changed and treats the pasted lines as unfolded.
 
