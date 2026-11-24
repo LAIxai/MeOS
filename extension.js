@@ -9332,8 +9332,10 @@ function applyPrettyLabels(editor) {
             const _r5 = new vscode.Range(line, innerStart + 2, line, bodyEnd), _st5 = _fcRaw ? parseColorSpec(_fcRaw, 'fg', _fcRaw) : null;
             // ★v5.1.888(俊克 887 改良2「取消線が出ているけど、これは出ないようにしよう。そもそも👻なので線は引いていない…ベースの色は設定通りに出ているので、それはそのままでいい」): 線は引かず、色だけ(地の色があれば地・無ければ字の色)
             ghostOpenNoLineItems.push({ range: _r5 });   // v5.1.889: テーマの線も消す
-            if (!(_st5 && _st5.bgKey)) (highlightFgRangesByColor[(_st5 && _st5.fgKey) || 'red'] || highlightFgRangesByColor.red || []).push({ range: _r5 });
-            if (_st5 && _st5.bgKey) { (highlightBodyRangesByColor[_st5.bgKey] || []).push({ range: _r5 }); if (DARK_BG_KEYS.has(_st5.bgKey)) (highlightFgRangesByColor.white || []).push({ range: _r5 }); }
+            // ★v5.1.892(俊克 891 改良1「(黒/赤)を指定しているのに文字色が黒にならない」): 文字色は書いた色(meosStrikeSpec)・無ければ暗い地=白/明るい地=黒・地も無ければ赤
+            const _gs5 = meosStrikeSpec(_st5);
+            if (_gs5.bgKey) (highlightBodyRangesByColor[_gs5.bgKey] || []).push({ range: _r5 });
+            (highlightFgRangesByColor[_gs5.fgKey || 'red'] || highlightFgRangesByColor.red || []).push({ range: _r5 });
             if (!_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); ghostRawBtnItems.push({ range: new vscode.Range(line, text.length, line, text.length) }); }
             continue;
           }
@@ -11731,13 +11733,18 @@ function meosReadableInkFor(css) {
 }
 let meosCodedColorDecos = null;
 let meosPlainColorDecos = null;
+const MEOS_FG_NAME_GROUND = 'rgba(150, 150, 150, 1)';   // v5.1.892: 白字も黒字も読める中くらいの灰
 function meosPlainColorDeco(css) {
   if (!meosPlainColorDecos) meosPlainColorDecos = new Map();
   if (!meosPlainColorDecos.has(css)) {
+    // ★v5.1.892(俊克 891 改良1「色指定の黒を黒色で書くと、ダークモードでは見えにくいので、文字色指定のベースを灰色にしようか。そうすれば、白でも黒でも見える」):
+    //   文字色の名前は灰色の地に、その色の字で書く(背景色の名前はその色のチップ= 0372 のまま)。灰の字だけは地に溶けるので地を付けない
+    const _gry = (css === HIGHLIGHT_FG_COLORS.gray) ? undefined : MEOS_FG_NAME_GROUND;
     meosPlainColorDecos.set(css, vscode.window.createTextEditorDecorationType({
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
       color: css,
-      textDecoration: 'none; color: ' + css + ' !important; font-weight: 700;'
+      backgroundColor: _gry,
+      textDecoration: 'none; color: ' + css + ' !important; font-weight: 700;' + (_gry ? ' border-radius: 2px; padding: 0 1px;' : '')
     }));
   }
   return meosPlainColorDecos.get(css);

@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.892 (2026-11-24)
+- **An opened 👻 follows its text colour.** With `(黒/赤)`, the opened answer was white on red; it is now black on red. Without a text colour, it is white on a dark background and black on a light one.
+- **Text colour names in FC lines sit on a grey ground.** `黒` written in black was hard to see in dark mode. The text colour name now has a mid-grey ground, so both white and black are readable. Background colour names keep their colour chip.
+
 ### v5.1.891 (2026-11-24)
 - **Strikethrough colours now read `(text colour/background)`, the same as highlights.** Before, the first colour set the line and the text kept the theme colour, so it changed from word to word. Now the line colour is not written: it follows the background (white on a dark background, black on a light one). With no background, it follows the editor theme. `~~{text}~~` with no colours keeps the red line. With only a background, the text turns white or black as in highlights. The colour picker for strikethrough now says "Text color".
 
