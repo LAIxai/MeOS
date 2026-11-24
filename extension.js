@@ -11733,13 +11733,15 @@ function meosReadableInkFor(css) {
 }
 let meosCodedColorDecos = null;
 let meosPlainColorDecos = null;
-const MEOS_FG_NAME_GROUND = 'rgba(150, 150, 150, 1)';   // v5.1.892: 白字も黒字も読める中くらいの灰
+// v5.1.892→893(俊克 11.24 pm10:16 見本で見比べて「黄・白・水は rgb(120)、他は rgb(175)」): 明るい字は暗めの灰・他は明るめの灰
+const MEOS_FG_NAME_GROUND_DARK = 'rgba(120, 120, 120, 1)', MEOS_FG_NAME_GROUND = 'rgba(175, 175, 175, 1)';
+const MEOS_FG_NAME_DARK_GROUND_FOR = new Set([HIGHLIGHT_FG_COLORS.yellow, HIGHLIGHT_FG_COLORS.white, HIGHLIGHT_FG_COLORS.aqua]);
 function meosPlainColorDeco(css) {
   if (!meosPlainColorDecos) meosPlainColorDecos = new Map();
   if (!meosPlainColorDecos.has(css)) {
     // ★v5.1.892(俊克 891 改良1「色指定の黒を黒色で書くと、ダークモードでは見えにくいので、文字色指定のベースを灰色にしようか。そうすれば、白でも黒でも見える」):
     //   文字色の名前は灰色の地に、その色の字で書く(背景色の名前はその色のチップ= 0372 のまま)。灰の字だけは地に溶けるので地を付けない
-    const _gry = (css === HIGHLIGHT_FG_COLORS.gray) ? undefined : MEOS_FG_NAME_GROUND;
+    const _gry = (css === HIGHLIGHT_FG_COLORS.gray) ? undefined : MEOS_FG_NAME_DARK_GROUND_FOR.has(css) ? MEOS_FG_NAME_GROUND_DARK : MEOS_FG_NAME_GROUND;
     meosPlainColorDecos.set(css, vscode.window.createTextEditorDecorationType({
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
       color: css,
