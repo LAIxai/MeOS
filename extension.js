@@ -11882,7 +11882,7 @@ function meosApplyNameStampDecorations(editor) {
         //   → 見えている行(visibleRanges= 畳んだ中を含まない)だけに描く
         // ★v5.1.897(俊克 896 改良1「見出しにも色見本サンプルが毎回出るのが今一…通常は「色」・クリックで「色見本サンプル」」/ 改良2「かかか(Raw)でも見えてしまう」):
         //   Raw の行には描かない。押した行だけ長い見本(_meosColorSampleOpen)
-        if (_visLn(ln) && meosModeAtLine(doc, ln) === 'normal') for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: _meosColorSampleOpen.has(doc.uri.toString() + '#' + ln) ? '色見本サンプル' : '色', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px;' } } });   // v5.1.894
+        if (_visLn(ln) && meosModeAtLine(doc, ln) === 'normal') for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: _meosColorSampleOpen.has(doc.uri.toString() + '#' + ln) ? '色見本サンプル' : '色', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px; cursor: ' + meosHandCursor() + ';' } } });   // v5.1.898: 押せる物= 選択指(✏️と同じ)   // v5.1.894
         for (const [f, t, css] of roles.colorBg) codedRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
         for (let i = 0; i < roles.badge.length; i++) {
           const [f, t, code] = roles.badge[i];

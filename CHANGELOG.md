@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.898 (2026-11-24)
+- **The colour sample shows the hand pointer.** Over the "色" button, the pointer becomes the selection hand, like the ✏️ button.
+
 ### v5.1.897 (2026-11-24)
 - **The colour sample is a button.** It normally shows a short "色". Click it to show the long "色見本サンプル", and click again to go back. Each FC line keeps its own state.
 - **No colour sample in Raw mode.** The sample showed even after Raw mode was turned on (with かかか). It is now drawn only in normal view.
