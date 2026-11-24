@@ -3283,7 +3283,8 @@ function parseColorSpec(content, single, scan) {
 // 記号として隠す。タイムスタンプはプレーンテキストとして残る(grep可・往復で壊れない)。
 let strikeBodyDecoration;     // 旧形 ~~text~~ 用: 赤い取消線(line-through)
 let strikeMarkerDecoration;   // ~~ と (日時) と { } を隠す
-let ghostInlineBtnDecoration; let ghostRawBtnDecoration;   // v5.1.877: 身代り👻の行の行末の✏️(押すとその行を Raw) // v5.1.870: 本文の ~~👻~~ の👻= 押すとその行が Raw(手のポインター)
+let ghostInlineBtnDecoration; let ghostRawBtnDecoration; let ghostOpenNoLineDecoration;   // v5.1.889
+   // v5.1.877: 身代り👻の行の行末の✏️(押すとその行を Raw) // v5.1.870: 本文の ~~👻~~ の👻= 押すとその行が Raw(手のポインター)
 // v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ 用。線色別の line-through 装飾。
 // 背景色は highlightBodyByColor を、暗背景の白文字は highlightFgByColor['white'] を再利用。
 let strikeColorByKey = null;  // Map<色キー, 装飾型(指定色の line-through)>。既定線色=red。
@@ -3847,6 +3848,7 @@ function disposeDecorations() {
   if (strikeMarkerDecoration) strikeMarkerDecoration.dispose();
   strikeMarkerDecoration = undefined;
   if (ghostInlineBtnDecoration) { ghostInlineBtnDecoration.dispose(); ghostInlineBtnDecoration = undefined; } // v5.1.870
+  if (ghostOpenNoLineDecoration) { ghostOpenNoLineDecoration.dispose(); ghostOpenNoLineDecoration = undefined; } // v5.1.889
   if (ghostRawBtnDecoration) { ghostRawBtnDecoration.dispose(); ghostRawBtnDecoration = undefined; } // v5.1.877
   if (refPointHideDecoration) { refPointHideDecoration.dispose(); refPointHideDecoration = undefined; } // v0.9.99967
   if (refPointLabelDecoration) { refPointLabelDecoration.dispose(); refPointLabelDecoration = undefined; } // v0.9.99967
@@ -4271,6 +4273,9 @@ function makeDecorations() {
     after: { contentText: '✏️', margin: '0 0 0 0.4em', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' },
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
   });
+  // ★v5.1.889(俊克 888 バグ1「外に出ると取消線が表示されてしまう。しかも白色」): テーマ(Monokai Dimmed 等)が Markdown の ~~…~~ に字の色で線を引く=
+  //   888 で MeOS の赤線を外したら、下に居たテーマの線が見えた。開いた👻の字は線を消す(装飾の text-decoration:none はテーマの線に勝つ= v0.9.99960 の知見)
+  ghostOpenNoLineDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none !important', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   ghostInlineBtnDecoration = vscode.window.createTextEditorDecorationType({
     textDecoration: 'none; cursor: ' + meosHandCursor() + ';',
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
@@ -8105,21 +8110,23 @@ async function meosGhostEditKey(k) {
     if (k === 'up' || k === 'down') { _meosGhostKey.hold = false; const to = k === 'up' ? sp.ts : sp.te;
       if (x >= sp.ts && x <= sp.te && x !== to) { go(sp.ln, to); meosDbg('[ghostKey] ' + k + ' → 答えの' + (k === 'up' ? '頭' : '尻')); return; }
       return vscode.commands.executeCommand(nat); }
-    const held = gap < 150;
-    if (_meosGhostKey.hold) { if (held) return; _meosGhostKey.hold = false;   // 押し直し= 越える(見た目が動く所まで)
-      if (k === 'right') { if (x === sp.te) return go(sp.ln, Math.min(sp.e + 1, len)); if (x === sp.at) return go(sp.ln, sp.ts); }
-      else { if (x === sp.e) return go(sp.ln, sp.te - 1); if (x === sp.ts) return go(sp.ln, sp.at); } }
-    let to = -1;
-    if (k === 'right') { if (x === sp.at || x === sp.at + 1 || x === sp.at + 2) to = sp.ts; else if (x === sp.te || x === sp.te + 1) to = sp.e; }
-    else { if (x === sp.ts || x === sp.at + 1 || x === sp.at + 2) to = sp.at; else if (x === sp.e || x === sp.te + 1) to = sp.te; }
-    // ★v5.1.888(俊克 887 改良1「←/→を押しっ放しの移動で、先頭と末尾で一時停止しない」): 中の1字の移動を本来の cursorLeft/Right(非同期)に任せていた→
-    //   押しっぱなしの30ms刻みのキーが、前の移動が終わる前に次々走り、止める判断の前に端を越えていた(控えに「止める」は出ていたが、もう先へ行った後)。
-    //   枠の中の移動は全部この場で桁を決めて置く(同期= 1打ずつ確実に)。字は1文字(サロゲートは2単位)ずつ
-    if (to < 0) { const t = ed.document.lineAt(sp.ln).text;
-      if (k === 'right' && x < len) to = x + ((t.charCodeAt(x) & 0xFC00) === 0xD800 && x + 1 < len ? 2 : 1);
-      else if (k === 'left' && x > 0) to = x - ((t.charCodeAt(x - 1) & 0xFC00) === 0xDC00 && x >= 2 ? 2 : 1); }
-    if (to >= 0) go(sp.ln, to); else { if (_meosGhostKey.busy) return; _meosGhostKey.busy = true; try { await vscode.commands.executeCommand(nat); } finally { _meosGhostKey.busy = false; } }
-    if (held) { const a = ed.selection.active; if (a.line === sp.ln && (k === 'right' ? (a.character === sp.te || a.character === sp.at) : (a.character === sp.ts || a.character === sp.e))) { _meosGhostKey.hold = true; meosDbg('[ghostKey] 押しっぱなし→ 端で止める 桁=' + a.character); } }
+    // ★v5.1.889(俊克 888 バグ2「←/→を押しっ放しの移動で、依然として、先頭と末尾で一時停止しない」): 控えには「端で止める」が毎回出ていた= 止めた後に越えていた。
+    //   止めた直後は拡張の描き直し(38万行)で0.2秒ほど詰まる→ 詰まりの後に届いた最初のリピートを「押し直し」(間隔150ms以上)と読み、越えていた(停止線の v5.1.583 と同じ穴)。
+    //   → 止まっている時に間が空いたキーは 120ms 待ち、その間に次のキーが来れば押しっぱなし(止まったまま)・来なければ本当の押し直し= 越える。
+    //   端に着いたら(1打ずつでも)必ず止まる印を付ける= 押しっぱなしの判定を着いた時の間隔に頼らない(詰まりの直後でも止まる)。端から押すと、見た目が1つ動く所まで越える
+    const step = (x0) => { const t = ed.document.lineAt(sp.ln).text, n = t.length;
+      if (k === 'right') { if (x0 === sp.at - 1) return sp.at; if (x0 >= sp.at && x0 <= sp.at + 2) return sp.ts; if (x0 === sp.te || x0 === sp.te + 1) return Math.min(sp.e + 1, n); if (x0 >= n) return -1; return x0 + ((t.charCodeAt(x0) & 0xFC00) === 0xD800 && x0 + 1 < n ? 2 : 1); }
+      if (x0 === sp.e + 1) return sp.e; if (x0 === sp.e || x0 === sp.te + 1) return sp.te - 1; if (x0 === sp.ts || x0 === sp.at + 1 || x0 === sp.at + 2) return sp.at; if (x0 <= 0) return -1;
+      return x0 - ((t.charCodeAt(x0 - 1) & 0xFC00) === 0xDC00 && x0 >= 2 ? 2 : 1); };
+    const isStop = (c) => k === 'right' ? (c === sp.at || c === sp.te) : (c === sp.ts || c === sp.e);
+    const move = async (x0) => { const to = step(x0);
+      if (to >= 0) { go(sp.ln, to); if (isStop(to)) { _meosGhostKey.hold = true; meosDbg('[ghostKey] 端で止める 桁=' + to); } return; }
+      _meosGhostKey.hold = false; if (_meosGhostKey.busy) return; _meosGhostKey.busy = true; try { await vscode.commands.executeCommand(nat); } finally { _meosGhostKey.busy = false; } };
+    if (_meosGhostKey.hold) { if (gap < 150) return;
+      setTimeout(() => setImmediate(() => { try { if (_meosGhostKey.at !== now || !_meosGhostKey.hold) return; _meosGhostKey.hold = false;
+        const a = ed.selection; if (!a.isEmpty || a.active.line !== sp.ln) return; meosDbg('[ghostKey] 押し直し→ 越える 桁=' + a.active.character); move(a.active.character); } catch (_) { } }), 120);
+      return; }
+    await move(x);
   } catch (_) { try { await vscode.commands.executeCommand(nat); } catch (_) { } }
 }
 function meosGhostBtnClick(e) {
@@ -8852,6 +8859,7 @@ function applyPrettyLabels(editor) {
   // 本体はホバーで日時を出すため DecorationOptions({range, hoverMessage}) で push。
   const strikeBodyItems = [];
   const strikeMarkerRanges = [];
+  const ghostOpenNoLineItems = [];   // v5.1.889
   const ghostInlineBtnItems = []; const ghostRawBtnItems = [], _ghostRawBtnLines = new Set();   // v5.1.877: 行末の✏️   // v5.1.870: ~~👻~~ の👻(押すと Raw)
   // v0.9.699: 新形取消線 ~~{本文(線色/背景色)//コメント}~~ の線色別範囲。
   const strikeColorItemsByKey = {}; // { red:[{range,hoverMessage?}...], ... }
@@ -9313,6 +9321,7 @@ function applyPrettyLabels(editor) {
             ghostInlineBtnItems.push({ range: new vscode.Range(line, innerStart, line, innerStart + 2) });
             const _r5 = new vscode.Range(line, innerStart + 2, line, bodyEnd), _st5 = _fcRaw ? parseColorSpec(_fcRaw, 'fg', _fcRaw) : null;
             // ★v5.1.888(俊克 887 改良2「取消線が出ているけど、これは出ないようにしよう。そもそも👻なので線は引いていない…ベースの色は設定通りに出ているので、それはそのままでいい」): 線は引かず、色だけ(地の色があれば地・無ければ字の色)
+            ghostOpenNoLineItems.push({ range: _r5 });   // v5.1.889: テーマの線も消す
             if (!(_st5 && _st5.bgKey)) (highlightFgRangesByColor[(_st5 && _st5.fgKey) || 'red'] || highlightFgRangesByColor.red || []).push({ range: _r5 });
             if (_st5 && _st5.bgKey) { (highlightBodyRangesByColor[_st5.bgKey] || []).push({ range: _r5 }); if (DARK_BG_KEYS.has(_st5.bgKey)) (highlightFgRangesByColor.white || []).push({ range: _r5 }); }
             if (!_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); ghostRawBtnItems.push({ range: new vscode.Range(line, text.length, line, text.length) }); }
@@ -9962,7 +9971,8 @@ function applyPrettyLabels(editor) {
   if (strikeMarkerDecoration) {
     setDecoCached(editor, strikeMarkerDecoration, 'stMarker', strikeMarkerRanges);
   }
-  if (ghostInlineBtnDecoration) setDecoCached(editor, ghostInlineBtnDecoration, 'ghostBtn', ghostInlineBtnItems);   // v5.1.870
+  if (ghostInlineBtnDecoration) setDecoCached(editor, ghostInlineBtnDecoration, 'ghostBtn', ghostInlineBtnItems);
+  if (ghostOpenNoLineDecoration) setDecoCached(editor, ghostOpenNoLineDecoration, 'ghostNoLine', ghostOpenNoLineItems);   // v5.1.889   // v5.1.870
   if (ghostRawBtnDecoration) setDecoCached(editor, ghostRawBtnDecoration, 'ghostRawBtn', ghostRawBtnItems);   // v5.1.877
   // v0.9.99967: 参照符(点膜▶◀)適用(生データ隠し+記号チップ)。
   if (refPointHideDecoration) {

@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.889 (2026-11-24)
+- **Fixed: holding ← or → still ran past the ends of an opened 👻 answer.** MeOS did stop at the end, but redrawing a very large note right after the stop made the editor stall for about 0.2 seconds. The first key repeat after the stall looked like a fresh press, so the cursor crossed. Now, when a key arrives after a gap while the cursor is stopped, MeOS waits a moment. If more repeats follow, the key is still held and the cursor stays. Reaching an end always counts as a stop; the next fresh press crosses it in one visible step.
+- **Fixed: a white strike line showed on an opened answer once the cursor left it.** The colour theme draws its own line on Markdown `~~…~~`, and it showed through after v5.1.888 removed MeOS's red line. MeOS now removes that line too.
+
 ### v5.1.888 (2026-11-24)
 - **Holding ← or → now really stops at both ends of an opened answer.** Moves inside the answer were left to the editor's own cursor commands, which run later. While a key was held, the next repeats started before the previous move had finished, and the cursor ran past the end before MeOS could stop it. MeOS now places the cursor itself, one character per key press.
 - **An opened 👻 answer no longer has a strike line.** A 👻 never drew a line, and in "red sheet" use the line means nothing. The answer keeps its colours (the background, or the text colour when there is no background), so you can still see where it starts and ends.
