@@ -8028,7 +8028,10 @@ function meosGhostBtnHit(doc, ln, col) {
     const sc = meosScanText(t), re = /~~👻~~/g; let m; while ((m = re.exec(sc)) !== null) { if (col >= m.index && col < m.index + m[0].length) return meosGhostStoreAt(doc, ln, t, m.index) != null ? m.index : -1; } } catch (_) { }
   return -1;
 }
+const _meosGhostPrevSel = new WeakMap();   // ★v5.1.878: editor → 押す前のカーソル(自分で控える= 他の口の更新順に左右されない)
 function meosGhostBtnClick(e) {
+  const _prevSel = (e && e.textEditor) ? _meosGhostPrevSel.get(e.textEditor) : null;
+  try { if (e && e.textEditor && e.selections && e.selections[0]) _meosGhostPrevSel.set(e.textEditor, e.selections[0]); } catch (_) { }
   try {
     try { if (e && _meosGhostRawOpen && e.textEditor && e.selections && e.selections[0] && !meosGhostRawIsOpen(e.textEditor.document, e.selections[0].active.line)) { _meosGhostRawOpen = null; const _ed0 = e.textEditor; setTimeout(() => { try { refresh(_ed0); } catch (_) { } }, 0); } } catch (_) { }   // v5.1.877: 行を出たら(キーでも)✏️の Raw を閉じる
     if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
@@ -8048,7 +8051,13 @@ function meosGhostBtnClick(e) {
     //   ①カーソルが👻の所に残ると、同じ所を押しても選択が変わらず知らせが来ない→ 家のボタンと同じく行頭へ退かせる(1.2秒後に押す前の所へ戻す)
     //   ②FC 行が開いたのは、カーソルの行の FC の塊を開く決まり(meosFcWantsOpen)= 押しただけの間は開かない
     // ★v5.1.877(876 のスクショ= 行頭から👻までが選択された): 押している最中に退かせると、ボタンを離す時に VS Code が選択を伸ばす→ 離した後に退かせる
-    setTimeout(() => { try { const a = ed.selection; if (a && a.isEmpty && a.active.line === ln) meosParkCaretAfterPress(ed, ln); } catch (_) { } }, 350);
+    // ★v5.1.878(俊克 am10:26「文字カーソルが0.2秒くらい行頭に移動し、その後、元の位置に戻るのがはっきり見える」): 行頭へ寄り道せず、押す前の所へ直に戻す
+    //   (押した所にカーソルが残ると、同じ所を押しても知らせが来ない= 戻せば次の押しも届く)。押す前が同じ👻の上なら行頭へ
+    setTimeout(() => { try { const a = ed.selection; if (!(a && a.isEmpty && a.active.line === ln)) return;
+      const pv = _prevSel; let to = null;
+      if (pv && pv.isEmpty && pv.active.line < doc.lineCount && meosGhostBtnHit(doc, pv.active.line, pv.active.character) !== at) to = pv.active;
+      if (!to) to = new vscode.Position(ln, 0);
+      ed.selection = new vscode.Selection(to, to); } catch (_) { } }, 180);
     meosDbg('[ghostBtn] 行=' + (ln + 1) + ' 桁=' + at + ' → ' + (_meosGhostShown.has(k) ? '見せる' : '隠す'));
     setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0);
     return true;
@@ -43510,6 +43519,9 @@ function meosRawLines(editor, skipCaret, caretAt) {
       //   FC-ic の行に居る時も本文の段落を生で見せる= IC の ` が見え、対の橙が本文に乗る(ハイライトの FC 行と同じ)
       try { const L = meosDocLines(editor.document); if (meosIsFcIcLine(L[ln] || '')) { let a = ln; while (a - 1 >= 0 && (meosIsFcIcLine(L[a - 1]) || meosIsSpecLine(L[a - 1] || ''))) a--; a--; if (a >= 0 && String(L[a] || '').trim()) { const P = meosFcIcPara(L, a); if (ln >= P.s && ln < P.e) { for (let k = P.top; k <= P.bot; k++) out.add(k); for (let k = P.s; k < P.e; k++) out.add(k); } } } } catch (_) { }
     }
+    // ★v5.1.878(俊克 877 バグ1「Shift+Cmd+↓ で停止線まで選ぶと、身代り👻の両端に取消記号が出る」): Cmd+↓ は畳んだ FC 行に着地する→ FC 行の相手として本文の👻の行が Raw に入っていた。
+    //   身代り👻の行は、相手として呼ばれても Raw にしない(✏️で開いた行だけ)
+    for (const ln of Array.from(out)) if (meosGhostLineStaysCooked(editor.document, ln)) out.delete(ln);
   } catch (_) { }
   return out;
 }
