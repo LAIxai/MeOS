@@ -11860,7 +11860,7 @@ function meosApplyNameStampDecorations(editor) {
         // v4.0.371: バッジの中身。色指定はその色で、他はモザイクと同じ巡回で。飾りの行でも出す
         //   (バッジは畳んでいる時こそ読む物なので、カーソルが無くても見えていてよい)。
         for (const [f, t, css] of roles.colorFg) fgSpecRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
-        for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: '色', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px;' } } });   // v5.1.894
+        for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: '色見本サンプル', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px;' } } });   // v5.1.894
         for (const [f, t, css] of roles.colorBg) codedRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
         for (let i = 0; i < roles.badge.length; i++) {
           const [f, t, code] = roles.badge[i];

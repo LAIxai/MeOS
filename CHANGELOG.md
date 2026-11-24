@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.895 (2026-11-24)
+- **The colour sample is longer.** One character was sometimes hard to read, so the sample in front of `(text/background)` now says "色見本サンプル".
+
 ### v5.1.894 (2026-11-24)
 - **A colour sample in FC lines.** The colour names in `(text/background)` are no longer painted. Instead, MeOS draws a small "色" in front of the `(`, with the background as its ground and the text colour as its ink. It is drawn on the cursor line too, so you see the result while you change the colour names. The text itself is unchanged. One-sided specs such as `(/紺)` and `(赤/)` get a sample too.
 
