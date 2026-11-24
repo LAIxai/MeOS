@@ -8001,6 +8001,7 @@ let _refNoRawPrevUri = '', _refNoRawPrevLine = -1, _refNoRawPrevAt = 0;
 // ★v5.1.874(俊克 11.24 am02:07 改良1「身代りの👻ボタンをクリックすると、隠れた文字が一時的に戻るように…再度クリックすると、再び隠れる」・Gemini の提案):
 //   Raw にせず、通常の見え方のまま、その👻1つだけ字を見せる。控えは「文書の版#行#桁」= 本文を書き換えたら全部隠れる(一時的)
 const _meosGhostShown = new Set();
+let _meosGhostPress = null;   // ★v5.1.876: { uri, line }= 👻を押した行。押しただけ= FC 行を開かない(抑止が効いている間)
 function meosGhostShownKey(doc, line, col) { try { return doc.uri.toString() + '#' + doc.version + '#' + line + '#' + col; } catch (_) { return ''; } }
 // その桁が ~~👻~~ の上か(マウスの着地は👻の左右で ~~ の端に落ちる= 6字の範囲で見る)。当たれば ~~ の頭の桁
 function meosGhostBtnHit(doc, ln, col) {
@@ -8016,6 +8017,11 @@ function meosGhostBtnClick(e) {
     const at = meosGhostBtnHit(doc, ln, sel.active.character); if (at < 0) return false;
     const k = meosGhostShownKey(doc, ln, at); if (_meosGhostShown.has(k)) _meosGhostShown.delete(k); else _meosGhostShown.add(k);
     setRefNoRaw(doc, ln);   // 行は Raw にしない(着地の抑止と同じ道)。行の他の所を押し直せば今までどおり Raw
+    _meosGhostPress = { uri: doc.uri.toString(), line: ln };
+    // ★v5.1.876(俊克 875 改良1「クリックすると FC コメントが表示してしまう…その後、クリックしても反応しない」):
+    //   ①カーソルが👻の所に残ると、同じ所を押しても選択が変わらず知らせが来ない→ 家のボタンと同じく行頭へ退かせる(1.2秒後に押す前の所へ戻す)
+    //   ②FC 行が開いたのは、カーソルの行の FC の塊を開く決まり(meosFcWantsOpen)= 押しただけの間は開かない
+    meosParkCaretAfterPress(ed, ln);
     meosDbg('[ghostBtn] 行=' + (ln + 1) + ' 桁=' + at + ' → ' + (_meosGhostShown.has(k) ? '見せる' : '隠す'));
     setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0);
     return true;
@@ -43435,6 +43441,7 @@ function meosFcWantsOpen(doc, block, caretLine) {
   if (m === 'pseudo') return false;
   if (!(caretLine >= 0)) return false;
   if (meosModeAtLine(doc, caretLine) !== 'normal') return false;   // 読む所に居る間は、命令を開かない
+  try { if (_meosGhostPress && _meosGhostPress.line === caretLine && _refNoRawLine === caretLine && _meosGhostPress.uri === doc.uri.toString() && _refNoRawUri === _meosGhostPress.uri) return false; } catch (_) { }   // v5.1.876: 👻を押しただけ= FC 行を開かない
   // ★v4.2.54: 頭thatUFCで切られた塊は、持ち主(ownTop/ownOpen)から合図を出す= 膜に居れば開く。
   const top = (block.ownTop != null) ? block.ownTop : ((block.top == null) ? block.start : block.top);
   const end = (block.openEnd == null) ? block.end : block.openEnd;   // v4.1.106: ⏰(UFC)行も塊の一員

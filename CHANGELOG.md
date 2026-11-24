@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.876 (2026-11-24)
+- **Clicking a stand-in 👻 no longer opens the FC lines.** Clicking it only shows or hides the stowed text. The FC lines stay folded.
+- **The 👻 can be clicked again and again.** After a click the text cursor moves out of the way, like the other in-line buttons, so the next click on the same 👻 always registers.
+
 ### v5.1.875 (2026-11-24)
 - **Unlocked membranes are no longer always covered.** An unlocked encrypted membrane now shows its contents normally, so you can see the lines around the part you are editing. Hide only the secret parts (a password, for example) with 👻: the stowed text sits in the FC line inside the membrane, so it is encrypted too.
 - **The small cover button on the start line is now an on/off switch.** Click it to cover the whole membrane, and click it again to uncover it. The idle cover is unchanged.
