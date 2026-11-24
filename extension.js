@@ -11733,7 +11733,23 @@ function meosReadableInkFor(css) {
 }
 let meosCodedColorDecos = null;
 let meosPlainColorDecos = null;
-let meosColorSampleDeco = null;   // v5.1.894: FC 行の (文字色/地の色) の手前の「色」の見本
+let meosColorSampleDeco = null;
+const _meosColorSampleOpen = new Set();   // v5.1.897: 長い見本を出している FC 行(uri#行)
+// v5.1.897: 「色」の見本を押す= 長い見本(色見本サンプル)と切り替える。✏️(v5.1.877)と同じく、クリックで落ちた桁で判定(見本は `(` の桁に立つ)
+function meosColorSampleClick(e) {
+  try {
+    if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
+    const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return;
+    const doc = ed.document, ln = sel.active.line; if (meosModeAtLine(doc, ln) !== 'normal') return;
+    const text = doc.lineAt(ln).text; if (text.indexOf(MEOS_MEW_SIG) < 0) return;
+    const roles = meosRawLineRoles(doc, ln); if (!roles.colorSample.some(([f]) => f === sel.active.character)) return;
+    const k = doc.uri.toString() + '#' + ln; if (_meosColorSampleOpen.has(k)) _meosColorSampleOpen.delete(k); else _meosColorSampleOpen.add(k);
+    meosDbg('[colorSample] 行=' + (ln + 1) + ' 長い見本=' + _meosColorSampleOpen.has(k));
+    try { meosApplyNameStampDecorations(ed); } catch (_) { }
+    // 押した所にカーソルが残ると、同じ所を押しても知らせが来ない→ 押した後に1字右(`(` の後ろ)へ退かせる
+    setTimeout(() => { try { const s1 = ed.selection; if (s1 && s1.isEmpty && s1.active.line === ln && s1.active.character === sel.active.character) { const P = new vscode.Position(ln, sel.active.character + 1); ed.selection = new vscode.Selection(P, P); } } catch (_) { } }, 250);
+  } catch (_) { }
+}   // v5.1.894: FC 行の (文字色/地の色) の手前の「色」の見本
 // v5.1.892→893(俊克 11.24 pm10:16 見本で見比べて「黄・白・水は rgb(120)、他は rgb(175)」): 明るい字は暗めの灰・他は明るめの灰
 const MEOS_FG_NAME_GROUND_DARK = 'rgba(120, 120, 120, 1)', MEOS_FG_NAME_GROUND = 'rgba(175, 175, 175, 1)';
 const MEOS_FG_NAME_DARK_GROUND_FOR = new Set([HIGHLIGHT_FG_COLORS.yellow, HIGHLIGHT_FG_COLORS.white, HIGHLIGHT_FG_COLORS.aqua]);
@@ -11864,7 +11880,9 @@ function meosApplyNameStampDecorations(editor) {
         for (const [f, t, css] of roles.colorFg) fgSpecRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
         // ★v5.1.896(俊克 895 バグ1「色見本サンプルが、通常時に見えてしまっている」): 畳まれた FC 行の飾り(before)は畳みの頭の行末へ漏れる(Monaco)
         //   → 見えている行(visibleRanges= 畳んだ中を含まない)だけに描く
-        if (_visLn(ln)) for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: '色見本サンプル', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px;' } } });   // v5.1.894
+        // ★v5.1.897(俊克 896 改良1「見出しにも色見本サンプルが毎回出るのが今一…通常は「色」・クリックで「色見本サンプル」」/ 改良2「かかか(Raw)でも見えてしまう」):
+        //   Raw の行には描かない。押した行だけ長い見本(_meosColorSampleOpen)
+        if (_visLn(ln) && meosModeAtLine(doc, ln) === 'normal') for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: _meosColorSampleOpen.has(doc.uri.toString() + '#' + ln) ? '色見本サンプル' : '色', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px;' } } });   // v5.1.894
         for (const [f, t, css] of roles.colorBg) codedRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
         for (let i = 0; i < roles.badge.length; i++) {
           const [f, t, code] = roles.badge[i];
@@ -48046,6 +48064,7 @@ function activate(context) {
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosGhostBtnClick));
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosColorSampleClick));   // v5.1.897
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { _meosGhostVr.set(e.textEditor, { n: e.textEditor.document.lineCount, ch: [] }); if (Date.now() - _meosGhostChAt < 1500) meosDbg('[ghostPen] 範囲が届いた 行数=' + e.textEditor.document.lineCount + ' 範囲=' + (e.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',')); } catch (_) { } }));   // v5.1.882: 範囲を受け取った時の行数
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { for (const ed of vscode.window.visibleTextEditors) { if (ed.document !== e.document) continue; let st = _meosGhostVr.get(ed); if (!st) continue;
     for (const c of e.contentChanges) { const add = (c.text.match(/\n/g) || []).length, del = c.range.end.line - c.range.start.line; if (add || del) { st.ch.push({ at: c.range.start.line, add, del }); _meosGhostChAt = Date.now(); } } } } catch (_) { } }));   // v5.1.882: 範囲の後の行の増減   // ★v5.1.874: 身代りの👻= 押すと字を見せる/隠す(Raw にしない)。他の選択の口より先に抑止を張る
