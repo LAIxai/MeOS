@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.896 (2026-11-24)
+- **Fixed: the colour sample showed in normal view.** When FC lines were folded, the editor drew their samples at the end of the line above. Samples are now drawn only on lines you can see.
+
 ### v5.1.895 (2026-11-24)
 - **The colour sample is longer.** One character was sometimes hard to read, so the sample in front of `(text/background)` now says "色見本サンプル".
 

@@ -11831,6 +11831,8 @@ function meosApplyNameStampDecorations(editor) {
   const ed2 = meosEditableDecoTypes();
   const buckets = types.map(() => []);
   const nameRanges = [], cmtRanges = [], codedRanges = [], fgSpecRanges = [], sampleItems = [];
+  const _visR = (editor && editor.visibleRanges) ? editor.visibleRanges.map(r => [r.start.line, r.end.line]) : [];
+  const _visLn = (ln) => _visR.some(([a, b]) => ln >= a && ln <= b);   // v5.1.896
   let rawSet = new Set();
   try {
     if (!editor || !editor.document) return;
@@ -11860,7 +11862,9 @@ function meosApplyNameStampDecorations(editor) {
         // v4.0.371: バッジの中身。色指定はその色で、他はモザイクと同じ巡回で。飾りの行でも出す
         //   (バッジは畳んでいる時こそ読む物なので、カーソルが無くても見えていてよい)。
         for (const [f, t, css] of roles.colorFg) fgSpecRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
-        for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: '色見本サンプル', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px;' } } });   // v5.1.894
+        // ★v5.1.896(俊克 895 バグ1「色見本サンプルが、通常時に見えてしまっている」): 畳まれた FC 行の飾り(before)は畳みの頭の行末へ漏れる(Monaco)
+        //   → 見えている行(visibleRanges= 畳んだ中を含まない)だけに描く
+        if (_visLn(ln)) for (const [f, fc, bc] of roles.colorSample) sampleItems.push({ range: new vscode.Range(ln, f, ln, f), renderOptions: { before: { contentText: '色見本サンプル', color: fc, backgroundColor: bc || undefined, fontWeight: '700', margin: '0 2px 0 0', textDecoration: 'none; border-radius: 2px; padding: 0 1px;' } } });   // v5.1.894
         for (const [f, t, css] of roles.colorBg) codedRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
         for (let i = 0; i < roles.badge.length; i++) {
           const [f, t, code] = roles.badge[i];
