@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.885 (2026-11-24)
+- **The text shown by a stand-in 👻 is now real text you can edit and copy.** Clicking the 👻 moves the stowed text back into the body, right after the 👻 (`~~👻text~~`), and leaves the FC box empty (`~~👻 (colour)//`). The text is drawn as a strike in its colours, and you can click into it, edit it or copy part of it without the line turning Raw. Click the 👻 again to stow the current text back into the FC line. Text that cannot go back into the body (for example text containing `~`) is still only shown, as before.
+- 🚫 on an opened 👻 restores its text as plain body text.
+
 ### v5.1.884 (2026-11-24)
 - **The ✏️ flash after pasting is gone.** After a paste the text cursor sits in the visible FC lines, but MeOS folded them anyway and the editor opened them again at once; the ✏️ showed while they were folded. MeOS no longer folds the FC lines of a stand-in 👻 line while the text cursor (with no selection) is inside them. They fold, and the ✏️ appears, when the cursor leaves.
 

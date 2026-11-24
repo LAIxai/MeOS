@@ -8012,9 +8012,9 @@ let _meosGhostRawOpen = null;   // ★v5.1.877: { uri, line }= 行末の✏️�
 // 身代り👻(しまった字のある ~~👻~~)を持つ行か
 let _meosGhostLineMemo = { k: '', v: false };   // 畳みの形を決める道は塊の数だけ訊く= 同じ行・同じ版の答えは1回で
 function meosLineHasGhostStore(doc, ln) {
-  try { if (ln < 0 || ln >= doc.lineCount) return false; const t = doc.lineAt(ln).text; if (t.indexOf('~~👻~~') < 0) return false;
+  try { if (ln < 0 || ln >= doc.lineCount) return false; const t = doc.lineAt(ln).text; if (t.indexOf('~~👻') < 0) return false;
     const k = doc.uri.toString() + '#' + doc.version + '#' + ln; if (_meosGhostLineMemo.k === k) return _meosGhostLineMemo.v;
-    let v = false; const sc = meosScanText(t), re = /~~👻~~/g; let m; while ((m = re.exec(sc)) !== null) if (meosGhostStoreAt(doc, ln, t, m.index) != null) { v = true; break; }
+    let v = false; const sc = meosScanText(t), re = /~~👻[^~\n]*?~~/gu; /* v5.1.885: 開いた👻(~~👻字~~)も */ let m; while ((m = re.exec(sc)) !== null) if (meosGhostStoreAt(doc, ln, t, m.index) != null) { v = true; break; }
     _meosGhostLineMemo = { k, v }; return v; } catch (_) { }
   return false;
 }
@@ -8028,8 +8028,9 @@ function meosGhostLineStaysCooked(doc, ln) { return meosModeAtLine(doc, ln) === 
 function meosGhostShownKey(doc, line, col) { try { return doc.uri.toString() + '#' + doc.version + '#' + line + '#' + col; } catch (_) { return ''; } }
 // その桁が ~~👻~~ の上か(マウスの着地は👻の左右で ~~ の端に落ちる= 6字の範囲で見る)。当たれば ~~ の頭の桁
 function meosGhostBtnHit(doc, ln, col) {
-  try { if (ln < 0 || ln >= doc.lineCount) return -1; const t = doc.lineAt(ln).text; if (t.indexOf('~~👻~~') < 0) return -1;
-    const sc = meosScanText(t), re = /~~👻~~/g; let m; while ((m = re.exec(sc)) !== null) { if (col >= m.index && col < m.index + m[0].length) return meosGhostStoreAt(doc, ln, t, m.index) != null ? m.index : -1; } } catch (_) { }
+  try { if (ln < 0 || ln >= doc.lineCount) return -1; const t = doc.lineAt(ln).text; if (t.indexOf('~~👻') < 0) return -1;
+    // v5.1.885: 開いた👻(~~👻字~~)は ~~👻 の所だけ(字の所は字として押せる= 中を直したり写したりする)
+    const sc = meosScanText(t), re = /~~👻([^~\n]*?)~~/gu; let m; while ((m = re.exec(sc)) !== null) { const w = m[1] ? 4 : m[0].length; if (col >= m.index && (m[1] ? col <= m.index + w : col < m.index + w)) return meosGhostStoreAt(doc, ln, t, m.index) != null ? m.index : -1; } } catch (_) { }
   return -1;
 }
 const _meosGhostPrevSel = new WeakMap();
@@ -8050,6 +8051,31 @@ function meosGhostFcHidden(ed, line) {
       return meosRuleHidden(ed, l - c.add + c.del); }
     clearTimeout(_meosGhostVrT); _meosGhostVrT = setTimeout(() => { try { refresh(ed); } catch (_) { } }, 300); return false;
   } catch (_) { return meosRuleHidden(ed, line + 1); }
+}
+// ★v5.1.885(俊克 11.24 pm00:01 改良1「表示された答えの中をクリックして、その中を編集したり、一部をコピーしたりしたい」):
+//   見せるのを飾り(after)でなく本物の字にする= 押すと FC にしまった字を本文へ戻し(~~👻字~~ / FC は ~~👻 (色)// の空)、もう一度押すと今の字を FC へしまい直す。
+//   本文が ~~👻字~~ の間は字を押しても Raw にならず、普通に直せる・写せる。字に ~ が入る等で戻せない時は今までどおり飾りで見せる
+const MEOS_GHOST_BOX_RE = /<!--[ \t]*Mew!FC[ \t]+(~~[^\n]*?)[ \t]*-->/gu;
+function meosGhostToggleEdit(ed, ln, at) {
+  try {
+    const doc = ed.document, t = doc.lineAt(ln).text, sc = meosScanText(t);
+    const all = []; { const re = /~~(?!\{)([^~\n]+?)~~/g; let m; while ((m = re.exec(sc)) !== null) all.push({ s: m.index, e: m.index + m[0].length, inner: m[1] }); }
+    const ord = all.findIndex(x => x.s === at); if (ord < 0) return false; const sp = all[ord];
+    if (sp.inner.indexOf('👻') !== 0) return false;
+    // FC 行の ~~ の箱を順に集める(本文の ~~ と前から1対1)。名指し(#N)が混ざる時は触らない
+    const boxes = []; for (let k = ln + 1; k < doc.lineCount && meosIsBoundSpecLine(doc.lineAt(k).text); k++) { const ft = doc.lineAt(k).text; MEOS_GHOST_BOX_RE.lastIndex = 0; let m; while ((m = MEOS_GHOST_BOX_RE.exec(ft)) !== null) { if (/^~~#\d/.test(m[1])) return false; boxes.push({ ln: k, s: m.index + m[0].indexOf(m[1]), e: m.index + m[0].indexOf(m[1]) + m[1].length, pl: m[1] }); } }
+    const bx = boxes[ord]; if (!bx) return false;
+    const g = MEOS_GHOST_STORE_RE.exec(bx.pl); if (!g) return false;   // 👻の箱で // を持つ物だけ
+    const opened = sp.inner !== '👻';
+    let body, pl;
+    if (!opened) { const st = g[2]; if (!st || /[~\n]/.test(st) || st.indexOf('-->') >= 0) return false; body = '~~👻' + st + '~~'; pl = g[1] + '//'; }
+    else { if (g[2] !== '') return false; const st = sp.inner.slice(2); if (!st || st.indexOf('-->') >= 0 || st.indexOf('<!--') >= 0) return false; body = '~~👻~~'; pl = g[1] + '//' + st; }
+    const we = new vscode.WorkspaceEdit();
+    we.replace(doc.uri, new vscode.Range(ln, sp.s, ln, sp.e), body);
+    we.replace(doc.uri, new vscode.Range(bx.ln, bx.s, bx.ln, bx.e), pl);
+    meosDbg('[ghostOpen] 行=' + (ln + 1) + ' ' + (opened ? 'しまい直す' : '本文へ戻して見せる') + ' 字=' + (opened ? sp.inner.length - 2 : g[2].length));
+    return vscode.workspace.applyEdit(we).then(ok => !!ok, () => false);
+  } catch (_) { return false; }
 }
 function meosGhostBtnClick(e) {
   const _prevSel = (e && e.textEditor) ? _meosGhostPrevSel.get(e.textEditor) : null;
@@ -8073,7 +8099,9 @@ function meosGhostBtnClick(e) {
       meosDbg('[ghostRaw] ✏️ 行=' + (ln + 1) + ' → Raw'); setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0); return true; }
     if (meosGhostRawIsOpen(doc, ln)) return false;   // Raw の間は👻もふつうの字(押しても見せ隠ししない)
     const at = meosGhostBtnHit(doc, ln, sel.active.character); if (at < 0) return false;
-    const k = meosGhostShownKey(doc, ln, at); if (_meosGhostShown.has(k)) _meosGhostShown.delete(k); else _meosGhostShown.add(k);
+    const k = meosGhostShownKey(doc, ln, at);
+    const _tg = _meosGhostShown.has(k) ? false : meosGhostToggleEdit(ed, ln, at);   // v5.1.885: 本文へ戻す/しまい直す(戻せない字は飾りで見せる)
+    if (!_tg) { if (_meosGhostShown.has(k)) _meosGhostShown.delete(k); else _meosGhostShown.add(k); }
     setRefNoRaw(doc, ln);   // 行は Raw にしない(着地の抑止と同じ道)。行の他の所を押し直せば今までどおり Raw
     _meosGhostPress = { uri: doc.uri.toString(), line: ln };
     // ★v5.1.876(俊克 875 改良1「クリックすると FC コメントが表示してしまう…その後、クリックしても反応しない」):
@@ -8087,7 +8115,7 @@ function meosGhostBtnClick(e) {
       if (pv && pv.isEmpty && pv.active.line < doc.lineCount && meosGhostBtnHit(doc, pv.active.line, pv.active.character) !== at) to = pv.active;
       if (!to) to = new vscode.Position(ln, 0);
       ed.selection = new vscode.Selection(to, to); } catch (_) { } }, 180);
-    meosDbg('[ghostBtn] 行=' + (ln + 1) + ' 桁=' + at + ' → ' + (_meosGhostShown.has(k) ? '見せる' : '隠す'));
+    meosDbg('[ghostBtn] 行=' + (ln + 1) + ' 桁=' + at + ' → ' + (_tg ? '本文で切替' : (_meosGhostShown.has(k) ? '見せる' : '隠す')));
     setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0);
     return true;
   } catch (_) { return false; }
@@ -9228,6 +9256,17 @@ function applyPrettyLabels(editor) {
           // ★v5.1.870(俊克 11.23 pm05:04): しまった👻= 本文は ~~👻~~ だけ・字は真下の FC 行(`~~👻 (色)//字`)に住む。
           //   折り返しは本文の字数で決まる(飾りでは詰められない)ので、字そのものを本文から出した= 途中の空きが出ない。
           //   ~~ だけ隠し、👻は残して押せる印に。乗せると、しまった字を tip で見せる
+          // ★v5.1.885: 開いた👻(~~👻字~~ / FC は ~~👻 (色)// の空)= ~~ を隠し、👻はボタン、字は取消線の色で見せる(本物の字= 直せる・写せる)
+          if (_fcGhost && !_sc && inner.indexOf('👻') === 0 && inner !== '👻' && meosFcFmtGhostStore(_fcL(), '~~', _fcN('~~', _fcSt)) === '') {
+            strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
+            strikeMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
+            ghostInlineBtnItems.push({ range: new vscode.Range(line, innerStart, line, innerStart + 2) });
+            const _r5 = new vscode.Range(line, innerStart + 2, line, bodyEnd), _st5 = _fcRaw ? parseColorSpec(_fcRaw, 'fg', _fcRaw) : null;
+            (strikeColorItemsByKey[(_st5 && _st5.fgKey) || 'red'] || strikeColorItemsByKey.red).push({ range: _r5 });
+            if (_st5 && _st5.bgKey) { (highlightBodyRangesByColor[_st5.bgKey] || []).push({ range: _r5 }); if (DARK_BG_KEYS.has(_st5.bgKey)) (highlightFgRangesByColor.white || []).push({ range: _r5 }); }
+            if (!_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); ghostRawBtnItems.push({ range: new vscode.Range(line, text.length, line, text.length) }); }
+            continue;
+          }
           // ★v5.1.873: FC の箱の👻が抜けても(`~~ (色)//字`)、しまった字があれば同じボタンに(loose)
           const _gsL = (!_sc && !_fcNot && inner === '👻') ? meosFcFmtGhostStore(_fcL(), '~~', _fcN('~~', _fcSt), true) : null;
           if ((_fcGhost || _gsL != null) && inner === '👻') {
@@ -30091,6 +30130,7 @@ function formatSpanAtCursor(editor, kind) {
     if (pos.character >= s && pos.character <= e) {
       // ★v5.1.870: しまった👻(~~👻~~)= 外す時は、FC にしまった字を本文として返す= 🚫で字が戻る・↻で付け直す時もその字を包む
       if (m[1] === '👻' && kind === 'strike') { const _gs = sc ? meosGhostStoreOfRaw(sc.raw) : meosGhostStoreAt(doc, line, text, s); if (_gs != null) return { kind, range: new vscode.Range(line, s, line, e), body: _gs, ghostStore: true }; }
+      if (kind === 'strike' && m[1].indexOf('👻') === 0 && m[1] !== '👻' && !sc && meosGhostStoreAt(doc, line, text, s) === '') return { kind, range: new vscode.Range(line, s, line, e), body: m[1].slice(2), ghostStore: true };   // v5.1.885: 開いた👻= 字は本文の👻の後ろ
       return { kind, range: new vscode.Range(line, s, line, e), body: String(m[1] || '').trim() };
     }
   }
@@ -43814,7 +43854,7 @@ function meosGhostPartLine(lines, L) {
     const t = String(lines[L] || ''); if (t.indexOf('~~') < 0) return false;
     const ms = t.match(/~~(?!\{)[^~\n]+?~~/g) || [], k = ms.length; if (!k) return false;
     const spec = meosSpecLineFor(lines, L); if (!spec) return false;
-    for (let i = 1; i <= k; i++) if (ms[i - 1] !== '~~👻~~' && meosFcFmtIsGhost(spec, '~~', i)) return true;   // v5.1.870: しまった👻(~~👻~~)はその場に👻が居る= 行末の印は要らない
+    for (let i = 1; i <= k; i++) if (String(ms[i - 1]).indexOf('~~👻') !== 0 && meosFcFmtIsGhost(spec, '~~', i)) return true;   /* v5.1.885: 開いた👻(~~👻字~~)も同じ */   // v5.1.870: しまった👻(~~👻~~)はその場に👻が居る= 行末の印は要らない
     return false;
   } catch (_) { return false; }
 }
@@ -43826,6 +43866,7 @@ function meosGhostFoldHead(document, b, lines) {
     if (!(L >= 1)) return -1;
     const t = String(lines[L] || '');
     if (t.indexOf('~~') < 0 || !/^[ \t]*(?:~~(?!\{)[^~\n]+?~~[ \t]*)+$/.test(t)) return -1;   // 行の全部が素の ~~…~~
+    if (/~~👻[^~\n]+~~/u.test(t)) return -1;   // v5.1.885: 開いた👻(字を本文へ戻して見せている)の行は畳まない
     const k = (t.match(/~~(?!\{)[^~\n]+?~~/g) || []).length;
     if (!k) return -1;
     const spec = meosSpecLineFor(lines, L);
