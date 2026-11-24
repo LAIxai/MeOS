@@ -9225,7 +9225,8 @@ function applyPrettyLabels(editor) {
               _gItem.renderOptions = { after: { contentText: _gs, textDecoration: 'line-through; text-decoration-color: ' + _lc + '; text-decoration-thickness: 2px;', backgroundColor: _bgc || undefined, color: (_gst && _gst.bgKey && DARK_BG_KEYS.has(_gst.bgKey)) ? '#ffffff' : undefined } };
             }
             ghostInlineBtnItems.push(_gItem);
-            if (_gs && !_ghostRawBtnLines.has(line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
+            // ★v5.1.881(俊克 880 スクショ2「FC 行が見えている時に✏️が表示されるのはおかしい」): ✏️は FC 行(しまった字)が畳まれて見えない時だけ
+            if (_gs && !_ghostRawBtnLines.has(line) && meosRuleHidden(editor, line + 1)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
             continue;
           }
           if (_fcGhost || (_pseudoLine(line) && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }

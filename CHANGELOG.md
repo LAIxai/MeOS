@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.881 (2026-11-24)
+- **✏️ appears only while the FC lines are folded.** When the FC lines holding the stowed text are already visible (for example just after pasting), there is nothing to open, so the ✏️ is not shown.
+
 ### v5.1.880 (2026-11-24)
 - **Selecting down past a stand-in 👻 line now takes its folded FC lines with it.** When a selection extended downwards ends at the end of such a line, it now reaches the end of the last FC line. A copy and paste therefore keeps the stowed text, and the ✏️ still works on the pasted line.
 - **The FC lines of a stand-in 👻 line open only through ✏️.** They stay folded even when the text cursor or a selection enters them. While a line is open through ✏️, you can move down into its FC lines to edit the stowed text, and they stay open.
