@@ -3283,7 +3283,7 @@ function parseColorSpec(content, single, scan) {
 // 記号として隠す。タイムスタンプはプレーンテキストとして残る(grep可・往復で壊れない)。
 let strikeBodyDecoration;     // 旧形 ~~text~~ 用: 赤い取消線(line-through)
 let strikeMarkerDecoration;   // ~~ と (日時) と { } を隠す
-let ghostInlineBtnDecoration; // v5.1.870: 本文の ~~👻~~ の👻= 押すとその行が Raw(手のポインター)
+let ghostInlineBtnDecoration; let ghostRawBtnDecoration;   // v5.1.877: 身代り👻の行の行末の✏️(押すとその行を Raw) // v5.1.870: 本文の ~~👻~~ の👻= 押すとその行が Raw(手のポインター)
 // v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ 用。線色別の line-through 装飾。
 // 背景色は highlightBodyByColor を、暗背景の白文字は highlightFgByColor['white'] を再利用。
 let strikeColorByKey = null;  // Map<色キー, 装飾型(指定色の line-through)>。既定線色=red。
@@ -3847,6 +3847,7 @@ function disposeDecorations() {
   if (strikeMarkerDecoration) strikeMarkerDecoration.dispose();
   strikeMarkerDecoration = undefined;
   if (ghostInlineBtnDecoration) { ghostInlineBtnDecoration.dispose(); ghostInlineBtnDecoration = undefined; } // v5.1.870
+  if (ghostRawBtnDecoration) { ghostRawBtnDecoration.dispose(); ghostRawBtnDecoration = undefined; } // v5.1.877
   if (refPointHideDecoration) { refPointHideDecoration.dispose(); refPointHideDecoration = undefined; } // v0.9.99967
   if (refPointLabelDecoration) { refPointLabelDecoration.dispose(); refPointLabelDecoration = undefined; } // v0.9.99967
   if (refFrontGutterDecoration) { refFrontGutterDecoration.dispose(); refFrontGutterDecoration = undefined; } // v0.9.99969
@@ -4265,6 +4266,11 @@ function makeDecorations() {
   });
   // ★v5.1.870(俊克 11.23 pm05:04「取消線を入れた部分に、👻マークを埋込む…この👻ボタンをクリックする事で、Rawデータに切り替る…ホーバーすると、選択指にする」):
   //   👻の字そのものが本文に居る(~~👻~~)= 押せば文字カーソルがその行に入り、行が Raw になる(行をクリックするのと同じ道)。見た目は手のポインターだけ
+  // ★v5.1.877(俊克 876 改良1「身代り👻のある行の文字の部分をクリックしても Raw にしない…その1行すべてを Raw にするボタンを行末に」): 行末の✏️
+  ghostRawBtnDecoration = vscode.window.createTextEditorDecorationType({
+    after: { contentText: '✏️', margin: '0 0 0 0.4em', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' },
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
   ghostInlineBtnDecoration = vscode.window.createTextEditorDecorationType({
     textDecoration: 'none; cursor: ' + meosHandCursor() + ';',
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
@@ -8001,7 +8007,20 @@ let _refNoRawPrevUri = '', _refNoRawPrevLine = -1, _refNoRawPrevAt = 0;
 // ★v5.1.874(俊克 11.24 am02:07 改良1「身代りの👻ボタンをクリックすると、隠れた文字が一時的に戻るように…再度クリックすると、再び隠れる」・Gemini の提案):
 //   Raw にせず、通常の見え方のまま、その👻1つだけ字を見せる。控えは「文書の版#行#桁」= 本文を書き換えたら全部隠れる(一時的)
 const _meosGhostShown = new Set();
-let _meosGhostPress = null;   // ★v5.1.876: { uri, line }= 👻を押した行。押しただけ= FC 行を開かない(抑止が効いている間)
+let _meosGhostPress = null;
+let _meosGhostRawOpen = null;   // ★v5.1.877: { uri, line }= 行末の✏️で Raw にした身代り👻の行(カーソルが行を出たら閉じる)
+// 身代り👻(しまった字のある ~~👻~~)を持つ行か
+let _meosGhostLineMemo = { k: '', v: false };   // 畳みの形を決める道は塊の数だけ訊く= 同じ行・同じ版の答えは1回で
+function meosLineHasGhostStore(doc, ln) {
+  try { if (ln < 0 || ln >= doc.lineCount) return false; const t = doc.lineAt(ln).text; if (t.indexOf('~~👻~~') < 0) return false;
+    const k = doc.uri.toString() + '#' + doc.version + '#' + ln; if (_meosGhostLineMemo.k === k) return _meosGhostLineMemo.v;
+    let v = false; const sc = meosScanText(t), re = /~~👻~~/g; let m; while ((m = re.exec(sc)) !== null) if (meosGhostStoreAt(doc, ln, t, m.index) != null) { v = true; break; }
+    _meosGhostLineMemo = { k, v }; return v; } catch (_) { }
+  return false;
+}
+function meosGhostRawIsOpen(doc, ln) { try { return !!_meosGhostRawOpen && _meosGhostRawOpen.line === ln && _meosGhostRawOpen.uri === doc.uri.toString(); } catch (_) { return false; } }
+// 身代り👻の行に居ても Raw にしない(✏️で開いた行だけ Raw)。カーソル行の特例から外すかどうか
+function meosGhostLineStaysCooked(doc, ln) { return meosModeAtLine(doc, ln) === 'normal' && !meosGhostRawIsOpen(doc, ln) && meosLineHasGhostStore(doc, ln); }   // ★v5.1.876: { uri, line }= 👻を押した行。押しただけ= FC 行を開かない(抑止が効いている間)
 function meosGhostShownKey(doc, line, col) { try { return doc.uri.toString() + '#' + doc.version + '#' + line + '#' + col; } catch (_) { return ''; } }
 // その桁が ~~👻~~ の上か(マウスの着地は👻の左右で ~~ の端に落ちる= 6字の範囲で見る)。当たれば ~~ の頭の桁
 function meosGhostBtnHit(doc, ln, col) {
@@ -8011,9 +8030,16 @@ function meosGhostBtnHit(doc, ln, col) {
 }
 function meosGhostBtnClick(e) {
   try {
+    try { if (e && _meosGhostRawOpen && e.textEditor && e.selections && e.selections[0] && !meosGhostRawIsOpen(e.textEditor.document, e.selections[0].active.line)) { _meosGhostRawOpen = null; const _ed0 = e.textEditor; setTimeout(() => { try { refresh(_ed0); } catch (_) { } }, 0); } } catch (_) { }   // v5.1.877: 行を出たら(キーでも)✏️の Raw を閉じる
     if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
     const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
-    const doc = ed.document, ln = sel.active.line; if (meosModeAtLine(doc, ln) !== 'normal') return false;
+    const doc = ed.document, ln = sel.active.line;
+    if (meosModeAtLine(doc, ln) !== 'normal') return false;
+    // ★v5.1.877: 行末の✏️= その行を Raw(字の修正・加筆ができる)。行末に落ちたクリック
+    if (!meosGhostRawIsOpen(doc, ln) && sel.active.character === doc.lineAt(ln).text.length && meosLineHasGhostStore(doc, ln)) {
+      _meosGhostRawOpen = { uri: doc.uri.toString(), line: ln }; _meosGhostPress = null;
+      meosDbg('[ghostRaw] ✏️ 行=' + (ln + 1) + ' → Raw'); setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0); return true; }
+    if (meosGhostRawIsOpen(doc, ln)) return false;   // Raw の間は👻もふつうの字(押しても見せ隠ししない)
     const at = meosGhostBtnHit(doc, ln, sel.active.character); if (at < 0) return false;
     const k = meosGhostShownKey(doc, ln, at); if (_meosGhostShown.has(k)) _meosGhostShown.delete(k); else _meosGhostShown.add(k);
     setRefNoRaw(doc, ln);   // 行は Raw にしない(着地の抑止と同じ道)。行の他の所を押し直せば今までどおり Raw
@@ -8021,7 +8047,8 @@ function meosGhostBtnClick(e) {
     // ★v5.1.876(俊克 875 改良1「クリックすると FC コメントが表示してしまう…その後、クリックしても反応しない」):
     //   ①カーソルが👻の所に残ると、同じ所を押しても選択が変わらず知らせが来ない→ 家のボタンと同じく行頭へ退かせる(1.2秒後に押す前の所へ戻す)
     //   ②FC 行が開いたのは、カーソルの行の FC の塊を開く決まり(meosFcWantsOpen)= 押しただけの間は開かない
-    meosParkCaretAfterPress(ed, ln);
+    // ★v5.1.877(876 のスクショ= 行頭から👻までが選択された): 押している最中に退かせると、ボタンを離す時に VS Code が選択を伸ばす→ 離した後に退かせる
+    setTimeout(() => { try { const a = ed.selection; if (a && a.isEmpty && a.active.line === ln) meosParkCaretAfterPress(ed, ln); } catch (_) { } }, 350);
     meosDbg('[ghostBtn] 行=' + (ln + 1) + ' 桁=' + at + ' → ' + (_meosGhostShown.has(k) ? '見せる' : '隠す'));
     setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0);
     return true;
@@ -8709,7 +8736,7 @@ function applyPrettyLabels(editor) {
   // 本体はホバーで日時を出すため DecorationOptions({range, hoverMessage}) で push。
   const strikeBodyItems = [];
   const strikeMarkerRanges = [];
-  const ghostInlineBtnItems = [];   // v5.1.870: ~~👻~~ の👻(押すと Raw)
+  const ghostInlineBtnItems = []; const ghostRawBtnItems = [], _ghostRawBtnLines = new Set();   // v5.1.877: 行末の✏️   // v5.1.870: ~~👻~~ の👻(押すと Raw)
   // v0.9.699: 新形取消線 ~~{本文(線色/背景色)//コメント}~~ の線色別範囲。
   const strikeColorItemsByKey = {}; // { red:[{range,hoverMessage?}...], ... }
   for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) strikeColorItemsByKey[key] = [];
@@ -9178,6 +9205,7 @@ function applyPrettyLabels(editor) {
               _gItem.renderOptions = { after: { contentText: _gs, textDecoration: 'line-through; text-decoration-color: ' + _lc + '; text-decoration-thickness: 2px;', backgroundColor: _bgc || undefined, color: (_gst && _gst.bgKey && DARK_BG_KEYS.has(_gst.bgKey)) ? '#ffffff' : undefined } };
             }
             ghostInlineBtnItems.push(_gItem);
+            if (_gs && !_ghostRawBtnLines.has(line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
             continue;
           }
           if (_fcGhost || (_pseudoLine(line) && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
@@ -9805,6 +9833,7 @@ function applyPrettyLabels(editor) {
     setDecoCached(editor, strikeMarkerDecoration, 'stMarker', strikeMarkerRanges);
   }
   if (ghostInlineBtnDecoration) setDecoCached(editor, ghostInlineBtnDecoration, 'ghostBtn', ghostInlineBtnItems);   // v5.1.870
+  if (ghostRawBtnDecoration) setDecoCached(editor, ghostRawBtnDecoration, 'ghostRawBtn', ghostRawBtnItems);   // v5.1.877
   // v0.9.99967: 参照符(点膜▶◀)適用(生データ隠し+記号チップ)。
   if (refPointHideDecoration) {
     setDecoCached(editor, refPointHideDecoration, 'refPtHide', refPointHideItems);
@@ -43441,6 +43470,7 @@ function meosFcWantsOpen(doc, block, caretLine) {
   if (m === 'pseudo') return false;
   if (!(caretLine >= 0)) return false;
   if (meosModeAtLine(doc, caretLine) !== 'normal') return false;   // 読む所に居る間は、命令を開かない
+  try { if (meosGhostLineStaysCooked(doc, caretLine)) return false; } catch (_) { }   // v5.1.877: 身代り👻の行に居るだけでは FC 行(しまった字)を開かない
   try { if (_meosGhostPress && _meosGhostPress.line === caretLine && _refNoRawLine === caretLine && _meosGhostPress.uri === doc.uri.toString() && _refNoRawUri === _meosGhostPress.uri) return false; } catch (_) { }   // v5.1.876: 👻を押しただけ= FC 行を開かない
   // ★v4.2.54: 頭thatUFCで切られた塊は、持ち主(ownTop/ownOpen)から合図を出す= 膜に居れば開く。
   const top = (block.ownTop != null) ? block.ownTop : ((block.top == null) ? block.start : block.top);
@@ -43468,6 +43498,7 @@ function meosRawLines(editor, skipCaret, caretAt) {
       out.add(sl.active.line); out.add(sl.anchor.line);
     }
     const _edU = editor.document.uri.toString() + ' ';
+    for (const ln of Array.from(out)) if (meosGhostLineStaysCooked(editor.document, ln)) out.delete(ln);   // ★v5.1.877: 身代り👻の行は、居ても Raw にしない(✏️で開く)
     if (_meosDdEdit.size) for (const ln of Array.from(out)) if (_meosDdEdit.has(_edU + ln)) out.delete(ln);   // ★v5.1.725(俊克 724 改良1「スクショ3枚目の状態のままで編集できるように」): 窓の中で直している⏰行は Raw にしない(飾りのまま・窓に字とカーソル)
     for (const ln of Array.from(out)) {
       if (_meosDdEdit.size && _meosDdEdit.has(_edU + ln)) continue;   // v5.1.722: 窓の中で直している⏰行は膜の▼▲・バッジ行へ広げない

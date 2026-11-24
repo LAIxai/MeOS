@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.877 (2026-11-24)
+- **A line with stand-in 👻 stays in the normal view when you click its text.** Clicking the text no longer turns the line Raw, so the hidden answers are not shown by a stray click. The FC lines that hold the stowed text stay folded too. You can still type and edit the visible text.
+- **A ✏️ button at the end of such a line turns the whole line Raw.** In Raw you can edit everything, the stowed text in the FC lines included. Moving the cursor off the line returns it to the normal view.
+- **No stray selection after clicking a 👻.** The text cursor now moves aside after the mouse button is released, so the line no longer gets selected up to the 👻.
+
 ### v5.1.876 (2026-11-24)
 - **Clicking a stand-in 👻 no longer opens the FC lines.** Clicking it only shows or hides the stowed text. The FC lines stay folded.
 - **The 👻 can be clicked again and again.** After a click the text cursor moves out of the way, like the other in-line buttons, so the next click on the same 👻 always registers.
