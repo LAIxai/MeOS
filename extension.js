@@ -8089,7 +8089,7 @@ function meosGhostOpenSpanAt(doc, ln, c) {
     while ((m = re.exec(sc)) !== null) { const at = m.index, e = at + m[0].length; if (c < at - 1 || c > e + 1) continue;   /* 外の隣の1字も= 外から押しっぱなしで来た時も端で止める */ if (meosGhostStoreAt(doc, ln, t, at) !== '') return null; return { ln, at, ts: at + 4, te: e - 2, e }; } } catch (_) { }
   return null;
 }
-let _meosGhostEditCtx = false; const _meosGhostKey = { at: 0, hold: false };
+let _meosGhostEditCtx = false; const _meosGhostKey = { at: 0, hold: false, busy: false };
 function meosUpdateGhostEditContext(ed) {
   let v = false; try { if (ed && ed.selections.length === 1 && ed.selection.isEmpty) v = !!meosGhostOpenSpanAt(ed.document, ed.selection.active.line, ed.selection.active.character); } catch (_) { }
   if (v !== _meosGhostEditCtx) { _meosGhostEditCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.ghostEdit', v); } catch (_) { } }
@@ -8112,7 +8112,13 @@ async function meosGhostEditKey(k) {
     let to = -1;
     if (k === 'right') { if (x === sp.at || x === sp.at + 1 || x === sp.at + 2) to = sp.ts; else if (x === sp.te || x === sp.te + 1) to = sp.e; }
     else { if (x === sp.ts || x === sp.at + 1 || x === sp.at + 2) to = sp.at; else if (x === sp.e || x === sp.te + 1) to = sp.te; }
-    if (to >= 0) go(sp.ln, to); else await vscode.commands.executeCommand(nat);
+    // ★v5.1.888(俊克 887 改良1「←/→を押しっ放しの移動で、先頭と末尾で一時停止しない」): 中の1字の移動を本来の cursorLeft/Right(非同期)に任せていた→
+    //   押しっぱなしの30ms刻みのキーが、前の移動が終わる前に次々走り、止める判断の前に端を越えていた(控えに「止める」は出ていたが、もう先へ行った後)。
+    //   枠の中の移動は全部この場で桁を決めて置く(同期= 1打ずつ確実に)。字は1文字(サロゲートは2単位)ずつ
+    if (to < 0) { const t = ed.document.lineAt(sp.ln).text;
+      if (k === 'right' && x < len) to = x + ((t.charCodeAt(x) & 0xFC00) === 0xD800 && x + 1 < len ? 2 : 1);
+      else if (k === 'left' && x > 0) to = x - ((t.charCodeAt(x - 1) & 0xFC00) === 0xDC00 && x >= 2 ? 2 : 1); }
+    if (to >= 0) go(sp.ln, to); else { if (_meosGhostKey.busy) return; _meosGhostKey.busy = true; try { await vscode.commands.executeCommand(nat); } finally { _meosGhostKey.busy = false; } }
     if (held) { const a = ed.selection.active; if (a.line === sp.ln && (k === 'right' ? (a.character === sp.te || a.character === sp.at) : (a.character === sp.ts || a.character === sp.e))) { _meosGhostKey.hold = true; meosDbg('[ghostKey] 押しっぱなし→ 端で止める 桁=' + a.character); } }
   } catch (_) { try { await vscode.commands.executeCommand(nat); } catch (_) { } }
 }
@@ -9306,7 +9312,8 @@ function applyPrettyLabels(editor) {
             strikeMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
             ghostInlineBtnItems.push({ range: new vscode.Range(line, innerStart, line, innerStart + 2) });
             const _r5 = new vscode.Range(line, innerStart + 2, line, bodyEnd), _st5 = _fcRaw ? parseColorSpec(_fcRaw, 'fg', _fcRaw) : null;
-            (strikeColorItemsByKey[(_st5 && _st5.fgKey) || 'red'] || strikeColorItemsByKey.red).push({ range: _r5 });
+            // ★v5.1.888(俊克 887 改良2「取消線が出ているけど、これは出ないようにしよう。そもそも👻なので線は引いていない…ベースの色は設定通りに出ているので、それはそのままでいい」): 線は引かず、色だけ(地の色があれば地・無ければ字の色)
+            if (!(_st5 && _st5.bgKey)) (highlightFgRangesByColor[(_st5 && _st5.fgKey) || 'red'] || highlightFgRangesByColor.red || []).push({ range: _r5 });
             if (_st5 && _st5.bgKey) { (highlightBodyRangesByColor[_st5.bgKey] || []).push({ range: _r5 }); if (DARK_BG_KEYS.has(_st5.bgKey)) (highlightFgRangesByColor.white || []).push({ range: _r5 }); }
             if (!_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); ghostRawBtnItems.push({ range: new vscode.Range(line, text.length, line, text.length) }); }
             continue;

@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.888 (2026-11-24)
+- **Holding ← or → now really stops at both ends of an opened answer.** Moves inside the answer were left to the editor's own cursor commands, which run later. While a key was held, the next repeats started before the previous move had finished, and the cursor ran past the end before MeOS could stop it. MeOS now places the cursor itself, one character per key press.
+- **An opened 👻 answer no longer has a strike line.** A 👻 never drew a line, and in "red sheet" use the line means nothing. The answer keeps its colours (the background, or the text colour when there is no background), so you can still see where it starts and ends.
+
 ### v5.1.887 (2026-11-24)
 - **Fixed: clicking a stand-in 👻 did not move the text cursor into the answer.** v5.1.886 cleared the note of what the click had just done before using it, so the cursor went back to where it had been. Opening now puts the cursor at the end of the answer, as intended.
 
