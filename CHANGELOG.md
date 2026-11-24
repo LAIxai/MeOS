@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.891 (2026-11-24)
+- **Strikethrough colours now read `(text colour/background)`, the same as highlights.** Before, the first colour set the line and the text kept the theme colour, so it changed from word to word. Now the line colour is not written: it follows the background (white on a dark background, black on a light one). With no background, it follows the editor theme. `~~{text}~~` with no colours keeps the red line. With only a background, the text turns white or black as in highlights. The colour picker for strikethrough now says "Text color".
+
 ### v5.1.890 (2026-11-24)
 - **No strike line on the 👻 in a line opened with ✏️.** A Raw line gets no MeOS drawing, so only the colour theme's own line on `~~…~~` showed, across the 👻 and its markers, in the text colour. MeOS now removes that line from the `~~👻…~~` parts of the line opened with ✏️.
 

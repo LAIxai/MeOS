@@ -3144,6 +3144,17 @@ const HIGHLIGHT_COLORS = {
 };
 // v0.9.698: 暗い背景色。文字色未指定なら自動で白文字にして可読化する(auto-contrast)。
 const DARK_BG_KEYS = new Set(['red', 'green', 'blue', 'navy', 'maroon']);
+// ★v5.1.891(俊克 11.24 pm09:25「取消線の文字の色の指定がないので、色が変動する」→ pm09:40「地の色で決める」):
+//   取消線の (色) も**ハイライトと同じ (文字色/地の色)**。線の色は書かず、**地の色で決める**= 暗い地は白線・明るい地は黒線。
+//   地の指定がなければエディタの地で決める(暗いテーマ=白線)。色を1つも書かない ~~{字}~~ だけは従来の赤線。
+//   文字色を省いて地だけ書いたら、ハイライトと同じく暗い地=白字・明るい地=黒字。過去の書き方は読み替える(俊克「過去は振り返らないでいい」)。
+function meosThemeIsDark() { try { const k = vscode.window.activeColorTheme.kind; return !(k === vscode.ColorThemeKind.Light || k === vscode.ColorThemeKind.HighContrastLight); } catch (_) { return true; } }
+function meosStrikeSpec(sp) {
+  const fg0 = sp ? sp.fgKey : null, bg0 = sp ? sp.bgKey : null;
+  if (!fg0 && !bg0) return { lineKey: 'red', fgKey: null, bgKey: null };
+  if (bg0) { const dk = DARK_BG_KEYS.has(bg0), fg = fg0 || (dk ? 'white' : 'black'); return { lineKey: dk ? 'white' : 'black', fgKey: fg, bgKey: meosHiBgKey(bg0, fg) }; }
+  return { lineKey: meosThemeIsDark() ? 'white' : 'black', fgKey: fg0, bgKey: null };
+}
 // ★★v4.0.408(俊克 8/26 バグ1「FC指定の(白/黄)だけ暗めにするって言ったのに」):
 //   ★★**v4.0.406/407で私が当てた場所が違った**＝「白い字の範囲と重なる黄を移す」にしたが、
 //     `***not (白/黄)` の背景は `highlightBodyRangesByColor` を通らず、太字/斜体の口(`pushStyle`)が
@@ -9124,7 +9135,7 @@ function applyPrettyLabels(editor) {
       while ((mss = reStSplit.exec(wtext)) !== null) {
         const oS = mss.index, bS = oS + mss[1].length, bE = bS + mss[2].length, cE = bE + mss[3].length;
         const sp = parseColorSpec((mss[2] || '') + (mss[4] || ''), 'fg');
-        const lineKey = sp.fgKey || 'red', bgKey = sp.bgKey;
+        const _ss = meosStrikeSpec(sp), lineKey = _ss.lineKey, bgKey = _ss.bgKey, _sfg = _ss.fgKey;   // v5.1.891
         strikeMarkerRanges.push({ range: new vscode.Range(line, oS, line, bS) });
         strikeMarkerRanges.push({ range: new vscode.Range(line, bE, line, cE) });
         if (bE > bS) {
@@ -9132,7 +9143,7 @@ function applyPrettyLabels(editor) {
           let hv = null; if (sp.comment) { hv = new vscode.MarkdownString('💬 ' + sp.comment); hv.isTrusted = false; }
           (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(hv ? { range: r, hoverMessage: hv } : { range: r });
           if (bgKey) (highlightBodyRangesByColor[bgKey] || []).push({ range: r });
-          if (bgKey && DARK_BG_KEYS.has(bgKey)) (highlightFgRangesByColor.white || []).push({ range: r });
+          if (_sfg) (highlightFgRangesByColor[_sfg] || []).push({ range: r });
           if (!bgKey) strikeFaintBgRanges.push({ range: r });
         }
         blankDt(oS, cE);
@@ -9276,8 +9287,7 @@ function applyPrettyLabels(editor) {
           if (_pseudoLine(line)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, closeEnd) }); continue; }
           // 新形: (線色/背景色)//コメント。暗い背景色なら本文を自動で白文字に(auto-contrast)。
           const sp = parseColorSpec(inner, 'fg');
-          const lineKey = sp.fgKey || 'red';
-          const bgKey = sp.bgKey;
+          const _ss = meosStrikeSpec(sp), lineKey = _ss.lineKey, bgKey = _ss.bgKey;   // v5.1.891: (文字色/地の色)・線は地で決める
           const bodyEnd = innerStart + sp.bodyLen;
           strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
           if (bodyEnd > innerStart) {
@@ -9287,7 +9297,7 @@ function applyPrettyLabels(editor) {
             const item = hover ? { range: r, hoverMessage: hover } : { range: r };
             (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(item);
             if (bgKey) { const _bl = (/^✅[ 　]?/.exec(sp.bodyText || '') || [''])[0].length; (highlightBodyRangesByColor[bgKey] || []).push({ range: _bl ? new vscode.Range(line, innerStart + _bl, line, bodyEnd) : r }); } // v0.9.99958: 先頭「✅ 」を背景色から外す
-            if (bgKey && DARK_BG_KEYS.has(bgKey)) (highlightFgRangesByColor.white || []).push({ range: r });
+            if (_ss.fgKey) (highlightFgRangesByColor[_ss.fgKey] || []).push({ range: r });
             // v0.9.707: 背景色を明示しない {} 取消線は弱いハイライト背景で目立たせる(線色やコメントの有無は不問)。
             // これで「赤線＋薄ピンク＋tip」(~~{…(赤/)//tip}~~)も成立。明示bgがある時だけ素地のまま。
             if (!sp.bgKey) strikeFaintBgRanges.push({ range: r });
@@ -9337,9 +9347,9 @@ function applyPrettyLabels(editor) {
             const _gItem = _hv ? { range: new vscode.Range(line, innerStart, line, bodyEnd), hoverMessage: _hv } : { range: new vscode.Range(line, innerStart, line, bodyEnd) };
             // ★v5.1.874: 押して見せている👻= 👻の後ろに、しまった字を取消線の色で描く(本文は書き換えない)
             if (_gs && _meosGhostShown.has(meosGhostShownKey(editor.document, line, openStart))) {
-              const _gst = _fcRaw ? parseColorSpec(_fcRaw, 'fg', _fcRaw) : null, _lc = HIGHLIGHT_FG_COLORS[(_gst && _gst.fgKey) || 'red'] || HIGHLIGHT_FG_COLORS.red;
-              const _bgc = _gst && _gst.bgKey ? HIGHLIGHT_COLORS[_gst.bgKey] : null;
-              _gItem.renderOptions = { after: { contentText: _gs, textDecoration: 'line-through; text-decoration-color: ' + _lc + '; text-decoration-thickness: 2px;', backgroundColor: _bgc || undefined, color: (_gst && _gst.bgKey && DARK_BG_KEYS.has(_gst.bgKey)) ? '#ffffff' : undefined } };
+              const _gst = _fcRaw ? parseColorSpec(_fcRaw, 'fg', _fcRaw) : null, _gss = meosStrikeSpec(_gst), _lc = HIGHLIGHT_FG_COLORS[_gss.lineKey] || HIGHLIGHT_FG_COLORS.red;   // v5.1.891
+              const _bgc = _gss.bgKey ? HIGHLIGHT_COLORS[_gss.bgKey] : null;
+              _gItem.renderOptions = { after: { contentText: _gs, textDecoration: 'line-through; text-decoration-color: ' + _lc + '; text-decoration-thickness: 2px;', backgroundColor: _bgc || undefined, color: _gss.fgKey ? HIGHLIGHT_FG_COLORS[_gss.fgKey] : undefined } };
             }
             ghostInlineBtnItems.push(_gItem);
             // ★v5.1.881(俊克 880 スクショ2「FC 行が見えている時に✏️が表示されるのはおかしい」): ✏️は FC 行(しまった字)が畳まれて見えない時だけ
@@ -9352,13 +9362,15 @@ function applyPrettyLabels(editor) {
           if (bodyEnd > innerStart) {
             const _r = new vscode.Range(line, innerStart, line, bodyEnd);
             if (_fcNot) {                                  // v4.0.238: 線は引かず、色だけ乗せる
-              if (_st && _st.bgKey) { (highlightBodyRangesByColor[_st.bgKey] || []).push({ range: _r }); if (DARK_BG_KEYS.has(_st.bgKey)) (highlightFgRangesByColor.white || []).push({ range: _r }); }
-              else if (_st && _st.fgKey) { (highlightFgRangesByColor[_st.fgKey] || []).push({ range: _r }); }
+              const _ns = meosStrikeSpec(_st);   // v5.1.891: 線なしでも (文字色/地の色) の読みは同じ
+              if (_ns.bgKey) (highlightBodyRangesByColor[_ns.bgKey] || []).push({ range: _r });
+              if (_ns.fgKey) (highlightFgRangesByColor[_ns.fgKey] || []).push({ range: _r });
             } else if (_st && (_st.fgKey || _st.bgKey || _st.comment)) {
-              const lineKey = _st.fgKey || 'red';
+              const _ss = meosStrikeSpec(_st), lineKey = _ss.lineKey;   // v5.1.891: (文字色/地の色)・線は地で決める
               let hv = null; if (_st.comment) { hv = new vscode.MarkdownString('💬 ' + _st.comment); hv.isTrusted = false; }
               (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(hv ? { range: _r, hoverMessage: hv } : { range: _r });
-              if (_st.bgKey) { (highlightBodyRangesByColor[_st.bgKey] || []).push({ range: _r }); if (DARK_BG_KEYS.has(_st.bgKey)) (highlightFgRangesByColor.white || []).push({ range: _r }); }
+              if (_ss.bgKey) (highlightBodyRangesByColor[_ss.bgKey] || []).push({ range: _r });
+              if (_ss.fgKey) (highlightFgRangesByColor[_ss.fgKey] || []).push({ range: _r });
             } else {
               strikeBodyItems.push({ range: _r });
             }
@@ -9847,8 +9859,7 @@ function applyPrettyLabels(editor) {
       if (endPos.line - startPos.line > 50) continue;        // 暴走防止(巨大化)
       if (_rawRangeTouched(startPos.line, endPos.line)) continue; // v4.0.346: 範囲内に生データの行があれば描かない
       const sp = parseColorSpec(inner, 'fg');
-      const lineKey = sp.fgKey || 'red';
-      const bgKey = sp.bgKey;
+      const _ss = meosStrikeSpec(sp), lineKey = _ss.lineKey, bgKey = _ss.bgKey;   // v5.1.891
       const faint = !sp.bgKey; // 背景色を明示しない {} 取消線は弱いハイライト
       const bodyEndOff = innerStartOff + sp.bodyLen;
       strikeMarkerRanges.push({ range: new vscode.Range(startPos, editor.document.positionAt(innerStartOff)) });
@@ -9859,7 +9870,7 @@ function applyPrettyLabels(editor) {
         const item = hover ? { range: r, hoverMessage: hover } : { range: r };
         (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(item);
         if (bgKey) (highlightBodyRangesByColor[bgKey] || []).push({ range: r });
-        if (bgKey && DARK_BG_KEYS.has(bgKey)) (highlightFgRangesByColor.white || []).push({ range: r });
+        if (_ss.fgKey) (highlightFgRangesByColor[_ss.fgKey] || []).push({ range: r });
         if (faint) strikeFaintBgRanges.push({ range: r });
       }
       strikeMarkerRanges.push({ range: new vscode.Range(editor.document.positionAt(bodyEndOff), endPos) });
@@ -35322,7 +35333,7 @@ const fmtPop=document.getElementById('fmt-pop');
 // v0.9.881: パレットは下端固定で上に伸ばす(ミーピー方式)・対象ボタンの真上に中央表示。(🟢/🔴)スロットは
 // 常時下に表示=隠れない・非選択側は半透明。tipは英日併記で要素の真上に近接表示。fmtPopCh=null/'fg'/'bg'。
 let fmtPopKind='highlight',fmtPopCh=null,fmtPopBottom=0,fmtPopCenterX=0;
-const fmtChLabel=(kind,ch)=>ch==='fg'?(kind==='strike'?'Line color':'Text color'):'Background color';
+const fmtChLabel=(kind,ch)=>ch==='fg'?'Text color':'Background color';   /* v5.1.891: 取消線も (文字色/地の色)・線の色は地で決まる */
 // {* ▲mCN=dock_js_zoomme *}
 // {* ▼mCN=dock_js_format // Format(色ポップ・↻リング・🐱旧記法・太字/斜体の組合せ) *}
 /* ★v4.2.568(俊克 バグ1「Me Dockの並びを変えた後から、ハイライトの▼の色パネルがとんでもない所に出て、サイズがちっちゃくなっている」):
