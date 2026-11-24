@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.884 (2026-11-24)
+- **The ✏️ flash after pasting is gone.** After a paste the text cursor sits in the visible FC lines, but MeOS folded them anyway and the editor opened them again at once; the ✏️ showed while they were folded. MeOS no longer folds the FC lines of a stand-in 👻 line while the text cursor (with no selection) is inside them. They fold, and the ✏️ appears, when the cursor leaves.
+
 ### v5.1.883 (2026-11-24)
 - **One more guard against the ✏️ flash after pasting.** If the line count changed but MeOS has not yet seen which lines changed, the ✏️ is held back until the editor reports the new visible area.
 - Added a debug-log line (`[ghostPen]`) to measure the remaining flash, if there is one.

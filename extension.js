@@ -43514,7 +43514,12 @@ function meosFcWantsOpen(doc, block, caretLine) {
   if (!(caretLine >= 0)) return false;
   if (meosModeAtLine(doc, caretLine) !== 'normal') return false;   // 読む所に居る間は、命令を開かない
   try { if (meosGhostLineStaysCooked(doc, caretLine)) return false; } catch (_) { }
-  try { if (block.fc && meosModeAtLine(doc, block.start) === 'normal' && !meosGhostRawIsOpen(doc, block.start) && meosLineHasGhostStore(doc, block.start)) return false; } catch (_) { }   // v5.1.880: 身代り👻の行の FC(しまった字)は✏️の時だけ開く= 選択でFC行に入っても開かない   // v5.1.877: 身代り👻の行に居るだけでは FC 行(しまった字)を開かない
+  try { if (block.fc && meosModeAtLine(doc, block.start) === 'normal' && !meosGhostRawIsOpen(doc, block.start) && meosLineHasGhostStore(doc, block.start)) {
+    // ★v5.1.884(俊克 883 計測= 貼って0.5〜1秒後に✏️が一瞬出て消える): 貼るとカーソルは FC 行の中(見えている)。880 の「✏️の時だけ開く」で MeOS が畳み(ログ [fcOne] 畳む)、
+    //   カーソルの居る畳みは VS Code がすぐ開き直す= その間だけ✏️が出ていた。カーソル(選択なし)が FC 行に居る間は畳まない(見えている物を隠さない)。
+    //   選択を伸ばして FC 行に入った時(880)は今までどおり開かない
+    let _in = false; try { const _ae = vscode.window.activeTextEditor; _in = !!_ae && _ae.document === doc && _ae.selection.isEmpty && caretLine > block.start && caretLine <= meosGhostFcEnd(doc, block.start); } catch (_) { }
+    if (!_in) return false; } } catch (_) { }   // v5.1.880: 身代り👻の行の FC(しまった字)は✏️の時だけ開く= 選択でFC行に入っても開かない   // v5.1.877: 身代り👻の行に居るだけでは FC 行(しまった字)を開かない
   try { if (_meosGhostPress && _meosGhostPress.line === caretLine && _refNoRawLine === caretLine && _meosGhostPress.uri === doc.uri.toString() && _refNoRawUri === _meosGhostPress.uri) return false; } catch (_) { }   // v5.1.876: 👻を押しただけ= FC 行を開かない
   // ★v4.2.54: 頭thatUFCで切られた塊は、持ち主(ownTop/ownOpen)から合図を出す= 膜に居れば開く。
   const top = (block.ownTop != null) ? block.ownTop : ((block.top == null) ? block.start : block.top);
