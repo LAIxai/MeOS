@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.879 (2026-11-24)
+- **Holding ↓ (or Shift+↓) now pauses at a stop line that sits below folded FC lines.** Before, the pause looked only at the very next line, so a stop line after a line with folded FC lines (such as a stand-in 👻 line) was passed through. The next line is now the next visible line.
+
 ### v5.1.878 (2026-11-24)
 - **The text cursor no longer visibly jumps to the line head when you click a stand-in 👻.** It goes straight back to where it was before the click.
 - **The ~~ marks around a stand-in 👻 no longer appear when the cursor lands on the folded FC lines** (for example with Shift+Cmd+↓ up to a stop line). The line stays in the normal view, and only ✏️ makes it Raw.

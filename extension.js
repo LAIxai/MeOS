@@ -41857,6 +41857,9 @@ function meosRuleHidden(ed, l) { const v = ed.visibleRanges || []; for (let i = 
 function meosRuleStopAt(ed, cur, down) {
   const d = ed.document, dir = down ? 1 : -1, to = cur + dir, isRule = l => l >= 0 && l < d.lineCount && MEOS_RULE_LINE_RE.test(d.lineAt(l).text), edge = l => { const t = d.lineAt(l).text, m = MEOS_FOF_MARK_RE.exec(t); return (down ? parseOpenLine(t) : parseCloseLine(t)) || (m && m[1].indexOf(down ? '\u25bc' : '\u25b2') >= 0); };
   if (to < 0 || to >= d.lineCount) return false;
+  // ★v5.1.879(俊克 am10:35「Shift+↓を押し続けた…身代り👻がない普通のケースなら最初の停止線で停止します」): 畳んだ FC 行の向こうの線を見落としていた
+  //   (👻の行→畳んだ FC 2行→線= 線は隣でなく3つ先)。キーの移動は畳んだ行を飛ばすので、隣は「次に見えている行」で数える
+  if (!isRule(to) && meosRuleHidden(ed, to)) { let k = to; while (k >= 0 && k < d.lineCount && meosRuleHidden(ed, k)) k += dir; if (isRule(k)) return !edge(cur) && !meosRuleHidden(ed, k); }
   if (isRule(to)) return !edge(cur) && !meosRuleHidden(ed, to);
   return isRule(to + dir) && !!edge(to) && !meosRuleHidden(ed, to) && !meosRuleHidden(ed, to + dir);
 }
