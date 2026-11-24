@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.886 (2026-11-24)
+- **Clicking a stand-in 👻 puts the text cursor inside the answer.** When the 👻 opens, the cursor lands at the end of the answer. When it closes, the cursor sits right after the 👻.
+- **The ends of an opened answer act like a stop line.** If you hold ← or →, the cursor stops at each end of the answer; press again to cross. If you tap, the hidden `~~` at the end takes exactly one press, which reads as a pause; the cursor never rests inside the hidden markers. While the cursor is inside the answer, ↑ jumps to its start and ↓ to its end. At an end, the arrow keys move as usual.
+
 ### v5.1.885 (2026-11-24)
 - **The text shown by a stand-in 👻 is now real text you can edit and copy.** Clicking the 👻 moves the stowed text back into the body, right after the 👻 (`~~👻text~~`), and leaves the FC box empty (`~~👻 (colour)//`). The text is drawn as a strike in its colours, and you can click into it, edit it or copy part of it without the line turning Raw. Click the 👻 again to stow the current text back into the FC line. Text that cannot go back into the body (for example text containing `~`) is still only shown, as before.
 - 🚫 on an opened 👻 restores its text as plain body text.

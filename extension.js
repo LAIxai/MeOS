@@ -8055,6 +8055,7 @@ function meosGhostFcHidden(ed, line) {
 // ★v5.1.885(俊克 11.24 pm00:01 改良1「表示された答えの中をクリックして、その中を編集したり、一部をコピーしたりしたい」):
 //   見せるのを飾り(after)でなく本物の字にする= 押すと FC にしまった字を本文へ戻し(~~👻字~~ / FC は ~~👻 (色)// の空)、もう一度押すと今の字を FC へしまい直す。
 //   本文が ~~👻字~~ の間は字を押しても Raw にならず、普通に直せる・写せる。字に ~ が入る等で戻せない時は今までどおり飾りで見せる
+let _meosGhostLastToggle = null;
 const MEOS_GHOST_BOX_RE = /<!--[ \t]*Mew!FC[ \t]+(~~[^\n]*?)[ \t]*-->/gu;
 function meosGhostToggleEdit(ed, ln, at) {
   try {
@@ -8073,9 +8074,47 @@ function meosGhostToggleEdit(ed, ln, at) {
     const we = new vscode.WorkspaceEdit();
     we.replace(doc.uri, new vscode.Range(ln, sp.s, ln, sp.e), body);
     we.replace(doc.uri, new vscode.Range(bx.ln, bx.s, bx.ln, bx.e), pl);
+    _meosGhostLastToggle = { uri: doc.uri.toString(), ln, at: sp.s, open: !opened, len: opened ? 0 : g[2].length };   // v5.1.886: 押した後のカーソルの置き場
     meosDbg('[ghostOpen] 行=' + (ln + 1) + ' ' + (opened ? 'しまい直す' : '本文へ戻して見せる') + ' 字=' + (opened ? sp.inner.length - 2 : g[2].length));
     return vscode.workspace.applyEdit(we).then(ok => !!ok, () => false);
   } catch (_) { return false; }
+}
+// ★v5.1.886(俊克 11.24 pm01:50 改良2「見えた答えの中を→/←キーで移動すると、端で一旦停止したようになる…停止線のようにここで一旦停止して、次のキーで飛び越える…↑/↓で両端に移動することも含めて」):
+//   開いた👻(~~👻字~~)の4つの端= 外の頭 at(👻の左)・中の頭 ts(👻の右)・中の尻 te(隠した ~~ の左)・外の尻 e(~~ の右)。
+//   隠した ~~ の中(at+1・at+2・te+1)には止まらない。押しっぱなしで端に着いたら止まり、押し直しで越える(停止線と同じ間隔の読み 150ms)。
+//   1回ずつ押すと、尻は te→e が「止まって見える1打」(見た目は動かない)、次で外へ。↑/↓は中の頭/尻へ、もう端なら今までどおり
+function meosGhostOpenSpanAt(doc, ln, c) {
+  try { if (ln < 0 || ln >= doc.lineCount) return null; const t = doc.lineAt(ln).text; if (t.indexOf('~~👻') < 0 || meosModeAtLine(doc, ln) !== 'normal' || meosGhostRawIsOpen(doc, ln)) return null;
+    const sc = meosScanText(t), re = /~~👻([^~\n]+?)~~/gu; let m;
+    while ((m = re.exec(sc)) !== null) { const at = m.index, e = at + m[0].length; if (c < at - 1 || c > e + 1) continue;   /* 外の隣の1字も= 外から押しっぱなしで来た時も端で止める */ if (meosGhostStoreAt(doc, ln, t, at) !== '') return null; return { ln, at, ts: at + 4, te: e - 2, e }; } } catch (_) { }
+  return null;
+}
+let _meosGhostEditCtx = false; const _meosGhostKey = { at: 0, hold: false };
+function meosUpdateGhostEditContext(ed) {
+  let v = false; try { if (ed && ed.selections.length === 1 && ed.selection.isEmpty) v = !!meosGhostOpenSpanAt(ed.document, ed.selection.active.line, ed.selection.active.character); } catch (_) { }
+  if (v !== _meosGhostEditCtx) { _meosGhostEditCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.ghostEdit', v); } catch (_) { } }
+}
+async function meosGhostEditKey(k) {
+  const now = Date.now(), gap = now - _meosGhostKey.at; _meosGhostKey.at = now;
+  const ed = vscode.window.activeTextEditor; const nat = { left: 'cursorLeft', right: 'cursorRight', up: _meosRuleNearCtx ? 'laiMembrane.ruleStepUp' : 'cursorUp', down: _meosRuleNearCtx ? 'laiMembrane.ruleStepDown' : 'cursorDown' }[k];
+  const go = (ln, col) => { const P = new vscode.Position(ln, col); ed.selection = new vscode.Selection(P, P); ed.revealRange(new vscode.Range(P, P)); };
+  try {
+    const c = ed && ed.selection.isEmpty ? ed.selection.active : null, sp = c ? meosGhostOpenSpanAt(ed.document, c.line, c.character) : null;
+    if (!sp) { _meosGhostKey.hold = false; return vscode.commands.executeCommand(nat); }
+    const x = c.character, len = ed.document.lineAt(sp.ln).text.length;
+    if (k === 'up' || k === 'down') { _meosGhostKey.hold = false; const to = k === 'up' ? sp.ts : sp.te;
+      if (x >= sp.ts && x <= sp.te && x !== to) { go(sp.ln, to); meosDbg('[ghostKey] ' + k + ' → 答えの' + (k === 'up' ? '頭' : '尻')); return; }
+      return vscode.commands.executeCommand(nat); }
+    const held = gap < 150;
+    if (_meosGhostKey.hold) { if (held) return; _meosGhostKey.hold = false;   // 押し直し= 越える(見た目が動く所まで)
+      if (k === 'right') { if (x === sp.te) return go(sp.ln, Math.min(sp.e + 1, len)); if (x === sp.at) return go(sp.ln, sp.ts); }
+      else { if (x === sp.e) return go(sp.ln, sp.te - 1); if (x === sp.ts) return go(sp.ln, sp.at); } }
+    let to = -1;
+    if (k === 'right') { if (x === sp.at || x === sp.at + 1 || x === sp.at + 2) to = sp.ts; else if (x === sp.te || x === sp.te + 1) to = sp.e; }
+    else { if (x === sp.ts || x === sp.at + 1 || x === sp.at + 2) to = sp.at; else if (x === sp.e || x === sp.te + 1) to = sp.te; }
+    if (to >= 0) go(sp.ln, to); else await vscode.commands.executeCommand(nat);
+    if (held) { const a = ed.selection.active; if (a.line === sp.ln && (k === 'right' ? (a.character === sp.te || a.character === sp.at) : (a.character === sp.ts || a.character === sp.e))) { _meosGhostKey.hold = true; meosDbg('[ghostKey] 押しっぱなし→ 端で止める 桁=' + a.character); } }
+  } catch (_) { try { await vscode.commands.executeCommand(nat); } catch (_) { } }
 }
 function meosGhostBtnClick(e) {
   const _prevSel = (e && e.textEditor) ? _meosGhostPrevSel.get(e.textEditor) : null;
@@ -8110,7 +8149,12 @@ function meosGhostBtnClick(e) {
     // ★v5.1.877(876 のスクショ= 行頭から👻までが選択された): 押している最中に退かせると、ボタンを離す時に VS Code が選択を伸ばす→ 離した後に退かせる
     // ★v5.1.878(俊克 am10:26「文字カーソルが0.2秒くらい行頭に移動し、その後、元の位置に戻るのがはっきり見える」): 行頭へ寄り道せず、押す前の所へ直に戻す
     //   (押した所にカーソルが残ると、同じ所を押しても知らせが来ない= 戻せば次の押しも届く)。押す前が同じ👻の上なら行頭へ
-    setTimeout(() => { try { const a = ed.selection; if (!(a && a.isEmpty && a.active.line === ln)) return;
+    // ★v5.1.886(俊克 11.24 pm01:50 改良1「身代わり👻をクリックしたら、見えた答えの中に文字カーソルを移動しよう」): 開いたら答えの尻(隠した ~~ の左)へ。
+    //   頭(👻のすぐ右)は👻の右半分を押した時の着地と同じ桁= そこに居ると次の押しが届かない→ 尻に置く(↑で頭へ行ける)。しまったら👻のすぐ右(~~👻~~ の後ろ)へ
+    if (_tg) _meosGhostLastToggle = null;
+    setTimeout(async () => { try { if (_tg) await _tg; const a = ed.selection; if (!(a && a.isEmpty && a.active.line === ln)) return;
+      const lt = _tg ? _meosGhostLastToggle : null;
+      if (lt && lt.ln === ln && lt.at === at && lt.uri === doc.uri.toString()) { const col = lt.open ? at + 4 + lt.len : at + 6; if (col <= doc.lineAt(ln).text.length) { const P = new vscode.Position(ln, col); ed.selection = new vscode.Selection(P, P); meosUpdateGhostEditContext(ed); return; } }
       const pv = _prevSel; let to = null;
       if (pv && pv.isEmpty && pv.active.line < doc.lineCount && meosGhostBtnHit(doc, pv.active.line, pv.active.character) !== at) to = pv.active;
       if (!to) to = new vscode.Position(ln, 0);
@@ -42070,6 +42114,7 @@ function meosUpdateInTableContext(editor) {
   if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'inTable', on: v }); } catch (_) {} }   // ★v5.1.815(俊克 11.19「表の中か外かで、ボタンの色を変えれば分かりやすい」): Me Dock の表ボタンへ
   // v4.0.400: bs/改行/fs を横取りするかどうか。変わった時だけ送る(打鍵の道に仕事を足さない)。
   // ★v5.1.579→580: 罫線の近く(上下200行)に居る間だけ ↑↓ を預かる(打鍵の道に仕事を足さない)
+  meosUpdateGhostEditContext(editor);   // v5.1.886: 開いた👻の中の ←→↑↓
   let rn = false; try { if (editor && editor.document && editor.selection && meosIsProseDoc(editor.document)) { const d = editor.document, l = editor.selection.active.line; for (let i = Math.max(0, l - 200), e = Math.min(d.lineCount - 1, l + 200); i <= e; i++) if (MEOS_RULE_LINE_RE.test(d.lineAt(i).text)) { rn = true; break; } } } catch (_) { }
   if (rn !== _meosRuleNearCtx) { _meosRuleNearCtx = rn; try { vscode.commands.executeCommand('setContext', 'meos.ruleNear', rn); } catch (_) { } }
   const fk = meosFcKeysNeeded(editor);
@@ -49507,6 +49552,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
     vscode.commands.registerCommand('laiMembrane.aliasMe', aliasMe),
     vscode.commands.registerCommand('laiMembrane.enterAtCloseRightEdge', handleEnterAtMembraneRightEdge),
     vscode.commands.registerCommand('laiMembrane.ddEditKey', (a) => meosDdEditKey(a && a.k)),
+    vscode.commands.registerCommand('laiMembrane.ghostEditKey', (a) => meosGhostEditKey(a && a.k)),   // v5.1.886
     vscode.commands.registerCommand('laiMembrane.ddEditEsc', () => meosDdEditEsc()),   // v5.1.849
     vscode.commands.registerCommand('laiMembrane.stopKindDigit', (a) => meosStopDigitKey(a && a.n)),   // v5.1.745: ↻の後1秒の数字   // v5.1.729: 窓は入力枠= キーを先に受け取る
     vscode.commands.registerCommand('laiMembrane.backspaceJoinSpecLines', handleBackspaceJoinSpecLines), // v4.0.179: 段落を結ぶ時、FC指定も結ぶ
