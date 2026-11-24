@@ -8151,9 +8151,9 @@ function meosGhostBtnClick(e) {
     //   (押した所にカーソルが残ると、同じ所を押しても知らせが来ない= 戻せば次の押しも届く)。押す前が同じ👻の上なら行頭へ
     // ★v5.1.886(俊克 11.24 pm01:50 改良1「身代わり👻をクリックしたら、見えた答えの中に文字カーソルを移動しよう」): 開いたら答えの尻(隠した ~~ の左)へ。
     //   頭(👻のすぐ右)は👻の右半分を押した時の着地と同じ桁= そこに居ると次の押しが届かない→ 尻に置く(↑で頭へ行ける)。しまったら👻のすぐ右(~~👻~~ の後ろ)へ
-    if (_tg) _meosGhostLastToggle = null;
+    const _lt0 = _tg ? _meosGhostLastToggle : null;   // v5.1.887: 切替の口が今書いた控えをその場で受け取る(886 はここで消していた= 置き場が毎回空)
     setTimeout(async () => { try { if (_tg) await _tg; const a = ed.selection; if (!(a && a.isEmpty && a.active.line === ln)) return;
-      const lt = _tg ? _meosGhostLastToggle : null;
+      const lt = _lt0;
       if (lt && lt.ln === ln && lt.at === at && lt.uri === doc.uri.toString()) { const col = lt.open ? at + 4 + lt.len : at + 6; if (col <= doc.lineAt(ln).text.length) { const P = new vscode.Position(ln, col); ed.selection = new vscode.Selection(P, P); meosUpdateGhostEditContext(ed); return; } }
       const pv = _prevSel; let to = null;
       if (pv && pv.isEmpty && pv.active.line < doc.lineCount && meosGhostBtnHit(doc, pv.active.line, pv.active.character) !== at) to = pv.active;

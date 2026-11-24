@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.887 (2026-11-24)
+- **Fixed: clicking a stand-in 👻 did not move the text cursor into the answer.** v5.1.886 cleared the note of what the click had just done before using it, so the cursor went back to where it had been. Opening now puts the cursor at the end of the answer, as intended.
+
 ### v5.1.886 (2026-11-24)
 - **Clicking a stand-in 👻 puts the text cursor inside the answer.** When the 👻 opens, the cursor lands at the end of the answer. When it closes, the cursor sits right after the 👻.
 - **The ends of an opened answer act like a stop line.** If you hold ← or →, the cursor stops at each end of the answer; press again to cross. If you tap, the hidden `~~` at the end takes exactly one press, which reads as a pause; the cursor never rests inside the hidden markers. While the cursor is inside the answer, ↑ jumps to its start and ↓ to its end. At an end, the arrow keys move as usual.
