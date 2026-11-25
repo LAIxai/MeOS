@@ -32184,6 +32184,36 @@ function meosPinToggle(p) {
     if (extensionContext) extensionContext.globalState.update(MEOS_PIN_KEY, next);
   } catch (_) { }
 }
+// ★v5.1.931: ▾の履歴/肩の📌/mGATE の📌 から1つのファイルへ切り替える(タブが在ればタブを選ぶ)= 道は1本(v4.1.93 の openRecent をそのまま関数にした)
+async function meosOpenRecentPath(_p) {
+    try {
+      _p = String(_p || '');
+      // ★v5.1.211(俊克 10.26 pm04:29 別件1「📌/↩での切替で、再読み込みするので、表示位置が変わってしまう。タブを選択することはできないのか?」):
+      //   タブが在る時は**タブを選ぶ**(そのグループへ移り、何番目のタブかで開く= タブを押したのと同じ)。表示位置もタブが覚えている姿のまま。
+      //   真因= 日記は 🔐 の入口のタブ(vault の名)で開いていることがある。file: の名で開くと別の文書として開き直し、
+      //   meosVaultRedirectFileTab がそれを閉じて入口のタブへ戻す= 俊克の「再読み込み」に見えた。タブが無い時だけ今まで通り開く。
+      const _tab = meosTabForPath(_p);
+      if (_tab && _tab.group && _tab.group.viewColumn >= 1 && _tab.group.viewColumn <= 8 && (_tab.group.tabs || []).indexOf(_tab) >= 0) {
+        if (!(_tab.isActive && _tab.group.isActive)) {
+          await vscode.commands.executeCommand('workbench.action.focus' + ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'][_tab.group.viewColumn - 1] + 'EditorGroup');
+          await vscode.commands.executeCommand('workbench.action.openEditorAtIndex', _tab.group.tabs.indexOf(_tab));
+        }
+        // ★v5.1.212(俊克 10.27 am00:30 改良1「エディターをアクティブにして、直ぐに入力ができるように」): 押したのは Me Dock(webview)なので、
+        //   タブを選んでも打鍵は Me Dock に残る→ 選んだタブのエディタへ焦点を戻す(家の口 meosFocusBack= 同じ文書を見せ直すだけで飛ばない)
+        // ★v5.1.213(俊克 am00:39 バグ1「切り替えた直後、エディターにフォーカスされない。なぜ?」): 家の教え(v4.0.358)を写し忘れていた=
+        //   焦点が webview に在る間は showTextDocument を await すると返らないことがあり、Me Dock の自動表示とも焦点を取り合う。
+        //   → 待たない。①その文書を見せる ②最後に標準の「エディタ群へ焦点」を、Me Dock の自動表示の後(250ms)に置く
+        const _u = _tab.input && _tab.input.uri ? _tab.input.uri.toString() : '';
+        const _ed = vscode.window.visibleTextEditors.find(e => e.viewColumn === _tab.group.viewColumn && e.document.uri.toString() === _u);
+        const _focusBack = () => { for (const ms of [250, 700]) setTimeout(() => { try { vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); meosDbg('[openRecent] 焦点を戻す ' + ms + 'ms 前の窓=' + (vscode.window.state.focused ? '焦点あり' : '無し') + ' active=' + (vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.uri.scheme : 'なし')); } catch (_) { } }, ms); };   // v5.1.214: 2度目(700ms)= 後から取り返されても戻す
+        try { if (_ed) vscode.window.showTextDocument(_ed.document, { viewColumn: _ed.viewColumn, preserveFocus: false }).then(_focusBack, _focusBack); else _focusBack(); } catch (_) { _focusBack(); }
+        try { meosDbg('[openRecent] タブを選んだ 列=' + _tab.group.viewColumn + ' 番=' + _tab.group.tabs.indexOf(_tab) + ' 名=' + ((_tab.input && _tab.input.uri && _tab.input.uri.scheme) || '') + ' エディタ=' + (_ed ? 'あり' : 'なし')); } catch (_) { }
+        return;
+      }
+      const d = await vscode.workspace.openTextDocument(vscode.Uri.file(_p));
+      await vscode.window.showTextDocument(d, { viewColumn: meosColumnForPath(_p), preview: false }); // v4.0.305: 既に開いている所へ戻る
+    } catch (_) { try { vscode.window.showInformationMessage('MeOS: could not open that file.'); } catch (__) {} }
+}
 function meosRecentWithState() {
   let docs = []; try { docs = vscode.workspace.textDocuments || []; } catch (_) { }
   const pin = meosPinned();
@@ -39169,36 +39199,7 @@ function toggleMeDock(editorOverride) {
       catch (_) { try { vscode.window.showInformationMessage('MeOS: could not reveal that file.'); } catch (__) {} }
       return;
     }
-    if (message && message.type === 'openRecent') { // v4.0.303: ▾の履歴から選んだファイルを開く
-      try {
-        const _p = String(message.path || '');
-        // ★v5.1.211(俊克 10.26 pm04:29 別件1「📌/↩での切替で、再読み込みするので、表示位置が変わってしまう。タブを選択することはできないのか?」):
-        //   タブが在る時は**タブを選ぶ**(そのグループへ移り、何番目のタブかで開く= タブを押したのと同じ)。表示位置もタブが覚えている姿のまま。
-        //   真因= 日記は 🔐 の入口のタブ(vault の名)で開いていることがある。file: の名で開くと別の文書として開き直し、
-        //   meosVaultRedirectFileTab がそれを閉じて入口のタブへ戻す= 俊克の「再読み込み」に見えた。タブが無い時だけ今まで通り開く。
-        const _tab = meosTabForPath(_p);
-        if (_tab && _tab.group && _tab.group.viewColumn >= 1 && _tab.group.viewColumn <= 8 && (_tab.group.tabs || []).indexOf(_tab) >= 0) {
-          if (!(_tab.isActive && _tab.group.isActive)) {
-            await vscode.commands.executeCommand('workbench.action.focus' + ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'][_tab.group.viewColumn - 1] + 'EditorGroup');
-            await vscode.commands.executeCommand('workbench.action.openEditorAtIndex', _tab.group.tabs.indexOf(_tab));
-          }
-          // ★v5.1.212(俊克 10.27 am00:30 改良1「エディターをアクティブにして、直ぐに入力ができるように」): 押したのは Me Dock(webview)なので、
-          //   タブを選んでも打鍵は Me Dock に残る→ 選んだタブのエディタへ焦点を戻す(家の口 meosFocusBack= 同じ文書を見せ直すだけで飛ばない)
-          // ★v5.1.213(俊克 am00:39 バグ1「切り替えた直後、エディターにフォーカスされない。なぜ?」): 家の教え(v4.0.358)を写し忘れていた=
-          //   焦点が webview に在る間は showTextDocument を await すると返らないことがあり、Me Dock の自動表示とも焦点を取り合う。
-          //   → 待たない。①その文書を見せる ②最後に標準の「エディタ群へ焦点」を、Me Dock の自動表示の後(250ms)に置く
-          const _u = _tab.input && _tab.input.uri ? _tab.input.uri.toString() : '';
-          const _ed = vscode.window.visibleTextEditors.find(e => e.viewColumn === _tab.group.viewColumn && e.document.uri.toString() === _u);
-          const _focusBack = () => { for (const ms of [250, 700]) setTimeout(() => { try { vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); meosDbg('[openRecent] 焦点を戻す ' + ms + 'ms 前の窓=' + (vscode.window.state.focused ? '焦点あり' : '無し') + ' active=' + (vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.uri.scheme : 'なし')); } catch (_) { } }, ms); };   // v5.1.214: 2度目(700ms)= 後から取り返されても戻す
-          try { if (_ed) vscode.window.showTextDocument(_ed.document, { viewColumn: _ed.viewColumn, preserveFocus: false }).then(_focusBack, _focusBack); else _focusBack(); } catch (_) { _focusBack(); }
-          try { meosDbg('[openRecent] タブを選んだ 列=' + _tab.group.viewColumn + ' 番=' + _tab.group.tabs.indexOf(_tab) + ' 名=' + ((_tab.input && _tab.input.uri && _tab.input.uri.scheme) || '') + ' エディタ=' + (_ed ? 'あり' : 'なし')); } catch (_) { }
-          return;
-        }
-        const d = await vscode.workspace.openTextDocument(vscode.Uri.file(_p));
-        await vscode.window.showTextDocument(d, { viewColumn: meosColumnForPath(_p), preview: false }); // v4.0.305: 既に開いている所へ戻る
-      } catch (_) { try { vscode.window.showInformationMessage('MeOS: could not open that file.'); } catch (__) {} }
-      return;
-    }
+    if (message && message.type === 'openRecent') { await meosOpenRecentPath(message.path); return; }   // v4.0.303: ▾の履歴から選んだファイルを開く(v5.1.931: 関数へ)
     if (message && message.type === 'saveFmt') {
       const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
       if (ed && message.fmt) {
@@ -41658,7 +41659,9 @@ function meosApplyTableCellWrapDecorations(editor) {
               const _li = s0.indexOf('#'), sp1 = (link && _li >= 0) ? lspOf(parseInt(s0.slice(_li + 1), 10)) : null;
               let fk1 = sp1 ? sp1.fg : '', lcss = ''; if (sp1 && sp1.bg && !fk1 && DARK_BG_KEYS.has(sp1.bg)) fk1 = 'white';
               const cc1 = (fk1 && HIGHLIGHT_FG_COLORS[fk1]) ? HIGHLIGHT_FG_COLORS[fk1] : '';
-              if (sp1) lcss = meosMeLinkUnderline(sp1.ul, cc1) + (sp1.bg && HIGHLIGHT_COLORS[sp1.bg] ? '; background-color: ' + HIGHLIGHT_COLORS[sp1.bg] : '');
+              // ★v5.1.931(俊克 930 改良1「リンクの下線が、表の罫線の外に食み出ている…96、97行の2つのセルは、リンクの下線が出ていない」): 段落の下線は地を下へ4px広げ(padding)、その中に線を引く=
+              //   見せかけの駒では段の下端を越え、次の行の覆いの板に隠れた(96・97)/最後の行は表の外へ出た(98)。→ 広げずに、線を段の中(下の細い罫線2pxの上)へ上げる
+              if (sp1) lcss = meosMeLinkUnderline(sp1.ul, cc1).replace('padding-bottom: 4px; ', '').replace(/calc\(100% - (\d+)px\)/g, (m, d) => 'calc(100% - ' + (Number(d) + 2) + 'px)').replace('left bottom', 'left calc(100% - 2px)') + (sp1.bg && HIGHLIGHT_COLORS[sp1.bg] ? '; background-color: ' + HIGHLIGHT_COLORS[sp1.bg] : '');
               const col = code ? '#3b3020' : (link ? (cc1 || 'var(--vscode-textLink-foreground)') : ((s0.indexOf('b') >= 0 && boldCol) ? boldCol : ((s0.indexOf('i') >= 0 && itCol) ? itCol : fg)));
               pieces.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
                 textDecoration: (link ? (lcss || 'underline') : 'none') + '; position: absolute;' + (gs ? ' display: inline-block; width: 0.94em; transform: translateY(0.3em) scale(0.75, 1.3); transform-origin: 0 100%;' : '') + ' left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
@@ -49143,6 +49146,12 @@ function activate(context) {
           if (!_meosLastLineDone) meosLastLineFinish('ピースが先 → 戻さない');
           if (ch) { try { meosPuzzleLastSet(ch); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { } }
           await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed', { cycle: new URLSearchParams(u.query || '').get('alt') === '1' }); return;
+        }
+        if (u && u.path === '/pin') {   // ★v5.1.931(俊克 11.26 am08:26 別の改良1「Me Dockのファイルメニューの📌ボタンだけをメニューバーの下のmGATEの♥️ボタンの右に大きく置こう…ファイルを切り替える為に…真上にあるメニューバーの方が、使う頻度も高い」): 留めたファイルへ切り替える
+          const _pin = meosPinned(); meosDbg('[helper] 📌 ' + (_pin ? _pin.path : '留め無し'));
+          if (!_meosLastLineDone) meosLastLineFinish('📌 が先 → 戻さない');
+          if (_pin) await meosOpenRecentPath(_pin.path); else { try { vscode.window.showInformationMessage('MeOS: no file is pinned (📌) yet.'); } catch (_) { } }
+          return;
         }
         if (u && u.path === '/fof') {   // ★v5.1.537: mGATE の♡= 他のパズルと同じ(無ければ書く・在れば飛ぶ)。🔴は動かさない
           meosDbg('[helper] FoF');

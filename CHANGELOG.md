@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.931 (2026-11-26)
+- mGATE (the panel under the menu bar) has a large 📌 to the right of ♥. Clicking it switches to your pinned file, the same as the 📌 in the Me Dock file menu.
+- In the wrapped table view, link underlines now stay inside their row. They no longer cross the table rules or hide under the next row.
+
 ### v5.1.930 (2026-11-26)
 - Tables drawn in the wrapped table view now show 👻 links with the colors and underline set in their FC comments. A stowed link shows the squashed 👻, and an opened link shows a plain 👻.
 - Fixed: thin blue lines appeared under such a table. They were link colors painted on the hidden source lines.
