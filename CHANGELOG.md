@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.908 (2026-11-25)
+- **Clicking the 👻 in the FC line keeps Raw view.** The URL goes back into the FC line and the 👻 returns to the text, all in Raw view, so you can watch the 👻 move. Click another line to return to normal view, as with any Raw line.
+
 ### v5.1.907 (2026-11-25)
 - **Fixed: no hand pointer on the moved 👻 right after a Raw click.** After clicking the Proxy 👻 in Raw view, the 👻 that moved to the FC line showed the hand only once the cursor moved. MeOS now redraws the link buttons right after the edit.
 

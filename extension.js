@@ -46440,6 +46440,9 @@ function meosLinkGhostClick(e) {
     // ★v5.1.904(俊克 903 改良1「身代わり👻に替えた後、FCが折り畳まれるまで10秒近くかかる」): ログ= 押す前の所(本文の行)へカーソルを戻すと、
     //   「カーソルの行の FC は開く」で畳む相手が無かった(次にカーソルを動かすまで)。身代り👻と同じ合図(_meosGhostPress)で、押しただけの間は開かない
     const _press = () => { setRefNoRaw(doc, L0); _meosGhostPress = { uri: doc.uri.toString(), line: L0 }; };
+    // ★v5.1.908(俊克 907 改良1「Proxy-of-proxy👻ボタンをクリックすると通常モードになってしまう。あえてRawのままにして👻が移動することを見せる…他の行をクリックした時に通常モードに戻る」):
+    //   FC 行の👻を押した時も、押す前の所(本文の行= Raw)へカーソルを戻すだけ= Raw のまま👻が本文へ戻る。畳みの合図(_press)は出さない
+    if (!_rawHere && meosIsSpecLine(text) && prev) { meosDbg('[linkGhost] FC の👻 → Raw のまま 行=' + (ln + 1)); vscode.workspace.applyEdit(we).then(() => { setTimeout(() => { try { if (ed.selection && ed.selection.active.line === ln) ed.selection = new vscode.Selection(prev.anchor, prev.active); } catch (_) { } try { meosApplyMeLinkDecorations(ed); } catch (_) { } }, 120); }); return; }
     if (_rawHere) { meosDbg('[linkGhost] Raw のまま 行=' + (ln + 1)); vscode.workspace.applyEdit(we).then(() => { try { meosApplyMeLinkDecorations(ed); } catch (_) { } }); return; }   // v5.1.907(俊克 906 改良1「Proxy-of-proxy👻にホバーしても選択指にならない…別の位置をクリックするとなる」): 書いた直後に手の形を引き直す(Raw の行はカーソルが動くまで描き直されなかった)   // v5.1.906: Raw のまま👻が FC 行へ移る(カーソルも行もそのまま)
     _press();
     vscode.workspace.applyEdit(we).then(() => { setTimeout(() => { try { if (prev && ed.selection && ed.selection.active.line === ln) { _press(); ed.selection = new vscode.Selection(prev.anchor, prev.active); } } catch (_) { } }, 250); });
