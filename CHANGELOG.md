@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.928 (2026-11-26)
+- The 👻 in the FC line of an opened link (`[](👻)`) is a button again, in paragraphs and in tables. Clicking it stows the link back to `[label](👻)`. It also works while the FC line is in Raw.
+
 ### v5.1.927 (2026-11-26)
 - In a line opened in Raw with ✏️, the 👻 in the FC line (`~~👻`) is now a button too. Clicking it moves the hidden text between the FC line and the body, the same as the 👻 in the body.
 

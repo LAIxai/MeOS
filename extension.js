@@ -46579,11 +46579,14 @@ function meosLinkGhostClick(e) {
     if (!meosIsProseDoc(doc) || meosModeAtLine(doc, ln) !== 'normal') return;
     const text = doc.lineAt(ln).text || ''; if (text.indexOf('](') < 0) return;
     let b = null, bx = null, bodyLn = ln;
-    if (_rawHere && meosIsSpecLine(text)) return;
     if (meosIsSpecLine(text)) {   // v5.1.903: 開いたリンクの FC の `[](👻)` の👻を押す(Raw で見えている時)= しまう
       while (bodyLn - 1 >= 0 && meosIsSpecLine(doc.lineAt(bodyLn - 1).text || '')) bodyLn--; bodyLn--; if (bodyLn < 0) return;
-      const bxs = meosLinkFcBoxes(doc, bodyLn), j = bxs.findIndex(x => x.line === ln && x.target === '\u{1F47B}' && (c === x.ts || c === x.te)); if (j < 0) return;
-      bx = bxs[j]; b = meosLineEndLinks(doc.lineAt(bodyLn).text || '', _fcLinksFor(doc, bodyLn)).find(x => x.opened && x.fcIdx === j); if (!b) return;
+      // ★v5.1.928(俊克 am02:04「橙色の字で対応関係は明確…FCで色を設定したりできるので、👻だけが設定できないのもおかしい」): v5.1.919 で外した FC の👻のボタンを戻す。
+      //   Raw で FC 行に居ても(👻の両端だけ)押せる。表の FC 群は表の行を全部調べ、押した箱の行のリンクをしまう
+      let _rows = [bodyLn]; try { const _tb = meosTableBlockFor(meosDocLines(doc), bodyLn); if (_tb) { _rows = []; for (let r = _tb.start; r <= _tb.end; r++) _rows.push(r); } } catch (_) { }
+      for (const _r of _rows) { const bxs = meosLinkFcBoxes(doc, _r), j = bxs.findIndex(x => x.line === ln && x.target === '\u{1F47B}' && (c === x.ts || c === x.te)); if (j < 0) continue;
+        const _b = meosLineEndLinks(doc.lineAt(_r).text || '', _fcLinksFor(doc, _r)).find(x => x.opened && x.fcIdx === j); if (_b) { b = _b; bx = bxs[j]; bodyLn = _r; break; } }
+      if (!b) return;
     } else {
       // ★v5.1.906(俊克 905 改良1「Proxy👻のRawのときにも、👻をボタン化して…Raw状態のまま、👻の位置が移動するので、よりお化けらしくなる」):
       //   Raw の時は生の字が全部見えている= 👻の両端(左半分/右半分)に落ちた時だけ押したと読む(他の所は字を直すためのクリック)
@@ -46593,7 +46596,7 @@ function meosLinkGhostClick(e) {
       bx = meosLinkFcBoxes(doc, ln)[b.fcIdx]; if (!bx) return;
     }
     const L0 = bodyLn;
-    try { if (meosTableBlockFor(meosDocLines(doc), L0)) { meosDbg('[linkGhost] 表の中= 開かない(1つの表の一括は Me Dock の👻) 行=' + (L0 + 1)); return; } } catch (_) { }   // ★v5.1.918(俊克 pm05:06「表でリンクを入れる時は、身代わり👻形式のみに制限」): 表の中で👻を押しても URL を本文に出さない(表が崩れない)。Cmd+クリックで飛ぶ
+    try { if (b.ghost && meosTableBlockFor(meosDocLines(doc), L0)) { meosDbg('[linkGhost] 表の中= 開かない(1つの表の一括は Me Dock の👻) 行=' + (L0 + 1)); return; } } catch (_) { }   // ★v5.1.918(俊克 pm05:06「表でリンクを入れる時は、身代わり👻形式のみに制限」): 表の中で👻を押しても URL を本文に出さない(表が崩れない)。Cmd+クリックで飛ぶ
     const G = '\u{1F47B}', we = new vscode.WorkspaceEdit();
     // ★v5.1.919: しまった形 `[表示](👻)` ⇄ 開いた形 `[表示👻](URL)`= 👻が表示の後ろと行先の間を行き来する(古い開いた形 `[表示](URL)` は行先だけ替える)
     if (b.ghost) { if (bx.target === G || !bx.target) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd, L0, b.end), G + '](' + bx.target + ')'); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), G); }
@@ -46625,7 +46628,7 @@ function meosApplyMeLinkDecorations(editor) {
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
-        try { const _ft = doc.lineAt(ln).text; if (_ft.indexOf('](\u{1F47B})') >= 0 && !meosIsSpecLine(_ft) && cursorLines.has(ln)) {   /* v5.1.919: ボタンは本文の👻だけ(FC 行の👻は押せる印にしない) */ let _i = _ft.indexOf('](\u{1F47B})'); while (_i >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _i + 2, ln, _i + 4) }); _i = _ft.indexOf('](\u{1F47B})', _i + 4); } } } catch (_) { }
+        try { const _ft = doc.lineAt(ln).text; if (_ft.indexOf('](\u{1F47B})') >= 0 && (meosIsSpecLine(_ft) || cursorLines.has(ln))) {   /* v5.1.928: FC 行の👻も押せる印に戻す(見えている時だけ= 畳まれた行は描かれない) */   /* v5.1.919: ボタンは本文の👻だけ(FC 行の👻は押せる印にしない) */ let _i = _ft.indexOf('](\u{1F47B})'); while (_i >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _i + 2, ln, _i + 4) }); _i = _ft.indexOf('](\u{1F47B})', _i + 4); } } } catch (_) { }
         try { const _ft3 = doc.lineAt(ln).text; if (cursorLines.has(ln) && _ft3.indexOf('~~\u{1F47B}') >= 0 && meosGhostRawIsOpen(doc, ln)) { const _re3 = /~~\u{1F47B}/gu; let _m3; while ((_m3 = _re3.exec(_ft3)) !== null) linkGhostBtn.push({ range: new vscode.Range(ln, _m3.index + 2, ln, _m3.index + 4) }); } } catch (_) { }   // v5.1.926: Raw の取消線👻も手の形
         try { const _ft4 = doc.lineAt(ln).text; if (_ft4.indexOf('Mew!FC') >= 0 && _ft4.indexOf('~~\u{1F47B}') >= 0 && meosGhostRawCovers(doc, ln) && !meosGhostRawIsOpen(doc, ln)) { const _re4 = new RegExp(MEOS_GHOST_BOX_RE.source, 'gu'); let _m4; while ((_m4 = _re4.exec(_ft4)) !== null) { const _s4 = _m4.index + _m4[0].indexOf(_m4[1]); if (_m4[1].indexOf('~~\u{1F47B}') === 0 && meosGhostFcBoxHit(doc, ln, _s4 + 2)) linkGhostBtn.push({ range: new vscode.Range(ln, _s4 + 2, ln, _s4 + 4) }); } } } catch (_) { }   // v5.1.927: ✏️で開いた行の FC の👻も手の形
         try { const _ft2 = doc.lineAt(ln).text; if (cursorLines.has(ln) && _ft2.indexOf('\u{1F47B}](') >= 0 && !meosIsSpecLine(_ft2)) { let _j = _ft2.indexOf('\u{1F47B}]('); while (_j >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _j, ln, _j + 2) }); _j = _ft2.indexOf('\u{1F47B}](', _j + 2); } } } catch (_) { }   // v5.1.919: Raw の開いた形 `[表示👻](URL)` の👻も手の形   // v5.1.906: Raw の本文の Proxy👻 も手の形   // v5.1.903: 開いたリンクの FC の👻= Raw で押してしまう
