@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.920 (2026-11-25)
+- **A stowed 👻 is drawn at half width.** `[text](👻)` and `[text👻](URL)` used to look the same in normal view. Now the 👻 of the stowed form is squeezed to half its width, so you can tell the two forms apart at a glance.
+
 ### v5.1.919 (2026-11-25)
 - **One 👻 button for both forms.** The opened form is now `[text👻](URL)`: the 👻 stays in the text, right after the title, and it is a button. Click it to stow the URL as `[text](👻)`; click the 👻 there to open it again. The 👻 moves between the title and the URL, in normal view and in Raw view alike. The 👻 in the FC line is no longer a button.
 - A table switched back to GFM uses the same form, so the links still work in other apps.

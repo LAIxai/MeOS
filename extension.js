@@ -46399,6 +46399,7 @@ function meosFindMembraneLineByName(doc, name) { const needle = String(name || '
 let _meosDockStateTimer = null; // v4.0.236: Me Dockのボタンの姿を計算し直す待ち
 let meLinkHideDeco = null; const meLinkStyleCache = new Map();
 let meosLinkGhostBtnDeco = null;   // v5.1.901
+let meosLinkGhostSquashDeco = null;   // ★v5.1.920(俊克 919 改良1「区別をつける為に、👻の横幅を半分に潰した形に…`[表示](👻)`のときは、間を詰めるので」): しまった形の👻= 横に半分
 // v5.1.902: リンクの URL を選んで👻を押した= URL を FC の箱へしまい、本文には👻を残す。リンクの URL でなければ false
 // ★v5.1.910(俊克 909 改良1「MeOSのハイライトやtipの入ったリンク記法として、これを統一しよう。素のリンクに対して👻ボタンを付けると、ハイライトやtipの指定を組み込むようにする」):
 //   ①押す時の形を広げる= URL を選んだ時に加えて、選ばずにリンクの中に居る時・リンク全体を選んだ時も
@@ -46584,10 +46585,10 @@ function meosApplyMeLinkDecorations(editor) {
   const _t0meosApplyMeLinkDecorations = Date.now();
   try {
   if (!editor || !editor.document) return;
-  const clearAll = () => { if (meosLinkGhostBtnDeco) editor.setDecorations(meosLinkGhostBtnDeco, []); if (meLinkHideDeco) editor.setDecorations(meLinkHideDeco, []); for (const d of meLinkStyleCache.values()) editor.setDecorations(d, []); };
+  const clearAll = () => { if (meosLinkGhostSquashDeco) editor.setDecorations(meosLinkGhostSquashDeco, []); if (meosLinkGhostBtnDeco) editor.setDecorations(meosLinkGhostBtnDeco, []); if (meLinkHideDeco) editor.setDecorations(meLinkHideDeco, []); for (const d of meLinkStyleCache.values()) editor.setDecorations(d, []); };
   try {
     if (!meLinkHideDeco) meLinkHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    const doc = editor.document, hideRanges = [], styleRanges = new Map(), linkGhostBtn = [];   // v5.1.901: linkGhostBtn= リンクの👻(押せる)
+    const doc = editor.document, hideRanges = [], styleRanges = new Map(), linkGhostBtn = [], linkGhostSquash = [];   // v5.1.901: linkGhostBtn= リンクの👻(押せる)
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const _lTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _lTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
@@ -46642,7 +46643,7 @@ function meosApplyMeLinkDecorations(editor) {
         const _lel = meosLineEndLinks(raw, _fcLinksFor(doc, ln)), _claimed = new Set(_lel.map(b => b.start));   // v5.1.901: 開いたリンクは素のリンクの方では描かない
         for (const b of _lel) {
           hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
-          if (b.ghost) { hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.textEnd + 2)); hideRanges.push(new vscode.Range(ln, b.end - 1, ln, b.end)); linkGhostBtn.push({ range: new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1) }); }   // v5.1.901: しまった形= 👻 は見せて押せる
+          if (b.ghost) { hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.textEnd + 2)); hideRanges.push(new vscode.Range(ln, b.end - 1, ln, b.end)); linkGhostSquash.push({ range: new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1) }); }   // v5.1.920: 横に半分 / v5.1.901: しまった形= 👻 は見せて押せる
           else if (b.opened && b.gmark) { hideRanges.push(new vscode.Range(ln, b.textEnd + 2, ln, b.end)); linkGhostBtn.push({ range: new vscode.Range(ln, b.textEnd, ln, b.textEnd + 2) }); }   // v5.1.919: 開いた形 `[表示👻](URL)`= 👻は見せて押せる・`](URL)` を隠す
           else if (b.opened) hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));   // 開いた形= ふつうのリンクの姿(v5.1.903: 👻は出さない= Raw の時だけ FC 行の👻が押せる)
           else hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));     // ]() を隠す
@@ -46686,6 +46687,8 @@ function meosApplyMeLinkDecorations(editor) {
     editor.setDecorations(meLinkHideDeco, hideRanges);
     if (!meosLinkGhostBtnDeco) meosLinkGhostBtnDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosLinkGhostBtnDeco, linkGhostBtn);   // v5.1.901
+    if (!meosLinkGhostSquashDeco) meosLinkGhostSquashDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; display: inline-block; width: 0.62em; transform: scaleX(0.5); transform-origin: 0 50%; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosLinkGhostSquashDeco, linkGhostSquash);   // v5.1.920
     for (const [style, type] of meLinkStyleCache) editor.setDecorations(type, styleRanges.get(style) || []);
     for (const [style, ranges] of styleRanges) { if (meLinkStyleCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meLinkStyleCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
