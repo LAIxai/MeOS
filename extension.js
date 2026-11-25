@@ -46340,6 +46340,12 @@ function meosUnwrapEmphasis(text) {
   return m ? m[1].trim() : s;
 }
 // v4.0.26(俊克): リンクの🚫解除=表示文字だけ残して素の本文に戻す(🚫統合の一員)。
+// v5.1.917: リンクを🚫で外した時の素の字= 表示文字＋(行先があれば)空白＋行先。行先が空・👻・表示と同じなら表示だけ
+function meosLinkPlainBody(label, target) {
+  const body = meosUnwrapEmphasis(label), t = String(target == null ? '' : target).trim();
+  if (!t || t === '\u{1F47B}' || t === body) return body;
+  return body ? (body + ' ' + t) : t;
+}
 function meLinkSpanAtCursor(editor) {
   if (!editor) return null;
   const doc = editor.document, pos = editor.selection.active, line = pos.line;
@@ -46351,7 +46357,7 @@ function meLinkSpanAtCursor(editor) {
   for (const b of meosLineEndLinks(text, text.indexOf('](') >= 0 ? _fcLinksFor(doc, line) : null)) {
     if (pos.character < b.start || pos.character > b.end) continue;
     if (!b.comment) break;
-    const body = meosUnwrapEmphasis(b.label);
+    const body = meosLinkPlainBody(b.label, b.target);   // v5.1.917
     const head = text.slice(0, b.start), mid = text.slice(b.end, b.comment.start), tail = text.slice(b.comment.end);
     return { kind: 'melink', range: new vscode.Range(line, 0, line, text.length), body: (head + body + mid + tail).replace(/[ \t]+$/, '') };
   }
@@ -46360,7 +46366,7 @@ function meLinkSpanAtCursor(editor) {
     const s = m.index, e = s + m[0].length;
     // v4.0.30: 表示文字が太字/斜体で包まれていたら(改良1の形)、解除では素の文字まで戻す。
     if (pos.character >= s && pos.character <= e) {
-      return { kind: 'melink', range: new vscode.Range(line, s, line, e), body: meosUnwrapEmphasis(m[1]) };
+      return { kind: 'melink', range: new vscode.Range(line, s, line, e), body: meosLinkPlainBody(m[1], m[2] != null ? m[2] : (m[3] || '')) };   // v5.1.917: 行先があれば「表示 行先」
     }
   }
   for (const b of meosRefMdLinks(text, meosRefDefs(doc))) { // v4.0.93: 参照形式 → 表示文字だけ残す
@@ -46369,7 +46375,8 @@ function meLinkSpanAtCursor(editor) {
   }
   for (const b of meosBareMdLinks(text)) { // v4.0.78: 素のMarkdownリンク → 表示文字だけ残す
     if (pos.character < b.start || pos.character > b.end) continue;
-    return { kind: 'melink', range: new vscode.Range(line, b.start, line, b.end), body: meosUnwrapEmphasis(b.label) };
+    // ★v5.1.917(俊克 916 バグ1「URLが付いたリンクに対して🚫ボタンを押すと、URLが消えてしまう…タイトルとURLの2つの素のテキストデータ(空白で区切って)に戻すべき」)
+    return { kind: 'melink', range: new vscode.Range(line, b.start, line, b.end), body: meosLinkPlainBody(b.label, b.target) };
   }
   return null;
 }
