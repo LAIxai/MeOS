@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.913 (2026-11-25)
+- Author's desk only: a trial sound file in the sound list. Nothing changes for other users.
+
 ### v5.1.912 (2026-11-25)
 - Small internal fix carried over from older versions.
 
