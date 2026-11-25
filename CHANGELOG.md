@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.927 (2026-11-26)
+- In a line opened in Raw with ✏️, the 👻 in the FC line (`~~👻`) is now a button too. Clicking it moves the hidden text between the FC line and the body, the same as the 👻 in the body.
+
 ### v5.1.926 (2026-11-25)
 - **The 👻 of hidden text is a button in Raw view too.** In a line opened with ✏️, click either edge of the 👻: the hidden text moves from the FC line into the text (`~~👻text~~`), and back again. The line stays in Raw view, the same as the link 👻.
 
