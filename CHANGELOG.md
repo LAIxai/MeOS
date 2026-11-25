@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.922 (2026-11-25)
+- The stowed 👻 now reaches down to the underline.
+
 ### v5.1.921 (2026-11-25)
 - The stowed 👻 is now 70% wide and 1.3 times taller, stretched upward.
 
