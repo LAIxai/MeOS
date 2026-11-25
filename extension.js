@@ -29220,6 +29220,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       // ★v5.1.860(俊克 11.22 改良1「見出しボタンのように、選択しないケースで、その行全体を取り消すようにしようよ」):
       //   取消線だけ= 何も選ばずに押したら、カーソルの行の字を丸ごと包む(行頭の字下げ・箇条書きの印・# は外に残す= 複数行の時と同じ)。
       //   行が空・指定行/コメント・囲いの行・既に ~~ が在る行(入れ子になる)は、今までどおり「取消線」の字を置く。
+      if (_ghost && sel.isEmpty && await meosLinkStowUrl(editor, sel, fg, bg)) return;   // v5.1.910: 選ばずにリンクの中で👻= リンクの👻(行全体の取消線より先)
       if (kind === 'strike' && sel.isEmpty) {
         try {
           const _tx = doc.lineAt(sel.start.line).text;
@@ -29248,7 +29249,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       // ★v5.1.902(俊克 901 バグ1「従来の記法のURL部分を選択して、👻ボタンを押して設定したもの…Cmdクリックで飛ばない・FCの中の👻がクリックできない」):
       //   リンク `[表示](URL)` の URL を選んで👻= 取消線の👻でなく、リンクの👻(v5.1.901)にする= 本文 `[表示](👻)`・FC `[](URL)`。
       //   リンクボタンで作った空の箱 `[]()(2)(色)//tip` が在れば、そこへ URL を入れる(下線・色・tip はそのまま)
-      if (_ghost && sel.start.line === sel.end.line && !sel.isEmpty && await meosLinkStowUrl(editor, sel)) return;
+      if (_ghost && sel.start.line === sel.end.line && await meosLinkStowUrl(editor, sel, fg, bg)) return;   // v5.1.910: 選ばずにリンクの中に居るだけでも・指定(下線/色/tip)つきの箱
       if (_gStow(body)) {   // v5.1.870: しまった👻= 本文に残るのは👻1字。カーソルは👻の後ろへ(選んでおく字が本文に無い)
         await meosWriteMarkAndSpec(editor, sel, _gMark(body), mk, _gDir(body));
         const _ap = new vscode.Position(sel.start.line, sel.start.character + _gMark(body).length);
@@ -46371,13 +46372,24 @@ let _meosDockStateTimer = null; // v4.0.236: Me Dockのボタンの姿を計算�
 let meLinkHideDeco = null; const meLinkStyleCache = new Map();
 let meosLinkGhostBtnDeco = null;   // v5.1.901
 // v5.1.902: リンクの URL を選んで👻を押した= URL を FC の箱へしまい、本文には👻を残す。リンクの URL でなければ false
-async function meosLinkStowUrl(editor, sel) {
+// ★v5.1.910(俊克 909 改良1「MeOSのハイライトやtipの入ったリンク記法として、これを統一しよう。素のリンクに対して👻ボタンを付けると、ハイライトやtipの指定を組み込むようにする」):
+//   ①押す時の形を広げる= URL を選んだ時に加えて、選ばずにリンクの中に居る時・リンク全体を選んだ時も
+//   ②新しく足す箱はリンクボタンと同じ指定つき= `[](URL)(下線)(文字色/地)//[]tip=`(下線は最後に決めた値・色は👻ボタンの色)
+//   空の箱(リンクボタンで作った物)へ入れる時は、そこに在る指定をそのまま使う
+async function meosLinkStowUrl(editor, sel, fg, bg) {
   try {
     const doc = editor.document, ln = sel.start.line, t = doc.lineAt(ln).text, a = sel.start.character, z = sel.end.character;
-    const url = t.slice(a, z).trim(); if (!url || url === '\u{1F47B}' || /[\s()<>]/.test(url)) return false;
-    let lk = null; MEOS_LEL_ANY_RE.lastIndex = 0; let m;
-    while ((m = MEOS_LEL_ANY_RE.exec(t)) !== null) { const us = m.index + m[0].length - 1 - m[2].length, ue = m.index + m[0].length - 1; if (a >= us && z <= ue && t.slice(us, ue).trim() === url) { lk = { start: m.index, us, ue }; break; } }
+    let lk = null, url = ''; MEOS_LEL_ANY_RE.lastIndex = 0; let m;
+    while ((m = MEOS_LEL_ANY_RE.exec(t)) !== null) {
+      const us = m.index + m[0].length - 1 - m[2].length, ue = m.index + m[0].length - 1, u = t.slice(us, ue).trim();
+      if (!u || u === '\u{1F47B}' || /[\s()<>]/.test(u)) continue;
+      const inUrl = !sel.isEmpty && a >= us && z <= ue && t.slice(a, z).trim() === u;
+      const whole = !sel.isEmpty && a <= m.index && z >= m.index + m[0].length && z - a <= m[0].length + 2;
+      const inside = sel.isEmpty && a > m.index && a < m.index + m[0].length;
+      if (inUrl || whole || inside) { lk = { start: m.index, us, ue }; url = u; break; }
+    }
     if (!lk) return false;
+    if (t.charAt(lk.start - 1) === '!') return false;
     let k = 0; MEOS_EMPTY_LINK_RE.lastIndex = 0; while ((m = MEOS_EMPTY_LINK_RE.exec(t)) !== null) { if (m.index < lk.start) k++; else break; }   // この行で前に在る印(箱を持つリンク)の数
     const boxes = meosLinkFcBoxes(doc, ln), we = new vscode.WorkspaceEdit();
     we.replace(doc.uri, new vscode.Range(ln, lk.us, ln, lk.ue), '\u{1F47B}');
@@ -46386,7 +46398,7 @@ async function meosLinkStowUrl(editor, sel) {
     else {
       let L = ln + 1; while (L < doc.lineCount && meosIsSpecLine(doc.lineAt(L).text || '')) L++;
       const at = bx ? bx.line : L;   // 後ろのリンクの箱が在ればその前・無ければ FC 群の最後
-      we.insert(doc.uri, new vscode.Position(at, 0), '<!-- Mew!FC [](' + url + ') -->\n');
+      const _ul = meosLinkUlLast(); we.insert(doc.uri, new vscode.Position(at, 0), '<!-- Mew!FC [](' + url + ')(' + _ul + ')(' + (fg || '') + '/' + (bg || '') + ')//[]tip= -->\n');   // v5.1.910: リンクボタンと同じ指定つき
     }
     await vscode.workspace.applyEdit(we);
     try { setRefNoRaw(doc, ln); _meosGhostPress = { uri: doc.uri.toString(), line: ln }; const P = new vscode.Position(ln, lk.us + 3); editor.selection = new vscode.Selection(P, P); } catch (_) { }

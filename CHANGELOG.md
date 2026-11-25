@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.910 (2026-11-25)
+- **Proxy 👻 links carry the full MeOS link spec.** Pressing the 👻 button on a plain `[text](URL)` now writes the FC box with underline, colour and tip: `[](URL)(0)(text/ground)//[]tip=`. The link can then take a highlight, a wavy underline or a tip, like any MeOS link. The button works when the cursor is anywhere inside the link, when the URL is selected, or when the whole link is selected. An existing empty box keeps its spec.
+
 ### v5.1.909 (2026-11-25)
 - **The orange pairing stays on every round trip.** In Raw view, stowing the URL from the FC line's 👻 now puts the cursor inside `(👻)`. Before, from the second round on, the cursor fell outside the `)` and the orange pairing did not show.
 
