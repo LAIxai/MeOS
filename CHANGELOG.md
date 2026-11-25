@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.918 (2026-11-25)
+- **Proxy 👻 links work in tables.** Inside a table, a link keeps its URL in the FC box after the table, so long URLs no longer stretch the rows. Clicking the 👻 in a table does not open it (Cmd+click still follows the link).
+- **One table at a time, back to plain GFM.** Put the cursor in a table (not on a link) and press the 👻 button: every 👻 link in that table gets its URL back in the text, so other apps can read the table. Press it again to put them all back into 👻 form. Only that one table changes.
+
 ### v5.1.917 (2026-11-25)
 - **🚫 on a link with a URL keeps the URL.** The link becomes plain text: the title, a space, then the URL. Before, the URL was lost.
 

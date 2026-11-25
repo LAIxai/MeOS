@@ -29225,6 +29225,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       //   取消線だけ= 何も選ばずに押したら、カーソルの行の字を丸ごと包む(行頭の字下げ・箇条書きの印・# は外に残す= 複数行の時と同じ)。
       //   行が空・指定行/コメント・囲いの行・既に ~~ が在る行(入れ子になる)は、今までどおり「取消線」の字を置く。
       if (_ghost && sel.isEmpty && await meosLinkStowUrl(editor, sel, fg, bg)) return;   // v5.1.910: 選ばずにリンクの中で👻= リンクの👻(行全体の取消線より先)
+      if (_ghost && sel.isEmpty && await meosLinkTableToggle(editor) > 0) return;   // v5.1.918: 表の中(リンクの外)で👻= その表の👻リンクを一括で GFM ⇄ 👻
       if (kind === 'strike' && sel.isEmpty) {
         try {
           const _tx = doc.lineAt(sel.start.line).text;
@@ -43207,6 +43208,13 @@ function meosMarkCounts(text) {
   } catch (_) { }
   return out;
 }
+// v5.1.918: 行のリンク(画像を除く・コードスパンと行末コメントの中は数えない)の数
+function meosAnyLinkCount(text) {
+  let t = String(text == null ? '' : text); if (t.indexOf('](') < 0) return 0;
+  if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
+  for (const c of meosTrailingComments(t)) t = t.slice(0, c.start) + ' '.repeat(c.end - c.start) + t.slice(c.end);
+  let n = 0; MEOS_LEL_ANY_RE.lastIndex = 0; while (MEOS_LEL_ANY_RE.exec(t) !== null) n++; return n;
+}
 function meosSpecLineFor(lines, ln) {
   if (!MEOS_SPEC_LINE || !lines) return null;
   // v4.0.193: 表なら**表の下**を見る。表でなければ今までどおり真下(=塊thatその1行)。
@@ -43239,6 +43247,9 @@ function meosSpecLineFor(lines, ln) {
   if (_blk && _blk.start < ln) {
     ordBase = {};
     for (let i = _blk.start; i < ln; i++) { const c = meosMarkCounts(lines[i]); for (const k in c) ordBase[k] = (ordBase[k] || 0) + c[k]; }
+    // ★v5.1.918(俊克 11.25 pm05:10「1つの表の中で一括変換」): 表を GFM に戻すと本文は `[表示](URL)`・箱は `[](👻)`= 印の数え方(`]()`/`](👻)`)から漏れる。
+    //   箱に👻が在る表は、本文のリンクを全部数える(行の中の対も meosLineEndLinks が同じく全部のリンクで数える)
+    if (!_isList && link && link.some(x => x && x.target === '\u{1F47B}')) { let n = 0; for (let i = _blk.start; i < ln; i++) n += meosAnyLinkCount(lines[i]); ordBase.link = n; }
   }
   return { metex: metex || [], fmt: fmt || [], link: link || [], line: _isList ? '' : line, ordBase };
 }
@@ -46407,6 +46418,15 @@ async function meosLinkStowUrl(editor, sel, fg, bg) {
     const boxes = meosLinkFcBoxes(doc, ln), we = new vscode.WorkspaceEdit();
     we.replace(doc.uri, new vscode.Range(ln, lk.us, ln, lk.ue), '\u{1F47B}');
     const bx = boxes[k];
+    // ★v5.1.918: 表の中= 箱は表の後ろの FC 群の通し番号の所へ(ハイライト等と同じ口 meosWriteMarkAndSpec)。真下に差し込むと表が割れる
+    let _inTbl = false; try { _inTbl = !!meosTableBlockFor(meosDocLines(doc), ln); } catch (_) { }
+    if (_inTbl && !(bx && !bx.target.trim())) {
+      const _ul0 = meosLinkUlLast();
+      await meosWriteMarkAndSpec(editor, new vscode.Selection(ln, lk.us, ln, lk.ue + 1), '\u{1F47B})', 'link', '[](' + url + ')(' + _ul0 + ')(' + (fg || '') + '/' + (bg || '') + ')//[]tip=');
+      try { setRefNoRaw(doc, ln); const P = new vscode.Position(ln, lk.us + 3); editor.selection = new vscode.Selection(P, P); } catch (_) { }
+      try { await meosFocusBack(editor, editor.selection); } catch (_) { }
+      meosDbg('[linkGhost] URL をしまう(表) 行=' + (ln + 1)); return true;
+    }
     if (bx && !bx.target.trim()) we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), url);   // 空の箱へ入れる
     else {
       let L = ln + 1; while (L < doc.lineCount && meosIsSpecLine(doc.lineAt(L).text || '')) L++;
@@ -46425,12 +46445,15 @@ async function meosLinkStowUrl(editor, sel, fg, bg) {
 // v5.1.901: 本文の行 ln の真下の FC 行に並ぶリンクの箱 `[](行先)` を順に(行先の桁つき)
 function meosLinkFcBoxes(doc, ln) {
   const out = [];
+  // ★v5.1.918: 表の中の行= 箱は表の後ろの FC 群に通しで並ぶ→ 前の行が使った分(ordBase.link)を飛ばす(描く側の _fcLinksFor と同じ数え方)
+  let _tb = null, _skip = 0; try { const _L = meosDocLines(doc); _tb = meosTableBlockFor(_L, ln); if (_tb) { const _p = meosSpecLineFor(_L, ln); _skip = (_p && _p.ordBase && _p.ordBase.link) || 0; } } catch (_) { _tb = null; }
+  if (_tb) ln = _tb.end;
   for (let L = ln + 1; L < doc.lineCount; L++) {
     const t = doc.lineAt(L).text || ''; if (!meosIsSpecLine(t)) break;
     const re = /<!--[ \t]*[Mm][Ee][Ww]!(?![ \t]*[Ff][Cc]-[Ii][Cc]\b)[ \t]*(?:UFC|ufc|FC|fc|\^)?[ \t]*\[[^\]\n]*\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)/g; let m;
     while ((m = re.exec(t)) !== null) { const te = m.index + m[0].length - 1, ts = te - m[1].length; out.push({ line: L, ts, te, target: m[1] }); }
   }
-  return out;
+  return _skip ? out.slice(_skip) : out;
 }
 // ★v5.1.911(俊克 910 改良1「👻になっているときは、MeDockの👻ボタンを🚫ボタンに変えて、それを押せば、素のリンクに書き変わるように」・
 //   改良2「👻リンクを素のリンクに戻すときは、ハイライトボタンと👻ボタンが、共に🚫ボタンになるので、どっちを押しても元に戻る」):
@@ -46443,6 +46466,9 @@ function meosLinkGhostAtCursor(editor) {
     const text = doc.lineAt(ln).text || ''; if (text.indexOf('](') < 0) return null;
     let bodyLn = ln, onFc = false;
     if (meosIsSpecLine(text)) { onFc = true; while (bodyLn - 1 >= 0 && meosIsSpecLine(doc.lineAt(bodyLn - 1).text || '')) bodyLn--; bodyLn--; if (bodyLn < 0) return null; }
+    // v5.1.918: 表の FC 群に居る= 表のどの行の箱か分からない→ 表の行を全部調べる
+    let _rows = [bodyLn]; if (onFc) try { const _tb = meosTableBlockFor(meosDocLines(doc), bodyLn); if (_tb) { _rows = []; for (let r = _tb.start; r <= _tb.end; r++) _rows.push(r); } } catch (_) { }
+    for (const _r of _rows) { bodyLn = _r;
     const bt = doc.lineAt(bodyLn).text || '', bxs = meosLinkFcBoxes(doc, bodyLn);
     for (const b of meosLineEndLinks(bt, _fcLinksFor(doc, bodyLn))) {
       if (!(b.ghost || b.opened) || b.comment) continue;
@@ -46451,6 +46477,7 @@ function meosLinkGhostAtCursor(editor) {
       if (!b.ghost && bx.target !== '\u{1F47B}') continue;
       const hit = onFc ? (bx.line === ln && c >= bx.ts - 3 && c <= bx.te + 1) : (c >= b.start && c <= b.end);
       if (hit) return { bodyLn, b, bx, url: b.ghost ? bx.target : b.target };
+    }
     }
   } catch (_) { }
   return null;
@@ -46471,6 +46498,35 @@ async function meosLinkGhostUnwrap(editor, g) {
     meosDbg('[linkGhost] 🚫 素のリンクへ 行=' + (g.bodyLn + 1));
     return true;
   } catch (_) { return false; }
+}
+// ★v5.1.918(俊克 11.25 pm05:06「他のアプリで読めるように、GFM準拠に戻す一括変換ボタンを付ければ、表の中にすべてのURLが戻る」→ pm05:10「1つの表の中で一括変換」):
+//   カーソルの表1つだけ= 👻(URL は FC の箱)が1つでも在れば、全部を GFM(本文に URL・箱は `[](👻)`)へ。全部が GFM なら、全部を👻へ戻す。
+//   箱を持たない素のリンクは触らない。返り値= 書き換えた数(表でない・相手が無い時は 0)
+async function meosLinkTableToggle(editor) {
+  try {
+    const doc = editor.document, L = meosDocLines(doc), tb = meosTableBlockFor(L, editor.selection.active.line); if (!tb) return 0;
+    const G = '\u{1F47B}', stowed = [], opened = [];
+    for (let r = tb.start; r <= tb.end; r++) {
+      const t = doc.lineAt(r).text || ''; if (t.indexOf('](') < 0) continue;
+      const bxs = meosLinkFcBoxes(doc, r);
+      for (const b of meosLineEndLinks(t, _fcLinksFor(doc, r))) {
+        if (b.comment) continue; const bx = bxs[b.fcIdx]; if (!bx) continue;
+        if (b.ghost && bx.target && bx.target !== G) stowed.push({ r, b, bx });
+        else if (b.opened && bx.target === G) opened.push({ r, b, bx });
+      }
+    }
+    const toGfm = stowed.length > 0, list = toGfm ? stowed : opened; if (!list.length) return 0;
+    const we = new vscode.WorkspaceEdit();
+    for (const x of list) {
+      we.replace(doc.uri, new vscode.Range(x.r, x.b.textEnd + 2, x.r, x.b.end - 1), toGfm ? x.bx.target : G);
+      we.replace(doc.uri, new vscode.Range(x.bx.line, x.bx.ts, x.bx.line, x.bx.te), toGfm ? G : x.b.target);
+    }
+    await vscode.workspace.applyEdit(we);
+    try { await meosFocusBack(editor, editor.selection); } catch (_) { }
+    try { vscode.window.setStatusBarMessage((toGfm ? '\u{1F517} GFM: ' : '\u{1F47B} ') + list.length, 3000); } catch (_) { }
+    meosDbg('[linkGhost] 表の一括 ' + (toGfm ? '👻→GFM' : 'GFM→👻') + ' ' + list.length + '本 表=' + (tb.start + 1) + '〜' + (tb.end + 1));
+    return list.length;
+  } catch (_) { return 0; }
 }
 const _meosLinkPrevSel = new WeakMap();
 // v5.1.901: リンクの👻を押す= URL を本文と FC の間で出し入れ(しまった形 ⇄ 開いた形)。身代り👻(v5.1.885)と同じく、押した後は押す前の所へカーソルを戻す
@@ -46498,6 +46554,7 @@ function meosLinkGhostClick(e) {
       bx = meosLinkFcBoxes(doc, ln)[b.fcIdx]; if (!bx) return;
     }
     const L0 = bodyLn;
+    try { if (meosTableBlockFor(meosDocLines(doc), L0)) { meosDbg('[linkGhost] 表の中= 開かない(1つの表の一括は Me Dock の👻) 行=' + (L0 + 1)); return; } } catch (_) { }   // ★v5.1.918(俊克 pm05:06「表でリンクを入れる時は、身代わり👻形式のみに制限」): 表の中で👻を押しても URL を本文に出さない(表が崩れない)。Cmd+クリックで飛ぶ
     const G = '\u{1F47B}', we = new vscode.WorkspaceEdit();
     if (b.ghost) { if (bx.target === G || !bx.target) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd + 2, L0, b.end - 1), bx.target); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), G); }
     else { if (bx.target !== G) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd + 2, L0, b.end - 1), G); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), b.target); }
