@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.905 (2026-11-25)
+- **Fixed: the FC line still took 10 seconds or more to fold after stowing a link with the 👻 button.** The 👻 button is in Me Dock, so the focus stayed there, and the editor did not offer the new FC line's fold range until it was focused again. The focus now returns to the editor, as it does for the strikethrough 👻.
+
 ### v5.1.904 (2026-11-25)
 - **The FC line folds at once after stowing a link.** After stowing the URL (from the FC line's 👻, or by selecting the URL and pressing 👻), the cursor sits on the link's line, and the rule "the cursor's line opens its FC lines" kept the FC line open until the cursor moved, often about 10 seconds. A press now counts as a press, as with the stand-in 👻, so the FC line folds right away.
 

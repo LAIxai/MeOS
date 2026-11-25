@@ -46389,7 +46389,10 @@ async function meosLinkStowUrl(editor, sel) {
       we.insert(doc.uri, new vscode.Position(at, 0), '<!-- Mew!FC [](' + url + ') -->\n');
     }
     await vscode.workspace.applyEdit(we);
-    try { setRefNoRaw(doc, ln); _meosGhostPress = { uri: doc.uri.toString(), line: ln }; const P = new vscode.Position(ln, lk.us + 3); editor.selection = new vscode.Selection(P, P); } catch (_) { }   // 書いた後は必ず true= 取消線の👻を重ねて書かない / v5.1.904: 押しただけの間は FC を開かない(すぐ畳む)
+    try { setRefNoRaw(doc, ln); _meosGhostPress = { uri: doc.uri.toString(), line: ln }; const P = new vscode.Position(ln, lk.us + 3); editor.selection = new vscode.Selection(P, P); } catch (_) { }
+    // ★v5.1.905(俊克 904 バグ1「やはり10秒以上かかる」・ログ= [foldWhy] このエディタがアクティブでない → 入ってきた後の畳み範囲が来ない(3秒)× 繰り返し):
+    //   👻は Me Dock のボタン= 焦点が Me Dock に残り、VS Code が新しい FC 行の畳み範囲を出さなかった。取消線の👻(v5.1.870)と同じく焦点をエディタへ返す
+    try { await meosFocusBack(editor, editor.selection); } catch (_) { }   // 書いた後は必ず true= 取消線の👻を重ねて書かない / v5.1.904: 押しただけの間は FC を開かない(すぐ畳む)
     try { meosDbg('[linkGhost] URL をしまう 行=' + (ln + 1) + (bx && !bx.target.trim() ? ' 空の箱へ' : ' 箱を足す')); } catch (_) { }
     return true;
   } catch (_) { return false; }
