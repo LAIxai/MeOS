@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.919 (2026-11-25)
+- **One 👻 button for both forms.** The opened form is now `[text👻](URL)`: the 👻 stays in the text, right after the title, and it is a button. Click it to stow the URL as `[text](👻)`; click the 👻 there to open it again. The 👻 moves between the title and the URL, in normal view and in Raw view alike. The 👻 in the FC line is no longer a button.
+- A table switched back to GFM uses the same form, so the links still work in other apps.
+
 ### v5.1.918 (2026-11-25)
 - **Proxy 👻 links work in tables.** Inside a table, a link keeps its URL in the FC box after the table, so long URLs no longer stretch the rows. Clicking the 👻 in a table does not open it (Cmd+click still follows the link).
 - **One table at a time, back to plain GFM.** Put the cursor in a table (not on a link) and press the 👻 button: every 👻 link in that table gets its URL back in the text, so other apps can read the table. Press it again to put them all back into 👻 form. Only that one table changes.

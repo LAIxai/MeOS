@@ -46201,11 +46201,11 @@ function meosLinkSpecFromComment(payload) {
   return { mark: /^\*{1,3}$/.test(mk) ? mk : '', target: String(m[2] || '').trim(), spec: String(m[3] || '').trim() };
 }
 // 本文側の印 `[表示]()`(行先が空)。コードスパン・画像・他形式のリンク・行末コメント群は先に外す(鉄則=リンクは先にマスク)。
-const MEOS_EMPTY_LINK_RE = /(?<!!)\[([^\]\n]*)\]\((?:\u{1F47B})?\)/gu;   // v5.1.901: `[表示](👻)`(URL を FC にしまったリンク)も同じ印
+const MEOS_EMPTY_LINK_RE = /(?<!!)\[([^\]\n]*)\]\((?:\u{1F47B})?\)|(?<!!)\[([^\]\n]*\u{1F47B})\]\((?:[^()<\n]|\([^()<\n]*\))*\)/gu;   // ★v5.1.919: 開いた形 `[表示👻](URL)` も箱を持つ印(2つ目の択= 表示の後ろに👻)   // v5.1.901: `[表示](👻)`(URL を FC にしまったリンク)も同じ印
 // ★v5.1.901(俊克 11.25 am00:49「URLの部分を身代わり👻にして、FCの中にURLを保存する…MeOS以外で見れば通常のリンク」→ am01:15「進めて」):
 //   しまった形= 本文 `[表示](👻)` ・FC `[](URL)(色)//tip`(今のリンク記法そのもの)。👻を押すと開いた形= 本文 `[表示](URL)`(素の Markdown)・FC `[](👻)…`
 const MEOS_LEL_ANY_RE = /(?<!\!)\[([^\]\n]*)\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)/g;
-function meosHasEmptyLink(t) { t = String(t || ''); return t.indexOf('](' + ')') >= 0 || t.indexOf('](\u{1F47B})') >= 0; }
+function meosHasEmptyLink(t) { t = String(t || ''); return t.indexOf('](' + ')') >= 0 || t.indexOf('](\u{1F47B})') >= 0 || t.indexOf('\u{1F47B}](') >= 0; }
 // v4.0.190(俊克): 指定は**行末のコメント群**からでも**真下のFC指定行**からでも引ける。
 //   `fcLinks` = meosSpecLineFor(...).link(真下の指定行のリンク項目)。
 // ★引く口は2つだが、**数える単位は1つ**= この行の何個目の `[表示]()` か。行末の分を先に、FC行の分を後に並べる
@@ -46228,10 +46228,14 @@ function meosLineEndLinks(text, fcLinks) {
   const RE = _fcGhost ? MEOS_LEL_ANY_RE : MEOS_EMPTY_LINK_RE; RE.lastIndex = 0;
   while ((m = RE.exec(t)) !== null) {
     if (i >= specs.length) break; // 指定より印が多い=余った印はただの文字のまま
-    const label = m[1] || '', start = m.index, end = start + m[0].length;
-    const _tg = _fcGhost ? String(m[2] || '') : (m[0].indexOf('\u{1F47B}') >= 0 ? '\u{1F47B}' : '');
+    const _mm = /^\[([^\]\n]*)\]\(([\s\S]*)\)$/.exec(m[0]) || [];   // v5.1.919: どちらの正規表現・どちらの択でも、表示と行先は形から取る
+    const label = _mm[1] || '', start = m.index, end = start + m[0].length;
+    const _tg = String(_mm[2] || '').trim();
     if (_tg !== '' && _tg !== '\u{1F47B}') {   // v5.1.901: 素のリンク= 次の指定が `[](👻)`(FC)の時だけ「開いたリンク」として対にする
-      if (!specs[i].c && specs[i].sp.target === '\u{1F47B}') { out.push({ start, end, label, textStart: start + 1, textEnd: start + 1 + label.length, target: _tg, spec: specs[i].sp.spec, mark: specs[i].sp.mark || '', comment: null, opened: true, fcIdx: i - nTail }); i++; }
+      // ★v5.1.919(俊克 pm05:34「`[表示👻](URL)`も👻という文字そのものが入って、これもボタン化して、押すと身代わりお化けになる」): 表示の後ろの👻= ボタン(gmark)・表示の字は👻の手前まで
+      const _gm = label.endsWith('\u{1F47B}');
+      if (!specs[i].c && specs[i].sp.target === '\u{1F47B}') { out.push({ start, end, label: _gm ? label.slice(0, -2) : label, textStart: start + 1, textEnd: start + 1 + label.length - (_gm ? 2 : 0), target: _tg, spec: specs[i].sp.spec, mark: specs[i].sp.mark || '', comment: null, opened: true, gmark: _gm, fcIdx: i - nTail }); i++; }
+      else if (_gm && !_fcGhost) i++;   // 箱が👻でないのに表示に👻= 数え方(meosEmptyLinkCount)と揃えて1つ進める
       continue;
     }
     out.push({ ghost: _tg === '\u{1F47B}', fcIdx: i - nTail, start, end, label, textStart: start + 1, textEnd: start + 1 + label.length, target: specs[i].sp.target, spec: specs[i].sp.spec, mark: specs[i].sp.mark || '', comment: specs[i].c }); // v4.0.243: mark=名指しされた印
@@ -46490,6 +46494,7 @@ async function meosLinkGhostUnwrap(editor, g) {
     if (cs < 0 || ce0 < 0) return false;
     const ce = ce0 + 3;
     if (b.ghost) we.replace(doc.uri, new vscode.Range(g.bodyLn, b.textEnd + 2, g.bodyLn, b.end - 1), url);
+    else if (b.gmark) we.delete(doc.uri, new vscode.Range(g.bodyLn, b.textEnd, g.bodyLn, b.textEnd + 2));   // v5.1.919: 開いた形の表示の後ろの👻を外す
     if (!ft.slice(0, cs).trim() && !ft.slice(ce).trim()) we.delete(doc.uri, new vscode.Range(bx.line, 0, bx.line + 1, 0));
     else { let a = cs; while (a > 0 && /[ \t]/.test(ft[a - 1])) a--; we.delete(doc.uri, new vscode.Range(bx.line, a, bx.line, ce)); }
     await vscode.workspace.applyEdit(we);
@@ -46518,7 +46523,9 @@ async function meosLinkTableToggle(editor) {
     const toGfm = stowed.length > 0, list = toGfm ? stowed : opened; if (!list.length) return 0;
     const we = new vscode.WorkspaceEdit();
     for (const x of list) {
-      we.replace(doc.uri, new vscode.Range(x.r, x.b.textEnd + 2, x.r, x.b.end - 1), toGfm ? x.bx.target : G);
+      if (toGfm) we.replace(doc.uri, new vscode.Range(x.r, x.b.textEnd, x.r, x.b.end), G + '](' + x.bx.target + ')');   // v5.1.919: 開いた形= `[表示👻](URL)`
+      else if (x.b.gmark) we.replace(doc.uri, new vscode.Range(x.r, x.b.textEnd, x.r, x.b.end), '](' + G + ')');
+      else we.replace(doc.uri, new vscode.Range(x.r, x.b.textEnd + 2, x.r, x.b.end - 1), G);
       we.replace(doc.uri, new vscode.Range(x.bx.line, x.bx.ts, x.bx.line, x.bx.te), toGfm ? G : x.b.target);
     }
     await vscode.workspace.applyEdit(we);
@@ -46549,14 +46556,17 @@ function meosLinkGhostClick(e) {
     } else {
       // ★v5.1.906(俊克 905 改良1「Proxy👻のRawのときにも、👻をボタン化して…Raw状態のまま、👻の位置が移動するので、よりお化けらしくなる」):
       //   Raw の時は生の字が全部見えている= 👻の両端(左半分/右半分)に落ちた時だけ押したと読む(他の所は字を直すためのクリック)
-      b = meosLineEndLinks(text, _fcLinksFor(doc, ln)).find(x => x.ghost && (_rawHere ? (c === x.textEnd + 2 || c === x.textEnd + 4) : (c > x.textEnd && c < x.end)));
+      b = meosLineEndLinks(text, _fcLinksFor(doc, ln)).find(x => (x.ghost && (_rawHere ? (c === x.textEnd + 2 || c === x.textEnd + 4) : (c > x.textEnd && c < x.end))) ||
+        (x.gmark && (_rawHere ? (c === x.textEnd || c === x.textEnd + 2) : (c >= x.textEnd && c <= x.end))));   // v5.1.919: 開いた形 `[表示👻](URL)` の👻(Raw は両端・通常は👻と隠した `](URL)`)
       if (!b) return;
       bx = meosLinkFcBoxes(doc, ln)[b.fcIdx]; if (!bx) return;
     }
     const L0 = bodyLn;
     try { if (meosTableBlockFor(meosDocLines(doc), L0)) { meosDbg('[linkGhost] 表の中= 開かない(1つの表の一括は Me Dock の👻) 行=' + (L0 + 1)); return; } } catch (_) { }   // ★v5.1.918(俊克 pm05:06「表でリンクを入れる時は、身代わり👻形式のみに制限」): 表の中で👻を押しても URL を本文に出さない(表が崩れない)。Cmd+クリックで飛ぶ
     const G = '\u{1F47B}', we = new vscode.WorkspaceEdit();
-    if (b.ghost) { if (bx.target === G || !bx.target) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd + 2, L0, b.end - 1), bx.target); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), G); }
+    // ★v5.1.919: しまった形 `[表示](👻)` ⇄ 開いた形 `[表示👻](URL)`= 👻が表示の後ろと行先の間を行き来する(古い開いた形 `[表示](URL)` は行先だけ替える)
+    if (b.ghost) { if (bx.target === G || !bx.target) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd, L0, b.end), G + '](' + bx.target + ')'); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), G); }
+    else if (b.gmark) { if (bx.target !== G) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd, L0, b.end), '](' + G + ')'); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), b.target); }
     else { if (bx.target !== G) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd + 2, L0, b.end - 1), G); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), b.target); }
     meosDbg('[linkGhost] 行=' + (ln + 1) + (b.ghost ? ' 開く' : ' しまう'));
     // ★v5.1.904(俊克 903 改良1「身代わり👻に替えた後、FCが折り畳まれるまで10秒近くかかる」): ログ= 押す前の所(本文の行)へカーソルを戻すと、
@@ -46584,7 +46594,8 @@ function meosApplyMeLinkDecorations(editor) {
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
-        try { const _ft = doc.lineAt(ln).text; if (_ft.indexOf('](\u{1F47B})') >= 0 && (meosIsSpecLine(_ft) || cursorLines.has(ln))) { let _i = _ft.indexOf('](\u{1F47B})'); while (_i >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _i + 2, ln, _i + 4) }); _i = _ft.indexOf('](\u{1F47B})', _i + 4); } } } catch (_) { }   // v5.1.906: Raw の本文の Proxy👻 も手の形   // v5.1.903: 開いたリンクの FC の👻= Raw で押してしまう
+        try { const _ft = doc.lineAt(ln).text; if (_ft.indexOf('](\u{1F47B})') >= 0 && !meosIsSpecLine(_ft) && cursorLines.has(ln)) {   /* v5.1.919: ボタンは本文の👻だけ(FC 行の👻は押せる印にしない) */ let _i = _ft.indexOf('](\u{1F47B})'); while (_i >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _i + 2, ln, _i + 4) }); _i = _ft.indexOf('](\u{1F47B})', _i + 4); } } } catch (_) { }
+        try { const _ft2 = doc.lineAt(ln).text; if (cursorLines.has(ln) && _ft2.indexOf('\u{1F47B}](') >= 0 && !meosIsSpecLine(_ft2)) { let _j = _ft2.indexOf('\u{1F47B}]('); while (_j >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _j, ln, _j + 2) }); _j = _ft2.indexOf('\u{1F47B}](', _j + 2); } } } catch (_) { }   // v5.1.919: Raw の開いた形 `[表示👻](URL)` の👻も手の形   // v5.1.906: Raw の本文の Proxy👻 も手の形   // v5.1.903: 開いたリンクの FC の👻= Raw で押してしまう
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         let text = _lTblRows.has(ln) ? meosMaskCellBarriers(doc.lineAt(ln).text) : doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; if (text.indexOf('`') >= 0) text = meosMaskCodeSpans(text); // v4.0.58: コードスパンの中はリンクにしない / v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
         let m; MEOS_MELINK_RE.lastIndex = 0;
@@ -46632,6 +46643,7 @@ function meosApplyMeLinkDecorations(editor) {
         for (const b of _lel) {
           hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
           if (b.ghost) { hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.textEnd + 2)); hideRanges.push(new vscode.Range(ln, b.end - 1, ln, b.end)); linkGhostBtn.push({ range: new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1) }); }   // v5.1.901: しまった形= 👻 は見せて押せる
+          else if (b.opened && b.gmark) { hideRanges.push(new vscode.Range(ln, b.textEnd + 2, ln, b.end)); linkGhostBtn.push({ range: new vscode.Range(ln, b.textEnd, ln, b.textEnd + 2) }); }   // v5.1.919: 開いた形 `[表示👻](URL)`= 👻は見せて押せる・`](URL)` を隠す
           else if (b.opened) hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));   // 開いた形= ふつうのリンクの姿(v5.1.903: 👻は出さない= Raw の時だけ FC 行の👻が押せる)
           else hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));     // ]() を隠す
           if (b.comment) hideRanges.push(new vscode.Range(ln, b.comment.start, ln, b.comment.end)); // 行末の指定コメント(FC行から来た分は隠す相手が居ない)
