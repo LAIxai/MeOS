@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.909 (2026-11-25)
+- **The orange pairing stays on every round trip.** In Raw view, stowing the URL from the FC line's 👻 now puts the cursor inside `(👻)`. Before, from the second round on, the cursor fell outside the `)` and the orange pairing did not show.
+
 ### v5.1.908 (2026-11-25)
 - **Clicking the 👻 in the FC line keeps Raw view.** The URL goes back into the FC line and the 👻 returns to the text, all in Raw view, so you can watch the 👻 move. Click another line to return to normal view, as with any Raw line.
 
