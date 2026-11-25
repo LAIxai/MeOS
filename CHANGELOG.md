@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.907 (2026-11-25)
+- **Fixed: no hand pointer on the moved 👻 right after a Raw click.** After clicking the Proxy 👻 in Raw view, the 👻 that moved to the FC line showed the hand only once the cursor moved. MeOS now redraws the link buttons right after the edit.
+
 ### v5.1.906 (2026-11-25)
 - **The Proxy 👻 is a button in Raw view too.** With the link's line shown raw, the 👻 in `[label](👻)` has the hand pointer; click it and the URL comes into the text while the 👻 moves to the FC line, and the line stays raw. Clicks elsewhere on the raw line still just place the cursor.
 
