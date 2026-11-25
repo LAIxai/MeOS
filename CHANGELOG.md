@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.912 (2026-11-25)
+- Small internal fix carried over from older versions.
+
 ### v5.1.911 (2026-11-25)
 - **🚫 turns a Proxy 👻 link back into a plain link.** With the cursor on a 👻 link (in the text or in its FC box), both the highlight button and the 👻 button show 🚫. Press either one: the URL goes back into the text as `[text](URL)` and the FC box is removed.
 - **Links made with the highlight button (Opt+click) are 👻 links from the start.** The text gets `[text](👻)` and the URL goes in the FC box. The highlight button and the 👻 button now make the same kind of link.

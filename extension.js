@@ -18303,10 +18303,14 @@ function meosGoldPrizeTry() {
   try {
     if (_meosGoldPrizeBusy || !meosPuzzleGold() || meosGoldPrizeAuthorFile()) return;   // v4.2.776-18: 作者の机は取りに行かない(数を1にしない)
     const gs = extensionContext.globalState, st = gs.get('meosGoldPrize');
-    if (st === 'won' || st === 'gone') return;
-    if (st === 'pending' && Date.now() - _meosGoldPrizeLast < 10 * 60 * 1000) return;
+    if (st === 'gone') return;
+    // ★v5.1.912(俊克 11.25 pm03:20「届くように直す」): v4.2.777-12 より前の達成者は p2.wav(GLD-KNIGHT)で 'won' になった= 今は誰でも持つ音。
+    //   'won' でも八咫烏(globalStorage/yatagarasu.wav)をまだ持っていなければ、'pending' と同じく p3.wav を取りに行く(10分に1回)
+    let _crowHave = false; try { _crowHave = require('fs').existsSync(require('path').join(extensionContext.globalStorageUri.fsPath, 'yatagarasu.wav')); } catch (_) { }
+    if (st === 'won' && _crowHave) return;
+    if ((st === 'pending' || st === 'won') && Date.now() - _meosGoldPrizeLast < 10 * 60 * 1000) return;
     _meosGoldPrizeBusy = true; _meosGoldPrizeLast = Date.now();
-    if (st !== 'pending') {
+    if (st !== 'pending' && st !== 'won') {
       meosGoldPrizeFetch(MEOS_GOLD_PRIZE_P1, (code, b) => { try {
         if (code === 404) { gs.update('meosGoldPrize', 'gone'); meosDbg('[goldPrize] gone'); }
         else if (code === 200 && b && b.toString('utf8', 0, MEOS_GOLD_PRIZE_MARK.length) === MEOS_GOLD_PRIZE_MARK) {
