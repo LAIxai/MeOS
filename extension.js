@@ -46389,7 +46389,7 @@ async function meosLinkStowUrl(editor, sel) {
       we.insert(doc.uri, new vscode.Position(at, 0), '<!-- Mew!FC [](' + url + ') -->\n');
     }
     await vscode.workspace.applyEdit(we);
-    try { const P = new vscode.Position(ln, lk.us + 3); editor.selection = new vscode.Selection(P, P); } catch (_) { }   // 書いた後は必ず true= 取消線の👻を重ねて書かない
+    try { setRefNoRaw(doc, ln); _meosGhostPress = { uri: doc.uri.toString(), line: ln }; const P = new vscode.Position(ln, lk.us + 3); editor.selection = new vscode.Selection(P, P); } catch (_) { }   // 書いた後は必ず true= 取消線の👻を重ねて書かない / v5.1.904: 押しただけの間は FC を開かない(すぐ畳む)
     try { meosDbg('[linkGhost] URL をしまう 行=' + (ln + 1) + (bx && !bx.target.trim() ? ' 空の箱へ' : ' 箱を足す')); } catch (_) { }
     return true;
   } catch (_) { return false; }
@@ -46431,8 +46431,11 @@ function meosLinkGhostClick(e) {
     if (b.ghost) { if (bx.target === G || !bx.target) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd + 2, L0, b.end - 1), bx.target); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), G); }
     else { if (bx.target !== G) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd + 2, L0, b.end - 1), G); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), b.target); }
     meosDbg('[linkGhost] 行=' + (ln + 1) + (b.ghost ? ' 開く' : ' しまう'));
-    setRefNoRaw(doc, L0);   // v5.1.903: 本文の行は Raw にしない(FC の👻から押しても、しまった姿に戻って見える)
-    vscode.workspace.applyEdit(we).then(() => { setTimeout(() => { try { if (prev && ed.selection && ed.selection.active.line === ln) { setRefNoRaw(doc, L0); ed.selection = new vscode.Selection(prev.anchor, prev.active); } } catch (_) { } }, 250); });
+    // ★v5.1.904(俊克 903 改良1「身代わり👻に替えた後、FCが折り畳まれるまで10秒近くかかる」): ログ= 押す前の所(本文の行)へカーソルを戻すと、
+    //   「カーソルの行の FC は開く」で畳む相手が無かった(次にカーソルを動かすまで)。身代り👻と同じ合図(_meosGhostPress)で、押しただけの間は開かない
+    const _press = () => { setRefNoRaw(doc, L0); _meosGhostPress = { uri: doc.uri.toString(), line: L0 }; };
+    _press();
+    vscode.workspace.applyEdit(we).then(() => { setTimeout(() => { try { if (prev && ed.selection && ed.selection.active.line === ln) { _press(); ed.selection = new vscode.Selection(prev.anchor, prev.active); } } catch (_) { } }, 250); });
   } catch (_) { }
 }
 function meosApplyMeLinkDecorations(editor) {

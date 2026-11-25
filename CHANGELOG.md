@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.904 (2026-11-25)
+- **The FC line folds at once after stowing a link.** After stowing the URL (from the FC line's 👻, or by selecting the URL and pressing 👻), the cursor sits on the link's line, and the rule "the cursor's line opens its FC lines" kept the FC line open until the cursor moved, often about 10 seconds. A press now counts as a press, as with the stand-in 👻, so the FC line folds right away.
+
 ### v5.1.903 (2026-11-25)
 - **An opened link looks like a normal link.** After you click the 👻 and the URL comes back into the text, MeOS no longer draws a second 👻 after the link (it could land on the next wrapped row). The FC line stays folded.
 - **Stow it again from the FC line.** When the line is shown raw, the 👻 in the FC line's `[](👻)` is a button with the hand pointer. Click it to put the URL back into the FC line; the link returns to `[label](👻)` and the text line is not left raw.
