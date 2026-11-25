@@ -46416,15 +46416,23 @@ function meosLinkGhostClick(e) {
     if (prev && prev.active.line === ln) return;   // 押す前からこの行に居た= 生の字を直している最中
     if (!meosIsProseDoc(doc) || meosModeAtLine(doc, ln) !== 'normal') return;
     const text = doc.lineAt(ln).text || ''; if (text.indexOf('](') < 0) return;
-    const b = meosLineEndLinks(text, _fcLinksFor(doc, ln)).find(x => (x.ghost && c > x.textEnd && c < x.end) || (x.opened && c > x.textEnd && c <= x.end));
-    if (!b) return;
-    const bx = meosLinkFcBoxes(doc, ln)[b.fcIdx]; if (!bx) return;
+    let b = null, bx = null, bodyLn = ln;
+    if (meosIsSpecLine(text)) {   // v5.1.903: 開いたリンクの FC の `[](👻)` の👻を押す(Raw で見えている時)= しまう
+      while (bodyLn - 1 >= 0 && meosIsSpecLine(doc.lineAt(bodyLn - 1).text || '')) bodyLn--; bodyLn--; if (bodyLn < 0) return;
+      const bxs = meosLinkFcBoxes(doc, bodyLn), j = bxs.findIndex(x => x.line === ln && x.target === '\u{1F47B}' && (c === x.ts || c === x.te)); if (j < 0) return;
+      bx = bxs[j]; b = meosLineEndLinks(doc.lineAt(bodyLn).text || '', _fcLinksFor(doc, bodyLn)).find(x => x.opened && x.fcIdx === j); if (!b) return;
+    } else {
+      b = meosLineEndLinks(text, _fcLinksFor(doc, ln)).find(x => x.ghost && c > x.textEnd && c < x.end);
+      if (!b) return;
+      bx = meosLinkFcBoxes(doc, ln)[b.fcIdx]; if (!bx) return;
+    }
+    const L0 = bodyLn;
     const G = '\u{1F47B}', we = new vscode.WorkspaceEdit();
-    if (b.ghost) { if (bx.target === G || !bx.target) return; we.replace(doc.uri, new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1), bx.target); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), G); }
-    else { if (bx.target !== G) return; we.replace(doc.uri, new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1), G); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), b.target); }
+    if (b.ghost) { if (bx.target === G || !bx.target) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd + 2, L0, b.end - 1), bx.target); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), G); }
+    else { if (bx.target !== G) return; we.replace(doc.uri, new vscode.Range(L0, b.textEnd + 2, L0, b.end - 1), G); we.replace(doc.uri, new vscode.Range(bx.line, bx.ts, bx.line, bx.te), b.target); }
     meosDbg('[linkGhost] 行=' + (ln + 1) + (b.ghost ? ' 開く' : ' しまう'));
-    setRefNoRaw(doc, ln);
-    vscode.workspace.applyEdit(we).then(() => { setTimeout(() => { try { if (prev && ed.selection && ed.selection.active.line === ln) { setRefNoRaw(doc, ln); ed.selection = new vscode.Selection(prev.anchor, prev.active); } } catch (_) { } }, 250); });
+    setRefNoRaw(doc, L0);   // v5.1.903: 本文の行は Raw にしない(FC の👻から押しても、しまった姿に戻って見える)
+    vscode.workspace.applyEdit(we).then(() => { setTimeout(() => { try { if (prev && ed.selection && ed.selection.active.line === ln) { setRefNoRaw(doc, L0); ed.selection = new vscode.Selection(prev.anchor, prev.active); } } catch (_) { } }, 250); });
   } catch (_) { }
 }
 function meosApplyMeLinkDecorations(editor) {
@@ -46441,6 +46449,7 @@ function meosApplyMeLinkDecorations(editor) {
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
+        try { const _ft = doc.lineAt(ln).text; if (_ft.indexOf('](\u{1F47B})') >= 0 && meosIsSpecLine(_ft)) { const _i = _ft.indexOf('](\u{1F47B})'); linkGhostBtn.push({ range: new vscode.Range(ln, _i + 2, ln, _i + 4) }); } } catch (_) { }   // v5.1.903: 開いたリンクの FC の👻= Raw で押してしまう
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         let text = _lTblRows.has(ln) ? meosMaskCellBarriers(doc.lineAt(ln).text) : doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; if (text.indexOf('`') >= 0) text = meosMaskCodeSpans(text); // v4.0.58: コードスパンの中はリンクにしない / v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
         let m; MEOS_MELINK_RE.lastIndex = 0;
@@ -46488,7 +46497,7 @@ function meosApplyMeLinkDecorations(editor) {
         for (const b of _lel) {
           hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
           if (b.ghost) { hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.textEnd + 2)); hideRanges.push(new vscode.Range(ln, b.end - 1, ln, b.end)); linkGhostBtn.push({ range: new vscode.Range(ln, b.textEnd + 2, ln, b.end - 1) }); }   // v5.1.901: しまった形= 👻 は見せて押せる
-          else if (b.opened) { hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end)); linkGhostBtn.push({ range: new vscode.Range(ln, b.end - 1, ln, b.end), renderOptions: { after: { contentText: '\u{1F47B}' } } }); }   // 開いた形= URL は隠し、後ろに押せる 👻
+          else if (b.opened) hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));   // 開いた形= ふつうのリンクの姿(v5.1.903: 👻は出さない= Raw の時だけ FC 行の👻が押せる)
           else hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));     // ]() を隠す
           if (b.comment) hideRanges.push(new vscode.Range(ln, b.comment.start, ln, b.comment.end)); // 行末の指定コメント(FC行から来た分は隠す相手が居ない)
           if (b.textEnd <= b.textStart) continue;

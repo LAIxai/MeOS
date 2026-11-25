@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.903 (2026-11-25)
+- **An opened link looks like a normal link.** After you click the 👻 and the URL comes back into the text, MeOS no longer draws a second 👻 after the link (it could land on the next wrapped row). The FC line stays folded.
+- **Stow it again from the FC line.** When the line is shown raw, the 👻 in the FC line's `[](👻)` is a button with the hand pointer. Click it to put the URL back into the FC line; the link returns to `[label](👻)` and the text line is not left raw.
+
 ### v5.1.902 (2026-11-25)
 - **Select a link's URL and press 👻 to stow it as a link 👻.** Before, this made a strikethrough 👻 inside the link's brackets, which could not be clicked open again and broke Cmd+click. Now the text becomes `[label](👻)` and the URL goes into the FC line as `[](URL)`. If the link button already left an empty box `[]()(2)(白/黄)//tip`, the URL fills it and the underline, colours and tip stay.
 - **Cmd+click works on a stowed link.** `[label](👻)` opens the URL kept in the FC line.
