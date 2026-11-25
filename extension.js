@@ -40852,9 +40852,9 @@ function meosStripHiddenForWidth(s) {
   //    まるごと表示文字に置き換えてから数える。★ここでも鉄則=**リンクは常に先に判定/先にマスク**(4度目)。
   //    (後ろのコメントは `}==` で終わるので①の spec 判定に当たらない=個別に外す必要がある。)
   if (t.indexOf('-->[') >= 0) t = t.replace(MEOS_MELINK_RE, (m, label) => label);
-  if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label, cmt, url) => (_meosTableLinksBare && !cmt && !String(url || '').trim()) ? m : label);   // v4.2.776-9: 行先の空の印 [表示]() は FC群が無ければ括弧も見えている(776-8 はこの手前で外されて効かなかった) // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
+  if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label, cmt, url) => (_meosTableLinksBare && !cmt && !String(url || '').trim()) ? m : (!cmt && url === '\u{1F47B}' && !_meosTableLinksBare ? label + url : label));   // v5.1.930: しまった形の潰れ👻は幅に数える   // v4.2.776-9: 行先の空の印 [表示]() は FC群が無ければ括弧も見えている(776-8 はこの手前で外されて効かなかった) // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
   // v4.0.94: 行末一括コメント方式。指定コメントは①で消えるので、ここでは印 `[表示]()` を表示文字に戻すだけ。
-  if (meosHasEmptyLink(t) && !_meosTableLinksBare) t = t.replace(/(?<!!)\[([^\]\n]*)\]\((?:\u{1F47B})?\)/gu, (m, label) => label);   // v4.2.776-8: 表の後に FC群が無ければ印は描かれない= 括弧も見えている
+  if (meosHasEmptyLink(t) && !_meosTableLinksBare) t = t.replace(/(?<!!)\[([^\]\n]*)\]\((\u{1F47B})?\)/gu, (m, label, g) => label + (g || ''));   // v5.1.930: しまった形 `[表示](👻)` の👻は見えている(潰れ👻)= 幅に数える   // v4.2.776-8: 表の後に FC群が無ければ印は描かれない= 括弧も見えている
   // v4.0.93: 参照形式 `[表示][ref]` も表示文字だけ。ここには定義表が無いので、定義の有無は見ない
   //   (表の中で未定義の参照を書くのは病的so、定義済みに寄せる方が実害が小さい)。
   if (t.indexOf('][') >= 0) t = t.replace(MEOS_MD_REFLINK_RE, (m, label) => label);
@@ -41432,22 +41432,30 @@ function meosTcwDisplay(x) { return String(meosStripHiddenForWidth(x) || '').rep
 // ★v5.1.208(俊克 pm04:43「中途半端にするよりは、セル折り返しの仕上げもやったほうが良い」= 引き継ぎ①): 見せかけの字に飾りを残す=
 //   セルの字を1字ずつ飾り(b 太字 / i 斜体 / c インラインコード / l リンク)付きで返す。印は私用の番兵(U+E140〜)に置き換えてから meosStripHiddenForWidth に通し、
 //   残った番兵で飾りを数える。字が meosTcwDisplay と1字でも違えば飾りは捨てる(幅の計算を今までと1つにする)
-function meosTcwStyled(x) {
+function meosTcwStyled(x, ctr) {
   const plain = meosTcwDisplay(x); const none = { text: plain, st: Array.from(plain).map(() => '') };
   try {
     let t = String(x || ''); const codes = [];
     t = t.replace(/(`+)([^`]*?)\1/g, (m, q, inner) => { codes.push(inner); return '\uE14A' + String.fromCharCode(0xE200 + codes.length - 1) + '\uE14B'; });
-    t = t.replace(/(?<!\!)\[([^\]\n]+)\]\(([^()\s<][^()\n]*)\)/g, '\uE148$1\uE149');
+    // ★v5.1.930(俊克 929 バグ1「ケース10は、つぶれた👻がそれぞれのセルに出てこない」): リンクに行の中の通し番号(ctr)を付ける= 描く側が FC の色を引く。
+    //   しまった形 `[表示](👻)` の👻= 潰れ👻(\uE14C)・開いた形 `[表示👻](URL)` の👻= 下線なしの👻(\uE14E)
+    const _lk0 = ctr ? ctr.n : 0; let _lk = 0;
+    t = t.replace(/(?<!\!)\[([^\]\n]+)\]\(([^()\s<][^()\n]*)\)/g, (m, lb, tg) => { const id = String.fromCharCode(0xE300 + _lk0 + (_lk++));
+      if (tg === '\u{1F47B}') return '\uE148' + id + lb + '\uE149\uE14C\u{1F47B}\uE14D';
+      if (lb.endsWith('\u{1F47B}') && lb.length > 2) return '\uE148' + id + lb.slice(0, -2) + '\uE149\uE14E\u{1F47B}\uE14F';
+      return '\uE148' + id + lb + '\uE149'; });
+    if (ctr) ctr.n += _lk;
     t = t.replace(/\*\*\*([^*\n]+?)\*\*\*/g, '\uE140\uE144$1\uE145\uE141').replace(/\*\*([^*\n]+?)\*\*/g, '\uE140$1\uE141')
       .replace(/(?<![*A-Za-z0-9])\*([^*\n]+?)\*(?![*A-Za-z0-9])/g, '\uE144$1\uE145').replace(/(?<![_A-Za-z0-9])_([^_\n]+?)_(?![_A-Za-z0-9])/g, '\uE144$1\uE145');
     t = String(meosStripHiddenForWidth(t) || '').replace(/\\\|/g, '|');
-    const ch = [], st = []; let b = 0, it = 0, cd = 0, ln = 0;
+    const ch = [], st = []; let b = 0, it = 0, cd = 0, ln = 0, lid = '', gq = '';
     for (const u of Array.from(t)) {
       const cp = u.codePointAt(0);
       if (cp === 0xE140) b++; else if (cp === 0xE141) b = Math.max(0, b - 1); else if (cp === 0xE144) it++; else if (cp === 0xE145) it = Math.max(0, it - 1);
       else if (cp === 0xE148) ln++; else if (cp === 0xE149) ln = Math.max(0, ln - 1); else if (cp === 0xE14A) cd++; else if (cp === 0xE14B) cd = Math.max(0, cd - 1);
+      else if (cp >= 0xE300 && cp < 0xE400) lid = '#' + (cp - 0xE300); else if (cp === 0xE14C) gq = 'g'; else if (cp === 0xE14E) gq = 'q'; else if (cp === 0xE14D || cp === 0xE14F) gq = '';
       else if (cp >= 0xE200 && cp < 0xE200 + codes.length) { for (const v of Array.from(codes[cp - 0xE200])) { ch.push(v); st.push('c' + (ln ? 'l' : '')); } }
-      else { ch.push(u); st.push((b ? 'b' : '') + (it ? 'i' : '') + (ln ? 'l' : '') + (cd ? 'c' : '')); }
+      else { ch.push(u); st.push(gq ? gq + lid : ((b ? 'b' : '') + (it ? 'i' : '') + (ln ? 'l' + lid : '') + (cd ? 'c' : ''))); }
     }
     if (ch.join('') !== plain) return none;
     return { text: plain, st };
@@ -41468,7 +41476,7 @@ function meosTcwLayout(lines, W, draw) {
   let _calc = null; const _hasCalc = MEOS_TABLE_CALC && lines.some(t => MEOS_CALC_RE.test(t)); if (_hasCalc && meosTableAutoCalc()) { try { _calc = meosCalcResolver(rs, sep); } catch (_) { _calc = null; } }
   const calcFix = (i, k, x) => { if (!_calc) return x; const m = MEOS_CALC_RE.exec(x || ''); if (!m) return x; try { if (meosCalcCellRole(rs, sep, i, k) === 'boundary') return x;
     const before = x.slice(0, m.index), after = x.slice(m.index + m[0].length).replace(/^\s*-?[\d.,]+/, ''); return before + meosFmtCalc(_calc(i, k)) + after; } catch (_) { return x; } };
-  const nc = Math.max(...rs.map(r => r.length)); const sty = rs.map((r, i) => i === sep ? [] : r.map((x, k) => meosTcwStyled(calcFix(i, k, x)))); const vis = rs.map((r, i) => i === sep ? r : sty[i].map(o => o.text));   // v5.1.208: 飾り付き
+  const nc = Math.max(...rs.map(r => r.length)); const sty = rs.map((r, i) => { if (i === sep) return []; const ctr = { n: 0 }; return r.map((x, k) => meosTcwStyled(calcFix(i, k, x), ctr)); });   /* v5.1.930: 行の中のリンクの通し番号 */ const vis = rs.map((r, i) => i === sep ? r : sty[i].map(o => o.text));   // v5.1.208: 飾り付き
   const span = rs.map((r, i) => { const a = new Array(nc).fill(1); if (i === sep) return a; for (let k = 0; k < nc; k++) { if (a[k] === 0) continue; const m = HM.exec(r[k] || ''); if (m) { const n = Math.max(1, Math.min(nc - k, parseInt(m[1], 10) || 1)); a[k] = n; for (let q = k + 1; q < k + n; q++) a[q] = 0; } } return a; });   // v5.1.430: n= 結合の頭の列数・0= 頭に覆われた列
   // v5.1.432: 縦の結合= vh[i][k]= 頭がまたがる行の数・vc[q][k]= 頭に覆われた(下の)セル。覆われた行も頭と同じ横の広がり(span)にする。区切りの行は越えない
   const vh = rs.map(() => new Array(nc).fill(0)), vc = rs.map(() => new Array(nc).fill(false));
@@ -41643,10 +41651,17 @@ function meosApplyTableCellWrapDecorations(editor) {
           // ★v5.1.208: 段ごとに駒(縦線・飾りの塊)を桁の位置(ch)に置く。太字=太く/斜体=傾け/インラインコード=クリームの板(家の板と同じ #f3e6c4・濃い茶の字)/リンク=リンクの色＋下線
           // ★v5.1.553(俊克 11.07 am10:30 バグ1「GPTの表」= 最後の行の4段目が丸ごと空・3〜5段目が太い): 段 j の駒をソースの j 桁目に差していた= 行が `| **Prettier** |` だと3桁目は隠れた ** の中。
           //   before は差した所の字の飾りを受け継ぐ(隠し= font-size:0 で字も em も0・太字の範囲= 太くなる)→ 段の番号と桁は無関係なので、どの段も行頭(0桁)に差す(見出しの帯の縦線と同じ)
+          // ★v5.1.930: リンクの色= 行の n 番目のリンク → その行の FC の箱の色(段落の 👻リンクと同じ meosMeLinkSpec)。しまった👻は潰れ👻・開いた👻は字のまま
+          let _lsp = null; const lspOf = (n) => { if (_lsp === null) { _lsp = []; try { const _raw = meosMaskCellBarriers(t), _bs = meosLineEndLinks(_raw, _fcLinksFor(doc, ln2)), _re = /(?<!\!)\[([^\]\n]+)\]\(([^()\s<][^()\n]*)\)/g; let _m; while ((_m = _re.exec(_raw)) !== null) { const _b = _bs.find(q => q.start === _m.index); _lsp.push(_b ? meosMeLinkSpec(_b.spec) : null); } } catch (_) { } } return _lsp[n] || null; };
           (L.rows[i].pc || []).forEach((row, j) => { const top = (Math.round((j + shift) * lhEm * 1000) / 1000) + 'em';
-            row.forEach(pz => { const s0 = pz.st || '', code = s0.indexOf('c') >= 0, link = s0.indexOf('l') >= 0, col = code ? '#3b3020' : (link ? 'var(--vscode-textLink-foreground)' : ((s0.indexOf('b') >= 0 && boldCol) ? boldCol : ((s0.indexOf('i') >= 0 && itCol) ? itCol : fg)));
+            row.forEach(pz => { const s0 = pz.st || '', code = s0.indexOf('c') >= 0, gs = s0[0] === 'g', gq = s0[0] === 'q', link = !gs && !gq && s0.indexOf('l') >= 0;
+              const _li = s0.indexOf('#'), sp1 = (link && _li >= 0) ? lspOf(parseInt(s0.slice(_li + 1), 10)) : null;
+              let fk1 = sp1 ? sp1.fg : '', lcss = ''; if (sp1 && sp1.bg && !fk1 && DARK_BG_KEYS.has(sp1.bg)) fk1 = 'white';
+              const cc1 = (fk1 && HIGHLIGHT_FG_COLORS[fk1]) ? HIGHLIGHT_FG_COLORS[fk1] : '';
+              if (sp1) lcss = meosMeLinkUnderline(sp1.ul, cc1) + (sp1.bg && HIGHLIGHT_COLORS[sp1.bg] ? '; background-color: ' + HIGHLIGHT_COLORS[sp1.bg] : '');
+              const col = code ? '#3b3020' : (link ? (cc1 || 'var(--vscode-textLink-foreground)') : ((s0.indexOf('b') >= 0 && boldCol) ? boldCol : ((s0.indexOf('i') >= 0 && itCol) ? itCol : fg)));
               pieces.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
-                textDecoration: (link ? 'underline' : 'none') + '; position: absolute; left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
+                textDecoration: (link ? (lcss || 'underline') : 'none') + '; position: absolute;' + (gs ? ' display: inline-block; width: 0.94em; transform: translateY(0.3em) scale(0.75, 1.3); transform-origin: 0 100%;' : '') + ' left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
                   + (s0.indexOf('b') >= 0 ? ' font-weight: 900; -webkit-text-stroke: 0.5px currentcolor;' : '')   /* ★v5.1.210(俊克 pm11:59「太字に見えない・74行目の表の外の太字と同じ太さに」): 実機(CDP)で測った= 表の外の太字は MeOS の飾り font-weight 900 ＋ 縁取り0.5px・見せかけは bold(700)だった→ 同じ値に */ + (s0.indexOf('i') >= 0 ? ' font-style: italic;' : '')
                   + (code ? ' background: #f3e6c4; border-radius: 4px; box-shadow: 0 0 0 1px #cbb98c;' : '') } } }); }); });
           logs.push((ln2 + 1) + ':R' + meosTcwRowsOf(t, W) + '/h' + L.rows[i].h);
@@ -46673,6 +46688,7 @@ function meosApplyMeLinkDecorations(editor) {
         // v4.0.215: 表の行はセル境界 `|` を壁にする。`[題名 | 続き](url)` のように**ラベルの中に生の `|`**that在ると、
         //   GFMは先に `|` で割るのでリンクは成立しない(外の世界では壊れている)。MeOSだけthat繋げて描くと、
         //   ①外と食い違い ②整形はセル単位で測るので**表that凸凹**になる。→ 描かない=書き手that `\|` に直せる。
+        if (_lTblRows.has(ln) && meosTcwIsVirtual(doc, ln)) continue;   // v5.1.930(俊克 929「表の下端に青い線が出ているのはなぜ?」): 見せかけで描く表= 隠れた本物の行にリンクの色を塗らない(地の色がはみ出して線に見えた)
         const raw = _lTblRows.has(ln) ? meosMaskCellBarriers(doc.lineAt(ln).text) : doc.lineAt(ln).text;
         if (raw.indexOf('](') < 0 && raw.indexOf('][') < 0) continue;
         // v4.0.94: 行末一括コメント方式 `[表示]()` ＋ 行末の `<!-- Mew! [](行先)(色)(N)//tip -->`。

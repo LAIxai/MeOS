@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.930 (2026-11-26)
+- Tables drawn in the wrapped table view now show 👻 links with the colors and underline set in their FC comments. A stowed link shows the squashed 👻, and an opened link shows a plain 👻.
+- Fixed: thin blue lines appeared under such a table. They were link colors painted on the hidden source lines.
+
 ### v5.1.929 (2026-11-26)
 - Diagnostics: for 90 seconds after startup, MeOS checks how fast the window answers. If an answer takes longer than 0.7 seconds, the debug log records how long it took and what MeOS did just before. This runs only when the debug log is turned on.
 
