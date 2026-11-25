@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.926 (2026-11-25)
+- **The 👻 of hidden text is a button in Raw view too.** In a line opened with ✏️, click either edge of the 👻: the hidden text moves from the FC line into the text (`~~👻text~~`), and back again. The line stays in Raw view, the same as the link 👻.
+
 ### v5.1.925 (2026-11-25)
 - **Hidden text gets the squeezed 👻 too.** When text is hidden with 👻 (`~~👻~~`, the text kept in the FC line), its 👻 is drawn squeezed, the same as a stowed link. While the hidden text is shown, the 👻 keeps its normal width.
 

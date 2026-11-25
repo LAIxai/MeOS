@@ -8163,7 +8163,17 @@ function meosGhostBtnClick(e) {
     if (!meosGhostRawIsOpen(doc, ln) && sel.active.character === doc.lineAt(ln).text.length && meosLineHasGhostStore(doc, ln)) {
       _meosGhostRawOpen = { uri: doc.uri.toString(), line: ln }; _meosGhostPress = null;
       meosDbg('[ghostRaw] ✏️ 行=' + (ln + 1) + ' → Raw'); setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0); return true; }
-    if (meosGhostRawIsOpen(doc, ln)) return false;   // Raw の間は👻もふつうの字(押しても見せ隠ししない)
+    // ★v5.1.926(俊克 925 改良1「Rawで👻をボタン化するかどうか…統一」→ pm07:31「揃えてみましょう」): Raw の間も👻の両端に落ちた時だけ押したと読む(リンクの v5.1.906 と同じ)。
+    //   字が FC ⇄ 本文を移る(meosGhostToggleEdit)・Raw のまま・カーソルは動かさない。他の所は字を直すためのクリック
+    if (meosGhostRawIsOpen(doc, ln)) {
+      const _t = doc.lineAt(ln).text, _c = sel.active.character; let _at = -1;
+      { const _re = /~~👻/gu; let _m; while ((_m = _re.exec(_t)) !== null) if (_c === _m.index + 2 || _c === _m.index + 4) { _at = _m.index; break; } }
+      if (_at < 0 || meosGhostStoreAt(doc, ln, _t, _at) == null) return false;
+      const _tg2 = meosGhostToggleEdit(ed, ln, _at); if (!_tg2) return false;
+      Promise.resolve(_tg2).then(() => { try { refresh(ed); } catch (_) { } try { meosApplyMeLinkDecorations(ed); } catch (_) { } });
+      meosDbg('[ghostBtn] Raw のまま 行=' + (ln + 1) + ' 桁=' + _at);
+      return true;
+    }
     const at = meosGhostBtnHit(doc, ln, sel.active.character); if (at < 0) return false;
     const k = meosGhostShownKey(doc, ln, at);
     const _tg = _meosGhostShown.has(k) ? false : meosGhostToggleEdit(ed, ln, at);   // v5.1.885: 本文へ戻す/しまい直す(戻せない字は飾りで見せる)
@@ -46602,6 +46612,7 @@ function meosApplyMeLinkDecorations(editor) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         try { const _ft = doc.lineAt(ln).text; if (_ft.indexOf('](\u{1F47B})') >= 0 && !meosIsSpecLine(_ft) && cursorLines.has(ln)) {   /* v5.1.919: ボタンは本文の👻だけ(FC 行の👻は押せる印にしない) */ let _i = _ft.indexOf('](\u{1F47B})'); while (_i >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _i + 2, ln, _i + 4) }); _i = _ft.indexOf('](\u{1F47B})', _i + 4); } } } catch (_) { }
+        try { const _ft3 = doc.lineAt(ln).text; if (cursorLines.has(ln) && _ft3.indexOf('~~\u{1F47B}') >= 0 && meosGhostRawIsOpen(doc, ln)) { const _re3 = /~~\u{1F47B}/gu; let _m3; while ((_m3 = _re3.exec(_ft3)) !== null) linkGhostBtn.push({ range: new vscode.Range(ln, _m3.index + 2, ln, _m3.index + 4) }); } } catch (_) { }   // v5.1.926: Raw の取消線👻も手の形
         try { const _ft2 = doc.lineAt(ln).text; if (cursorLines.has(ln) && _ft2.indexOf('\u{1F47B}](') >= 0 && !meosIsSpecLine(_ft2)) { let _j = _ft2.indexOf('\u{1F47B}]('); while (_j >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _j, ln, _j + 2) }); _j = _ft2.indexOf('\u{1F47B}](', _j + 2); } } } catch (_) { }   // v5.1.919: Raw の開いた形 `[表示👻](URL)` の👻も手の形   // v5.1.906: Raw の本文の Proxy👻 も手の形   // v5.1.903: 開いたリンクの FC の👻= Raw で押してしまう
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         let text = _lTblRows.has(ln) ? meosMaskCellBarriers(doc.lineAt(ln).text) : doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; if (text.indexOf('`') >= 0) text = meosMaskCodeSpans(text); // v4.0.58: コードスパンの中はリンクにしない / v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
