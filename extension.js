@@ -18237,7 +18237,7 @@ const MEOS_GOLD_PRIZE_MARK = 'MEOS-P1';   // 仮の札の中身(頭)
 //   コンプリートの賞品(P2= p3.wav)= 八咫烏の一鳴き YATAGARASU。取れたら globalStorage/yatagarasu.wav・作者の机は devVsixDir/yatagarasu.wav(置けば一覧に出る)。
 //   試聴すると Me Dock の守り神が八咫烏になり、鳴るたびに口を開ける(白虎と同じ道)。音そのものはまだ無い= 今は誰の一覧にも出ない。
 const MEOS_CROW_PRIZE_NAME = 'YATAGARASU';
-function meosCrowPath() { try { const fs = require('fs'), path = require('path'); if (meosIsAuthorDesk()) { const f = path.join(String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '')).trim(), 'yatagarasu.wav'); if (fs.existsSync(f)) return f; } if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const g = path.join(extensionContext.globalStorageUri.fsPath, 'yatagarasu.wav'); return fs.existsSync(g) ? g : ''; } catch (_) { return ''; } }
+function meosCrowPath() { try { const fs = require('fs'), path = require('path'); if (meosIsAuthorDesk()) { const f = path.join(String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '')).trim(), 'yatagarasu.wav'); if (fs.existsSync(f)) return f; } const b = path.join(extensionContext.extensionPath, 'media', 'sound', 'yatagarasu.wav'); return fs.existsSync(b) ? b : ''; } catch (_) { return ''; } }   // ★v5.1.916(俊克 11.25 pm04:20「v5.1で全員に八咫烏の音を入れよう」): 日曜の顔なので声も全員に= vsix に同梱(測った表から合成した v4・On-Jin の原音は使わない)。コンプリートの賞品は別の音(p3.wav・gold-prize.wav)
 const MEOS_GOLD_PRIZE_NAME = 'GLD-KNIGHT';   // v4.2.776-19(俊克 改良1「字が切れるので GLD-KNIGHT に」): 前の名前 GOLDEN KNIGHT も同じ音として読む
 // v4.2.776-18(俊克「私は初代GAROとして、音リストに召喚してくれるよね?」): 作者の机は Release から取らず(数を1にしない)、devVsixDir の golden-knight.wav を使う
 function meosGoldPrizeAuthorFile() { try { if (!meosIsAuthorDesk()) return ''; const f = require('path').join(String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '')).trim(), 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
@@ -18306,7 +18306,7 @@ function meosGoldPrizeTry() {
     if (st === 'gone') return;
     // ★v5.1.912(俊克 11.25 pm03:20「届くように直す」): v4.2.777-12 より前の達成者は p2.wav(GLD-KNIGHT)で 'won' になった= 今は誰でも持つ音。
     //   'won' でも八咫烏(globalStorage/yatagarasu.wav)をまだ持っていなければ、'pending' と同じく p3.wav を取りに行く(10分に1回)
-    let _crowHave = false; try { _crowHave = require('fs').existsSync(require('path').join(extensionContext.globalStorageUri.fsPath, 'yatagarasu.wav')); } catch (_) { }
+    let _crowHave = false; try { _crowHave = require('fs').existsSync(require('path').join(extensionContext.globalStorageUri.fsPath, 'gold-prize.wav')); } catch (_) { }   // v5.1.916: 賞品は八咫烏でなく別の音(gold-prize.wav)
     if (st === 'won' && _crowHave) return;
     if ((st === 'pending' || st === 'won') && Date.now() - _meosGoldPrizeLast < 10 * 60 * 1000) return;
     _meosGoldPrizeBusy = true; _meosGoldPrizeLast = Date.now();
@@ -18322,11 +18322,11 @@ function meosGoldPrizeTry() {
     }
     meosGoldPrizeFetch(MEOS_GOLD_PRIZE_P2, (code, b) => { try {
       if (code === 200 && b && b.length >= 44 && b.toString('ascii', 0, 4) === 'RIFF') {
-        const fs = require('fs'), path = require('path'), d = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'yatagarasu.wav'), b);   // v5.0.9: 賞品は八咫烏の一鳴き(GLD-KNIGHT は v4.2.777-12 から同梱)
+        const fs = require('fs'), path = require('path'), d = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'gold-prize.wav'), b);   // v5.1.916: 賞品は八咫烏でなく別の音(八咫烏は同梱)。📌名前と🔔一覧の札は音が決まった時に付ける(p3.wav を上げるのはその後)
         gs.update('meosGoldPrize', 'won'); meosDbg('[goldPrize] won ' + b.length);
         // v4.2.776-20(俊克「⚜️を獲得した人には注意事項を。このアラーム音を聞いて何が起きても、当局は一切関知しない」)
-        vscode.window.showInformationMessage('\ud83d\udc26\u200d\u2b1b YATAGARASU is now yours \u2014 find it in the \ud83d\udd14 list. Caution: it is very loud, even at half volume. Whatever happens when you hear this alarm, the authorities will disavow any knowledge of it.');
-        try { meosSoundSpawn(MEOS_CROW_PRIZE_NAME); meosRoarSignal(MEOS_CROW_PRIZE_NAME); } catch (_) { } setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300);
+        vscode.window.showInformationMessage('\u269c\ufe0f A sound for you alone is now yours \u2014 find it in the \ud83d\udd14 list. Caution: it is very loud, even at half volume. Whatever happens when you hear this alarm, the authorities will disavow any knowledge of it.');
+        setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300);
       }
     } catch (_) { } _meosGoldPrizeBusy = false; });
   } catch (_) { _meosGoldPrizeBusy = false; }
