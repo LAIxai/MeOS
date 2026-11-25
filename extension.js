@@ -3294,6 +3294,7 @@ function parseColorSpec(content, single, scan) {
 // 記号として隠す。タイムスタンプはプレーンテキストとして残る(grep可・往復で壊れない)。
 let strikeBodyDecoration;     // 旧形 ~~text~~ 用: 赤い取消線(line-through)
 let strikeMarkerDecoration;   // ~~ と (日時) と { } を隠す
+let ghostSquashBtnDecoration;   // ★v5.1.925(俊克 pm07:16「文字列に対する👻指定でも、同様に👻を潰して」): しまった形 ~~👻~~ の👻(字は FC)= リンクと同じ潰れ👻
 let ghostInlineBtnDecoration; let ghostRawBtnDecoration; let ghostOpenNoLineDecoration;   // v5.1.889
    // v5.1.877: 身代り👻の行の行末の✏️(押すとその行を Raw) // v5.1.870: 本文の ~~👻~~ の👻= 押すとその行が Raw(手のポインター)
 // v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ 用。線色別の line-through 装飾。
@@ -3858,6 +3859,7 @@ function disposeDecorations() {
   strikeBodyDecoration = undefined;
   if (strikeMarkerDecoration) strikeMarkerDecoration.dispose();
   strikeMarkerDecoration = undefined;
+  if (ghostSquashBtnDecoration) { ghostSquashBtnDecoration.dispose(); ghostSquashBtnDecoration = undefined; }   // v5.1.925
   if (ghostInlineBtnDecoration) { ghostInlineBtnDecoration.dispose(); ghostInlineBtnDecoration = undefined; } // v5.1.870
   if (ghostOpenNoLineDecoration) { ghostOpenNoLineDecoration.dispose(); ghostOpenNoLineDecoration = undefined; } // v5.1.889
   if (ghostRawBtnDecoration) { ghostRawBtnDecoration.dispose(); ghostRawBtnDecoration = undefined; } // v5.1.877
@@ -4287,6 +4289,7 @@ function makeDecorations() {
   // ★v5.1.889(俊克 888 バグ1「外に出ると取消線が表示されてしまう。しかも白色」): テーマ(Monokai Dimmed 等)が Markdown の ~~…~~ に字の色で線を引く=
   //   888 で MeOS の赤線を外したら、下に居たテーマの線が見えた。開いた👻の字は線を消す(装飾の text-decoration:none はテーマの線に勝つ= v0.9.99960 の知見)
   ghostOpenNoLineDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none !important', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  ghostSquashBtnDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; ' + MEOS_GHOST_SQUASH_CSS + ' cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v5.1.925
   ghostInlineBtnDecoration = vscode.window.createTextEditorDecorationType({
     textDecoration: 'none; cursor: ' + meosHandCursor() + ';',
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
@@ -8871,7 +8874,7 @@ function applyPrettyLabels(editor) {
   const strikeBodyItems = [];
   const strikeMarkerRanges = [];
   const ghostOpenNoLineItems = [];   // v5.1.889
-  const ghostInlineBtnItems = []; const ghostRawBtnItems = [], _ghostRawBtnLines = new Set();   // v5.1.877: 行末の✏️   // v5.1.870: ~~👻~~ の👻(押すと Raw)
+  const ghostInlineBtnItems = [], ghostSquashBtnItems = []; const ghostRawBtnItems = [], _ghostRawBtnLines = new Set();   // v5.1.877: 行末の✏️   // v5.1.870: ~~👻~~ の👻(押すと Raw)
   // v0.9.699: 新形取消線 ~~{本文(線色/背景色)//コメント}~~ の線色別範囲。
   const strikeColorItemsByKey = {}; // { red:[{range,hoverMessage?}...], ... }
   for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) strikeColorItemsByKey[key] = [];
@@ -9353,7 +9356,7 @@ function applyPrettyLabels(editor) {
               const _bgc = _gss.bgKey ? HIGHLIGHT_COLORS[_gss.bgKey] : null;
               _gItem.renderOptions = { after: { contentText: _gs, textDecoration: 'line-through; text-decoration-color: ' + _lc + '; text-decoration-thickness: 2px;', backgroundColor: _bgc || undefined, color: _gss.fgKey ? HIGHLIGHT_FG_COLORS[_gss.fgKey] : undefined } };
             }
-            ghostInlineBtnItems.push(_gItem);
+            if (_gs && !_gItem.renderOptions) ghostSquashBtnItems.push(_gItem); else ghostInlineBtnItems.push(_gItem);   // v5.1.925: しまった字があって見せていない= 潰れ👻(見せている時は後ろの字まで潰れるので素の幅)
             // ★v5.1.881(俊克 880 スクショ2「FC 行が見えている時に✏️が表示されるのはおかしい」): ✏️は FC 行(しまった字)が畳まれて見えない時だけ
             if (_gs && !_ghostRawBtnLines.has(line) && Date.now() - _meosGhostChAt < 1500) try { const _st = _meosGhostVr.get(editor); meosDbg('[ghostPen] 行=' + (line + 1) + ' ✏️=' + meosGhostFcHidden(editor, line) + ' 行数=' + editor.document.lineCount + ' 範囲の時の行数=' + (_st ? _st.n : '-') + ' 増減=' + JSON.stringify(_st ? _st.ch : null) + ' 範囲=' + (editor.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',') + ' 変更から=' + (Date.now() - _meosGhostChAt) + 'ms'); } catch (_) { }   // v5.1.883 計測
             if (_gs && !_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
@@ -9985,6 +9988,7 @@ function applyPrettyLabels(editor) {
     setDecoCached(editor, strikeMarkerDecoration, 'stMarker', strikeMarkerRanges);
   }
   if (ghostInlineBtnDecoration) setDecoCached(editor, ghostInlineBtnDecoration, 'ghostBtn', ghostInlineBtnItems);
+  if (ghostSquashBtnDecoration) setDecoCached(editor, ghostSquashBtnDecoration, 'ghostSquashBtn', ghostSquashBtnItems);   // v5.1.925
   // ★v5.1.890(俊克 11.24 pm05:38 改良1「✏️ボタンを押して、1行分のRawとFC行が出たとき、身代わり👻に白い取消線が入るのは、入れないようにしよう」):
   //   Raw の行は MeOS が何も描かない= テーマの ~~…~~ の線(字の色)だけが残る。✏️で開いた行の ~~👻…~~ は線を消す
   try { if (_meosGhostRawOpen && _meosGhostRawOpen.uri === editor.document.uri.toString()) { const _gl = _meosGhostRawOpen.line; if (_gl >= 0 && _gl < editor.document.lineCount) { const _gt = editor.document.lineAt(_gl).text, _gre = /~~👻[^~\n]*?~~/gu; let _gm; while ((_gm = _gre.exec(_gt)) !== null) ghostOpenNoLineItems.push({ range: new vscode.Range(_gl, _gm.index, _gl, _gm.index + _gm[0].length) }); } } } catch (_) { }
@@ -46399,6 +46403,8 @@ function meosFindMembraneLineByName(doc, name) { const needle = String(name || '
 let _meosDockStateTimer = null; // v4.0.236: Me Dockのボタンの姿を計算し直す待ち
 let meLinkHideDeco = null; const meLinkStyleCache = new Map();
 let meosLinkGhostBtnDeco = null;   // v5.1.901
+// v5.1.925: 潰れ👻の CSS は1つ(リンクのしまった形も、取消線のしまった形も同じ姿= v5.1.924 [検収印]の数字)
+const MEOS_GHOST_SQUASH_CSS = 'display: inline-block; width: 0.94em; transform: translateY(0.3em) scale(0.75, 1.3); transform-origin: 0 100%;';
 let meosLinkGhostSquashDeco = null;   // ★v5.1.920(俊克 919 改良1「区別をつける為に、👻の横幅を半分に潰した形に…`[表示](👻)`のときは、間を詰めるので」): しまった形の👻= 横に半分
 // v5.1.902: リンクの URL を選んで👻を押した= URL を FC の箱へしまい、本文には👻を残す。リンクの URL でなければ false
 // ★v5.1.910(俊克 909 改良1「MeOSのハイライトやtipの入ったリンク記法として、これを統一しよう。素のリンクに対して👻ボタンを付けると、ハイライトやtipの指定を組み込むようにする」):
@@ -46687,7 +46693,7 @@ function meosApplyMeLinkDecorations(editor) {
     editor.setDecorations(meLinkHideDeco, hideRanges);
     if (!meosLinkGhostBtnDeco) meosLinkGhostBtnDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosLinkGhostBtnDeco, linkGhostBtn);   // v5.1.901
-    if (!meosLinkGhostSquashDeco) meosLinkGhostSquashDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; display: inline-block; width: 0.94em; transform: translateY(0.3em) scale(0.75, 1.3); transform-origin: 0 100%; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (!meosLinkGhostSquashDeco) meosLinkGhostSquashDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; ' + MEOS_GHOST_SQUASH_CSS + ' cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosLinkGhostSquashDeco, linkGhostSquash);   // v5.1.920 / v5.1.921(俊克 920 改良1「横を70%に潰し、縦方向を上に1.3倍に延ばしてみよう」): 下の端を支点に上へ。幅の箱= 👻(約1.25em)×0.7 / v5.1.922(俊克 921 改良1「下線の高さまで下げよう」): 足を下線まで 0.4em(スクショで約8px) / v5.1.923(俊克「0.1em上げて」): 0.3em=[検収印] / v5.1.924(俊克「横幅を75%に」): 幅の箱 1.25×0.75≈0.94em
     for (const [style, type] of meLinkStyleCache) editor.setDecorations(type, styleRanges.get(style) || []);
     for (const [style, ranges] of styleRanges) { if (meLinkStyleCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meLinkStyleCache.set(style, type); editor.setDecorations(type, ranges); }

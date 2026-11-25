@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.925 (2026-11-25)
+- **Hidden text gets the squeezed 👻 too.** When text is hidden with 👻 (`~~👻~~`, the text kept in the FC line), its 👻 is drawn squeezed, the same as a stowed link. While the hidden text is shown, the 👻 keeps its normal width.
+
 ### v5.1.924 (2026-11-25)
 - The stowed 👻 is now 75% wide.
 
