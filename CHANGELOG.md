@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.915 (2026-11-25)
+- Removed the author's-desk trial sound entries from the sound list.
+
 ### v5.1.914 (2026-11-25)
 - Author's desk only: the sound list shows every version of the trial sound file. Nothing changes for other users.
 

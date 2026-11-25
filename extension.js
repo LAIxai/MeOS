@@ -2886,7 +2886,6 @@ function meosSoundList() {
   try { if (extensionContext && extensionContext.globalState.get('meosDingDongWon')) out.push('DING-DONG!'); } catch (_) { }
   try { if (meosGoldPrizePath()) out.push(MEOS_GOLD_PRIZE_NAME); } catch (_) { }   // v4.2.776-13
   try { if (meosCrowPath()) out.push(MEOS_CROW_PRIZE_NAME); } catch (_) { }   // v5.0.9: コンプリートの賞品
-  try { if (meosIsAuthorDesk()) { const _sd = path.join(String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '')).trim(), 'yatagarasu-synth'); for (const _f of fs.readdirSync(_sd)) if (/^yatagarasu-synth-v\d+\.wav$/.test(_f)) out.push(path.join(_sd, _f)); }   /* v5.1.914: 版ごとに全部(v1, v2…= 聞き比べ) */ } catch (_) { }   // ★v5.1.913(俊克 pm03:39「音量が違うので、仮に26番目として入れて見る」): 作者の机だけ= 合成した八咫烏の試し(配る p3.wav の候補)
   try { if (extensionContext && extensionContext.globalState.get('meosRocketWon')) out.push('ROCKET'); } catch (_) { }   // ★v4.2.667(俊克「🚀ROCKETという名前に。この強烈なアラーム音を手に入れることができるのは何人かな?」): MecoDTk の賞品   // ★v4.2.618(俊克「鳴らした人だけ、賞品として、音ボタンのリストに🛎️DING-DONG!」)
   out.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
   const cur = meosSoundNow();
