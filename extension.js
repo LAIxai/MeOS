@@ -46687,8 +46687,8 @@ function meosApplyMeLinkDecorations(editor) {
     editor.setDecorations(meLinkHideDeco, hideRanges);
     if (!meosLinkGhostBtnDeco) meosLinkGhostBtnDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosLinkGhostBtnDeco, linkGhostBtn);   // v5.1.901
-    if (!meosLinkGhostSquashDeco) meosLinkGhostSquashDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; display: inline-block; width: 0.88em; transform: translateY(0.4em) scale(0.7, 1.3); transform-origin: 0 100%; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    editor.setDecorations(meosLinkGhostSquashDeco, linkGhostSquash);   // v5.1.920 / v5.1.921(俊克 920 改良1「横を70%に潰し、縦方向を上に1.3倍に延ばしてみよう」): 下の端を支点に上へ。幅の箱= 👻(約1.25em)×0.7 / v5.1.922(俊克 921 改良1「下線の高さまで下げよう」): 足を下線まで 0.4em(スクショで約8px)
+    if (!meosLinkGhostSquashDeco) meosLinkGhostSquashDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; display: inline-block; width: 0.88em; transform: translateY(0.3em) scale(0.7, 1.3); transform-origin: 0 100%; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosLinkGhostSquashDeco, linkGhostSquash);   // v5.1.920 / v5.1.921(俊克 920 改良1「横を70%に潰し、縦方向を上に1.3倍に延ばしてみよう」): 下の端を支点に上へ。幅の箱= 👻(約1.25em)×0.7 / v5.1.922(俊克 921 改良1「下線の高さまで下げよう」): 足を下線まで 0.4em(スクショで約8px) / v5.1.923(俊克「0.1em上げて」): 0.3em
     for (const [style, type] of meLinkStyleCache) editor.setDecorations(type, styleRanges.get(style) || []);
     for (const [style, ranges] of styleRanges) { if (meLinkStyleCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meLinkStyleCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
