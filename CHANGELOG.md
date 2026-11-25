@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.924 (2026-11-25)
+- The stowed 👻 is now 75% wide.
+
 ### v5.1.923 (2026-11-25)
 - The stowed 👻 sits 0.1em higher.
 
