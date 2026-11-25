@@ -46416,16 +46416,19 @@ function meosLinkGhostClick(e) {
     if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
     const sel = e.selections && e.selections[0]; if (!sel || !sel.isEmpty || e.selections.length > 1) return;
     const doc = ed.document, ln = sel.active.line, c = sel.active.character;
-    if (prev && prev.active.line === ln) return;   // 押す前からこの行に居た= 生の字を直している最中
+    const _rawHere = !!(prev && prev.active.line === ln);   // 押す前からこの行に居た= Raw(生の字)で見えている
     if (!meosIsProseDoc(doc) || meosModeAtLine(doc, ln) !== 'normal') return;
     const text = doc.lineAt(ln).text || ''; if (text.indexOf('](') < 0) return;
     let b = null, bx = null, bodyLn = ln;
+    if (_rawHere && meosIsSpecLine(text)) return;
     if (meosIsSpecLine(text)) {   // v5.1.903: 開いたリンクの FC の `[](👻)` の👻を押す(Raw で見えている時)= しまう
       while (bodyLn - 1 >= 0 && meosIsSpecLine(doc.lineAt(bodyLn - 1).text || '')) bodyLn--; bodyLn--; if (bodyLn < 0) return;
       const bxs = meosLinkFcBoxes(doc, bodyLn), j = bxs.findIndex(x => x.line === ln && x.target === '\u{1F47B}' && (c === x.ts || c === x.te)); if (j < 0) return;
       bx = bxs[j]; b = meosLineEndLinks(doc.lineAt(bodyLn).text || '', _fcLinksFor(doc, bodyLn)).find(x => x.opened && x.fcIdx === j); if (!b) return;
     } else {
-      b = meosLineEndLinks(text, _fcLinksFor(doc, ln)).find(x => x.ghost && c > x.textEnd && c < x.end);
+      // ★v5.1.906(俊克 905 改良1「Proxy👻のRawのときにも、👻をボタン化して…Raw状態のまま、👻の位置が移動するので、よりお化けらしくなる」):
+      //   Raw の時は生の字が全部見えている= 👻の両端(左半分/右半分)に落ちた時だけ押したと読む(他の所は字を直すためのクリック)
+      b = meosLineEndLinks(text, _fcLinksFor(doc, ln)).find(x => x.ghost && (_rawHere ? (c === x.textEnd + 2 || c === x.textEnd + 4) : (c > x.textEnd && c < x.end)));
       if (!b) return;
       bx = meosLinkFcBoxes(doc, ln)[b.fcIdx]; if (!bx) return;
     }
@@ -46437,6 +46440,7 @@ function meosLinkGhostClick(e) {
     // ★v5.1.904(俊克 903 改良1「身代わり👻に替えた後、FCが折り畳まれるまで10秒近くかかる」): ログ= 押す前の所(本文の行)へカーソルを戻すと、
     //   「カーソルの行の FC は開く」で畳む相手が無かった(次にカーソルを動かすまで)。身代り👻と同じ合図(_meosGhostPress)で、押しただけの間は開かない
     const _press = () => { setRefNoRaw(doc, L0); _meosGhostPress = { uri: doc.uri.toString(), line: L0 }; };
+    if (_rawHere) { meosDbg('[linkGhost] Raw のまま 行=' + (ln + 1)); vscode.workspace.applyEdit(we); return; }   // v5.1.906: Raw のまま👻が FC 行へ移る(カーソルも行もそのまま)
     _press();
     vscode.workspace.applyEdit(we).then(() => { setTimeout(() => { try { if (prev && ed.selection && ed.selection.active.line === ln) { _press(); ed.selection = new vscode.Selection(prev.anchor, prev.active); } } catch (_) { } }, 250); });
   } catch (_) { }
@@ -46455,7 +46459,7 @@ function meosApplyMeLinkDecorations(editor) {
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
-        try { const _ft = doc.lineAt(ln).text; if (_ft.indexOf('](\u{1F47B})') >= 0 && meosIsSpecLine(_ft)) { const _i = _ft.indexOf('](\u{1F47B})'); linkGhostBtn.push({ range: new vscode.Range(ln, _i + 2, ln, _i + 4) }); } } catch (_) { }   // v5.1.903: 開いたリンクの FC の👻= Raw で押してしまう
+        try { const _ft = doc.lineAt(ln).text; if (_ft.indexOf('](\u{1F47B})') >= 0 && (meosIsSpecLine(_ft) || cursorLines.has(ln))) { let _i = _ft.indexOf('](\u{1F47B})'); while (_i >= 0) { linkGhostBtn.push({ range: new vscode.Range(ln, _i + 2, ln, _i + 4) }); _i = _ft.indexOf('](\u{1F47B})', _i + 4); } } } catch (_) { }   // v5.1.906: Raw の本文の Proxy👻 も手の形   // v5.1.903: 開いたリンクの FC の👻= Raw で押してしまう
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         let text = _lTblRows.has(ln) ? meosMaskCellBarriers(doc.lineAt(ln).text) : doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; if (text.indexOf('`') >= 0) text = meosMaskCodeSpans(text); // v4.0.58: コードスパンの中はリンクにしない / v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
         let m; MEOS_MELINK_RE.lastIndex = 0;
