@@ -3478,6 +3478,7 @@ function meosBellDbg(msg) {
   } catch (_) { }
   try { const _p = meosDbgPath(); if (_p) require('fs').appendFileSync(_p, '[' + new Date().toISOString() + '] ' + msg + '\n'); } catch (_) { }
 }
+const _meosDbgTail = [];
 function meosDbg(msg) {
   const _p = meosDbgPath();
   if (!_p) return;                                          // v4.0.461: 栓that閉じている間は1行も作らない
@@ -3490,6 +3491,7 @@ function meosDbg(msg) {
   // ★v4.0.253(俊克 8/17 am00:24「MeOS Debugになぜ入れない。自分で読みに行くって言ってたでしょ」):
   //   出力チャンネルは**俊克の画面にしか出ない**(私からは読めない)。→ **同じものをファイルにも書く**。
   //   俊克は「MeOS Debug」で見て、私は MeOS/meos-debug.log を読む。同じ1行を2つの目が見る。
+  try { _meosDbgTail.push(Date.now() + ' ' + String(msg).slice(0, 140)); if (_meosDbgTail.length > 6) _meosDbgTail.shift(); } catch (_) { }   // v5.1.929: 窓の返事の見張り(uiPing)が「直前に MeOS がしていた事」を出す
   try { require('fs').appendFileSync(_p, `[${new Date().toISOString()}] ${msg}\n`); } catch (_) {}
 }
 let suppressAutoUnfoldUntil = 0;
@@ -48357,6 +48359,26 @@ function meosStartLagWatch() {
     }
   }, 1000);
 }
+// ★v5.1.929(俊克 11.26 am02:26「10秒以上今日の日記の表示まで行かずに固まって、VSCmの終了ボタンも直ぐに効かない」):
+//   ログ= 起動から10〜15秒後に「拡張ホストが応答しない/応答した」が0.01秒差で並ぶ= 止まっていたのは窓(描画)の側。
+//   拡張ホストの遅れ([host-blocked])は出ていない= MeOS の計算が止めたのではない。でも窓に何を頼んだ直後かは測れていなかった。
+//   → 起動から90秒、1秒ごとに窓へ軽い合図(setContext)を送り、返事が0.7秒より遅れたら、その長さと直前の MeOS の控え3行を書く。
+//   ホストの遅れも一緒に書く(ホストが遅い=拡張の側・返事だけ遅い=窓の側)。控えの栓(debugLogPath)が開いている時だけ
+function meosStartUiPing() {
+  if (!meosDbgPath()) return;
+  const t0 = Date.now(); let n = 0, worst = 0, worstAt = 0, slow = 0;
+  const tick = () => {
+    const el = Date.now() - t0; if (el > 90000) { meosDbg('[uiPing] 90秒の見張り終わり 遅れ' + slow + '回 最長=' + worst + 'ms(起動から' + (worstAt / 1000).toFixed(1) + '秒)'); return; }
+    const sent = Date.now(), tail = _meosDbgTail.slice(-3).map(x => { const i = x.indexOf(' '); return '-' + ((sent - Number(x.slice(0, i))) / 1000).toFixed(1) + 's ' + x.slice(i + 1); });
+    let done = false;
+    Promise.resolve(vscode.commands.executeCommand('setContext', 'meos.uiPing', ++n)).then(() => { done = true; const rt = Date.now() - sent;
+      if (rt > worst) { worst = rt; worstAt = sent - t0; }
+      if (rt > 700) { slow++; let mem = ''; try { const m = process.memoryUsage(); mem = ' rss=' + Math.round(m.rss / 1048576) + 'MB'; } catch (_) { }
+        meosDbg('[uiPing] 窓の返事 ' + rt + 'ms(起動から' + ((sent - t0) / 1000).toFixed(1) + '秒)' + mem + ' 直前の控え= ' + (tail.join(' | ') || 'なし')); }
+      setTimeout(tick, 1000); }, () => { if (!done) setTimeout(tick, 1000); });
+  };
+  setTimeout(tick, 1000);
+}
 function activate(context) {
   // ★v4.2.58: 元栓の覚えは globalState= 「止めて」は一度言えば足りる(開き直しても閉じたまま)。
   try { _meosGlobalState = context.globalState; _meosClocksOff = !!context.globalState.get(MEOS_CLOCKS_OFF_KEY, false); } catch (_) { }
@@ -48364,6 +48386,7 @@ function activate(context) {
   meosDiaryTplPrune();   // v5.1.695: 大き過ぎる原型を捨てる(globalState が膨れて窓が固まる)
   meosHtocCachePrune();   // v5.1.772: 大きい目次の控え・git: の写しを捨てる(1.2MB → 窓が固まる)
   try { meosRememberFolders(); context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(() => { try { meosRememberFolders(); meosPostReopenFolder(vscode.window.activeTextEditor); } catch (_) { } })); } catch (_) { }   // v4.2.684: ふだんのフォルダーを覚える
+  try { meosStartUiPing(); } catch (_) { }   // v5.1.929: 起動から90秒、窓の返事の遅れを測る
   try { meosStartLagWatch(); context.subscriptions.push({ dispose() { try { clearInterval(_meosLagWatch); } catch (_) {} _meosLagWatch = null; } }); } catch (_) {}
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
   try { vscode.commands.executeCommand('setContext', 'meos.phase', MEOS_RELEASE_PHASE); } catch (_) {}

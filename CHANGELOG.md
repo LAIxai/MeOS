@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.929 (2026-11-26)
+- Diagnostics: for 90 seconds after startup, MeOS checks how fast the window answers. If an answer takes longer than 0.7 seconds, the debug log records how long it took and what MeOS did just before. This runs only when the debug log is turned on.
+
 ### v5.1.928 (2026-11-26)
 - The 👻 in the FC line of an opened link (`[](👻)`) is a button again, in paragraphs and in tables. Clicking it stows the link back to `[label](👻)`. It also works while the FC line is in Raw.
 
