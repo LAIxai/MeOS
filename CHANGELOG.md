@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.911 (2026-11-25)
+- **🚫 turns a Proxy 👻 link back into a plain link.** With the cursor on a 👻 link (in the text or in its FC box), both the highlight button and the 👻 button show 🚫. Press either one: the URL goes back into the text as `[text](URL)` and the FC box is removed.
+- **Links made with the highlight button (Opt+click) are 👻 links from the start.** The text gets `[text](👻)` and the URL goes in the FC box. The highlight button and the 👻 button now make the same kind of link.
+
 ### v5.1.910 (2026-11-25)
 - **Proxy 👻 links carry the full MeOS link spec.** Pressing the 👻 button on a plain `[text](URL)` now writes the FC box with underline, colour and tip: `[](URL)(0)(text/ground)//[]tip=`. The link can then take a highlight, a wavy underline or a tip, like any MeOS link. The button works when the cursor is anywhere inside the link, when the URL is selected, or when the whole link is selected. An existing empty box keeps its spec.
 

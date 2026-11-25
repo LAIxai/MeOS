@@ -32044,6 +32044,7 @@ function updateMeDockMode() {
         else fmtCtx[_k] = 'none';
       }
       // v4.0.22(俊克 8/6 🚫統合): 統一ボタン(=ハイライト)は太字/斜体の中でも🚫になる(太字ボタンを畳んだ後もB/Iを解除できる)。
+      if (meosLinkGhostAtCursor(editor)) { fmtCtx.highlight = 'deco'; fmtCtx.strike = 'deco'; }   // v5.1.911: 👻リンクの上= ハイライトも👻も🚫(どちらでも素のリンクへ)
       if (fmtCtx.highlight !== 'deco' && (meLinkSpanAtCursor(editor) || boldSpanAtCursor(editor))) { fmtCtx.highlight = 'deco'; try { fmtCtx.__cur.highlight = meosFmtCurOf(editor, 'highlight'); } catch (_) { } }   // v4.2.698(俊克 バグ1「紫を設定した後に↻を1回押すと同じ紫が出る」): 太字/斜体で🚫になった時も今の色を送る(送らないと2番目を今の色と見なしていた) // v4.0.26: リンクの中でも🚫
       // v4.0.0(俊克): 太字/斜体・上付/下付にも🚫解除。カーソルが既存装飾の中なら'deco'(ボタンが🚫に化ける)。
       if (boldSpanAtCursor(editor)) fmtCtx.bold = 'deco'; else if (!_empty) fmtCtx.bold = 'sel';
@@ -39017,6 +39018,7 @@ function toggleMeDock(editorOverride) {
       // v4.0.159: **範囲を数える前に**1行の形へ戻す(この先で span を求めるso、戻すのはここでないと位置がずれる)。
       try { await meosEnsureInlineBeforeEdit(ed); } catch (_) { }
       const kind = message.kind; const ring = Number(message.ring) || 0;
+      if (ring === 0 && (kind === 'highlight' || kind === 'strike')) { const _lg = meosLinkGhostAtCursor(ed); if (_lg) { await meosLinkGhostUnwrap(ed, _lg); return; } }   // v5.1.911: 👻リンクの🚫= 素のリンクへ
       if (kind === 'bold') { const bs = boldSpanAtCursor(ed); if (ring === 0 && bs) await removeFormatAtCursor(ed, bs); return; } // v4.0.0: 太字/斜体の🚫解除
       if (kind === 'metex') { const ms = metexSpanAtCursor(ed); if (ring === 0 && ms) await removeFormatAtCursor(ed, ms); return; } // v4.0.0: 上付/下付の🚫解除
       if (kind === 'heading') { // v0.9.999132: 見出しもリング(⊘解除/レベル再適用)
@@ -46290,7 +46292,7 @@ async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
       if (sel.start.character >= _a && sel.end.character <= _b) { _insideLabel = true; break; }
     }
   } catch (_) { }
-  const mark = _insideLabel ? label : ('[' + label + ']()');
+  const mark = _insideLabel ? label : ('[' + label + '](\u{1F47B})');   // ★v5.1.911(俊克 910 改良2「ハイライトボタンをOptクリックしてリンクを作成する時に…👻を入れよう。これで完全統合」): 作るリンクは最初から👻リンク(しまった形= 本文 `[表示](👻)`・行先は FC の箱)
   // ★★v4.0.210(俊克 8/15 am00:29): リンクだけ**行末**に書いていたのthat、FCthat設定だった頃の残骸だった。
   //   今は他の4つとまったく同じ= **1回の編集で、本文に印・指定行に指定**。行末に書いてから引っ越す道は消えた。
   // ★v4.0.242(俊克 8/16 pm06:30「そもそも下線の種類を示す(3)が色指定の後にあるのもおかしいよね」):
@@ -46418,6 +46420,46 @@ function meosLinkFcBoxes(doc, ln) {
     while ((m = re.exec(t)) !== null) { const te = m.index + m[0].length - 1, ts = te - m[1].length; out.push({ line: L, ts, te, target: m[1] }); }
   }
   return out;
+}
+// ★v5.1.911(俊克 910 改良1「👻になっているときは、MeDockの👻ボタンを🚫ボタンに変えて、それを押せば、素のリンクに書き変わるように」・
+//   改良2「👻リンクを素のリンクに戻すときは、ハイライトボタンと👻ボタンが、共に🚫ボタンになるので、どっちを押しても元に戻る」):
+//   カーソルがリンクの👻(しまった形/開いた形)の上か= 本文のリンクの中、または FC 行のそのリンクの箱の中。違えば null
+function meosLinkGhostAtCursor(editor) {
+  try {
+    if (!editor || !editor.document || !editor.selection) return null;
+    const doc = editor.document, ln = editor.selection.active.line, c = editor.selection.active.character;
+    if (!meosIsProseDoc(doc) || meosModeAtLine(doc, ln) !== 'normal') return null;
+    const text = doc.lineAt(ln).text || ''; if (text.indexOf('](') < 0) return null;
+    let bodyLn = ln, onFc = false;
+    if (meosIsSpecLine(text)) { onFc = true; while (bodyLn - 1 >= 0 && meosIsSpecLine(doc.lineAt(bodyLn - 1).text || '')) bodyLn--; bodyLn--; if (bodyLn < 0) return null; }
+    const bt = doc.lineAt(bodyLn).text || '', bxs = meosLinkFcBoxes(doc, bodyLn);
+    for (const b of meosLineEndLinks(bt, _fcLinksFor(doc, bodyLn))) {
+      if (!(b.ghost || b.opened) || b.comment) continue;
+      const bx = bxs[b.fcIdx]; if (!bx) continue;
+      if (b.ghost && bx.target === '\u{1F47B}') continue;
+      if (!b.ghost && bx.target !== '\u{1F47B}') continue;
+      const hit = onFc ? (bx.line === ln && c >= bx.ts - 3 && c <= bx.te + 1) : (c >= b.start && c <= b.end);
+      if (hit) return { bodyLn, b, bx, url: b.ghost ? bx.target : b.target };
+    }
+  } catch (_) { }
+  return null;
+}
+// 👻リンクを素のリンク `[表示](URL)` へ戻す= 本文に URL を書き、FC の箱(そのコメント)を消す。FC 行がその箱だけなら行ごと
+async function meosLinkGhostUnwrap(editor, g) {
+  try {
+    const doc = editor.document, b = g.b, bx = g.bx, url = String(g.url || '').trim(), we = new vscode.WorkspaceEdit();
+    const ft = doc.lineAt(bx.line).text || '', cs = ft.lastIndexOf('<!--', bx.ts), ce0 = ft.indexOf('-->', bx.te);
+    if (cs < 0 || ce0 < 0) return false;
+    const ce = ce0 + 3;
+    if (b.ghost) we.replace(doc.uri, new vscode.Range(g.bodyLn, b.textEnd + 2, g.bodyLn, b.end - 1), url);
+    if (!ft.slice(0, cs).trim() && !ft.slice(ce).trim()) we.delete(doc.uri, new vscode.Range(bx.line, 0, bx.line + 1, 0));
+    else { let a = cs; while (a > 0 && /[ \t]/.test(ft[a - 1])) a--; we.delete(doc.uri, new vscode.Range(bx.line, a, bx.line, ce)); }
+    await vscode.workspace.applyEdit(we);
+    try { const P = new vscode.Position(g.bodyLn, b.textStart); editor.selection = new vscode.Selection(P, P); } catch (_) { }
+    try { await meosFocusBack(editor, editor.selection); } catch (_) { }
+    meosDbg('[linkGhost] 🚫 素のリンクへ 行=' + (g.bodyLn + 1));
+    return true;
+  } catch (_) { return false; }
 }
 const _meosLinkPrevSel = new WeakMap();
 // v5.1.901: リンクの👻を押す= URL を本文と FC の間で出し入れ(しまった形 ⇄ 開いた形)。身代り👻(v5.1.885)と同じく、押した後は押す前の所へカーソルを戻す
