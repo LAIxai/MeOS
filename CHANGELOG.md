@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.921 (2026-11-25)
+- The stowed 👻 is now 70% wide and 1.3 times taller, stretched upward.
+
 ### v5.1.920 (2026-11-25)
 - **A stowed 👻 is drawn at half width.** `[text](👻)` and `[text👻](URL)` used to look the same in normal view. Now the 👻 of the stowed form is squeezed to half its width, so you can tell the two forms apart at a glance.
 

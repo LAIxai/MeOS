@@ -46687,8 +46687,8 @@ function meosApplyMeLinkDecorations(editor) {
     editor.setDecorations(meLinkHideDeco, hideRanges);
     if (!meosLinkGhostBtnDeco) meosLinkGhostBtnDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosLinkGhostBtnDeco, linkGhostBtn);   // v5.1.901
-    if (!meosLinkGhostSquashDeco) meosLinkGhostSquashDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; display: inline-block; width: 0.62em; transform: scaleX(0.5); transform-origin: 0 50%; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    editor.setDecorations(meosLinkGhostSquashDeco, linkGhostSquash);   // v5.1.920
+    if (!meosLinkGhostSquashDeco) meosLinkGhostSquashDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; display: inline-block; width: 0.88em; transform: scale(0.7, 1.3); transform-origin: 0 100%; cursor: ' + meosHandCursor() + ';', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosLinkGhostSquashDeco, linkGhostSquash);   // v5.1.920 / v5.1.921(俊克 920 改良1「横を70%に潰し、縦方向を上に1.3倍に延ばしてみよう」): 下の端を支点に上へ。幅の箱= 👻(約1.25em)×0.7
     for (const [style, type] of meLinkStyleCache) editor.setDecorations(type, styleRanges.get(style) || []);
     for (const [style, ranges] of styleRanges) { if (meLinkStyleCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meLinkStyleCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
