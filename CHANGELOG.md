@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.934 (2026-11-26)
+- mGATE: the round 📌/↩ button sits a little lower, so its top edge is no longer cut off. It also sits a little further right, so it stands apart from the puzzle pieces.
+- In the wrapped table view, the double wave underline sits 2px lower, so it no longer covers the text.
+
 ### v5.1.933 (2026-11-26)
 - The 📌/↩ button in mGATE is now an enlarged copy of the round button on the Me Dock file menu: a white circle with a border, with the glyph placed the same way.
 - In the wrapped table view, link underlines (double, wave and double wave) now sit on the row rule, as they do in the plain table, instead of over the text.
