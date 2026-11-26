@@ -891,7 +891,10 @@ function run(argv) {
   //   位置は Me Dock の .md-tile.md-dot::after と同じ数= 🔴の下端はピースの下端の6pt下(bottom:-6px)・段1は真ん中・段2は左端・段3は右端 → 段1は2ptの隙間・段2は接する・段3は2pt被る(Me Dock と同じ)。ピースは14×12・下端を札の下から6pt
   const drawPiece = (x0, H, chArg, white) => { const ch = chArg || pzl.ch, isT = ch === 'T', isF = ch === '\u2661', TW = 14, TH = 12, ty = 6;
     // ★v5.1.931(俊克 11.26 am08:26「Me Dockのファイルメニューの📌ボタンだけを…mGATEの♥️ボタンの右に大きく置こう」): 📌の席(字 \u2316)= 白い板を敷かず、📌を札いっぱいに描く(パズルの札と見分ける)
-    if (ch === '\u2316') { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($('\u{1F4CC}')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSize(14), r); const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, 2 + (16 - sz.height) / 2)); return; }
+    // v5.1.932(俊克 931 改良2「パズルピースと同じ大きさ…ファイルメニューの右肩のボタンのコピー」): 白い札の上に 📌 / ↩(拡張が puzzle-last の pj に書く)。帰り先の無い📌は薄く
+    if (ch === '\u2316') { const pj = dockOut.pj || {}, back = pj.g === '\u21A9'; (pj.go ? $.NSColor.whiteColor : $.NSColor.colorWithWhiteAlpha(1, 0.45)).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
+      const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(back ? '\u21A9' : '\u{1F4CC}')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, back ? $.NSFont.systemFontOfSizeWeight(10, 0.56) : $.NSFont.systemFontOfSize(8.5), r); if (back) a.addAttributeValueRange($.NSForegroundColorAttributeName, pzRgb([0x33, 0x33, 0x33]), r);
+      const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2)); return; }
     (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(isT ? '\u24c9' : isF ? (typeof pzl.dots === 'string' && pzl.dots.indexOf('f') >= 0 ? '\u2665\ufe0e' : '\u2661\ufe0e') : ch)); const r = $.NSMakeRange(0, a.length);   // v5.1.407: Ⓣは Me Dock と同じ丸囲みの字
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(isT || isF ? 11 : 10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : isF ? pzRgb([0xe5, 0x39, 0x35]) : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
@@ -918,7 +921,7 @@ function run(argv) {
   //   wGATE は NSApplication を回さず(runUntilDate だけ)、札とメニューのクリックは macOS が代わりに扱う→ 自分の小窓へのクリックは誰も読まない。412 の受け皿(mouseDown)は呼ばれなかった。
   //   → 全体の受け渡しは変えない(メニューを壊さない)。小窓が開いている間だけ0.02秒ごとにマウスのボタンを見て、同じタイルの上で押して放したら押したとみなす
   // ★v5.1.429(俊克 am05:54「日記でないファイルでは、Ⓣを非表示に」): 並べる字= 並び(ord)から、日記帳でない時(dots に T が無い)は T を抜く。窓の幅も枚数に合わせる
-  const doOrd = () => { const o = String(pzl.ord || ''); return ((typeof pzl.dots === 'string' && pzl.dots.indexOf('T') < 0) ? o.replace('T', '') : o) + FOF + PIN; };
+  const doOrd = () => { const o = String(pzl.ord || ''); return ((typeof pzl.dots === 'string' && pzl.dots.indexOf('T') < 0) ? o.replace('T', '') : o) + FOF + (dockOut.pj ? PIN : ''); };   // v5.1.932: 留めが無ければ📌の席を出さない(肩のボタンと同じ)
   const doW = (n) => DO_X0 + DO_PAD + n * DO_TW + (n - 1) * DO_GAP;   // v5.1.439: 起動ボタンは札へ移した
   // ★v5.1.438(俊克 pm00:50 改良2「⌘Qの下に、VSCm起動ボタンを付けよう。これで、オン/オフもすべて、メニューバーから制御できる」): Barman の右端(札の ⌘Q の真下)= エディターのアイコン。
   //   動いていなければ起こす・動いていれば前へ出す
@@ -928,7 +931,7 @@ function run(argv) {
   const dockOutFire = (i) => { const ch = doOrd().charAt(i); if (!ch || i < 0) return;
     let alt = ''; try { if ((Number($.NSEvent.modifierFlags) & 0x80000) !== 0) alt = 'alt=1'; } catch (e) {}   // ★v5.1.541: Opt+クリック= 印を巡る
     let cmd = false; try { cmd = (Number($.NSEvent.modifierFlags) & 0x100000) !== 0; } catch (e) {}   // ★v5.1.546: Cmd+クリック= 一括で消す(🔴は動かさない)
-    if (ch === PIN) { hlog('[dockOut] 📌 を押した→ 留めたファイルへ'); openWarp(scheme + '://' + ext + '/pin'); return; }   // v5.1.931: Cmd/Opt は効かない(印を持たない)
+    if (ch === PIN) { hlog('[dockOut] ' + ((dockOut.pj || {}).g || '📌') + ' を押した→ ファイルを切り替える'); if ((dockOut.pj || {}).go) openWarp(scheme + '://' + ext + '/pin'); return; }   // v5.1.931: Cmd/Opt は効かない(印を持たない)
     if (cmd && ch !== 'T') { hlog('[dockOut] ' + ch + ' を Cmd クリック→ 一括で消す'); openWarp(scheme + '://' + ext + (ch === FOF ? '/fof?sweep=1' : '/puzzle?sweep=1&ch=' + encodeURIComponent(ch))); return; }
     if (ch === FOF) { hlog('[dockOut] ♡ を押した'); openWarp(scheme + '://' + ext + '/fof' + (alt ? '?' + alt : '')); return; }
     hlog('[dockOut] ' + ch + ' を押した→ ワープ');
@@ -1085,7 +1088,7 @@ function run(argv) {
   const dockOutTipHide = () => { doTip.ch = ''; doTip.t = ''; try { if (doTip.win) doTip.win.orderOut($()); } catch (e) {} };
   const dockOutTipShow = (t) => { dockOutTipBuild(); const dk = gateDark(), tf = doTip.tf; tf.stringValue = $(t); tf.textColor = dk ? $.NSColor.blackColor : $.NSColor.whiteColor; doTip.bg.fillColor = dk ? $.NSColor.colorWithWhiteAlpha(0.84, 1) : $.NSColor.colorWithWhiteAlpha(0.27, 1);
     const sz = tf.cell.cellSizeForBounds($.NSMakeRect(0, 0, 320, 2000)); doTip.w = Math.ceil(sz.width) + 16; doTip.h = Math.ceil(sz.height) + 8; doTip.s = doCurS(); doTip.x = doTip.y = NaN; const f0 = doTip.win.frame; doTip.win.setFrameDisplay($.NSMakeRect(f0.origin.x, f0.origin.y, doTip.w, doTip.h), true); dockOutTipPlace(); doTip.win.orderFrontRegardless; };
-  const dockOutTipStep = () => { try { const i = !dockOut.drag && !dockOut.glide && dockOutFront() && dockOutOnTile() ? dockOutAt() : -1, ch = i >= 0 ? doOrd().charAt(i) : '', t = !ch ? '' : ch === 'T' ? 'Today' : ch === PIN ? 'Pinned file' : String(dockOut.tips[ch === FOF ? 'f' : ch] || ''); if (ch === doTip.ch && t === doTip.t) { if (t) dockOutTipPlace(); return; } if (!t) { dockOutTipHide(); doTip.ch = ch; return; } doTip.ch = ch; doTip.t = t; dockOutTipShow(t); } catch (e) { hlog('[dockOut] tip 例外 ' + e); } };
+  const dockOutTipStep = () => { try { const i = !dockOut.drag && !dockOut.glide && dockOutFront() && dockOutOnTile() ? dockOutAt() : -1, ch = i >= 0 ? doOrd().charAt(i) : '', t = !ch ? '' : ch === 'T' ? 'Today' : ch === PIN ? String((dockOut.pj || {}).tip || '') : String(dockOut.tips[ch === FOF ? 'f' : ch] || ''); if (ch === doTip.ch && t === doTip.t) { if (t) dockOutTipPlace(); return; } if (!t) { dockOutTipHide(); doTip.ch = ch; return; } doTip.ch = ch; doTip.t = t; dockOutTipShow(t); } catch (e) { hlog('[dockOut] tip 例外 ' + e); } };
   // ★v5.1.547(俊克 11.06 pm07:28 バグ1「mGATEの♥の上でcmdを押しても黄色い×が出ない」): Me Dock の×は webview の中の絵なので mGATE には無かった→ 札の上で効くキーの間、同じ×(Cmd=黄・Opt=緑)をポインターの先に小窓で出す。Ⓣには効かないので無印
   const doX = { win: null, iv: null, k: '', img: {} };
   const dockOutXImg = (k) => { if (doX.img[k]) return doX.img[k]; const im = $.NSImage.alloc.initWithSize($.NSMakeSize(20, 20)); im.lockFocus;
@@ -1377,6 +1380,7 @@ function run(argv) {
   let pzl = { ch: '', lv: 1, prev: '', ord: '' }, pzlN = 0;
   const pzlTick = () => { if (pzlN++ % 5) return; let o = null; try { const f = dir + '/puzzle-last'; if ($.NSFileManager.defaultManager.fileExistsAtPath(f)) o = JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null))); } catch (e) {}
     dockOut.tips = (o && o.tips) || {};   // v5.1.537: 字ごとの tip(Me Dock と同じ= 印の // の後ろ)
+    { const pj0 = (o && o.pj) || null, k0 = JSON.stringify(pj0); if (k0 !== dockOut.pjK) { const had = !!dockOut.pj; dockOut.pjK = k0; dockOut.pj = pj0; try { if (dockOut.shown) { if (had !== !!pj0) { const w = dockOut.win; w.setContentSize($.NSMakeSize(doW(doOrd().length), DO_TH + DO_PAD * 2)); } dockOutPaint(); } } catch (e) {} } }   // v5.1.932: 📌/↩ が替わったら描き直す
     const n = { ch: o && o.ch ? String(o.ch).slice(0, 1) : '', lv: (o && Number(o.lv)) || 1, prev: o && o.prev ? String(o.prev).slice(0, 1) : '', ord: o && o.ord ? String(o.ord).slice(0, 7) : '', dots: o && typeof o.dots === 'string' ? o.dots : undefined }; if (n.prev === n.ch) n.prev = ''; if (n.ch === pzl.ch && n.lv === pzl.lv && n.prev === pzl.prev && n.ord === pzl.ord && n.dots === pzl.dots) return; const chg = n.ch !== pzl.ch; pzl = n; try { step(); } catch (e) {} try { dockOutPaint(); } catch (e) {} /* v5.1.441: Me Dock やキーでワープしても(字が変わっても)消さない */ };
   // ★v5.1.418(俊克 pm06:12 バグ1「shift長押しで、ぶら下がりツールが出てこない」): 拡張は Me Dock が出ている間 arm を書いていなかった(🧩専用だった)→ 常に書き、Me Dock が出ていれば末尾に ' d'。🧩は ' d' 無しの時だけ・出張所は構えなら常に
   let armAny = false;

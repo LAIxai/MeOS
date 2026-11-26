@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.932 (2026-11-26)
+- The 📌 in mGATE now copies the button on the shoulder of the Me Dock file menu. Outside your pinned file it shows 📌 and goes to the pinned file. Inside it, it shows ↩ and goes back to the file you were in before. It is now the same size as the puzzle pieces, and it does not appear when no file is pinned.
+
 ### v5.1.931 (2026-11-26)
 - mGATE (the panel under the menu bar) has a large 📌 to the right of ♥. Clicking it switches to your pinned file, the same as the 📌 in the Me Dock file menu.
 - In the wrapped table view, link underlines now stay inside their row. They no longer cross the table rules or hide under the next row.

@@ -15483,7 +15483,7 @@ let _meosPuzzleBadgeLast = '';
 function meosPuzzleBadgeFile() {
   meosMbmPzPost();   // v5.1.462: Me Dock の分身の2枚も
   if (!meosRealHost()) return;
-  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters, tips: meosPuzzleDotTips });   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
+  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters, tips: meosPuzzleDotTips, pj: (() => { const q = meosPinJump(meosCurFilePath()); return q ? { g: q.g, tip: q.tip, go: !!q.path } : null; })() });   /* v5.1.932: pj= mGATE の📌/↩(肩のボタンの写し) */   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
     if (j === _meosPuzzleBadgeLast) return; _meosPuzzleBadgeLast = j;
     const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(path.join(meosHelperDir(), 'puzzle-last'), j); } catch (_) { }
 }
@@ -32214,6 +32214,15 @@ async function meosOpenRecentPath(_p) {
       await vscode.window.showTextDocument(d, { viewColumn: meosColumnForPath(_p), preview: false }); // v4.0.305: 既に開いている所へ戻る
     } catch (_) { try { vscode.window.showInformationMessage('MeOS: could not open that file.'); } catch (__) {} }
 }
+// ★v5.1.932(俊克 931 改良2「ファイルメニューの右肩に表示しているボタンのコピーだよ。↩ボタンがMeDockに表示されているときは、それと同じボタンを…mGATEに表示して、そこで同じようにファイルの切替をする」):
+//   肩のボタン(webview の v4.1.93〜97)と同じ決め方= 留めの外なら📌(留めへ)・留めの中なら↩(履歴の2番目へ)・帰り先が無ければ📌(薄い)・留めが無ければ出さない
+function meosPinJump(cur) {
+  try { const rl = meosRecentWithState(), pin = rl.find(r => r && r.pinned); if (!pin) return null;
+    cur = String(cur || ''); const here = pin.path === cur, prev = here ? rl.find(r => r && r.path && r.path !== cur) : null, go = here ? prev : pin;
+    return { g: (here && prev) ? '\u21A9' : '\u{1F4CC}', path: go ? go.path : '', tip: (here && prev) ? ('\u21A9 back to ' + (prev.name || '')) : (here ? '\u{1F4CC} you are here \u2014 ' + (pin.name || '') : '\u{1F4CC} ' + (pin.name || '')) };
+  } catch (_) { return null; }
+}
+function meosCurFilePath() { try { const ed = (typeof getMeDockTargetEditor === 'function' && getMeDockTargetEditor()) || vscode.window.activeTextEditor; return ed ? String(meosDocFsPath(ed.document) || '') : ''; } catch (_) { return ''; } }
 function meosRecentWithState() {
   let docs = []; try { docs = vscode.workspace.textDocuments || []; } catch (_) { }
   const pin = meosPinned();
@@ -32320,6 +32329,7 @@ function postMeDockFile(editor, force, skipPush) {
     _meosLastDock = { panel: meDockPanel, path };
     if (doc && !skipPush && changed) meosRecentPush(doc); // タブを選び直した時に一覧へ戻る
     meDockPanel.webview.postMessage({ type: 'dockFile', name, path, recent: meosRecentWithState() });
+    try { meosPuzzleBadgeFile(); } catch (_) { }   // v5.1.932: mGATE の📌/↩も同じ時に描き直す
     postDockFileUD(editor, true);                                                            // v4.0.363: ●/× と UD
   } catch (_) { }
 }
@@ -48405,6 +48415,7 @@ function activate(context) {
   meosDiaryTplPrune();   // v5.1.695: 大き過ぎる原型を捨てる(globalState が膨れて窓が固まる)
   meosHtocCachePrune();   // v5.1.772: 大きい目次の控え・git: の写しを捨てる(1.2MB → 窓が固まる)
   try { meosRememberFolders(); context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(() => { try { meosRememberFolders(); meosPostReopenFolder(vscode.window.activeTextEditor); } catch (_) { } })); } catch (_) { }   // v4.2.684: ふだんのフォルダーを覚える
+  try { context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => { try { meosPuzzleBadgeFile(); } catch (_) { } })); } catch (_) { }   // v5.1.932: mGATE の📌/↩= ファイルが替わったら描き直す(Me Dock が閉じていても)
   try { meosStartUiPing(); } catch (_) { }   // v5.1.929: 起動から90秒、窓の返事の遅れを測る
   try { meosStartLagWatch(); context.subscriptions.push({ dispose() { try { clearInterval(_meosLagWatch); } catch (_) {} _meosLagWatch = null; } }); } catch (_) {}
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
@@ -49148,9 +49159,9 @@ function activate(context) {
           await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed', { cycle: new URLSearchParams(u.query || '').get('alt') === '1' }); return;
         }
         if (u && u.path === '/pin') {   // ★v5.1.931(俊克 11.26 am08:26 別の改良1「Me Dockのファイルメニューの📌ボタンだけをメニューバーの下のmGATEの♥️ボタンの右に大きく置こう…ファイルを切り替える為に…真上にあるメニューバーの方が、使う頻度も高い」): 留めたファイルへ切り替える
-          const _pin = meosPinned(); meosDbg('[helper] 📌 ' + (_pin ? _pin.path : '留め無し'));
+          const _q = meosPinJump(meosCurFilePath()); meosDbg('[helper] ' + (_q ? _q.g + ' → ' + (_q.path || '帰り先なし') : '留め無し'));   // v5.1.932: 肩のボタンと同じ行き先(留めの中なら↩= さっきまでのファイル)
           if (!_meosLastLineDone) meosLastLineFinish('📌 が先 → 戻さない');
-          if (_pin) await meosOpenRecentPath(_pin.path); else { try { vscode.window.showInformationMessage('MeOS: no file is pinned (📌) yet.'); } catch (_) { } }
+          if (_q && _q.path) { await meosOpenRecentPath(_q.path); try { meosPuzzleBadgeFile(); } catch (_) { } }
           return;
         }
         if (u && u.path === '/fof') {   // ★v5.1.537: mGATE の♡= 他のパズルと同じ(無ければ書く・在れば飛ぶ)。🔴は動かさない
