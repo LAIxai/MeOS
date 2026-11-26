@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.933 (2026-11-26)
+- The 📌/↩ button in mGATE is now an enlarged copy of the round button on the Me Dock file menu: a white circle with a border, with the glyph placed the same way.
+- In the wrapped table view, link underlines (double, wave and double wave) now sit on the row rule, as they do in the plain table, instead of over the text.
+
 ### v5.1.932 (2026-11-26)
 - The 📌 in mGATE now copies the button on the shoulder of the Me Dock file menu. Outside your pinned file it shows 📌 and goes to the pinned file. Inside it, it shows ↩ and goes back to the file you were in before. It is now the same size as the puzzle pieces, and it does not appear when no file is pinned.
 

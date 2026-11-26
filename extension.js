@@ -41671,12 +41671,14 @@ function meosApplyTableCellWrapDecorations(editor) {
               const cc1 = (fk1 && HIGHLIGHT_FG_COLORS[fk1]) ? HIGHLIGHT_FG_COLORS[fk1] : '';
               // ★v5.1.931(俊克 930 改良1「リンクの下線が、表の罫線の外に食み出ている…96、97行の2つのセルは、リンクの下線が出ていない」): 段落の下線は地を下へ4px広げ(padding)、その中に線を引く=
               //   見せかけの駒では段の下端を越え、次の行の覆いの板に隠れた(96・97)/最後の行は表の外へ出た(98)。→ 広げずに、線を段の中(下の細い罫線2pxの上)へ上げる
-              if (sp1) lcss = meosMeLinkUnderline(sp1.ul, cc1).replace('padding-bottom: 4px; ', '').replace(/calc\(100% - (\d+)px\)/g, (m, d) => 'calc(100% - ' + (Number(d) + 2) + 'px)').replace('left bottom', 'left calc(100% - 2px)') + (sp1.bg && HIGHLIGHT_COLORS[sp1.bg] ? '; background-color: ' + HIGHLIGHT_COLORS[sp1.bg] : '');
+              // ★v5.1.933(俊克 932 改良2「波線や二重線は文字に被って、見難い…本物の表の方が、表の罫線の上に表示されて…読みやすい」): 段の中へ上げ過ぎた→ 線は段の下端(罫線の所)まで下ろし、
+              //   リンクの駒を罫線より手前(z-index 5)に置く= 本物の表と同じく罫線の上に下線が乗る。段の下端は越えない(931 の食み出しは戻らない)
+              if (sp1) lcss = meosMeLinkUnderline(sp1.ul, cc1).replace('padding-bottom: 4px; ', '').replace(/calc\(100% - (\d+)px\)/g, (m, d) => 'calc(100% - ' + Math.max(0, Number(d) - 1) + 'px)') + (sp1.bg && HIGHLIGHT_COLORS[sp1.bg] ? '; background-color: ' + HIGHLIGHT_COLORS[sp1.bg] : '');
               const col = code ? '#3b3020' : (link ? (cc1 || 'var(--vscode-textLink-foreground)') : ((s0.indexOf('b') >= 0 && boldCol) ? boldCol : ((s0.indexOf('i') >= 0 && itCol) ? itCol : fg)));
               pieces.push({ range: new vscode.Range(ln2, 0, ln2, 0), renderOptions: { before: { contentText: pz.t.replace(/ /g, ' '),
                 textDecoration: (link ? (lcss || 'underline') : 'none') + '; position: absolute;' + (gs ? ' display: inline-block; width: 0.94em; transform: translateY(0.3em) scale(0.75, 1.3); transform-origin: 0 100%;' : '') + ' left: ' + (Math.round(pz.x * 1000) / 1000) + 'ch; top: ' + top + '; white-space: pre; z-index: 3; pointer-events: none; color: ' + col + ' !important; -webkit-text-fill-color: ' + col + ' !important;'
                   + (s0.indexOf('b') >= 0 ? ' font-weight: 900; -webkit-text-stroke: 0.5px currentcolor;' : '')   /* ★v5.1.210(俊克 pm11:59「太字に見えない・74行目の表の外の太字と同じ太さに」): 実機(CDP)で測った= 表の外の太字は MeOS の飾り font-weight 900 ＋ 縁取り0.5px・見せかけは bold(700)だった→ 同じ値に */ + (s0.indexOf('i') >= 0 ? ' font-style: italic;' : '')
-                  + (code ? ' background: #f3e6c4; border-radius: 4px; box-shadow: 0 0 0 1px #cbb98c;' : '') } } }); }); });
+                  + (code ? ' background: #f3e6c4; border-radius: 4px; box-shadow: 0 0 0 1px #cbb98c;' : '') + (sp1 ? ' z-index: 5;' : '') } } }); }); });
           logs.push((ln2 + 1) + ':R' + meosTcwRowsOf(t, W) + '/h' + L.rows[i].h);
         }
         const sig = uri + '#' + blk.start + '#' + W + '#' + logs.join(',');

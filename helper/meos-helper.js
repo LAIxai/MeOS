@@ -892,9 +892,12 @@ function run(argv) {
   const drawPiece = (x0, H, chArg, white) => { const ch = chArg || pzl.ch, isT = ch === 'T', isF = ch === '\u2661', TW = 14, TH = 12, ty = 6;
     // ★v5.1.931(俊克 11.26 am08:26「Me Dockのファイルメニューの📌ボタンだけを…mGATEの♥️ボタンの右に大きく置こう」): 📌の席(字 \u2316)= 白い板を敷かず、📌を札いっぱいに描く(パズルの札と見分ける)
     // v5.1.932(俊克 931 改良2「パズルピースと同じ大きさ…ファイルメニューの右肩のボタンのコピー」): 白い札の上に 📌 / ↩(拡張が puzzle-last の pj に書く)。帰り先の無い📌は薄く
-    if (ch === '\u2316') { const pj = dockOut.pj || {}, back = pj.g === '\u21A9'; (pj.go ? $.NSColor.whiteColor : $.NSColor.colorWithWhiteAlpha(1, 0.45)).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
-      const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(back ? '\u21A9' : '\u{1F4CC}')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, back ? $.NSFont.systemFontOfSizeWeight(10, 0.56) : $.NSFont.systemFontOfSize(8.5), r); if (back) a.addAttributeValueRange($.NSForegroundColorAttributeName, pzRgb([0x33, 0x33, 0x33]), r);
-      const sz = a.size; a.drawAtPoint($.NSMakePoint(x0 + (TW - sz.width) / 2, ty + (TH - sz.height) / 2)); return; }
+    // ★v5.1.933(俊克 932 改良1「Me Dockの📌ボタンをそのまま…楕円のボタンに…↩の楕円内の上下の位置は散々直したので、そのままコピーして拡大」): 肩のボタン(.title-file-jump)の寸法をそのまま拡大=
+    //   15px の白い円・縁 1px・📌 9px / ↩ 10px 太字(800)で 1px 下(v4.1.102)。札の高さ(ピースの12+上下)に合わせて 15→13.5 の比で縮めて描き、mGATE の 2倍で 27pt。縁は mGATE の灰色に溶けないよう 0.35→0.55
+    if (ch === '\u2316') { const pj = dockOut.pj || {}, back = pj.g === '\u21A9', k = 13.5 / 15, D = 15 * k, cx = x0 + TW / 2, cy = ty + TH / 2 - 0.25;
+      const ov = $.NSBezierPath.bezierPathWithOvalInRect($.NSMakeRect(cx - D / 2, cy - D / 2, D, D)); (pj.go ? $.NSColor.whiteColor : $.NSColor.colorWithWhiteAlpha(1, 0.42)).setFill; ov.fill; $.NSColor.colorWithWhiteAlpha(0, pj.go ? 0.55 : 0.25).setStroke; ov.lineWidth = 1 * k; ov.stroke;
+      const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(back ? '\u21A9' : '\u{1F4CC}')); const r = $.NSMakeRange(0, a.length); a.addAttributeValueRange($.NSFontAttributeName, back ? $.NSFont.systemFontOfSizeWeight(10 * k, 0.56) : $.NSFont.systemFontOfSize(9 * k), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, pzRgb([0x11, 0x11, 0x11]), r);
+      const sz = a.size; a.drawAtPoint($.NSMakePoint(cx - sz.width / 2, cy - sz.height / 2 - (back ? 1 * k : 0))); return; }
     (isT ? pzRgb([0x2e, 0x9d, 0x3a]) : $.NSColor.whiteColor).setFill; $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(x0, ty, TW, TH), 3.5, 3.5).fill;
     const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(isT ? '\u24c9' : isF ? (typeof pzl.dots === 'string' && pzl.dots.indexOf('f') >= 0 ? '\u2665\ufe0e' : '\u2661\ufe0e') : ch)); const r = $.NSMakeRange(0, a.length);   // v5.1.407: Ⓣは Me Dock と同じ丸囲みの字
     a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.systemFontOfSizeWeight(isT || isF ? 11 : 10, 0.56), r); a.addAttributeValueRange($.NSForegroundColorAttributeName, isT ? $.NSColor.whiteColor : isF ? pzRgb([0xe5, 0x39, 0x35]) : pzRgb(PZ_COL[ch] || [0x33, 0x33, 0x33]), r);
