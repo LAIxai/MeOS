@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.942 (2026-11-27)
+- Jump to ══: while it is on, Opt+→/← always goes to the end/start of the line, the same as Cmd+→/← (moving by word means little in Japanese text). Switch back to Opt+↑/↓ to move by word again.
+
 ### v5.1.941 (2026-11-27)
 - Jump to ══: right after an Opt+↓/↑ jump (or a U-turn), Opt+→/← goes to the end/start of the line, so you can go back and forth between them. Once you move the cursor any other way, Opt+→/← moves by word again, as usual.
 
