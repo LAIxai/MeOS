@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.943 (2026-11-28)
+- mGATE: the version label now sits right-aligned under the 📌/↩ tile (falls back to under ♥ when there is no pin).
+
 ### v5.1.942 (2026-11-27)
 - Jump to ══: while it is on, Opt+→/← always goes to the end/start of the line, the same as Cmd+→/← (moving by word means little in Japanese text). Switch back to Opt+↑/↓ to move by word again.
 
