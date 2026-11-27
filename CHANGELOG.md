@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.946 (2026-11-28)
+- Write as you see: fixed the 👁️✏️/#️⃣✏️ mark not showing (only the last two characters went transparent).
+
 ### v5.1.945 (2026-11-28)
 - Write as you see: the 👁️✏️/#️⃣✏️ mark no longer shows on empty lines or while the cursor is at the end of the line (click anywhere in the middle of a line to bring it up). The last two characters turn transparent around the mark, so clicking the character to its left no longer switches the mode.
 

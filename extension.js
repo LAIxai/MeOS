@@ -8067,7 +8067,7 @@ let _meosWys = null;
 function meosWysOn() { try { if (_meosWys === null) _meosWys = !!(extensionContext && extensionContext.globalState.get('meosWriteMode') === 'wys'); } catch (_) { _meosWys = false; } return !!_meosWys; }
 let _meosWysShown = null;   // { uri, line, col, sur, len, eye }= 今カーソル行に出している印
 let _meosWysHover = null;   // { uri, line }= tip の口が呼ばれた行(カーソル行の時だけ印を出す)
-let _meosWysTypeAt = 0, _meosWysTypeLine = -1, _meosWysTimer = null, _meosWysDeco = null, _meosWysHideDeco = null, _meosWysSkinDeco = null;
+let _meosWysTypeAt = 0, _meosWysTypeLine = -1, _meosWysTimer = null, _meosWysDeco = null, _meosWysHideDeco = null, _meosWysHide2Deco = null, _meosWysSkinDeco = null;
 function meosWysHoverOn() { try { const v = vscode.workspace.getConfiguration('editor', { languageId: 'markdown' }).get('hover.enabled'); return !(v === false || v === 'off'); } catch (_) { return true; } }
 const MEOS_WYS_NOSUR = /[\s*~`>\])}|=_\-#!<\\]/;
 function meosWysSpot(ed) {
@@ -8095,17 +8095,19 @@ function meosWysPaint(ed) {
     if (!_meosWysDeco) {
       _meosWysDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       _meosWysHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      _meosWysHide2Deco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v5.1.946: 札の桁で隠す範囲を2つに割る(札の絵が隠す範囲の内側に立つと opacity 0 を受け継いで消えた= v0.9.536 の知見)
       _meosWysSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     }
     const sp = meosWysSpot(ed), prev = _meosWysShown;
     const same = (a, b) => (!a && !b) || (a && b && a.uri === b.uri && a.line === b.line && a.col === b.col && a.eye === b.eye && a.faint === b.faint && a.len === b.len);
-    for (const e2 of vscode.window.visibleTextEditors) if (e2 !== ed || !sp) { try { e2.setDecorations(_meosWysDeco, []); e2.setDecorations(_meosWysHideDeco, []); e2.setDecorations(_meosWysSkinDeco, []); } catch (_) { } }
+    for (const e2 of vscode.window.visibleTextEditors) if (e2 !== ed || !sp) { try { e2.setDecorations(_meosWysDeco, []); e2.setDecorations(_meosWysHideDeco, []); e2.setDecorations(_meosWysHide2Deco, []); e2.setDecorations(_meosWysSkinDeco, []); } catch (_) { } }
     _meosWysShown = sp;
     if (sp) {
       const t = ed.document.lineAt(sp.line).text, a = Math.max(0, sp.col - 1), b = Math.min(t.length, sp.col + (sp.sur ? t.length - sp.col : 0) + (sp.sur ? 0 : 0));
       const css = 'none; position: relative; pointer-events: none; display: inline-block; width: 0; direction: rtl; white-space: nowrap; line-height: 1.2; z-index: 1; opacity: ' + (sp.faint ? '0.4' : '1') + ';';
       ed.setDecorations(_meosWysDeco, [{ range: new vscode.Range(sp.line, sp.col, sp.line, sp.col), renderOptions: { before: { contentText: '‎' + (sp.eye ? '👁️✏️' : '#️⃣✏️') + '‎', textDecoration: css } } }]);
-      ed.setDecorations(_meosWysHideDeco, [{ range: new vscode.Range(sp.line, sp.buf, sp.line, t.length) }]);
+      ed.setDecorations(_meosWysHideDeco, [{ range: new vscode.Range(sp.line, sp.buf, sp.line, sp.col) }]);
+      ed.setDecorations(_meosWysHide2Deco, [{ range: new vscode.Range(sp.line, sp.col, sp.line, t.length) }]);
       ed.setDecorations(_meosWysSkinDeco, [{ range: new vscode.Range(sp.line, sp.buf, sp.line, t.length) }]);   // v5.1.945: 手の形は透明にした所だけ(左の見える字には掛けない)
     }
     if (!same(sp, prev)) { try { _meosNudgeHintsEv.fire(); } catch (_) { } }
