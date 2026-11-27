@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.944 (2026-11-28)
+- Write as you see (WYSIWYW): a switch at the end of the cursor line — 👁️✏️ keeps the line as you see it while you type, #️⃣✏️ opens the cursor line as Raw (as before). One setting for all files; click the mark to switch. It shows faintly while tips are off, or when you rest the pointer on the cursor line while tips are on, and hides while you are typing at the end of the line. On a 👻 line the mark opens or closes Raw for that line only (replaces the old ✏️).
+
 ### v5.1.943 (2026-11-28)
 - mGATE: the version label now sits right-aligned under the 📌/↩ tile (falls back to under ♥ when there is no pin).
 

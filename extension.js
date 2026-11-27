@@ -8056,7 +8056,81 @@ function meosGhostFcBoxHit(doc, ln, col) {
   return null;
 }
 // 身代り👻の行に居ても Raw にしない(✏️で開いた行だけ Raw)。カーソル行の特例から外すかどうか
-function meosGhostLineStaysCooked(doc, ln) { return meosModeAtLine(doc, ln) === 'normal' && !meosGhostRawIsOpen(doc, ln) && meosLineHasGhostStore(doc, ln); }   // ★v5.1.876: { uri, line }= 👻を押した行。押しただけ= FC 行を開かない(抑止が効いている間)
+function meosGhostLineStaysCooked(doc, ln) { return meosModeAtLine(doc, ln) === 'normal' && !meosGhostRawIsOpen(doc, ln) && (meosWysOn() || meosLineHasGhostStore(doc, ln)); }   // ★v5.1.944: 👁️(WYSIWYW)の書き方なら、どの行もカーソルが入っても Raw にしない   // ★v5.1.876: { uri, line }= 👻を押した行。押しただけ= FC 行を開かない(抑止が効いている間)
+// ★★v5.1.944(俊克 11.28 am00:35〜01:55「✏️を意図的にWYSIWYGとして使う…WYSIWYW」): 書き方の切替= 全体で1つ(globalState meosWriteMode)。
+//   👁️✏️ = カーソルが入っても Raw にならず、見たまま書ける / #️⃣✏️ = カーソルが入れば Raw(今までの MeOS)。
+//   印はカーソル行の行末にだけ出す「どこでもスイッチ」。tip を切っている時(ふだん)は薄く出す・tip が効く時はカーソル行の字にマウスを止めると出る。
+//   行末で書き足している間は出さない(打ってから 1.5 秒)。押す所= 行の最後の字を身代わりに透明にし、その桁に札(インレイヒント)を立てる=
+//   右の空いた所のクリック(行末の桁)と分かれる。身代わりにできない行(空・記号で終わる)は行末に立て、「もう行末に居て、また行末を押した」時だけ押したと読む。
+//   身代り👻の行= もともと👁️。押すとその行だけ #️⃣(Raw)⇄👁️(v5.1.877 の行末✏️の役)。他の行で押すと全体の書き方が替わる。
+let _meosWys = null;
+function meosWysOn() { try { if (_meosWys === null) _meosWys = !!(extensionContext && extensionContext.globalState.get('meosWriteMode') === 'wys'); } catch (_) { _meosWys = false; } return !!_meosWys; }
+let _meosWysShown = null;   // { uri, line, col, sur, len, eye }= 今カーソル行に出している印
+let _meosWysHover = null;   // { uri, line }= tip の口が呼ばれた行(カーソル行の時だけ印を出す)
+let _meosWysTypeAt = 0, _meosWysTypeLine = -1, _meosWysTimer = null, _meosWysDeco = null, _meosWysHideDeco = null, _meosWysSkinDeco = null;
+function meosWysHoverOn() { try { const v = vscode.workspace.getConfiguration('editor', { languageId: 'markdown' }).get('hover.enabled'); return !(v === false || v === 'off'); } catch (_) { return true; } }
+const MEOS_WYS_NOSUR = /[\s*~`>\])}|=_\-#!<\\]/;
+function meosWysSpot(ed) {
+  try {
+    if (!ed || !ed.document || ed !== vscode.window.activeTextEditor) return null;
+    const doc = ed.document; if (doc.languageId !== 'markdown') return null;
+    const sel = ed.selection; if (!sel || !sel.isEmpty || (ed.selections && ed.selections.length > 1)) return null;
+    const ln = sel.active.line; if (meosModeAtLine(doc, ln) !== 'normal') return null;
+    const t = doc.lineAt(ln).text; if (meosIsSpecLine(t)) return null;
+    if (_meosWysTypeLine === ln && Date.now() - _meosWysTypeAt < 1500) return null;   // 書き足している間は出さない
+    const hov = meosWysHoverOn(); if (hov && !(_meosWysHover && _meosWysHover.line === ln && _meosWysHover.uri === doc.uri.toString())) return null;
+    const eye = meosGhostLineStaysCooked(doc, ln);
+    let col = t.length, sur = false;
+    if (t.length) { let k = t.length - 1; if (k >= 1 && /[\udc00-\udfff]/.test(t[k]) && /[\ud800-\udbff]/.test(t[k - 1])) k--; const ch = t.slice(k); if (!MEOS_WYS_NOSUR.test(ch) && !/[️‍]/.test(ch)) { col = k; sur = true; } }
+    return { uri: doc.uri.toString(), line: ln, col, sur, len: t.length, eye, faint: !hov };
+  } catch (_) { return null; }
+}
+function meosWysPaint(ed) {
+  try {
+    if (!_meosWysDeco) {
+      _meosWysDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      _meosWysHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      _meosWysSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    }
+    const sp = meosWysSpot(ed), prev = _meosWysShown;
+    const same = (a, b) => (!a && !b) || (a && b && a.uri === b.uri && a.line === b.line && a.col === b.col && a.eye === b.eye && a.faint === b.faint && a.len === b.len);
+    for (const e2 of vscode.window.visibleTextEditors) if (e2 !== ed || !sp) { try { e2.setDecorations(_meosWysDeco, []); e2.setDecorations(_meosWysHideDeco, []); e2.setDecorations(_meosWysSkinDeco, []); } catch (_) { } }
+    _meosWysShown = sp;
+    if (sp) {
+      const t = ed.document.lineAt(sp.line).text, a = Math.max(0, sp.col - 1), b = Math.min(t.length, sp.col + (sp.sur ? t.length - sp.col : 0) + (sp.sur ? 0 : 0));
+      const css = 'none; position: relative; pointer-events: none; display: inline-block; width: 0; direction: rtl; white-space: nowrap; line-height: 1.2; z-index: 1; opacity: ' + (sp.faint ? '0.4' : '1') + ';';
+      ed.setDecorations(_meosWysDeco, [{ range: new vscode.Range(sp.line, sp.col, sp.line, sp.col), renderOptions: { before: { contentText: '‎' + (sp.eye ? '👁️✏️' : '#️⃣✏️') + '‎', textDecoration: css } } }]);
+      ed.setDecorations(_meosWysHideDeco, sp.sur ? [{ range: new vscode.Range(sp.line, sp.col, sp.line, t.length) }] : []);
+      ed.setDecorations(_meosWysSkinDeco, (b > a) ? [{ range: new vscode.Range(sp.line, a, sp.line, Math.max(b, Math.min(t.length, sp.col + 1))) }] : []);
+    }
+    if (!same(sp, prev)) { try { _meosNudgeHintsEv.fire(); } catch (_) { } }
+  } catch (_) { }
+}
+function meosWysPaintSoon(ed, ms) { try { if (_meosWysTimer) clearTimeout(_meosWysTimer); _meosWysTimer = setTimeout(() => { _meosWysTimer = null; meosWysPaint(ed || vscode.window.activeTextEditor); }, ms == null ? 60 : ms); } catch (_) { } }
+// 札(インレイヒント)の口から呼ぶ= 印を出している行だけ
+function meosWysHint(doc, ln) { try { const s = _meosWysShown; if (!s || s.line !== ln || s.uri !== doc.uri.toString()) return null; return { col: s.col, label: '　　', tip: s.eye ? 'Write as you see (👁️) | Click to switch: the cursor line opens as Raw (#️⃣).' : 'Raw on the cursor line (#️⃣) | Click to switch: write as you see (👁️).' }; } catch (_) { return null; } }
+// 押した(選択の知らせ)= 印の桁に落ちたマウスのクリック
+function meosWysClick(e, prevSel) {
+  try {
+    const s = _meosWysShown; if (!s || !e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
+    const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
+    const doc = ed.document; if (doc.uri.toString() !== s.uri || sel.active.line !== s.line || sel.active.character !== s.col) return false;
+    if (doc.lineAt(s.line).text.length !== s.len) return false;
+    if (!s.sur && !(prevSel && prevSel.isEmpty && prevSel.active.line === s.line && prevSel.active.character === s.len)) return false;   // 行末の札= もう行末に居た時だけ
+    const ln = s.line;
+    if (meosLineHasGhostStore(doc, ln) && !meosWysOn()) {
+      if (meosGhostRawIsOpen(doc, ln)) { _meosGhostRawOpen = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → 👁️'); }
+      else { _meosGhostRawOpen = { uri: doc.uri.toString(), line: ln }; _meosGhostPress = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → #️⃣ Raw'); }
+    } else {
+      _meosWys = !meosWysOn(); _meosGhostRawOpen = null;
+      try { extensionContext.globalState.update('meosWriteMode', _meosWys ? 'wys' : 'raw'); } catch (_) { }
+      meosDbg('[wys] 書き方 → ' + (_meosWys ? '👁️ 見たまま' : '#️⃣ Raw'));
+    }
+    try { if (s.sur && prevSel && prevSel.active.line === ln) ed.selection = prevSel; } catch (_) { }   // カーソルは押す前の所へ戻す
+    setTimeout(() => { try { for (const e2 of vscode.window.visibleTextEditors) refresh(e2); } catch (_) { } meosWysPaintSoon(ed, 30); }, 0);
+    return true;
+  } catch (_) { return false; }
+}
 function meosGhostShownKey(doc, line, col) { try { return doc.uri.toString() + '#' + doc.version + '#' + line + '#' + col; } catch (_) { return ''; } }
 // その桁が ~~👻~~ の上か(マウスの着地は👻の左右で ~~ の端に落ちる= 6字の範囲で見る)。当たれば ~~ の頭の桁
 function meosGhostBtnHit(doc, ln, col) {
@@ -8168,12 +8242,13 @@ function meosGhostBtnClick(e) {
         const d0 = ed0.document, l0 = s0.active.line;
         if (s0.active.character === d0.lineAt(l0).text.length && meosGhostLineStaysCooked(d0, l0)) { const k = meosGhostFcEnd(d0, l0);
           if (k > l0) { const P = new vscode.Position(k, d0.lineAt(k).text.length); setTimeout(() => { try { const s1 = ed0.selection; if (s1 && s1.active.line === l0 && s1.anchor.isEqual(s0.anchor)) { ed0.selection = new vscode.Selection(s0.anchor, P); meosDbg('[ghostSel] 選択の端を FC 行の最後へ 行=' + (l0 + 1) + '→' + (k + 1)); } } catch (_) { } }, 0); } } } } catch (_) { }
+    if (meosWysClick(e, _prevSel)) return true;   // ★v5.1.944: 👁️✏️/#️⃣✏️
     if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
     const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
     const doc = ed.document, ln = sel.active.line;
     if (meosModeAtLine(doc, ln) !== 'normal') return false;
     // ★v5.1.877: 行末の✏️= その行を Raw(字の修正・加筆ができる)。行末に落ちたクリック
-    if (!meosGhostRawIsOpen(doc, ln) && sel.active.character === doc.lineAt(ln).text.length && meosLineHasGhostStore(doc, ln)) {
+    if (false && !meosGhostRawIsOpen(doc, ln) && sel.active.character === doc.lineAt(ln).text.length && meosLineHasGhostStore(doc, ln)) {   // v5.1.944: 行末の✏️は 👁️✏️/#️⃣✏️ の印(meosWysClick)へ
       _meosGhostRawOpen = { uri: doc.uri.toString(), line: ln }; _meosGhostPress = null;
       meosDbg('[ghostRaw] ✏️ 行=' + (ln + 1) + ' → Raw'); setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0); return true; }
     // ★v5.1.926(俊克 925 改良1「Rawで👻をボタン化するかどうか…統一」→ pm07:31「揃えてみましょう」): Raw の間も👻の両端に落ちた時だけ押したと読む(リンクの v5.1.906 と同じ)。
@@ -9365,7 +9440,7 @@ function applyPrettyLabels(editor) {
             const _gs5 = meosStrikeSpec(_st5);
             if (_gs5.bgKey) (highlightBodyRangesByColor[_gs5.bgKey] || []).push({ range: _r5 });
             (highlightFgRangesByColor[_gs5.fgKey || 'red'] || highlightFgRangesByColor.red || []).push({ range: _r5 });
-            if (!_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); ghostRawBtnItems.push({ range: new vscode.Range(line, text.length, line, text.length) }); }
+            if (false && !_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); ghostRawBtnItems.push({ range: new vscode.Range(line, text.length, line, text.length) }); }
             continue;
           }
           // ★v5.1.873: FC の箱の👻が抜けても(`~~ (色)//字`)、しまった字があれば同じボタンに(loose)
@@ -9385,7 +9460,7 @@ function applyPrettyLabels(editor) {
             if (_gs && !_gItem.renderOptions) ghostSquashBtnItems.push(_gItem); else ghostInlineBtnItems.push(_gItem);   // v5.1.925: しまった字があって見せていない= 潰れ👻(見せている時は後ろの字まで潰れるので素の幅)
             // ★v5.1.881(俊克 880 スクショ2「FC 行が見えている時に✏️が表示されるのはおかしい」): ✏️は FC 行(しまった字)が畳まれて見えない時だけ
             if (_gs && !_ghostRawBtnLines.has(line) && Date.now() - _meosGhostChAt < 1500) try { const _st = _meosGhostVr.get(editor); meosDbg('[ghostPen] 行=' + (line + 1) + ' ✏️=' + meosGhostFcHidden(editor, line) + ' 行数=' + editor.document.lineCount + ' 範囲の時の行数=' + (_st ? _st.n : '-') + ' 増減=' + JSON.stringify(_st ? _st.ch : null) + ' 範囲=' + (editor.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',') + ' 変更から=' + (Date.now() - _meosGhostChAt) + 'ms'); } catch (_) { }   // v5.1.883 計測
-            if (_gs && !_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
+            if (false && _gs && !_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
             continue;
           }
           if (_fcGhost || (_pseudoLine(line) && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
@@ -48509,6 +48584,10 @@ function activate(context) {
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosGhostBtnClick));
+  // ★v5.1.944: 👁️✏️/#️⃣✏️= カーソル行が替わったら印も移る・書き足している間は隠す
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try { const ln = e.selections && e.selections[0] ? e.selections[0].active.line : -1; if (_meosWysHover && (_meosWysHover.line !== ln || _meosWysHover.uri !== e.textEditor.document.uri.toString())) _meosWysHover = null; meosWysPaintSoon(e.textEditor, 60); } catch (_) { } }));
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { _meosWysHover = null; meosWysPaintSoon(ed, 60); }));
+  context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { const ae = vscode.window.activeTextEditor; if (!ae || ae.document !== e.document || !e.contentChanges.length) return; _meosWysTypeAt = Date.now(); _meosWysTypeLine = ae.selection.active.line; if (_meosWysShown) meosWysPaint(ae); meosWysPaintSoon(ae, 1550); } catch (_) { } }));
   // v5.1.899: 「色」ボタンはやめた(本物を塗る= meosFcColorPreview)
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosLinkGhostClick));   // v5.1.901: リンクの👻
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { _meosGhostVr.set(e.textEditor, { n: e.textEditor.document.lineCount, ch: [] }); if (Date.now() - _meosGhostChAt < 1500) meosDbg('[ghostPen] 範囲が届いた 行数=' + e.textEditor.document.lineCount + ' 範囲=' + (e.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',')); } catch (_) { } }));   // v5.1.882: 範囲を受け取った時の行数
@@ -49597,6 +49676,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
             { const _vh = meosVaultLineHints(document, ln, _ed89); if (_vh && !_vh.marker && !(_ed89 && !(_ed89.visibleRanges || []).some(r => r.start.line <= ln && ln <= r.end.line))) { out.push(new vscode.InlayHint(new vscode.Position(ln, _vh.col), _vh.label));
               const _ch = meosAwayChairSpot(document, ln, _ed89); if (_ch) out.push(new vscode.InlayHint(new vscode.Position(ln, _ch.col), '\u3000'));
               const _vb = meosVeilBtnSpot(document, ln, _ed89); if (_vb) out.push(new vscode.InlayHint(new vscode.Position(ln, _vb.col), '\u3000')); } }   // v5.1.175: 小さい🙈の札   // v5.1.19: 🪑の札   // v5.1.1: 本文の🔐/🔓
+            { const _wh = meosWysHint(document, ln); if (_wh) { const _ihw = new vscode.InlayHint(new vscode.Position(ln, _wh.col), _wh.label); _ihw.tooltip = _wh.tip; out.push(_ihw); } }   // ★v5.1.944: 👁️✏️/#️⃣✏️ の札
             { const _lb = meosLegacyBtnSpot(document, ln, _ed89); if (_lb) out.push(new vscode.InlayHint(new vscode.Position(ln, _lb.col), _lb.label)); }   // v5.1.38: 🏦 遺産膜の🔄
             { const _sb = meosStopBtnSpots(document, ln, _ed89); if (_sb) {   // v5.1.645: 一時停止線の🛑(左= 自分) / v5.1.652: 右= 次の線の信号(赤→青→黄)
                 const _bt = '\u00a0'.repeat(MEOS_STOP_BTN_CH), _h1 = new vscode.InlayHint(new vscode.Position(ln, 1), _bt);   /* v5.1.797/798 の札の幅の配り直しは v5.1.799 で元に戻した(絵の方を当たりに合わせる= MEOS_STOP_HIT_ROT) */
@@ -49617,6 +49697,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
     vscode.languages.registerHoverProvider(foldingSelector, {
       provideHover(document, position) {
         const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
+        try { const _ae = vscode.window.activeTextEditor; if (_ae && _ae.document === document && _ae.selection && _ae.selection.active.line === position.line && !(_meosWysHover && _meosWysHover.line === position.line && _meosWysHover.uri === document.uri.toString())) { _meosWysHover = { uri: document.uri.toString(), line: position.line }; meosWysPaintSoon(_ae, 0); } } catch (_) { }   // ★v5.1.944: カーソル行の字に止まった= 👁️✏️/#️⃣✏️ を出す
         // v0.9.486: try RED first. On an opening membrane both `[oGJF=v]🟢`
         // and `[tRJF=v]🔴` live on the same line and visually sit side-by-
         // side (the 8-char `[tRJF=v]` between them collapses to 0 width
