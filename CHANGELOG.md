@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.935 (2026-11-27)
+- 🌅LaunchD: a ⛓️ chain now moves on to its next line when your diary is opened through the vault entrance too. Before, the Friday line repeated to next Friday instead of handing over to the weekend line.
+
 ### v5.1.934 (2026-11-26)
 - mGATE: the round 📌/↩ button sits a little lower, so its top edge is no longer cut off. It also sits a little further right, so it stands apart from the puzzle pieces.
 - In the wrapped table view, the double wave underline sits 2px lower, so it no longer covers the text.

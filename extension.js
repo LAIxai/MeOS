@@ -25543,7 +25543,10 @@ function meosLaunchDPermission(on) {
 let _meosLaunchDOpenT = null;
 function meosLaunchDOnOpen(d) {
   try {
-    if (process.platform !== 'darwin' || !d || !isMarkdownDocument(d) || !(d.uri.scheme === 'file' || d.uri.scheme === 'untitled')) return;
+    // ★v5.1.935(俊克 11.27 am09:55「金曜の次は土日の設定に移るはずなのに、金曜が繰り返されて来週の金曜」):
+    //   真因(meos-debug.log 実測)= 日記は入口(🔐暗号の仮想化)の meos-vault で開かれる。ここが file/untitled だけを見ていた= 日記を開いても組の次の行へ送らず、
+    //   ⏰の ↺F が自分で来週の金曜へ回った(起動直後の突き合わせは日記がまだ読まれていない時で「望む姿 off」)。→ meos-vault も見る
+    if (process.platform !== 'darwin' || !d || !isMarkdownDocument(d) || !(d.uri.scheme === 'file' || d.uri.scheme === 'untitled' || d.uri.scheme === MEOS_VAULT_SCHEME)) return;
     if (d.getText().indexOf('\ud83c\udf05LaunchD_') < 0) return;
     clearTimeout(_meosLaunchDOpenT);
     _meosLaunchDOpenT = setTimeout(async () => { try {
