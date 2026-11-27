@@ -108,15 +108,15 @@ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,
   ok(T.meosMemJumpTarget(dp,0,true)===8,'迷子の```` の後の囲いの中の閉じ膜を数えない',T.meosMemJumpTarget(dp,0,true)); }
 // ★v5.1.605: U-turn= Opt ジャンプで来た道を1歩ずつ逆にたどる
 // ★v5.1.938: Opt+↑/↓ は二重線(===)専用= 二重線の次の行(ノートの頭)へ。一点鎖線と膜の行は飛ばす(着地が膜の行なら次の行)
-const DL=['x','<!-- Mew!UFC === -->','a','b','<!-- Mew!UFC -.- -->','c','<!-- Mew!UFC === -->',O2,'d','e'];
+const DL=['x','<!-- Mew!UFC === -->','a','b','<!-- Mew!UFC -.- -->','c','<!-- Mew!UFC === -->',O2,'d','<!-- Mew!UFC === -->','f','g'];
 const ddoc={uri:{toString:()=>'file:///d.md',fsPath:'/d.md',scheme:'file'},languageId:'markdown',lineCount:DL.length,lineAt:n=>({text:DL[n]}),getText:()=>DL.join('\n'),eol:1,fileName:'/d.md',isClosed:false,version:1};
-{ const j=(c,d)=>T.meosDoubleRuleTarget(ddoc,c,d); const got=[j(0,true),j(2,true),j(8,true),j(9,false),j(8,false),j(2,false)];
-  ok(JSON.stringify(got)==='[2,8,-1,8,2,-1]','二重線の次の行へ・一点鎖線と膜の行は飛ばす・端の先は無し',got); }
+{ const j=(c,d)=>T.meosDoubleRuleTarget(ddoc,c,d); const got=[j(0,true),j(5,true),j(8,true),j(11,false),j(10,false),j(2,false)];
+  ok(JSON.stringify(got)==='[5,8,-1,10,8,-1]','v5.1.940: 二重線の内側(↓前の行/↑次の行)で止まる・そこに居たら次の線へ・一点鎖線は飛ばし膜の行は内側へ',got); }
 (async () => { const ed={document:ddoc,selection:new stub.Selection(new stub.Position(3,1),new stub.Position(3,1)),selections:[1],revealRange(){},viewColumn:1};
   stub.window.activeTextEditor=ed; stub.window.showTextDocument=()=>Promise.resolve(); const at=()=>ed.selection.active.line;
   await T.meosOptJump(true); await T.meosOptJump(true); await T.meosOptJump(true); const way=[at()];
   T.meosOptUturn(); way.push(at()); T.meosOptUturn(); way.push(at()); T.meosOptUturn(); way.push(at(), ed.selection.active.character); T.meosOptUturn(); way.push(at());
-  ok(JSON.stringify(way)==='[8,3,3,3,1,3]','U-turn で二重線のノートの頭→3行(桁も)へ逆にたどる・足跡が尽きたら動かない',way);
+  ok(JSON.stringify(way)==='[8,5,3,3,1,3]','U-turn で二重線の内側→3行(桁も)へ逆にたどる・足跡が尽きたら動かない',way);
   // v5.1.606: 向きを逆にした時だけ明るい・普通に動いたら消える
   { ed.selection=new stub.Selection(new stub.Position(0,0),new stub.Position(0,0)); T.meosOptTrailOnSel({textEditor:ed});
     await T.meosOptJump(true); const l1=T.trail().lit; await T.meosOptJump(true); const l2=T.trail().lit; await T.meosOptJump(false); const l3=T.trail().lit;

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.940 (2026-11-27)
+- Jump to ══: Opt+↓/↑ now stops just inside the double lines, the way Cmd+↓/↑ stops at the lines: Opt+↓ at the end of the line above the next double line, Opt+↑ at the start of the line below the one above. With Shift, only the part between the double lines is selected.
+
 ### v5.1.939 (2026-11-27)
 - Format Me Jump to ══: Opt+Shift+↓/↑ selects up to where Opt+↓/↑ would jump (the top of the next part, or of this part), the same way Cmd+Shift+↓/↑ does for Cmd+↓/↑. Outside Jump it still duplicates the line, as the editor does.
 
