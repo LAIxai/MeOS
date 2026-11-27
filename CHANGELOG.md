@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.939 (2026-11-27)
+- Format Me Jump to ══: Opt+Shift+↓/↑ selects up to where Opt+↓/↑ would jump (the top of the next part, or of this part), the same way Cmd+Shift+↓/↑ does for Cmd+↓/↑. Outside Jump it still duplicates the line, as the editor does.
+
 ### v5.1.938 (2026-11-27)
 - Format Me: the Opt+↑/↓ jump is now for double lines (===) only, and the button reads Jump to ══. Opt+↓ goes to the top of the next part below a double line; Opt+↑ to the top of this part, then of the one before - like turning the pages of a note. Other kinds of lines and membranes are passed by (use Current Me for membranes).
 
