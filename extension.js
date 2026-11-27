@@ -15774,6 +15774,7 @@ let meosClockPauseOutDeco = null;   // v4.1.67: ⏸ は場所で色を変えな�
 //   ★塗り方は ✓ / \u23f8 と同じ= **橙の範囲から抜いてから置く**(v4.1.19「外側を割る」)。
 let meosClockDirDownDeco = null, meosClockDirUpDeco = null;
 let meosClockCycNowDeco = null;   // v4.1.1111: 今その回を走っている側(3m/1m の片方)
+let meosClockCycNowLowDeco = null;   // v5.1.937: 曜日の小文字(t/s)は地の大きさ(大文字と見分ける)
 // ★v5.1.122(俊克 10.21 pm05:35 改良1「更新日のように、年は年の色のように、塗り分けると見やすくなるかもね」):
 //   ⏰の周期の数(0y0d1h0m0s)を、タイムスタンプのモザイク(v4.0.363)と同じ色で単位ごとに塗る= 年は年の色。
 //   色は MEOS_STAMP_COLORS 1か所から(年=水・日=若草・時=藤・分=若草・秒=水= 膜名TSの年/日/時/分/秒と同じ位置の色)。隣り合う単位は必ず違う色。
@@ -17392,8 +17393,19 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
         parts = parts.flatMap(([p, q]) => (b <= p || q <= a) ? [[p, q]] : [[p, a], [b, q]].filter(([x, y]) => y > x)); }
       return parts.map(([p, q]) => new vscode.Range(n.start.line, p, n.start.line, q));
     };
-    const _white = cycNow.flatMap(_cut);
+    const _white0 = cycNow.flatMap(_cut);
+    // ★v5.1.937(俊克 11.27 am11:42「特に太字のsは、文字サイズを小さくしようよ」): 曜日の小文字(t=木・s=土)は太く1.25倍にすると大文字(T=火・S=日)と見分けられない
+    //   (s の行が S に見えた)→ 曜日だけの周期では、小文字の字を地の大きさ(1em・太字・白)に分けて描く。大文字はそのまま1.25倍
+    const _white = [], _whiteLow = [];
+    for (const r of _white0) {
+      let s = ''; try { s = doc.lineAt(r.start.line).text.slice(r.start.character, r.end.character); } catch (_) { }
+      if (!/^[SMTWtFs]+$/.test(s) || !/[ts]/.test(s)) { _white.push(r); continue; }
+      for (let k = 0; k < s.length; k++) { const one = new vscode.Range(r.start.line, r.start.character + k, r.start.line, r.start.character + k + 1); (/[ts]/.test(s[k]) ? _whiteLow : _white).push(one); }
+    }
+    if (_whiteLow.length && !meosClockCycNowLowDeco) meosClockCycNowLowDeco = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; color: var(--vscode-editor-foreground, #ffffff) !important; font-weight: 900; font-size: 1em; line-height: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockCycNowDeco) editor.setDecorations(meosClockCycNowDeco, _white);
+    if (meosClockCycNowLowDeco) editor.setDecorations(meosClockCycNowLowDeco, _whiteLow);
     { const _hot = (r) => _white.some(n => n.start.line === r.start.line && n.start.character < r.end.character && r.start.character < n.end.character);
       meosClockUnitDecos.forEach((t, k) => { try { editor.setDecorations(t, unitCols[k].filter(r => !_hot(r))); } catch (_) { } }); }
     meosLegacyDecorate(editor);   // v5.1.37: 🏦 遺産膜の顔も同じ描き直しに乗せる
