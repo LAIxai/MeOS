@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.945 (2026-11-28)
+- Write as you see: the 👁️✏️/#️⃣✏️ mark no longer shows on empty lines or while the cursor is at the end of the line (click anywhere in the middle of a line to bring it up). The last two characters turn transparent around the mark, so clicking the character to its left no longer switches the mode.
+
 ### v5.1.944 (2026-11-28)
 - Write as you see (WYSIWYW): a switch at the end of the cursor line — 👁️✏️ keeps the line as you see it while you type, #️⃣✏️ opens the cursor line as Raw (as before). One setting for all files; click the mark to switch. It shows faintly while tips are off, or when you rest the pointer on the cursor line while tips are on, and hides while you are typing at the end of the line. On a 👻 line the mark opens or closes Raw for that line only (replaces the old ✏️).
 

@@ -8080,9 +8080,14 @@ function meosWysSpot(ed) {
     if (_meosWysTypeLine === ln && Date.now() - _meosWysTypeAt < 1500) return null;   // 書き足している間は出さない
     const hov = meosWysHoverOn(); if (hov && !(_meosWysHover && _meosWysHover.line === ln && _meosWysHover.uri === doc.uri.toString())) return null;
     const eye = meosGhostLineStaysCooked(doc, ln);
-    let col = t.length, sur = false;
-    if (t.length) { let k = t.length - 1; if (k >= 1 && /[\udc00-\udfff]/.test(t[k]) && /[\ud800-\udbff]/.test(t[k - 1])) k--; const ch = t.slice(k); if (!MEOS_WYS_NOSUR.test(ch) && !/[️‍]/.test(ch)) { col = k; sur = true; } }
-    return { uri: doc.uri.toString(), line: ln, col, sur, len: t.length, eye, faint: !hov };
+    // ★v5.1.945(俊克 944 改良1〜3): 空行・行末に居る時は出さない(書いている所でモードを見せる意味は無い= 行の途中を押すと出る)。
+    //   当たり= 最後の2字を透明に(幅は残す)し、その間(最後の字の前)に札= 左の見える字の右半分を押しても札の桁に落ちない(1字ぶんの緩衝)
+    const cp = (k) => (k >= 1 && /[\udc00-\udfff]/.test(t[k]) && /[\ud800-\udbff]/.test(t[k - 1])) ? k - 1 : k;
+    if (t.length < 2) return null;
+    const col = cp(t.length - 1); if (col < 1) return null; const buf = cp(col - 1); if (buf < 0) return null;
+    if (/\s/.test(t.slice(col)) || sel.active.character >= buf) return null;
+    const sur = true;
+    return { uri: doc.uri.toString(), line: ln, col, buf, sur, len: t.length, eye, faint: !hov };
   } catch (_) { return null; }
 }
 function meosWysPaint(ed) {
@@ -8100,8 +8105,8 @@ function meosWysPaint(ed) {
       const t = ed.document.lineAt(sp.line).text, a = Math.max(0, sp.col - 1), b = Math.min(t.length, sp.col + (sp.sur ? t.length - sp.col : 0) + (sp.sur ? 0 : 0));
       const css = 'none; position: relative; pointer-events: none; display: inline-block; width: 0; direction: rtl; white-space: nowrap; line-height: 1.2; z-index: 1; opacity: ' + (sp.faint ? '0.4' : '1') + ';';
       ed.setDecorations(_meosWysDeco, [{ range: new vscode.Range(sp.line, sp.col, sp.line, sp.col), renderOptions: { before: { contentText: '‎' + (sp.eye ? '👁️✏️' : '#️⃣✏️') + '‎', textDecoration: css } } }]);
-      ed.setDecorations(_meosWysHideDeco, sp.sur ? [{ range: new vscode.Range(sp.line, sp.col, sp.line, t.length) }] : []);
-      ed.setDecorations(_meosWysSkinDeco, (b > a) ? [{ range: new vscode.Range(sp.line, a, sp.line, Math.max(b, Math.min(t.length, sp.col + 1))) }] : []);
+      ed.setDecorations(_meosWysHideDeco, [{ range: new vscode.Range(sp.line, sp.buf, sp.line, t.length) }]);
+      ed.setDecorations(_meosWysSkinDeco, [{ range: new vscode.Range(sp.line, sp.buf, sp.line, t.length) }]);   // v5.1.945: 手の形は透明にした所だけ(左の見える字には掛けない)
     }
     if (!same(sp, prev)) { try { _meosNudgeHintsEv.fire(); } catch (_) { } }
   } catch (_) { }
@@ -8116,7 +8121,6 @@ function meosWysClick(e, prevSel) {
     const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
     const doc = ed.document; if (doc.uri.toString() !== s.uri || sel.active.line !== s.line || sel.active.character !== s.col) return false;
     if (doc.lineAt(s.line).text.length !== s.len) return false;
-    if (!s.sur && !(prevSel && prevSel.isEmpty && prevSel.active.line === s.line && prevSel.active.character === s.len)) return false;   // 行末の札= もう行末に居た時だけ
     const ln = s.line;
     if (meosLineHasGhostStore(doc, ln) && !meosWysOn()) {
       if (meosGhostRawIsOpen(doc, ln)) { _meosGhostRawOpen = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → 👁️'); }
