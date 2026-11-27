@@ -8078,7 +8078,7 @@ function meosWysSpot(ed) {
     const ln = sel.active.line; if (meosModeAtLine(doc, ln) !== 'normal') return null;
     const t = doc.lineAt(ln).text; if (meosIsSpecLine(t)) return null;
     if (_meosWysTypeLine === ln && Date.now() - _meosWysTypeAt < 1500) return null;   // 書き足している間は出さない
-    const hov = meosWysHoverOn(); if (hov && !(_meosWysHover && _meosWysHover.line === ln && _meosWysHover.uri === doc.uri.toString())) return null;
+    const hov = true;   // ★v5.1.947(俊克「FCコメントだけの停止線で、ボタンを表示できている…行のどこかをクリックした時に、ボタンを出す」): tip の口(ホーバー)待ち・薄表示をやめる= 行の途中のクリックがスイッチ
     const eye = meosGhostLineStaysCooked(doc, ln);
     // ★v5.1.945(俊克 944 改良1〜3): 空行・行末に居る時は出さない(書いている所でモードを見せる意味は無い= 行の途中を押すと出る)。
     //   当たり= 最後の2字を透明に(幅は残す)し、その間(最後の字の前)に札= 左の見える字の右半分を押しても札の桁に落ちない(1字ぶんの緩衝)

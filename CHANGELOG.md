@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.947 (2026-11-28)
+- The 👁️✏️ / #️⃣✏️ switch no longer waits for a hover or shows faint: clicking mid-line brings it up at full strength, like the stop line buttons.
+
 ### v5.1.946 (2026-11-28)
 - Write as you see: fixed the 👁️✏️/#️⃣✏️ mark not showing (only the last two characters went transparent).
 
