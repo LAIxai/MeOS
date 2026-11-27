@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.936 (2026-11-27)
+- 🌅LaunchD: right after VSCodium starts, the diary is read even when its tab was opened through the vault, so the ⛓️ chain moves on before you open the diary.
+- Sticky notes in a diary tab opened through the vault now show right after a restart, without clicking the tab first.
+
 ### v5.1.935 (2026-11-27)
 - 🌅LaunchD: a ⛓️ chain now moves on to its next line when your diary is opened through the vault entrance too. Before, the Friday line repeated to next Friday instead of handing over to the weekend line.
 

@@ -15045,12 +15045,13 @@ function meosFusenList() {
     try {
       const have = new Set(docs.map(d => d.uri.toString())), fs = require('fs');
       for (const g of vscode.window.tabGroups.all) for (const t of g.tabs) {
-        const u = t.input && t.input.uri; if (!u || u.scheme !== 'file' || !/\.md$/i.test(u.fsPath) || have.has(u.toString())) continue;
+        // ★v5.1.936(俊克 11.27「3つ直して」): 入口(meos-vault:)のタブも読む= 🔐を開けた日記のタブは次の起動でも meos-vault: で戻る。ディスクの道は meosDocFsPath(口は1つ)
+        const u = t.input && t.input.uri, _fp = meosDocFsPath(u); if (!u || !_fp || !/\.md$/i.test(_fp) || have.has(u.toString())) continue;
         have.add(u.toString());
-        let st; try { st = fs.statSync(u.fsPath); } catch (_) { continue; }
+        let st; try { st = fs.statSync(_fp); } catch (_) { continue; }
         const ver = 'disk' + st.mtimeMs + ':' + st.size, old = _meosFusenDisk[u.toString()];
         const text = (old && old.version === ver) ? old.text : null;
-        docs.push({ uri: u, version: ver, eol: vscode.EndOfLine.LF, _path: u.fsPath, _text: text, getText() { if (this._text == null) { let t = ''; try { t = fs.readFileSync(this._path, 'utf8'); } catch (_) { } this._text = t; _meosFusenDisk[this.uri.toString()] = { version: this.version, text: t.indexOf('FUSEN') < 0 ? '' : t }; } return this._text; } });
+        docs.push({ uri: u, version: ver, eol: vscode.EndOfLine.LF, _path: _fp, _text: text, getText() { if (this._text == null) { let t = ''; try { t = fs.readFileSync(this._path, 'utf8'); } catch (_) { } this._text = t; _meosFusenDisk[this.uri.toString()] = { version: this.version, text: t.indexOf('FUSEN') < 0 ? '' : t }; } return this._text; } });
       }
     } catch (_) { }
     const key = docs.map(d => d.uri.toString() + '@' + d.version).join('|');
@@ -25425,9 +25426,10 @@ async function meosLaunchDMarksAtStart() {
     // ★v5.1.552(俊克 11.07 am09:55 改良1「My diary.md もタブとして在るのに Wake off のまま・タブをクリックすると入った」): 付箋の v5.1.346 と同じ穴= 再起動で戻したタブは、開くまで読まれない。覚えの1本だけでなく、タブの .md もディスクで確かめて、🌅の本物の膜が在れば裏で読む
     try { const fs = require('fs'), have = new Set(vscode.workspace.textDocuments.map(d => d.uri.toString()));
       for (const g of vscode.window.tabGroups.all) for (const t of g.tabs) {
-        const tu = t.input && t.input.uri; if (!tu || tu.scheme !== 'file' || !/\.md$/i.test(tu.fsPath) || have.has(tu.toString())) continue;
+        // ★v5.1.936: 入口(meos-vault:)のタブも= 11.27 朝、日記のタブが meos-vault: で飛ばされ、起動直後の突き合わせが「望む姿 off」になった。開いても鍵は訊かれない(施錠した姿で読む)
+        const tu = t.input && t.input.uri, _fp = meosDocFsPath(tu); if (!tu || !_fp || !/\.md$/i.test(_fp) || have.has(tu.toString())) continue;
         have.add(tu.toString());
-        let txt = ''; try { txt = await fs.promises.readFile(tu.fsPath, 'utf8'); } catch (_) { continue; }
+        let txt = ''; try { txt = await fs.promises.readFile(_fp, 'utf8'); } catch (_) { continue; }
         if (/\u25bcmCN=\ud83c\udf05LaunchD_\d{8}[SMTWtFs]?\d{6}/.test(txt)) await vscode.workspace.openTextDocument(tu);
       } } catch (_) { }
     const nw = meosLaunchDNewest(); const cur = await meosLaunchDReadMac(); if (cur === undefined) return;
@@ -25586,7 +25588,7 @@ async function meosLaunchDReconcile(doc, key, quiet) {
   if (_meosLaunchDBusy) { _meosLaunchDAgain = { doc, key, quiet }; return; }   // v5.0.0-61(俊克「▶️/⏸を押すとパスワードを訊かれ、設定したのに OFF した」): 捨てずに、終わった後でもう一度突き合わせる
   // 一番新しい 🌅LaunchD(開いている md の中で)
   const newest = meosLaunchDNewest();
-  try { if (newest && newest.doc.uri.scheme === 'file') extensionContext.globalState.update('meosLaunchDUri', newest.doc.uri.toString()); } catch (_) { }   // v5.1.505: 起動の時に開く
+  try { if (newest && (newest.doc.uri.scheme === 'file' || newest.doc.uri.scheme === MEOS_VAULT_SCHEME)) extensionContext.globalState.update('meosLaunchDUri', newest.doc.uri.toString()); } catch (_) { }   // v5.1.505: 起動の時に開く / v5.1.936: 入口(meos-vault:)の日記も覚える
   if (newest && newest.run && (newest.id !== key || newest.doc !== doc)) { await meosLaunchDSyncMarks(doc, key, null); /* v5.1.808: 走っていない一番新しい(⏸だけの見本)は、押した🌅を止めない */ say('\ud83c\udf05 This LaunchD is not the newest one (' + newest.id + ' is) \u2014 press \u21bb on its name in Me Dock to make it current.'); return; }
   let grp = meosLaunchDGroupOf(doc, key);
   // ★v5.1.499(俊克 11.05 am09:20 改良1「木曜の設定が繰り返されてしまう。なぜ明日金曜の設定を実行しなかったのか?」):
