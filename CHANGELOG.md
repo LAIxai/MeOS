@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.941 (2026-11-27)
+- Jump to ══: right after an Opt+↓/↑ jump (or a U-turn), Opt+→/← goes to the end/start of the line, so you can go back and forth between them. Once you move the cursor any other way, Opt+→/← moves by word again, as usual.
+
 ### v5.1.940 (2026-11-27)
 - Jump to ══: Opt+↓/↑ now stops just inside the double lines, the way Cmd+↓/↑ stops at the lines: Opt+↓ at the end of the line above the next double line, Opt+↑ at the start of the line below the one above. With Shift, only the part between the double lines is selected.
 
