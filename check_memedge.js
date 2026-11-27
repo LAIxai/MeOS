@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_edge_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosMemJumpTarget, meosOptJump, meosOptUturn, meosOptTrailOnSel, trail: () => _meosOptTrail };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMembraneRuleTarget, meosMemEdgeAt, meosMemJumpTarget, meosDoubleRuleTarget, meosOptJump, meosOptUturn, meosOptTrailOnSel, trail: () => _meosOptTrail };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -107,13 +107,18 @@ const S='<!-- Mew!UFC === -->', M=['top',S,'x2',H1,R,'a5','a6',S,'a8','a9',R,H2,
 { const P=[O,'a','````','b','```',C,'```','c',C]; const dp={...doc,uri:{toString:()=>'file:///f.md',fsPath:'/f.md',scheme:'file'},fileName:'/f.md',lineCount:P.length,lineAt:n=>({text:P[n]}),getText:()=>P.join('\n')};
   ok(T.meosMemJumpTarget(dp,0,true)===8,'迷子の```` の後の囲いの中の閉じ膜を数えない',T.meosMemJumpTarget(dp,0,true)); }
 // ★v5.1.605: U-turn= Opt ジャンプで来た道を1歩ずつ逆にたどる
-(async () => { const ed={document:doc,selection:new stub.Selection(new stub.Position(15,2),new stub.Position(15,2)),selections:[1],revealRange(){},viewColumn:1};
+// ★v5.1.938: Opt+↑/↓ は二重線(===)専用= 二重線の次の行(ノートの頭)へ。一点鎖線と膜の行は飛ばす(着地が膜の行なら次の行)
+const DL=['x','<!-- Mew!UFC === -->','a','b','<!-- Mew!UFC -.- -->','c','<!-- Mew!UFC === -->',O2,'d','e'];
+const ddoc={uri:{toString:()=>'file:///d.md',fsPath:'/d.md',scheme:'file'},languageId:'markdown',lineCount:DL.length,lineAt:n=>({text:DL[n]}),getText:()=>DL.join('\n'),eol:1,fileName:'/d.md',isClosed:false,version:1};
+{ const j=(c,d)=>T.meosDoubleRuleTarget(ddoc,c,d); const got=[j(0,true),j(2,true),j(8,true),j(9,false),j(8,false),j(2,false)];
+  ok(JSON.stringify(got)==='[2,8,-1,8,2,-1]','二重線の次の行へ・一点鎖線と膜の行は飛ばす・端の先は無し',got); }
+(async () => { const ed={document:ddoc,selection:new stub.Selection(new stub.Position(3,1),new stub.Position(3,1)),selections:[1],revealRange(){},viewColumn:1};
   stub.window.activeTextEditor=ed; stub.window.showTextDocument=()=>Promise.resolve(); const at=()=>ed.selection.active.line;
   await T.meosOptJump(true); await T.meosOptJump(true); await T.meosOptJump(true); const way=[at()];
   T.meosOptUturn(); way.push(at()); T.meosOptUturn(); way.push(at()); T.meosOptUturn(); way.push(at(), ed.selection.active.character); T.meosOptUturn(); way.push(at());
-  ok(JSON.stringify(way)==='[22,18,15,15,2,15]','U-turn で ▲子→15行(桁も)へ逆にたどる・足跡が尽きたら動かない',way);
+  ok(JSON.stringify(way)==='[8,3,3,3,1,3]','U-turn で二重線のノートの頭→3行(桁も)へ逆にたどる・足跡が尽きたら動かない',way);
   // v5.1.606: 向きを逆にした時だけ明るい・普通に動いたら消える
-  { ed.selection=new stub.Selection(new stub.Position(15,2),new stub.Position(15,2)); T.meosOptTrailOnSel({textEditor:ed});
+  { ed.selection=new stub.Selection(new stub.Position(0,0),new stub.Position(0,0)); T.meosOptTrailOnSel({textEditor:ed});
     await T.meosOptJump(true); const l1=T.trail().lit; await T.meosOptJump(true); const l2=T.trail().lit; await T.meosOptJump(false); const l3=T.trail().lit;
     T.meosOptTrailOnSel({textEditor:ed}); const keep=T.trail().stack.length;   // 着地した所= 自分の動き
     T.meosOptUturn(); T.meosOptTrailOnSel({textEditor:ed}); const l4=T.trail().lit, n4=T.trail().stack.length;
