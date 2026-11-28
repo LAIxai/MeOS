@@ -15615,7 +15615,7 @@ function meosJumbleSet(on, fromPuzzle) {
 }
 let _meosPuzzleBadgeLast = '';
 let _meosUriHandle = null;   // v5.1.958: URI の受け口(タブ右の mGATE の札が呼ぶ)
-let _meosGateCtx = '';
+let _meosGateCtx = '', _meosGateDots = '';
 async function meosGateFocus(uri) { try { if (vscode.window.activeTextEditor) return; const k = uri && uri.toString ? uri.toString() : ''; const ed = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === k) || vscode.window.visibleTextEditors.find(e => e.document.languageId === 'markdown');
     if (ed) { await vscode.window.showTextDocument(ed.document, { viewColumn: ed.viewColumn, preserveFocus: false }); meosDbg('[gate] 文字の窓へ焦点を戻した ' + ed.viewColumn); } } catch (_) { } }   // ★v5.1.959(958 改良1「eボタンを押すと、エディターが2つに割れた」): Me Dock に焦点がある間は文字の窓が無い→ ワープが新しい窓を開いていた。押したタブの窓へ先に焦点を戻す
 async function meosGateGo(path, uri) { try { meosDbg('[gate] タブ右 ' + path); await meosGateFocus(uri); if (_meosUriHandle) await _meosUriHandle(vscode.Uri.parse('vscode://lai.lai-membrane' + path)); } catch (_) { } }   // ★v5.1.958(俊克 957 改良2「mGATEのすべてのボタンをタブツールバーに」): mGATE と同じ行き先
@@ -15623,6 +15623,10 @@ function meosPuzzleBadgeFile() {
   meosMbmPzPost();   // v5.1.462: Me Dock の分身の2枚も
   try { const _q = meosPinJump(meosCurFilePath()), _t = String(meosPuzzleDotLetters || '').indexOf('T') >= 0, _p = _q ? (_q.g === '\u21A9' ? 'back' : 'pin') : '', _k = _t + '|' + _p;
     if (_k !== _meosGateCtx) { _meosGateCtx = _k; vscode.commands.executeCommand('setContext', 'laiMembrane.gateT', _t); vscode.commands.executeCommand('setContext', 'laiMembrane.gatePin', _p); } } catch (_) { }   // v5.1.958: タブ右の Ⓣ(日記帳だけ)と ↩/📌
+  try { const gs = extensionContext.globalState, last = String(gs.get('meosPuzzleLast') || ''), lv = Math.min(3, Math.max(1, Number(gs.get('meosDotLv')) || 1)), dots = String(meosPuzzleDotLetters || '');
+    const st = {}; for (const c of 'MeDockT') st[c] = (c === last && (c !== 'T' || dots.indexOf('T') >= 0)) ? 'r' + lv : (dots.indexOf(c) >= 0 ? 'w' : 'n');
+    st.f = dots.indexOf('f') >= 0; const k2 = JSON.stringify(st);
+    if (k2 !== _meosGateDots) { _meosGateDots = k2; for (const c of 'MeDockT') vscode.commands.executeCommand('setContext', 'laiMembrane.gd_' + c, st[c]); vscode.commands.executeCommand('setContext', 'laiMembrane.gd_f', st.f); } } catch (_) { }   // ★v5.1.961(960 改良2「タブツールバーに🔴/⚪️」): mGATE と同じ決め方(最後の字=🔴・大きさは段・印の在る字=⚪・Ⓣは日記帳だけ)→ 絵を差し替える
   if (!meosRealHost()) return;
   try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters, tips: meosPuzzleDotTips, pj: (() => { const q = meosPinJump(meosCurFilePath()); return q ? { g: q.g, tip: q.tip, go: !!q.path } : null; })(), wys: meosWysOn() ? 'eye' : 'raw' });   /* v5.1.958: mGATE の右端の 👁️✏️ / #️⃣✏️ */   /* v5.1.932: pj= mGATE の📌/↩(肩のボタンの写し) */   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
     if (j === _meosPuzzleBadgeLast) return; _meosPuzzleBadgeLast = j;
@@ -49780,6 +49784,37 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
     vscode.commands.registerCommand('laiMembrane.gate_T', (u) => meosGateGo('/puzzle?ch=T', u)),
     vscode.commands.registerCommand('laiMembrane.gate_T_alt', (u) => meosGateGo('/puzzle?alt=1&ch=T', u)),
     vscode.commands.registerCommand('laiMembrane.gateFof', (u) => meosGateGo('/fof', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_M__w', (u) => meosGateGo('/puzzle?ch=M', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_M__r1', (u) => meosGateGo('/puzzle?ch=M', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_M__r2', (u) => meosGateGo('/puzzle?ch=M', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_M__r3', (u) => meosGateGo('/puzzle?ch=M', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_e__w', (u) => meosGateGo('/puzzle?ch=e', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_e__r1', (u) => meosGateGo('/puzzle?ch=e', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_e__r2', (u) => meosGateGo('/puzzle?ch=e', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_e__r3', (u) => meosGateGo('/puzzle?ch=e', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_D__w', (u) => meosGateGo('/puzzle?ch=D', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_D__r1', (u) => meosGateGo('/puzzle?ch=D', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_D__r2', (u) => meosGateGo('/puzzle?ch=D', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_D__r3', (u) => meosGateGo('/puzzle?ch=D', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_o__w', (u) => meosGateGo('/puzzle?ch=o', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_o__r1', (u) => meosGateGo('/puzzle?ch=o', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_o__r2', (u) => meosGateGo('/puzzle?ch=o', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_o__r3', (u) => meosGateGo('/puzzle?ch=o', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_c__w', (u) => meosGateGo('/puzzle?ch=c', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_c__r1', (u) => meosGateGo('/puzzle?ch=c', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_c__r2', (u) => meosGateGo('/puzzle?ch=c', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_c__r3', (u) => meosGateGo('/puzzle?ch=c', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_k__w', (u) => meosGateGo('/puzzle?ch=k', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_k__r1', (u) => meosGateGo('/puzzle?ch=k', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_k__r2', (u) => meosGateGo('/puzzle?ch=k', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_k__r3', (u) => meosGateGo('/puzzle?ch=k', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_T__w', (u) => meosGateGo('/puzzle?ch=T', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_T__r1', (u) => meosGateGo('/puzzle?ch=T', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_T__r2', (u) => meosGateGo('/puzzle?ch=T', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_T__r3', (u) => meosGateGo('/puzzle?ch=T', u)),
+    vscode.commands.registerCommand('laiMembrane.gateFofOn', (u) => meosGateGo('/fof', u)),   // v5.1.961: ♥(印が在る時の絵)
+    vscode.commands.registerCommand('laiMembrane.gateBarHide', () => vscode.workspace.getConfiguration('laiMembrane').update('tabGate', false, vscode.ConfigurationTarget.Global)),   // ★v5.1.961(960 改良1「…メニューに、タブツールバーの表示/非表示」)
+    vscode.commands.registerCommand('laiMembrane.gateBarShow', () => vscode.workspace.getConfiguration('laiMembrane').update('tabGate', true, vscode.ConfigurationTarget.Global)),
     vscode.commands.registerCommand('laiMembrane.gateFofAlt', (u) => meosGateGo('/fof?alt=1', u)),
     vscode.commands.registerCommand('laiMembrane.gateBack', (u) => meosGateGo('/pin', u)),
     vscode.commands.registerCommand('laiMembrane.gatePin', (u) => meosGateGo('/pin', u)),

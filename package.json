@@ -2,7 +2,7 @@
   "name": "lai-membrane",
   "displayName": "MeOS — Membrane OS",
   "description": "MeOS — Membrane OS. A membrane is just a comment — so it structures, folds, warps, and encrypts your notes and code without touching your data, not by a millimeter. One file, one brain: warp from mGATE by ⏰ timer, sticky note or tag — when a ⏰ rings, it takes you to the spot, even with VSCodium closed; ✅ searchable checklists, 🐙 one-tap GitHub backup (Octopush), 🔐 AES-256 Encrypt Me. M↓Ⓦ↗ — Markdown Warpup: down to lighten, up to warp. MeOS for VSCm — the VSCodium implementation of MeOS (part of MeOS for anywhere, the universal membrane notation; abbreviated μOS). ／ それは、コメント文が命令文になる新世界。あなたのコードや原稿を1mmも汚さない。最軽量のOS。mGATEから、タイマー・付箋・タグでワープ。タイマーが鳴ったら、あなたをその現場に連れて行く。たとえ、VSCodiumを閉じていても。あなたのコードは卵割 (Cleavage) し、1つの生命体になる。最高の創作環境を提供します!!! 1ファイル生涯日記は現実世界に降臨する。全世界の膜を双方向リンクする未来も見えている。 I, My, MeOS 🐣",
-  "version": "5.1.960",
+  "version": "5.1.961",
   "publisher": "lai",
   "engines": {
     "vscode": "^1.85.0"
@@ -46,100 +46,274 @@
         "icon": {"light": "media/logo/mgate-l.png", "dark": "media/logo/mgate-d.png"}
       },
       {
-        "command": "laiMembrane.gate_M",
-        "title": "mGATE: M",
-        "category": "MeOS Gate",
-        "icon": "media/gate/M.svg"
-      },
-      {
         "command": "laiMembrane.gate_M_alt",
         "title": "mGATE: M (cycle)",
         "category": "MeOS Gate",
-        "icon": "media/gate/M.svg"
+        "icon": "media/gate/M_n.svg"
       },
       {
-        "command": "laiMembrane.gate_e",
-        "title": "mGATE: e",
+        "command": "laiMembrane.gate_M",
+        "title": "mGATE: M",
         "category": "MeOS Gate",
-        "icon": "media/gate/e.svg"
+        "icon": "media/gate/M_n.svg"
       },
       {
-        "command": "laiMembrane.gate_e_alt",
-        "title": "mGATE: e (cycle)",
+        "command": "laiMembrane.gate_M__w",
+        "title": "mGATE: M",
         "category": "MeOS Gate",
-        "icon": "media/gate/e.svg"
+        "icon": "media/gate/M_w.svg"
       },
       {
-        "command": "laiMembrane.gate_D",
-        "title": "mGATE: D",
+        "command": "laiMembrane.gate_M__r1",
+        "title": "mGATE: M",
         "category": "MeOS Gate",
-        "icon": "media/gate/D.svg"
+        "icon": "media/gate/M_r1.svg"
+      },
+      {
+        "command": "laiMembrane.gate_M__r2",
+        "title": "mGATE: M",
+        "category": "MeOS Gate",
+        "icon": "media/gate/M_r2.svg"
+      },
+      {
+        "command": "laiMembrane.gate_M__r3",
+        "title": "mGATE: M",
+        "category": "MeOS Gate",
+        "icon": "media/gate/M_r3.svg"
       },
       {
         "command": "laiMembrane.gate_D_alt",
         "title": "mGATE: D (cycle)",
         "category": "MeOS Gate",
-        "icon": "media/gate/D.svg"
+        "icon": "media/gate/D_n.svg"
       },
       {
-        "command": "laiMembrane.gate_o",
-        "title": "mGATE: o",
+        "command": "laiMembrane.gate_D",
+        "title": "mGATE: D",
         "category": "MeOS Gate",
-        "icon": "media/gate/o.svg"
+        "icon": "media/gate/D_n.svg"
       },
       {
-        "command": "laiMembrane.gate_o_alt",
-        "title": "mGATE: o (cycle)",
+        "command": "laiMembrane.gate_D__w",
+        "title": "mGATE: D",
         "category": "MeOS Gate",
-        "icon": "media/gate/o.svg"
+        "icon": "media/gate/D_w.svg"
       },
       {
-        "command": "laiMembrane.gate_c",
-        "title": "mGATE: c",
+        "command": "laiMembrane.gate_D__r1",
+        "title": "mGATE: D",
         "category": "MeOS Gate",
-        "icon": "media/gate/c.svg"
+        "icon": "media/gate/D_r1.svg"
+      },
+      {
+        "command": "laiMembrane.gate_D__r2",
+        "title": "mGATE: D",
+        "category": "MeOS Gate",
+        "icon": "media/gate/D_r2.svg"
+      },
+      {
+        "command": "laiMembrane.gate_D__r3",
+        "title": "mGATE: D",
+        "category": "MeOS Gate",
+        "icon": "media/gate/D_r3.svg"
       },
       {
         "command": "laiMembrane.gate_c_alt",
         "title": "mGATE: c (cycle)",
         "category": "MeOS Gate",
-        "icon": "media/gate/c.svg"
+        "icon": "media/gate/c_n.svg"
       },
       {
-        "command": "laiMembrane.gate_k",
-        "title": "mGATE: k",
+        "command": "laiMembrane.gate_c",
+        "title": "mGATE: c",
         "category": "MeOS Gate",
-        "icon": "media/gate/k.svg"
+        "icon": "media/gate/c_n.svg"
       },
       {
-        "command": "laiMembrane.gate_k_alt",
-        "title": "mGATE: k (cycle)",
+        "command": "laiMembrane.gate_c__w",
+        "title": "mGATE: c",
         "category": "MeOS Gate",
-        "icon": "media/gate/k.svg"
+        "icon": "media/gate/c_w.svg"
       },
       {
-        "command": "laiMembrane.gate_T",
-        "title": "mGATE: Ⓣ",
+        "command": "laiMembrane.gate_c__r1",
+        "title": "mGATE: c",
         "category": "MeOS Gate",
-        "icon": "media/gate/T.svg"
+        "icon": "media/gate/c_r1.svg"
+      },
+      {
+        "command": "laiMembrane.gate_c__r2",
+        "title": "mGATE: c",
+        "category": "MeOS Gate",
+        "icon": "media/gate/c_r2.svg"
+      },
+      {
+        "command": "laiMembrane.gate_c__r3",
+        "title": "mGATE: c",
+        "category": "MeOS Gate",
+        "icon": "media/gate/c_r3.svg"
       },
       {
         "command": "laiMembrane.gate_T_alt",
         "title": "mGATE: Ⓣ (cycle)",
         "category": "MeOS Gate",
-        "icon": "media/gate/T.svg"
+        "icon": "media/gate/T_n.svg"
+      },
+      {
+        "command": "laiMembrane.gate_T",
+        "title": "mGATE: Ⓣ",
+        "category": "MeOS Gate",
+        "icon": "media/gate/T_n.svg"
+      },
+      {
+        "command": "laiMembrane.gate_T__w",
+        "title": "mGATE: Ⓣ",
+        "category": "MeOS Gate",
+        "icon": "media/gate/T_w.svg"
+      },
+      {
+        "command": "laiMembrane.gate_T__r1",
+        "title": "mGATE: Ⓣ",
+        "category": "MeOS Gate",
+        "icon": "media/gate/T_r1.svg"
+      },
+      {
+        "command": "laiMembrane.gate_T__r2",
+        "title": "mGATE: Ⓣ",
+        "category": "MeOS Gate",
+        "icon": "media/gate/T_r2.svg"
+      },
+      {
+        "command": "laiMembrane.gate_T__r3",
+        "title": "mGATE: Ⓣ",
+        "category": "MeOS Gate",
+        "icon": "media/gate/T_r3.svg"
+      },
+      {
+        "command": "laiMembrane.gate_e_alt",
+        "title": "mGATE: e (cycle)",
+        "category": "MeOS Gate",
+        "icon": "media/gate/e_n.svg"
+      },
+      {
+        "command": "laiMembrane.gate_e",
+        "title": "mGATE: e",
+        "category": "MeOS Gate",
+        "icon": "media/gate/e_n.svg"
+      },
+      {
+        "command": "laiMembrane.gate_e__w",
+        "title": "mGATE: e",
+        "category": "MeOS Gate",
+        "icon": "media/gate/e_w.svg"
+      },
+      {
+        "command": "laiMembrane.gate_e__r1",
+        "title": "mGATE: e",
+        "category": "MeOS Gate",
+        "icon": "media/gate/e_r1.svg"
+      },
+      {
+        "command": "laiMembrane.gate_e__r2",
+        "title": "mGATE: e",
+        "category": "MeOS Gate",
+        "icon": "media/gate/e_r2.svg"
+      },
+      {
+        "command": "laiMembrane.gate_e__r3",
+        "title": "mGATE: e",
+        "category": "MeOS Gate",
+        "icon": "media/gate/e_r3.svg"
+      },
+      {
+        "command": "laiMembrane.gate_o_alt",
+        "title": "mGATE: o (cycle)",
+        "category": "MeOS Gate",
+        "icon": "media/gate/o_n.svg"
+      },
+      {
+        "command": "laiMembrane.gate_o",
+        "title": "mGATE: o",
+        "category": "MeOS Gate",
+        "icon": "media/gate/o_n.svg"
+      },
+      {
+        "command": "laiMembrane.gate_o__w",
+        "title": "mGATE: o",
+        "category": "MeOS Gate",
+        "icon": "media/gate/o_w.svg"
+      },
+      {
+        "command": "laiMembrane.gate_o__r1",
+        "title": "mGATE: o",
+        "category": "MeOS Gate",
+        "icon": "media/gate/o_r1.svg"
+      },
+      {
+        "command": "laiMembrane.gate_o__r2",
+        "title": "mGATE: o",
+        "category": "MeOS Gate",
+        "icon": "media/gate/o_r2.svg"
+      },
+      {
+        "command": "laiMembrane.gate_o__r3",
+        "title": "mGATE: o",
+        "category": "MeOS Gate",
+        "icon": "media/gate/o_r3.svg"
+      },
+      {
+        "command": "laiMembrane.gate_k_alt",
+        "title": "mGATE: k (cycle)",
+        "category": "MeOS Gate",
+        "icon": "media/gate/k_n.svg"
+      },
+      {
+        "command": "laiMembrane.gate_k",
+        "title": "mGATE: k",
+        "category": "MeOS Gate",
+        "icon": "media/gate/k_n.svg"
+      },
+      {
+        "command": "laiMembrane.gate_k__w",
+        "title": "mGATE: k",
+        "category": "MeOS Gate",
+        "icon": "media/gate/k_w.svg"
+      },
+      {
+        "command": "laiMembrane.gate_k__r1",
+        "title": "mGATE: k",
+        "category": "MeOS Gate",
+        "icon": "media/gate/k_r1.svg"
+      },
+      {
+        "command": "laiMembrane.gate_k__r2",
+        "title": "mGATE: k",
+        "category": "MeOS Gate",
+        "icon": "media/gate/k_r2.svg"
+      },
+      {
+        "command": "laiMembrane.gate_k__r3",
+        "title": "mGATE: k",
+        "category": "MeOS Gate",
+        "icon": "media/gate/k_r3.svg"
       },
       {
         "command": "laiMembrane.gateFof",
         "title": "mGATE: ♥",
         "category": "MeOS Gate",
-        "icon": "media/gate/fof.svg"
+        "icon": "media/gate/fof_off.svg"
+      },
+      {
+        "command": "laiMembrane.gateFofOn",
+        "title": "mGATE: ♥",
+        "category": "MeOS Gate",
+        "icon": "media/gate/fof_on.svg"
       },
       {
         "command": "laiMembrane.gateFofAlt",
         "title": "mGATE: ♥ (cycle)",
         "category": "MeOS Gate",
-        "icon": "media/gate/fof.svg"
+        "icon": "media/gate/fof_on.svg"
       },
       {
         "command": "laiMembrane.gateBack",
@@ -152,6 +326,16 @@
         "title": "mGATE: 📌",
         "category": "MeOS Gate",
         "icon": "media/gate/pin.svg"
+      },
+      {
+        "command": "laiMembrane.gateBarHide",
+        "title": "Hide MeOS buttons on the tab bar",
+        "category": "MeOS Gate"
+      },
+      {
+        "command": "laiMembrane.gateBarShow",
+        "title": "Show MeOS buttons on the tab bar",
+        "category": "MeOS Gate"
       },
       {
         "command": "laiMembrane.wysEye",
@@ -584,6 +768,11 @@
           "default": true,
           "description": "macOS only: give the menu-bar ⏰ a name so macOS remembers its place. Cmd+drag it once to where you like, and it comes back there every time. Off = macOS puts it at the far left each time, where a crowded menu bar hides it first (behind <<)."
         },
+        "laiMembrane.tabGate": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show the MeOS buttons (mGATE pieces, ♥, ↩/📌) on the editor tab bar. You can also switch this from the tab bar's \"…\" menu."
+        },
         "laiMembrane.menuBarHelper": {
           "type": "boolean",
           "default": false,
@@ -678,85 +867,269 @@
         {
           "command": "laiMembrane.gateLogo",
           "alt": "laiMembrane.gateQuit",
-          "when": "resourceLangId == markdown",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate",
           "group": "navigation@0"
         },
         {
           "command": "laiMembrane.gate_M",
           "alt": "laiMembrane.gate_M_alt",
-          "when": "resourceLangId == markdown",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && (!laiMembrane.gd_M || laiMembrane.gd_M == n)",
           "group": "navigation@1"
         },
         {
-          "command": "laiMembrane.gate_e",
-          "alt": "laiMembrane.gate_e_alt",
-          "when": "resourceLangId == markdown",
-          "group": "navigation@7"
+          "command": "laiMembrane.gate_M__w",
+          "alt": "laiMembrane.gate_M_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_M == w",
+          "group": "navigation@1"
+        },
+        {
+          "command": "laiMembrane.gate_M__r1",
+          "alt": "laiMembrane.gate_M_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_M == r1",
+          "group": "navigation@1"
+        },
+        {
+          "command": "laiMembrane.gate_M__r2",
+          "alt": "laiMembrane.gate_M_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_M == r2",
+          "group": "navigation@1"
+        },
+        {
+          "command": "laiMembrane.gate_M__r3",
+          "alt": "laiMembrane.gate_M_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_M == r3",
+          "group": "navigation@1"
         },
         {
           "command": "laiMembrane.gate_D",
           "alt": "laiMembrane.gate_D_alt",
-          "when": "resourceLangId == markdown",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && (!laiMembrane.gd_D || laiMembrane.gd_D == n)",
           "group": "navigation@2"
         },
         {
-          "command": "laiMembrane.gate_o",
-          "alt": "laiMembrane.gate_o_alt",
-          "when": "resourceLangId == markdown",
-          "group": "navigation@8"
+          "command": "laiMembrane.gate_D__w",
+          "alt": "laiMembrane.gate_D_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_D == w",
+          "group": "navigation@2"
+        },
+        {
+          "command": "laiMembrane.gate_D__r1",
+          "alt": "laiMembrane.gate_D_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_D == r1",
+          "group": "navigation@2"
+        },
+        {
+          "command": "laiMembrane.gate_D__r2",
+          "alt": "laiMembrane.gate_D_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_D == r2",
+          "group": "navigation@2"
+        },
+        {
+          "command": "laiMembrane.gate_D__r3",
+          "alt": "laiMembrane.gate_D_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_D == r3",
+          "group": "navigation@2"
         },
         {
           "command": "laiMembrane.gate_c",
           "alt": "laiMembrane.gate_c_alt",
-          "when": "resourceLangId == markdown",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && (!laiMembrane.gd_c || laiMembrane.gd_c == n)",
           "group": "navigation@3"
         },
         {
-          "command": "laiMembrane.gate_k",
-          "alt": "laiMembrane.gate_k_alt",
-          "when": "resourceLangId == markdown",
-          "group": "navigation@9"
+          "command": "laiMembrane.gate_c__w",
+          "alt": "laiMembrane.gate_c_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_c == w",
+          "group": "navigation@3"
+        },
+        {
+          "command": "laiMembrane.gate_c__r1",
+          "alt": "laiMembrane.gate_c_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_c == r1",
+          "group": "navigation@3"
+        },
+        {
+          "command": "laiMembrane.gate_c__r2",
+          "alt": "laiMembrane.gate_c_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_c == r2",
+          "group": "navigation@3"
+        },
+        {
+          "command": "laiMembrane.gate_c__r3",
+          "alt": "laiMembrane.gate_c_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_c == r3",
+          "group": "navigation@3"
         },
         {
           "command": "laiMembrane.gate_T",
           "alt": "laiMembrane.gate_T_alt",
-          "when": "resourceLangId == markdown && laiMembrane.gateT",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gateT && (!laiMembrane.gd_T || laiMembrane.gd_T == n)",
           "group": "navigation@4"
+        },
+        {
+          "command": "laiMembrane.gate_T__w",
+          "alt": "laiMembrane.gate_T_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gateT && laiMembrane.gd_T == w",
+          "group": "navigation@4"
+        },
+        {
+          "command": "laiMembrane.gate_T__r1",
+          "alt": "laiMembrane.gate_T_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gateT && laiMembrane.gd_T == r1",
+          "group": "navigation@4"
+        },
+        {
+          "command": "laiMembrane.gate_T__r2",
+          "alt": "laiMembrane.gate_T_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gateT && laiMembrane.gd_T == r2",
+          "group": "navigation@4"
+        },
+        {
+          "command": "laiMembrane.gate_T__r3",
+          "alt": "laiMembrane.gate_T_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gateT && laiMembrane.gd_T == r3",
+          "group": "navigation@4"
+        },
+        {
+          "command": "laiMembrane.gate_e",
+          "alt": "laiMembrane.gate_e_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && (!laiMembrane.gd_e || laiMembrane.gd_e == n)",
+          "group": "navigation@7"
+        },
+        {
+          "command": "laiMembrane.gate_e__w",
+          "alt": "laiMembrane.gate_e_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_e == w",
+          "group": "navigation@7"
+        },
+        {
+          "command": "laiMembrane.gate_e__r1",
+          "alt": "laiMembrane.gate_e_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_e == r1",
+          "group": "navigation@7"
+        },
+        {
+          "command": "laiMembrane.gate_e__r2",
+          "alt": "laiMembrane.gate_e_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_e == r2",
+          "group": "navigation@7"
+        },
+        {
+          "command": "laiMembrane.gate_e__r3",
+          "alt": "laiMembrane.gate_e_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_e == r3",
+          "group": "navigation@7"
+        },
+        {
+          "command": "laiMembrane.gate_o",
+          "alt": "laiMembrane.gate_o_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && (!laiMembrane.gd_o || laiMembrane.gd_o == n)",
+          "group": "navigation@8"
+        },
+        {
+          "command": "laiMembrane.gate_o__w",
+          "alt": "laiMembrane.gate_o_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_o == w",
+          "group": "navigation@8"
+        },
+        {
+          "command": "laiMembrane.gate_o__r1",
+          "alt": "laiMembrane.gate_o_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_o == r1",
+          "group": "navigation@8"
+        },
+        {
+          "command": "laiMembrane.gate_o__r2",
+          "alt": "laiMembrane.gate_o_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_o == r2",
+          "group": "navigation@8"
+        },
+        {
+          "command": "laiMembrane.gate_o__r3",
+          "alt": "laiMembrane.gate_o_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_o == r3",
+          "group": "navigation@8"
+        },
+        {
+          "command": "laiMembrane.gate_k",
+          "alt": "laiMembrane.gate_k_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && (!laiMembrane.gd_k || laiMembrane.gd_k == n)",
+          "group": "navigation@9"
+        },
+        {
+          "command": "laiMembrane.gate_k__w",
+          "alt": "laiMembrane.gate_k_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_k == w",
+          "group": "navigation@9"
+        },
+        {
+          "command": "laiMembrane.gate_k__r1",
+          "alt": "laiMembrane.gate_k_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_k == r1",
+          "group": "navigation@9"
+        },
+        {
+          "command": "laiMembrane.gate_k__r2",
+          "alt": "laiMembrane.gate_k_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_k == r2",
+          "group": "navigation@9"
+        },
+        {
+          "command": "laiMembrane.gate_k__r3",
+          "alt": "laiMembrane.gate_k_alt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_k == r3",
+          "group": "navigation@9"
         },
         {
           "command": "laiMembrane.gateFof",
           "alt": "laiMembrane.gateFofAlt",
-          "when": "resourceLangId == markdown",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && !laiMembrane.gd_f",
+          "group": "navigation@5"
+        },
+        {
+          "command": "laiMembrane.gateFofOn",
+          "alt": "laiMembrane.gateFofAlt",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gd_f",
           "group": "navigation@5"
         },
         {
           "command": "laiMembrane.gateBack",
-          "when": "resourceLangId == markdown && laiMembrane.gatePin == back",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gatePin == back",
           "group": "navigation@6"
         },
         {
           "command": "laiMembrane.gatePin",
-          "when": "resourceLangId == markdown && laiMembrane.gatePin == pin",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.gatePin == pin",
           "group": "navigation@6"
         },
         {
+          "command": "laiMembrane.gateBarHide",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate",
+          "group": "9_meos@1"
+        },
+        {
+          "command": "laiMembrane.gateBarShow",
+          "when": "resourceLangId == markdown && !config.laiMembrane.tabGate",
+          "group": "9_meos@1"
+        },
+        {
           "command": "laiMembrane.wysEye",
-          "when": "resourceLangId == markdown && laiMembrane.wysEye",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.wysEye",
           "group": "navigation@10"
         },
         {
           "command": "laiMembrane.wysRaw",
-          "when": "resourceLangId == markdown && !laiMembrane.wysEye",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && !laiMembrane.wysEye",
           "group": "navigation@10"
         },
         {
           "command": "laiMembrane.shelfA",
-          "when": "resourceLangId == markdown && laiMembrane.shelfHere",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.shelfHere",
           "group": "navigation@11"
         },
         {
           "command": "laiMembrane.shelfB",
-          "when": "resourceLangId == markdown && laiMembrane.shelfHere",
+          "when": "resourceLangId == markdown && config.laiMembrane.tabGate && laiMembrane.shelfHere",
           "group": "navigation@12"
         }
       ],

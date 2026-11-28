@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.961 (2026-11-28)
+- The title-bar pieces show the same dots as mGATE: a red dot under the last piece (its size follows the level) and a white dot under pieces that have marks. ♥ is filled when the file has its mark.
+- The tab bar's "…" menu can hide or show the MeOS buttons (setting `laiMembrane.tabGate`).
+- macOS: the 👁️✏️ / #️⃣✏️ tile in mGATE gets a gray rim like ↩/📌.
+
 ### v5.1.960 (2026-11-28)
 - Title bar order: logo, M, D, c, Ⓣ, ♥, ↩/📌. The e, o and k pieces and 👁️✏️ / #️⃣✏️ move into the "…" menu (VS Code shows at most seven extension buttons there).
 - macOS: the 👁️✏️ / #️⃣✏️ tile at the right end of mGATE sits on a white rounded tile like the pieces.
