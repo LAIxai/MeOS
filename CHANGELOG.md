@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.949 (2026-11-28)
+- Fixed: clicking 👁️✏️ / #️⃣✏️ on the stop line opened the line as Raw instead of switching. The switch now sits on the line itself, just left of the right-hand STOP, where a click reaches it.
+
 ### v5.1.948 (2026-11-28)
 - The 👁️✏️ / #️⃣✏️ switch now sits on the nearest visible stop line, to the right of its line, instead of at the end of the cursor line. No text is hidden or changed; clicking it switches the mode for the cursor line and leaves the caret where it was.
 
