@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.969 (2026-11-28)
+
+- mGATE: the 👁️✏️ / #️⃣✏️ tile now shows a tip — the current writing view (WYSIWYW or Raw) and what a click switches to.
+
 ### v5.1.968 (2026-11-28)
 
 - mGATE: the version label now right-aligns under the 👁️✏️ tile at the right end (it sat under ↩).
