@@ -8070,6 +8070,7 @@ let _meosWysHover = null;   // { uri, line }= tip の口が呼ばれた行(カ�
 let _meosWysTypeAt = 0, _meosWysTypeLine = -1, _meosWysTimer = null, _meosWysDeco = null, _meosWysHideDeco = null, _meosWysHide2Deco = null, _meosWysSkinDeco = null;
 function meosWysHoverOn() { try { const v = vscode.workspace.getConfiguration('editor', { languageId: 'markdown' }).get('hover.enabled'); return !(v === false || v === 'off'); } catch (_) { return true; } }
 const MEOS_WYS_NOSUR = /[\s*~`>\])}|=_\-#!<\\]/;
+let _wysLogHost = -2, _wysLogLn = -2;
 const MEOS_WYS_STOP_COL = 8;   // v5.1.948: 停止線の中の押す桁(札は 1〜6 まで)
 function meosWysSpot(ed) {
   try {
@@ -8083,11 +8084,12 @@ function meosWysSpot(ed) {
     //   印の家= 画面に見えている一番近い停止線(上を先・無ければ下)。押す桁= 停止線の隠れたコメントの中の桁(MEOS_WYS_STOP_COL)= ふつうのクリックは落ちない(停止線の札と同じ理屈)。
     //   ふだんの FC 行は畳まれて見えないので家にならない。本文の字は隠さない・書き換えない。見える停止線が無い時は出さない
     const eye = meosGhostLineStaysCooked(doc, ln);
-    let host = -1, best = Infinity;
+    let host = -1, best = Infinity; const _wysWhy = [];
     for (const vr of (ed.visibleRanges || [])) for (let i = vr.start.line; i <= vr.end.line && i < doc.lineCount; i++) {
       if (i === ln) continue; const d = i < ln ? (ln - i) * 2 : (i - ln) * 2 + 1;   // ★v5.1.950(俊克 949 改良1): 上下どちらでも一番近い線(同じ近さなら上) if (d >= best) continue;
       const tx = doc.lineAt(i).text; if (tx.length <= MEOS_WYS_STOP_COL + 1 || tx.indexOf('Mew!UFC') < 0) continue;
-      const _sp = meosStopBtnSpots(doc, i, ed); if (!_sp || !_sp.on || !(_sp.pad > 0)) continue; host = i; best = d; }   // v5.1.949: オンの線だけ(オフの線は箱が浮いていて、行の中身の幅が無い= 押しても行末に落ちる)
+      const _sp = meosStopBtnSpots(doc, i, ed); if (!_sp || !_sp.on || !(_sp.pad > 0)) { if (Math.abs(i - ln) <= 15 && MEOS_RULE_LINE_RE.test(tx)) _wysWhy.push((i + 1) + ':' + (!_sp ? ('null mode=' + meosModeAtLine(doc, i) + ' fence=' + meosFenceLines(doc).has(i) + ' raw=' + meosShowsRawLine(ed, i) + ' hid=' + meosRuleHidden(ed, i)) : ('on=' + _sp.on + ' pad=' + _sp.pad))); continue; } host = i; best = d; }
+    if (_wysWhy.length && (host !== _wysLogHost || ln !== _wysLogLn)) { _wysLogHost = host; _wysLogLn = ln; meosDbg('[wys] 家選び カーソル ' + (ln + 1) + ' → ' + (host + 1) + ' / 外した線 ' + _wysWhy.join(' | ')); }   // v5.1.951: 測る口(950 バグ1「12行も下」)   // v5.1.949: オンの線だけ(オフの線は箱が浮いていて、行の中身の幅が無い= 押しても行末に落ちる)
     if (host < 0) return null;
     return { uri: doc.uri.toString(), line: host, col: MEOS_WYS_STOP_COL, cur: ln, eye };
   } catch (_) { return null; }

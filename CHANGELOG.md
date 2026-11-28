@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.951 (2026-11-28)
+- Diagnostics: the debug log now notes which nearby stop lines the 👁️✏️ / #️⃣✏️ switch passed over, and why.
+
 ### v5.1.950 (2026-11-28)
 - The 👁️✏️ / #️⃣✏️ switch now goes to the nearest stop line above or below the cursor, and sits on a patch of the editor background, so the line looks broken around it and the mark is easy to read.
 
