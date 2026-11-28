@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.952 (2026-11-28)
+- Fixed: the 👁️✏️ / #️⃣✏️ switch went to the lowest stop line on screen instead of the nearest one.
+
 ### v5.1.951 (2026-11-28)
 - Diagnostics: the debug log now notes which nearby stop lines the 👁️✏️ / #️⃣✏️ switch passed over, and why.
 
