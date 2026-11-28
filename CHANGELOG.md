@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.960 (2026-11-28)
+- Title bar order: logo, M, D, c, Ⓣ, ♥, ↩/📌. The e, o and k pieces and 👁️✏️ / #️⃣✏️ move into the "…" menu (VS Code shows at most seven extension buttons there).
+- macOS: the 👁️✏️ / #️⃣✏️ tile at the right end of mGATE sits on a white rounded tile like the pieces.
+
 ### v5.1.959 (2026-11-28)
 - Title-bar buttons stay visible while Me Dock or another panel has focus.
 - Pressing a title-bar mGATE button while Me Dock has focus no longer splits the editor: the editor of that tab gets focus first.
