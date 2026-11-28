@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.962 (2026-11-28)
+- The trial shelf buttons (🅰️ 🅱️) are gone from the tab bar's "…" menu.
+- The hide/show item is now "Hide MDcⓉ♥↩" / "Show MDcⓉ♥↩", placed right below the overflowed MeOS buttons.
+- macOS: the gray rim of the 👁️✏️ / #️⃣✏️ tile in mGATE is no longer clipped.
+
 ### v5.1.961 (2026-11-28)
 - The title-bar pieces show the same dots as mGATE: a red dot under the last piece (its size follows the level) and a white dot under pieces that have marks. ♥ is filled when the file has its mark.
 - The tab bar's "…" menu can hide or show the MeOS buttons (setting `laiMembrane.tabGate`).
