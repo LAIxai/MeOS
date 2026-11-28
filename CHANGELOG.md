@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.956 (2026-11-28)
+- The editor title bar no longer shows the "+" (Add Membrane) button. The command stays in the Command Palette.
+
 ### v5.1.955 (2026-11-28)
 - The editor title bar no longer shows "Toggle Current Membrane" and "MeOS: Refresh". The commands stay in the Command Palette. The title bar is now the place for the shelf buttons.
 
