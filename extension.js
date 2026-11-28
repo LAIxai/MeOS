@@ -8085,7 +8085,7 @@ function meosWysSpot(ed) {
     const eye = meosGhostLineStaysCooked(doc, ln);
     let host = -1, best = Infinity;
     for (const vr of (ed.visibleRanges || [])) for (let i = vr.start.line; i <= vr.end.line && i < doc.lineCount; i++) {
-      if (i === ln) continue; const d = i < ln ? ln - i : 100000 + i - ln; if (d >= best) continue;
+      if (i === ln) continue; const d = i < ln ? (ln - i) * 2 : (i - ln) * 2 + 1;   // ★v5.1.950(俊克 949 改良1): 上下どちらでも一番近い線(同じ近さなら上) if (d >= best) continue;
       const tx = doc.lineAt(i).text; if (tx.length <= MEOS_WYS_STOP_COL + 1 || tx.indexOf('Mew!UFC') < 0) continue;
       const _sp = meosStopBtnSpots(doc, i, ed); if (!_sp || !_sp.on || !(_sp.pad > 0)) continue; host = i; best = d; }   // v5.1.949: オンの線だけ(オフの線は箱が浮いていて、行の中身の幅が無い= 押しても行末に落ちる)
     if (host < 0) return null;
@@ -8107,8 +8107,9 @@ function meosWysPaint(ed) {
     if (sp) {
       // ★v5.1.949(948 バグ1「#️⃣✏️をクリックすると、Raw表示になってしまい…切り替らない」): 箱(60字)の右の外は行の中身の外= Monaco は行末(空き)と読み、押しても桁8でなく行末に落ちた。
       //   → 箱の中(右の🛑の左隣・53字目)に置く= 箱の上なので押すと絵の根(桁8)に落ちる。折返し線(約50字)の外なのは同じ
+      // ★v5.1.950(俊克 949 改良2「背景の黒(ライトなら白)の四角を線に被せて…線が途切れたように見えて、見やすくなる」): 地= エディタの背景色(明暗とも)・左右に0.4字の余白
       // 絵= 停止線の箱(60字)の右の外。left は行の箱(view-line)から測る= 隠した字・箱の余白に左右されない。押すと桁 MEOS_WYS_STOP_COL に落ちる
-      const css = 'none; position: absolute; left: ' + (MEOS_STOP_BOX_CH - 7) + 'ch; top: 50%; transform: translateY(-50%); z-index: 5; white-space: nowrap; line-height: 1.2; cursor: ' + meosHandCursor() + '; pointer-events: auto;';
+      const css = 'none; position: absolute; left: ' + (MEOS_STOP_BOX_CH - 7) + 'ch; top: 50%; transform: translateY(-50%); z-index: 5; white-space: nowrap; line-height: 1.2; padding: 0 0.4ch; background-color: var(--vscode-editor-background); cursor: ' + meosHandCursor() + '; pointer-events: auto;';
       ed.setDecorations(_meosWysDeco, [{ range: new vscode.Range(sp.line, sp.col, sp.line, sp.col), renderOptions: { before: { contentText: sp.eye ? '👁️✏️' : '#️⃣✏️', textDecoration: css } } }]);
     }
     if (!sp || !prev || sp.uri !== prev.uri || sp.line !== prev.line) { try { meosApplyTimerLineDecorations(ed); } catch (_) { } }   // 停止線の隠す範囲を押す桁で割り直す
