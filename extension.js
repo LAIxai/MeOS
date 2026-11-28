@@ -4285,7 +4285,7 @@ function makeDecorations() {
   //   👻の字そのものが本文に居る(~~👻~~)= 押せば文字カーソルがその行に入り、行が Raw になる(行をクリックするのと同じ道)。見た目は手のポインターだけ
   // ★v5.1.877(俊克 876 改良1「身代り👻のある行の文字の部分をクリックしても Raw にしない…その1行すべてを Raw にするボタンを行末に」): 行末の✏️
   ghostRawBtnDecoration = vscode.window.createTextEditorDecorationType({
-    after: { contentText: '✏️', margin: '0 0 0 0.4em', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' },
+    after: { margin: '0 0 0 0.4em', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' },   // v5.1.958: 絵は項目ごと(👁️✏️ / #️⃣✏️)
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
   });
   // ★v5.1.889(俊克 888 バグ1「外に出ると取消線が表示されてしまう。しかも白色」): テーマ(Monokai Dimmed 等)が Markdown の ~~…~~ に字の色で線を引く=
@@ -8082,7 +8082,7 @@ function meosWysSpot(ed) {
     // ★★v5.1.948(俊克 am10:16「行末は止めて、近場にある停止線あるいは、FC行にボタンを出そうよ。カレント行に出す必要性は無い…要は、押せればいい」):
     //   印の家= 画面に見えている一番近い停止線(上を先・無ければ下)。押す桁= 停止線の隠れたコメントの中の桁(MEOS_WYS_STOP_COL)= ふつうのクリックは落ちない(停止線の札と同じ理屈)。
     //   ふだんの FC 行は畳まれて見えないので家にならない。本文の字は隠さない・書き換えない。見える停止線が無い時は出さない
-    const eye = meosGhostLineStaysCooked(doc, ln);
+    const eye = meosWysOn();   // v5.1.958: 印の絵= 全体の書き方(👻の行も同じ)
     let host = -1, best = Infinity;
     for (const vr of (ed.visibleRanges || [])) for (let i = vr.start.line; i <= vr.end.line && i < doc.lineCount; i++) {
       if (i === ln) continue; const d = i < ln ? (ln - i) * 2 : (i - ln) * 2 + 1; if (d >= best) continue;   // ★v5.1.950(俊克 949 改良1): 上下どちらでも一番近い線(同じ近さなら上) / ★v5.1.952(950 バグ1「12行も下」): 950 でこの注釈が後ろの if を注釈にしてしまい、画面の一番下の線が選ばれていた
@@ -8120,21 +8120,16 @@ function meosWysPaintSoon(ed, ms) { try { if (_meosWysTimer) clearTimeout(_meosW
 // 札(インレイヒント)の口から呼ぶ= 印を出している行だけ
 function meosWysHint(doc, ln) { return null; try { const s = _meosWysShown; if (!s || s.line !== ln || s.uri !== doc.uri.toString()) return null; return { col: s.col, label: '　　', tip: s.eye ? 'Write as you see (👁️) | Click to switch: the cursor line opens as Raw (#️⃣).' : 'Raw on the cursor line (#️⃣) | Click to switch: write as you see (👁️).' }; } catch (_) { return null; } }
 // 押した(選択の知らせ)= 印の桁に落ちたマウスのクリック
-function meosWysToggle(ed, ln) {   // v5.1.957: 見たまま⇄Raw の切替(停止線の印とタブ右の札が同じここを呼ぶ)
-  const doc = ed.document;
-    if (meosLineHasGhostStore(doc, ln) && !meosWysOn()) {
-      if (meosGhostRawIsOpen(doc, ln)) { _meosGhostRawOpen = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → 👁️'); }
-      else { _meosGhostRawOpen = { uri: doc.uri.toString(), line: ln }; _meosGhostPress = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → #️⃣ Raw'); }
-    } else {
-      _meosWys = !meosWysOn(); _meosGhostRawOpen = null;
-      try { extensionContext.globalState.update('meosWriteMode', _meosWys ? 'wys' : 'raw'); } catch (_) { }
-      meosDbg('[wys] 書き方 → ' + (_meosWys ? '👁️ 見たまま' : '#️⃣ Raw'));
-    }
+function meosWysToggle(ed, ln) {   // v5.1.957: 見たまま⇄Raw の切替(停止線の印とタブ右の札が同じここを呼ぶ) / ★v5.1.958(俊克 957 改良1「普通、全体の切替の為のボタン」): 全体だけ替える(👻の行は行末の専用ボタン)
+  _meosWys = !meosWysOn(); _meosGhostRawOpen = null;
+  try { extensionContext.globalState.update('meosWriteMode', _meosWys ? 'wys' : 'raw'); } catch (_) { }
+  meosDbg('[wys] 書き方 → ' + (_meosWys ? '👁️ 見たまま' : '#️⃣ Raw'));
+  try { meosPuzzleBadgeFile(); } catch (_) { }   // v5.1.958: mGATE の絵も替える
     setTimeout(() => { try { for (const e2 of vscode.window.visibleTextEditors) refresh(e2); } catch (_) { } meosWysPaintSoon(ed, 30); }, 0);
 }
 let _meosWysCtxEye = null;
 function meosWysCtx(ed) { try { if (!ed || !ed.document || ed.document.languageId !== 'markdown' || ed !== vscode.window.activeTextEditor) return;
-    const eye = !!meosGhostLineStaysCooked(ed.document, ed.selection.active.line);
+    const eye = meosWysOn();   // v5.1.958: 全体の書き方
     if (eye !== _meosWysCtxEye) { _meosWysCtxEye = eye; vscode.commands.executeCommand('setContext', 'laiMembrane.wysEye', eye); } } catch (_) { } }   // v5.1.957: タブ右の札の絵= 今のカーソル行の姿(停止線の印と同じ判定)
 function meosWysTitleBtn() { try { const ed = vscode.window.activeTextEditor; if (!ed || !ed.document || ed.document.languageId !== 'markdown') return;
     meosWysToggle(ed, ed.selection.active.line); setTimeout(() => meosWysCtx(ed), 60); } catch (_) { } }
@@ -8310,7 +8305,7 @@ function meosGhostBtnClick(e) {
     const doc = ed.document, ln = sel.active.line;
     if (meosModeAtLine(doc, ln) !== 'normal') return false;
     // ★v5.1.877: 行末の✏️= その行を Raw(字の修正・加筆ができる)。行末に落ちたクリック
-    if (false && !meosGhostRawIsOpen(doc, ln) && sel.active.character === doc.lineAt(ln).text.length && meosLineHasGhostStore(doc, ln)) {   // v5.1.944: 行末の✏️は 👁️✏️/#️⃣✏️ の印(meosWysClick)へ
+    if (!meosGhostRawIsOpen(doc, ln) && sel.active.character === doc.lineAt(ln).text.length && meosLineHasGhostStore(doc, ln) && meosGhostLineStaysCooked(doc, ln)) {   // ★v5.1.958: 👻の行の行末の 👁️✏️ を戻す   // v5.1.944: 行末の✏️は 👁️✏️/#️⃣✏️ の印(meosWysClick)へ
       _meosGhostRawOpen = { uri: doc.uri.toString(), line: ln }; _meosGhostPress = null;
       meosDbg('[ghostRaw] ✏️ 行=' + (ln + 1) + ' → Raw'); setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0); return true; }
     // ★v5.1.926(俊克 925 改良1「Rawで👻をボタン化するかどうか…統一」→ pm07:31「揃えてみましょう」): Raw の間も👻の両端に落ちた時だけ押したと読む(リンクの v5.1.906 と同じ)。
@@ -9522,7 +9517,7 @@ function applyPrettyLabels(editor) {
             if (_gs && !_gItem.renderOptions) ghostSquashBtnItems.push(_gItem); else ghostInlineBtnItems.push(_gItem);   // v5.1.925: しまった字があって見せていない= 潰れ👻(見せている時は後ろの字まで潰れるので素の幅)
             // ★v5.1.881(俊克 880 スクショ2「FC 行が見えている時に✏️が表示されるのはおかしい」): ✏️は FC 行(しまった字)が畳まれて見えない時だけ
             if (_gs && !_ghostRawBtnLines.has(line) && Date.now() - _meosGhostChAt < 1500) try { const _st = _meosGhostVr.get(editor); meosDbg('[ghostPen] 行=' + (line + 1) + ' ✏️=' + meosGhostFcHidden(editor, line) + ' 行数=' + editor.document.lineCount + ' 範囲の時の行数=' + (_st ? _st.n : '-') + ' 増減=' + JSON.stringify(_st ? _st.ch : null) + ' 範囲=' + (editor.visibleRanges || []).map(r => (r.start.line + 1) + '-' + (r.end.line + 1)).join(',') + ' 変更から=' + (Date.now() - _meosGhostChAt) + 'ms'); } catch (_) { }   // v5.1.883 計測
-            if (false && _gs && !_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le) }); }   // v5.1.877
+            if (_gs && !_ghostRawBtnLines.has(line) && meosGhostFcHidden(editor, line)) { _ghostRawBtnLines.add(line); const _le = text.length; ghostRawBtnItems.push({ range: new vscode.Range(line, _le, line, _le), renderOptions: { after: { contentText: '👁️✏️' } } }); }   // v5.1.877 / ★v5.1.958(957 改良1): 👻の行の専用ボタンとして戻す
             continue;
           }
           if (_fcGhost || (_pseudoLine(line) && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
@@ -10156,6 +10151,7 @@ function applyPrettyLabels(editor) {
   //   Raw の行は MeOS が何も描かない= テーマの ~~…~~ の線(字の色)だけが残る。✏️で開いた行の ~~👻…~~ は線を消す
   try { if (_meosGhostRawOpen && _meosGhostRawOpen.uri === editor.document.uri.toString()) { const _gl = _meosGhostRawOpen.line; if (_gl >= 0 && _gl < editor.document.lineCount) { const _gt = editor.document.lineAt(_gl).text, _gre = /~~👻[^~\n]*?~~/gu; let _gm; while ((_gm = _gre.exec(_gt)) !== null) ghostOpenNoLineItems.push({ range: new vscode.Range(_gl, _gm.index, _gl, _gm.index + _gm[0].length) }); } } } catch (_) { }
   if (ghostOpenNoLineDecoration) setDecoCached(editor, ghostOpenNoLineDecoration, 'ghostNoLine', ghostOpenNoLineItems);   // v5.1.889   // v5.1.870
+  try { if (_meosGhostRawOpen && _meosGhostRawOpen.uri === editor.document.uri.toString() && !_ghostRawBtnLines.has(_meosGhostRawOpen.line) && _meosGhostRawOpen.line < editor.document.lineCount) { const _rl = _meosGhostRawOpen.line, _le = editor.document.lineAt(_rl).text.length; ghostRawBtnItems.push({ range: new vscode.Range(_rl, _le, _rl, _le), renderOptions: { after: { contentText: '#️⃣✏️', textDecoration: 'none; cursor: text;' } } }); } } catch (_) { }   // ★v5.1.958: 開いている間は #️⃣✏️(押す物でなく今の姿・離れると閉じて👁️✏️へ)
   if (ghostRawBtnDecoration) setDecoCached(editor, ghostRawBtnDecoration, 'ghostRawBtn', ghostRawBtnItems);   // v5.1.877
   // v0.9.99967: 参照符(点膜▶◀)適用(生データ隠し+記号チップ)。
   if (refPointHideDecoration) {
@@ -15618,10 +15614,15 @@ function meosJumbleSet(on, fromPuzzle) {
   try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdJumble', on }); } catch (_) { }
 }
 let _meosPuzzleBadgeLast = '';
+let _meosUriHandle = null;   // v5.1.958: URI の受け口(タブ右の mGATE の札が呼ぶ)
+let _meosGateCtx = '';
+function meosGateGo(path) { try { meosDbg('[gate] タブ右 ' + path); if (_meosUriHandle) _meosUriHandle(vscode.Uri.parse('vscode://lai.lai-membrane' + path)); } catch (_) { } }   // ★v5.1.958(俊克 957 改良2「mGATEのすべてのボタンをタブツールバーに」): mGATE と同じ行き先
 function meosPuzzleBadgeFile() {
   meosMbmPzPost();   // v5.1.462: Me Dock の分身の2枚も
+  try { const _q = meosPinJump(meosCurFilePath()), _t = String(meosPuzzleDotLetters || '').indexOf('T') >= 0, _p = _q ? (_q.g === '\u21A9' ? 'back' : 'pin') : '', _k = _t + '|' + _p;
+    if (_k !== _meosGateCtx) { _meosGateCtx = _k; vscode.commands.executeCommand('setContext', 'laiMembrane.gateT', _t); vscode.commands.executeCommand('setContext', 'laiMembrane.gatePin', _p); } } catch (_) { }   // v5.1.958: タブ右の Ⓣ(日記帳だけ)と ↩/📌
   if (!meosRealHost()) return;
-  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters, tips: meosPuzzleDotTips, pj: (() => { const q = meosPinJump(meosCurFilePath()); return q ? { g: q.g, tip: q.tip, go: !!q.path } : null; })() });   /* v5.1.932: pj= mGATE の📌/↩(肩のボタンの写し) */   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
+  try { const gs = extensionContext.globalState, j = JSON.stringify({ ch: String(gs.get('meosPuzzleLast') || ''), lv: Number(gs.get('meosDotLv')) || 1, prev: String(gs.get('meosPuzzlePrev') || ''), ord: meosDockTiles(), dots: meosPuzzleDotLetters, tips: meosPuzzleDotTips, pj: (() => { const q = meosPinJump(meosCurFilePath()); return q ? { g: q.g, tip: q.tip, go: !!q.path } : null; })(), wys: meosWysOn() ? 'eye' : 'raw' });   /* v5.1.958: mGATE の右端の 👁️✏️ / #️⃣✏️ */   /* v5.1.932: pj= mGATE の📌/↩(肩のボタンの写し) */   // v5.1.421: dots= 白い点の字(Me Dock と同じ)。v5.1.407: prev= 1つ前。v5.1.412: ord= Me Dock の並び(wGATE の出張所が同じ順に並べる)
     if (j === _meosPuzzleBadgeLast) return; _meosPuzzleBadgeLast = j;
     const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.writeFileSync(path.join(meosHelperDir(), 'puzzle-last'), j); } catch (_) { }
 }
@@ -49345,9 +49346,10 @@ function activate(context) {
   }));
   // ★v4.2.310: ヘルパーが開く vscodium://lai.lai-membrane/warp?uri=…&key=…&name=…&bell=1 = 膜へ飛び、鐘を引き継ぐ
   try {
-    context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: async (u) => {
+    context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: _meosUriHandle = async (u) => {   // v5.1.958: タブ右の mGATE の札も同じ口を呼ぶ
       try {
         try { require('fs').unlinkSync(require('path').join(meosHelperDir(), 'warp-pending.json')); } catch (_) { }   // v5.1.352: 行き先が届いた
+        if (u && u.path === '/wys') { meosDbg('[helper] wys'); const _ed = vscode.window.activeTextEditor; if (_ed) meosWysToggle(_ed, _ed.selection.active.line); else { _meosWys = !meosWysOn(); try { extensionContext.globalState.update('meosWriteMode', _meosWys ? 'wys' : 'raw'); } catch (_) { } meosPuzzleBadgeFile(); } return; }   // ★v5.1.958: mGATE の右端の 👁️✏️
         if (u && u.path === '/puzzle') {   // ★v5.1.402(俊克 11.02 am10:27 改良1「メニューバーの[c]をクリックすると、戻れるように」): V-helper の札の右端のピースを押した= 🔴の字へ(Shift長押し＋字と同じ puzzleWarpRed)
           const ch = String(new URLSearchParams(u.query || '').get('ch') || '').slice(0, 1); meosDbg('[helper] puzzle ' + ch);
           if (new URLSearchParams(u.query || '').get('sweep') === '1') { if (!_meosLastLineDone) meosLastLineFinish('一括が先 → 戻さない'); await meosPuzzleSweepGo(ch); return; }   // ★v5.1.546: 🔴は動かさない
@@ -49759,6 +49761,26 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
 
   disposables = [
     vscode.languages.registerFoldingRangeProvider(foldingSelector, (membraneFoldingProviderInstance = new MembraneFoldingProvider())),
+    vscode.commands.registerCommand('laiMembrane.gateLogo', () => vscode.commands.executeCommand('laiMembrane.toggleMeDock')),   // v5.1.958 試作: ロゴ= Me Dock の出し入れ(Opt+押す= 終了)
+    vscode.commands.registerCommand('laiMembrane.gateQuit', () => vscode.commands.executeCommand('workbench.action.quit')),
+    vscode.commands.registerCommand('laiMembrane.gate_M', () => meosGateGo('/puzzle?ch=M')),
+    vscode.commands.registerCommand('laiMembrane.gate_M_alt', () => meosGateGo('/puzzle?alt=1&ch=M')),
+    vscode.commands.registerCommand('laiMembrane.gate_e', () => meosGateGo('/puzzle?ch=e')),
+    vscode.commands.registerCommand('laiMembrane.gate_e_alt', () => meosGateGo('/puzzle?alt=1&ch=e')),
+    vscode.commands.registerCommand('laiMembrane.gate_D', () => meosGateGo('/puzzle?ch=D')),
+    vscode.commands.registerCommand('laiMembrane.gate_D_alt', () => meosGateGo('/puzzle?alt=1&ch=D')),
+    vscode.commands.registerCommand('laiMembrane.gate_o', () => meosGateGo('/puzzle?ch=o')),
+    vscode.commands.registerCommand('laiMembrane.gate_o_alt', () => meosGateGo('/puzzle?alt=1&ch=o')),
+    vscode.commands.registerCommand('laiMembrane.gate_c', () => meosGateGo('/puzzle?ch=c')),
+    vscode.commands.registerCommand('laiMembrane.gate_c_alt', () => meosGateGo('/puzzle?alt=1&ch=c')),
+    vscode.commands.registerCommand('laiMembrane.gate_k', () => meosGateGo('/puzzle?ch=k')),
+    vscode.commands.registerCommand('laiMembrane.gate_k_alt', () => meosGateGo('/puzzle?alt=1&ch=k')),
+    vscode.commands.registerCommand('laiMembrane.gate_T', () => meosGateGo('/puzzle?ch=T')),
+    vscode.commands.registerCommand('laiMembrane.gate_T_alt', () => meosGateGo('/puzzle?alt=1&ch=T')),
+    vscode.commands.registerCommand('laiMembrane.gateFof', () => meosGateGo('/fof')),
+    vscode.commands.registerCommand('laiMembrane.gateFofAlt', () => meosGateGo('/fof?alt=1')),
+    vscode.commands.registerCommand('laiMembrane.gateBack', () => meosGateGo('/pin')),
+    vscode.commands.registerCommand('laiMembrane.gatePin', () => meosGateGo('/pin')),
     vscode.commands.registerCommand('laiMembrane.wysEye', () => meosWysTitleBtn()),   // v5.1.957: タブ右の 👁️✏️ / #️⃣✏️
     vscode.commands.registerCommand('laiMembrane.wysRaw', () => meosWysTitleBtn()),
     vscode.commands.registerCommand('laiMembrane.shelfA', () => meosShelfTitleBtn('A')),   // v5.1.954 試作: 棚の出張所をタブ右へ(Sticky Scroll は飾りを描かないので外した)
