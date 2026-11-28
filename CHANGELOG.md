@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.968 (2026-11-28)
+
+- mGATE: the version label now right-aligns under the 👁️✏️ tile at the right end (it sat under ↩).
+
 ### v5.1.967 (2026-11-28)
 - The ⇨ in the gutter that marks the current line is white on dark themes, matching the white text cursor. Light themes keep the orange arrow.
 
