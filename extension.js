@@ -8093,7 +8093,7 @@ function meosWysSpot(ed) {
   } catch (_) { return null; }
 }
 function meosWysPaint(ed) {
-  try { meosShelfPaint(ed); meosShelfCtxSoon(); } catch (_) { }   // v5.1.953 試作: 棚 / v5.1.954 タブ右の札も
+  try { meosShelfPaint(ed); meosShelfCtxSoon(); meosWysCtx(ed); } catch (_) { }   // v5.1.953 試作: 棚 / v5.1.954 タブ右の札も
   try {
     if (!_meosWysDeco) {
       _meosWysDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -8120,12 +8120,8 @@ function meosWysPaintSoon(ed, ms) { try { if (_meosWysTimer) clearTimeout(_meosW
 // 札(インレイヒント)の口から呼ぶ= 印を出している行だけ
 function meosWysHint(doc, ln) { return null; try { const s = _meosWysShown; if (!s || s.line !== ln || s.uri !== doc.uri.toString()) return null; return { col: s.col, label: '　　', tip: s.eye ? 'Write as you see (👁️) | Click to switch: the cursor line opens as Raw (#️⃣).' : 'Raw on the cursor line (#️⃣) | Click to switch: write as you see (👁️).' }; } catch (_) { return null; } }
 // 押した(選択の知らせ)= 印の桁に落ちたマウスのクリック
-function meosWysClick(e, prevSel) {
-  try {
-    const s = _meosWysShown; if (!s || !e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
-    const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
-    const doc = ed.document; if (doc.uri.toString() !== s.uri || sel.active.line !== s.line || sel.active.character !== s.col) return false;
-    const ln = s.cur; if (ln == null || ln >= doc.lineCount) return false;
+function meosWysToggle(ed, ln) {   // v5.1.957: 見たまま⇄Raw の切替(停止線の印とタブ右の札が同じここを呼ぶ)
+  const doc = ed.document;
     if (meosLineHasGhostStore(doc, ln) && !meosWysOn()) {
       if (meosGhostRawIsOpen(doc, ln)) { _meosGhostRawOpen = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → 👁️'); }
       else { _meosGhostRawOpen = { uri: doc.uri.toString(), line: ln }; _meosGhostPress = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → #️⃣ Raw'); }
@@ -8134,8 +8130,22 @@ function meosWysClick(e, prevSel) {
       try { extensionContext.globalState.update('meosWriteMode', _meosWys ? 'wys' : 'raw'); } catch (_) { }
       meosDbg('[wys] 書き方 → ' + (_meosWys ? '👁️ 見たまま' : '#️⃣ Raw'));
     }
-    try { if (prevSel) ed.selection = prevSel; } catch (_) { }   // カーソルは押す前の所へ戻す
     setTimeout(() => { try { for (const e2 of vscode.window.visibleTextEditors) refresh(e2); } catch (_) { } meosWysPaintSoon(ed, 30); }, 0);
+}
+let _meosWysCtxEye = null;
+function meosWysCtx(ed) { try { if (!ed || !ed.document || ed.document.languageId !== 'markdown' || ed !== vscode.window.activeTextEditor) return;
+    const eye = !!meosGhostLineStaysCooked(ed.document, ed.selection.active.line);
+    if (eye !== _meosWysCtxEye) { _meosWysCtxEye = eye; vscode.commands.executeCommand('setContext', 'laiMembrane.wysEye', eye); } } catch (_) { } }   // v5.1.957: タブ右の札の絵= 今のカーソル行の姿(停止線の印と同じ判定)
+function meosWysTitleBtn() { try { const ed = vscode.window.activeTextEditor; if (!ed || !ed.document || ed.document.languageId !== 'markdown') return;
+    meosWysToggle(ed, ed.selection.active.line); setTimeout(() => meosWysCtx(ed), 60); } catch (_) { } }
+function meosWysClick(e, prevSel) {
+  try {
+    const s = _meosWysShown; if (!s || !e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
+    const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
+    const doc = ed.document; if (doc.uri.toString() !== s.uri || sel.active.line !== s.line || sel.active.character !== s.col) return false;
+    const ln = s.cur; if (ln == null || ln >= doc.lineCount) return false;
+    meosWysToggle(ed, ln);   // v5.1.957: タブ右の札と同じ口
+    try { if (prevSel) ed.selection = prevSel; } catch (_) { }   // カーソルは押す前の所へ戻す
     return true;
   } catch (_) { return false; }
 }
@@ -49749,6 +49759,8 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
 
   disposables = [
     vscode.languages.registerFoldingRangeProvider(foldingSelector, (membraneFoldingProviderInstance = new MembraneFoldingProvider())),
+    vscode.commands.registerCommand('laiMembrane.wysEye', () => meosWysTitleBtn()),   // v5.1.957: タブ右の 👁️✏️ / #️⃣✏️
+    vscode.commands.registerCommand('laiMembrane.wysRaw', () => meosWysTitleBtn()),
     vscode.commands.registerCommand('laiMembrane.shelfA', () => meosShelfTitleBtn('A')),   // v5.1.954 試作: 棚の出張所をタブ右へ(Sticky Scroll は飾りを描かないので外した)
     vscode.commands.registerCommand('laiMembrane.shelfB', () => meosShelfTitleBtn('B')),
     vscode.languages.registerHoverProvider(foldingSelector, {

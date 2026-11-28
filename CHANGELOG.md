@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.957 (2026-11-28)
+- The WYSIWYW switch (👁️✏️ / #️⃣✏️) is now also in the editor title bar. It shows the state of the caret line and switches it, the same as the mark on the stop line.
+
 ### v5.1.956 (2026-11-28)
 - The editor title bar no longer shows the "+" (Add Membrane) button. The command stays in the Command Palette.
 
