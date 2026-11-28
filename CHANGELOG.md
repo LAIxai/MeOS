@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.955 (2026-11-28)
+- The editor title bar no longer shows "Toggle Current Membrane" and "MeOS: Refresh". The commands stay in the Command Palette. The title bar is now the place for the shelf buttons.
+
 ### v5.1.954 (2026-11-28)
 - Prototype: the stop-line shelf now puts its trial buttons (🅰️ 🅱️) in the editor title bar, shown only when the document has a shelf. The Sticky Scroll outline symbols were removed, because Sticky Scroll does not draw decorations.
 
