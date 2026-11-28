@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.963 (2026-11-28)
+- macOS: the top of the 👁️✏️ / #️⃣✏️ tile rim in mGATE is no longer clipped.
+- "Hide MDcⓉ♥↩" now sits in the same block as the overflowed MeOS buttons, with no separator above it.
+
 ### v5.1.962 (2026-11-28)
 - The trial shelf buttons (🅰️ 🅱️) are gone from the tab bar's "…" menu.
 - The hide/show item is now "Hide MDcⓉ♥↩" / "Show MDcⓉ♥↩", placed right below the overflowed MeOS buttons.
