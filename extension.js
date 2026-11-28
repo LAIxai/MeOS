@@ -44226,6 +44226,7 @@ function meosApplyFcRowDecorations(editor) {
     }
     out.length = 0; for (const r of cut) out.push(r);
   }
+  try { const _d = editor.document; for (let k = out.length - 1; k >= 0; k--) { const ln = out[k] && out[k].start ? out[k].start.line : -1; if (ln >= 0 && ln < _d.lineCount && meosGhostLineStaysCooked(_d, ln) && !meosIsSpecLine(_d.lineAt(ln).text)) out.splice(k, 1); } } catch (_) { }   // ★v5.1.964(俊克 963 改良1「WYSIWYWモードのときに、見出しなどのハイライトに入ると、文字が橙色になるのが、見え難い」): 飾ったまま見せている本文の行は塗らない(橙は生データを見せている印)。FC 行はそのまま
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
   try {
     const by = new Map(); for (const it of _pv) { const k = it.fg + '|' + it.bg; if (!by.has(k)) by.set(k, []); by.get(k).push(it.range); }

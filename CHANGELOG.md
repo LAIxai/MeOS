@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.964 (2026-11-28)
+- In 👁️✏️ (WYSIWYW) mode, entering a heading or highlight no longer turns its decorated text orange, so it stays readable. The orange still marks the matching FC line.
+
 ### v5.1.963 (2026-11-28)
 - macOS: the top of the 👁️✏️ / #️⃣✏️ tile rim in mGATE is no longer clipped.
 - "Hide MDcⓉ♥↩" now sits in the same block as the overflowed MeOS buttons, with no separator above it.
