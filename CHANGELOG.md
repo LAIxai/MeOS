@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.965 (2026-11-28)
+- Dark themes get a white text cursor by default, and the cursor is 3px wide, so it stays visible on colored highlights. Your own settings still win.
+
 ### v5.1.964 (2026-11-28)
 - In 👁️✏️ (WYSIWYW) mode, entering a heading or highlight no longer turns its decorated text orange, so it stays readable. The orange still marks the matching FC line.
 
