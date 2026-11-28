@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.966 (2026-11-28)
+- The text cursor width goes back to VS Code's default (2px). The white cursor on dark themes stays.
+
 ### v5.1.965 (2026-11-28)
 - Dark themes get a white text cursor by default, and the cursor is 3px wide, so it stays visible on colored highlights. Your own settings still win.
 
