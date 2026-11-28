@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.948 (2026-11-28)
+- The 👁️✏️ / #️⃣✏️ switch now sits on the nearest visible stop line, to the right of its line, instead of at the end of the cursor line. No text is hidden or changed; clicking it switches the mode for the cursor line and leaves the caret where it was.
+
 ### v5.1.947 (2026-11-28)
 - The 👁️✏️ / #️⃣✏️ switch no longer waits for a hover or shows faint: clicking mid-line brings it up at full strength, like the stop line buttons.
 

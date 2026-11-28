@@ -8070,6 +8070,7 @@ let _meosWysHover = null;   // { uri, line }= tip の口が呼ばれた行(カ�
 let _meosWysTypeAt = 0, _meosWysTypeLine = -1, _meosWysTimer = null, _meosWysDeco = null, _meosWysHideDeco = null, _meosWysHide2Deco = null, _meosWysSkinDeco = null;
 function meosWysHoverOn() { try { const v = vscode.workspace.getConfiguration('editor', { languageId: 'markdown' }).get('hover.enabled'); return !(v === false || v === 'off'); } catch (_) { return true; } }
 const MEOS_WYS_NOSUR = /[\s*~`>\])}|=_\-#!<\\]/;
+const MEOS_WYS_STOP_COL = 8;   // v5.1.948: 停止線の中の押す桁(札は 1〜6 まで)
 function meosWysSpot(ed) {
   try {
     if (!ed || !ed.document || ed !== vscode.window.activeTextEditor) return null;
@@ -8078,16 +8079,17 @@ function meosWysSpot(ed) {
     const ln = sel.active.line; if (meosModeAtLine(doc, ln) !== 'normal') return null;
     const t = doc.lineAt(ln).text; if (meosIsSpecLine(t)) return null;
     if (_meosWysTypeLine === ln && Date.now() - _meosWysTypeAt < 1500) return null;   // 書き足している間は出さない
-    const hov = true;   // ★v5.1.947(俊克「FCコメントだけの停止線で、ボタンを表示できている…行のどこかをクリックした時に、ボタンを出す」): tip の口(ホーバー)待ち・薄表示をやめる= 行の途中のクリックがスイッチ
+    // ★★v5.1.948(俊克 am10:16「行末は止めて、近場にある停止線あるいは、FC行にボタンを出そうよ。カレント行に出す必要性は無い…要は、押せればいい」):
+    //   印の家= 画面に見えている一番近い停止線(上を先・無ければ下)。押す桁= 停止線の隠れたコメントの中の桁(MEOS_WYS_STOP_COL)= ふつうのクリックは落ちない(停止線の札と同じ理屈)。
+    //   ふだんの FC 行は畳まれて見えないので家にならない。本文の字は隠さない・書き換えない。見える停止線が無い時は出さない
     const eye = meosGhostLineStaysCooked(doc, ln);
-    // ★v5.1.945(俊克 944 改良1〜3): 空行・行末に居る時は出さない(書いている所でモードを見せる意味は無い= 行の途中を押すと出る)。
-    //   当たり= 最後の2字を透明に(幅は残す)し、その間(最後の字の前)に札= 左の見える字の右半分を押しても札の桁に落ちない(1字ぶんの緩衝)
-    const cp = (k) => (k >= 1 && /[\udc00-\udfff]/.test(t[k]) && /[\ud800-\udbff]/.test(t[k - 1])) ? k - 1 : k;
-    if (t.length < 2) return null;
-    const col = cp(t.length - 1); if (col < 1) return null; const buf = cp(col - 1); if (buf < 0) return null;
-    if (/\s/.test(t.slice(col)) || sel.active.character >= buf) return null;
-    const sur = true;
-    return { uri: doc.uri.toString(), line: ln, col, buf, sur, len: t.length, eye, faint: !hov };
+    let host = -1, best = Infinity;
+    for (const vr of (ed.visibleRanges || [])) for (let i = vr.start.line; i <= vr.end.line && i < doc.lineCount; i++) {
+      if (i === ln) continue; const d = i < ln ? ln - i : 100000 + i - ln; if (d >= best) continue;
+      const tx = doc.lineAt(i).text; if (tx.length <= MEOS_WYS_STOP_COL + 1 || tx.indexOf('Mew!UFC') < 0) continue;
+      if (!meosStopBtnSpots(doc, i, ed)) continue; host = i; best = d; }
+    if (host < 0) return null;
+    return { uri: doc.uri.toString(), line: host, col: MEOS_WYS_STOP_COL, cur: ln, eye };
   } catch (_) { return null; }
 }
 function meosWysPaint(ed) {
@@ -8099,31 +8101,27 @@ function meosWysPaint(ed) {
       _meosWysSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     }
     const sp = meosWysSpot(ed), prev = _meosWysShown;
-    const same = (a, b) => (!a && !b) || (a && b && a.uri === b.uri && a.line === b.line && a.col === b.col && a.eye === b.eye && a.faint === b.faint && a.len === b.len);
-    for (const e2 of vscode.window.visibleTextEditors) if (e2 !== ed || !sp) { try { e2.setDecorations(_meosWysDeco, []); e2.setDecorations(_meosWysHideDeco, []); e2.setDecorations(_meosWysHide2Deco, []); e2.setDecorations(_meosWysSkinDeco, []); } catch (_) { } }
+    const same = (a, b) => (!a && !b) || (a && b && a.uri === b.uri && a.line === b.line && a.eye === b.eye);
+    for (const e2 of vscode.window.visibleTextEditors) if (e2 !== ed || !sp) { try { e2.setDecorations(_meosWysDeco, []); } catch (_) { } }
     _meosWysShown = sp;
     if (sp) {
-      const t = ed.document.lineAt(sp.line).text, a = Math.max(0, sp.col - 1), b = Math.min(t.length, sp.col + (sp.sur ? t.length - sp.col : 0) + (sp.sur ? 0 : 0));
-      const css = 'none; position: relative; pointer-events: none; display: inline-block; width: 0; direction: rtl; white-space: nowrap; line-height: 1.2; z-index: 1; opacity: ' + (sp.faint ? '0.4' : '1') + ';';
-      ed.setDecorations(_meosWysDeco, [{ range: new vscode.Range(sp.line, sp.col, sp.line, sp.col), renderOptions: { before: { contentText: '‎' + (sp.eye ? '👁️✏️' : '#️⃣✏️') + '‎', textDecoration: css } } }]);
-      ed.setDecorations(_meosWysHideDeco, [{ range: new vscode.Range(sp.line, sp.buf, sp.line, sp.col) }]);
-      ed.setDecorations(_meosWysHide2Deco, [{ range: new vscode.Range(sp.line, sp.col, sp.line, t.length) }]);
-      ed.setDecorations(_meosWysSkinDeco, [{ range: new vscode.Range(sp.line, sp.buf, sp.line, t.length) }]);   // v5.1.945: 手の形は透明にした所だけ(左の見える字には掛けない)
+      // 絵= 停止線の箱(60字)の右の外。left は行の箱(view-line)から測る= 隠した字・箱の余白に左右されない。押すと桁 MEOS_WYS_STOP_COL に落ちる
+      const css = 'none; position: absolute; left: ' + (MEOS_STOP_BOX_CH + 1.5) + 'ch; top: 50%; transform: translateY(-50%); z-index: 5; white-space: nowrap; line-height: 1.2; cursor: ' + meosHandCursor() + '; pointer-events: auto;';
+      ed.setDecorations(_meosWysDeco, [{ range: new vscode.Range(sp.line, sp.col, sp.line, sp.col), renderOptions: { before: { contentText: sp.eye ? '👁️✏️' : '#️⃣✏️', textDecoration: css } } }]);
     }
-    if (!same(sp, prev)) { try { _meosNudgeHintsEv.fire(); } catch (_) { } }
+    if (!sp || !prev || sp.uri !== prev.uri || sp.line !== prev.line) { try { meosApplyTimerLineDecorations(ed); } catch (_) { } }   // 停止線の隠す範囲を押す桁で割り直す
   } catch (_) { }
 }
 function meosWysPaintSoon(ed, ms) { try { if (_meosWysTimer) clearTimeout(_meosWysTimer); _meosWysTimer = setTimeout(() => { _meosWysTimer = null; meosWysPaint(ed || vscode.window.activeTextEditor); }, ms == null ? 60 : ms); } catch (_) { } }
 // 札(インレイヒント)の口から呼ぶ= 印を出している行だけ
-function meosWysHint(doc, ln) { try { const s = _meosWysShown; if (!s || s.line !== ln || s.uri !== doc.uri.toString()) return null; return { col: s.col, label: '　　', tip: s.eye ? 'Write as you see (👁️) | Click to switch: the cursor line opens as Raw (#️⃣).' : 'Raw on the cursor line (#️⃣) | Click to switch: write as you see (👁️).' }; } catch (_) { return null; } }
+function meosWysHint(doc, ln) { return null; try { const s = _meosWysShown; if (!s || s.line !== ln || s.uri !== doc.uri.toString()) return null; return { col: s.col, label: '　　', tip: s.eye ? 'Write as you see (👁️) | Click to switch: the cursor line opens as Raw (#️⃣).' : 'Raw on the cursor line (#️⃣) | Click to switch: write as you see (👁️).' }; } catch (_) { return null; } }
 // 押した(選択の知らせ)= 印の桁に落ちたマウスのクリック
 function meosWysClick(e, prevSel) {
   try {
     const s = _meosWysShown; if (!s || !e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
     const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
     const doc = ed.document; if (doc.uri.toString() !== s.uri || sel.active.line !== s.line || sel.active.character !== s.col) return false;
-    if (doc.lineAt(s.line).text.length !== s.len) return false;
-    const ln = s.line;
+    const ln = s.cur; if (ln == null || ln >= doc.lineCount) return false;
     if (meosLineHasGhostStore(doc, ln) && !meosWysOn()) {
       if (meosGhostRawIsOpen(doc, ln)) { _meosGhostRawOpen = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → 👁️'); }
       else { _meosGhostRawOpen = { uri: doc.uri.toString(), line: ln }; _meosGhostPress = null; meosDbg('[wys] 👻の行 ' + (ln + 1) + ' → #️⃣ Raw'); }
@@ -8132,7 +8130,7 @@ function meosWysClick(e, prevSel) {
       try { extensionContext.globalState.update('meosWriteMode', _meosWys ? 'wys' : 'raw'); } catch (_) { }
       meosDbg('[wys] 書き方 → ' + (_meosWys ? '👁️ 見たまま' : '#️⃣ Raw'));
     }
-    try { if (s.sur && prevSel && prevSel.active.line === ln) ed.selection = prevSel; } catch (_) { }   // カーソルは押す前の所へ戻す
+    try { if (prevSel) ed.selection = prevSel; } catch (_) { }   // カーソルは押す前の所へ戻す
     setTimeout(() => { try { for (const e2 of vscode.window.visibleTextEditors) refresh(e2); } catch (_) { } meosWysPaintSoon(ed, 30); }, 0);
     return true;
   } catch (_) { return false; }
@@ -16548,7 +16546,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v5.1.645: 🛑を押せる札(見えない字)にする= 札の桁で隠す範囲を割り、2つの型で交互に隠す(1つの範囲の内側に立てた札は字と一緒に幅0= v5.1.40 の穴)。
               //   箱は浮かせて(absolute)札の上に重ねる= 札が場所を取っても絵は行頭から。押す当たりは札・絵は pointer-events: none
               const _sb45 = meosStopBtnSpots(doc, i, editor), _off45 = !MEOS_RULE_LINE_RE.test(txt), _S = MEOS_STOP_SIGN_EM;
-              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.rot > 0) _cuts.push(_sb45.rot); if (_sb45.dot > 0) _cuts.push(_sb45.dot); if (_sb45.gap > 0) _cuts.push(_sb45.gap); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } _cuts.push(txt.length);
+              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.rot > 0) _cuts.push(_sb45.rot); if (_sb45.dot > 0) _cuts.push(_sb45.dot); if (_sb45.gap > 0) _cuts.push(_sb45.gap); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } { const _ws = _meosWysShown; if (_ws && _ws.line === i && _ws.uri === doc.uri.toString() && _ws.col < txt.length && _cuts.indexOf(_ws.col) < 0) _cuts.push(_ws.col); }   // ★v5.1.948: 👁️✏️ の押す桁で割る(1つの隠す範囲の内側に立てると絵も幅0)
+                _cuts.sort((a, b) => a - b); _cuts.push(txt.length);
                 for (let _k = 0; _k + 1 < _cuts.length; _k++) if (_cuts[_k + 1] > _cuts[_k]) (_k % 2 ? stopHide2 : badgeHide).push(new vscode.Range(i, _cuts[_k], i, _cuts[_k + 1]));
                 if (_sb45) { hintSkins.push({ range: new vscode.Range(i, 0, i, _sb45.dot > 0 ? 4 : _sb45.rot > 0 ? 3 : 2) }); if (_sb45.bulk > 0) hintSkins.push({ range: new vscode.Range(i, _sb45.bulk - 1, i, _sb45.bulk + 1) }); } }
               const _sign = (u, pos) => 'url(' + u + ') ' + pos + ' center / ' + _S + 'em ' + _S + 'em no-repeat';
@@ -48593,6 +48592,7 @@ function activate(context) {
   // ★v5.1.944: 👁️✏️/#️⃣✏️= カーソル行が替わったら印も移る・書き足している間は隠す
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try { const ln = e.selections && e.selections[0] ? e.selections[0].active.line : -1; if (_meosWysHover && (_meosWysHover.line !== ln || _meosWysHover.uri !== e.textEditor.document.uri.toString())) _meosWysHover = null; meosWysPaintSoon(e.textEditor, 60); } catch (_) { } }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { _meosWysHover = null; meosWysPaintSoon(ed, 60); }));
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor === vscode.window.activeTextEditor) meosWysPaintSoon(e.textEditor, 200); } catch (_) { } }));   // v5.1.948: 巻いたら近場の停止線を選び直す
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => { try { const ae = vscode.window.activeTextEditor; if (!ae || ae.document !== e.document || !e.contentChanges.length) return; _meosWysTypeAt = Date.now(); _meosWysTypeLine = ae.selection.active.line; if (_meosWysShown) meosWysPaint(ae); meosWysPaintSoon(ae, 1550); } catch (_) { } }));
   // v5.1.899: 「色」ボタンはやめた(本物を塗る= meosFcColorPreview)
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(meosLinkGhostClick));   // v5.1.901: リンクの👻
