@@ -8093,7 +8093,7 @@ function meosWysSpot(ed) {
   } catch (_) { return null; }
 }
 function meosWysPaint(ed) {
-  try { meosShelfPaint(ed); } catch (_) { }   // v5.1.953 試作: 棚
+  try { meosShelfPaint(ed); meosShelfCtxSoon(); } catch (_) { }   // v5.1.953 試作: 棚 / v5.1.954 タブ右の札も
   try {
     if (!_meosWysDeco) {
       _meosWysDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -8177,12 +8177,11 @@ function meosShelfClick(e, prevSel) {
     return true;
   } catch (_) { return false; }
 }
-class MeosShelfSymbolProvider { provideDocumentSymbols(doc) { try { if (doc.languageId !== 'markdown') return [];
-    const heads = meosShelfHeads(doc), out = [];
-    heads.forEach((h, k) => { const end = (k + 1 < heads.length ? heads[k + 1] : doc.lineCount) - 1; if (end <= h) return;
-      const r = new vscode.Range(h, 0, end, doc.lineAt(end).text.length), sr = new vscode.Range(h, 0, h, doc.lineAt(h).text.length);
-      out.push(new vscode.DocumentSymbol('▦ 棚 ' + (h + 1), 'MeOS', vscode.SymbolKind.Namespace, r, sr)); });
-    return out; } catch (_) { return []; } } }
+let _meosShelfCtxT = null, _meosShelfCtxOn = null;
+function meosShelfCtxSoon() { try { if (_meosShelfCtxT) clearTimeout(_meosShelfCtxT); _meosShelfCtxT = setTimeout(() => { _meosShelfCtxT = null; try { const ed = vscode.window.activeTextEditor; const on = !!(ed && ed.document && ed.document.languageId === 'markdown' && meosShelfHeads(ed.document).length > 0);
+    if (on !== _meosShelfCtxOn) { _meosShelfCtxOn = on; vscode.commands.executeCommand('setContext', 'laiMembrane.shelfHere', on); } } catch (_) { } }, 700); } catch (_) { } }   // v5.1.954 試作: 棚がある文書だけタブ右に出す(全行を数えるので打鍵ごとにはしない)
+function meosShelfTitleBtn(name) { try { const b = MEOS_SHELF_BTNS.find(x => x.name === name); const ed = vscode.window.activeTextEditor; const n = ed ? meosShelfHeads(ed.document).length : 0;
+    meosDbg('[shelf] タブ右 ' + name + ' 棚=' + n); vscode.window.showInformationMessage('タブ右の ' + (b ? b.pic : name) + ' (' + name + ') を押しました [棚 ' + n + ' か所]'); } catch (_) { } }
 function meosGhostShownKey(doc, line, col) { try { return doc.uri.toString() + '#' + doc.version + '#' + line + '#' + col; } catch (_) { return ''; } }
 // その桁が ~~👻~~ の上か(マウスの着地は👻の左右で ~~ の端に落ちる= 6字の範囲で見る)。当たれば ~~ の頭の桁
 function meosGhostBtnHit(doc, ln, col) {
@@ -49750,7 +49749,8 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
 
   disposables = [
     vscode.languages.registerFoldingRangeProvider(foldingSelector, (membraneFoldingProviderInstance = new MembraneFoldingProvider())),
-    (typeof vscode.languages.registerDocumentSymbolProvider === 'function' ? vscode.languages.registerDocumentSymbolProvider([{ language: 'markdown' }], new MeosShelfSymbolProvider()) : { dispose() { } }),   // v5.1.953 試作: 停止線の棚を Sticky Scroll の上端へ(検査の台には無い口)
+    vscode.commands.registerCommand('laiMembrane.shelfA', () => meosShelfTitleBtn('A')),   // v5.1.954 試作: 棚の出張所をタブ右へ(Sticky Scroll は飾りを描かないので外した)
+    vscode.commands.registerCommand('laiMembrane.shelfB', () => meosShelfTitleBtn('B')),
     vscode.languages.registerHoverProvider(foldingSelector, {
       provideHover(document, position) {
         const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
