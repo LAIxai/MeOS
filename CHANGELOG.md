@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.959 (2026-11-28)
+- Title-bar buttons stay visible while Me Dock or another panel has focus.
+- Pressing a title-bar mGATE button while Me Dock has focus no longer splits the editor: the editor of that tab gets focus first.
+- macOS: the 👁️✏️ / #️⃣✏️ tile at the right end of mGATE now fits inside its slot.
+
 ### v5.1.958 (2026-11-28)
 - The editor title bar now carries the mGATE buttons: the logo (shows or hides Me Dock; Opt+click quits), M e D o c k Ⓣ, ♥ and ↩/📌. Opt+click on a piece cycles its marks, as in mGATE. Ⓣ shows only in a diary.
 - The title-bar 👁️✏️ / #️⃣✏️ now switches the whole write mode only. A line with a stand-in 👻 gets its own button at the line end: 👁️✏️ opens that line as Raw, and it shows #️⃣✏️ until you leave the line.

@@ -8131,7 +8131,7 @@ let _meosWysCtxEye = null;
 function meosWysCtx(ed) { try { if (!ed || !ed.document || ed.document.languageId !== 'markdown' || ed !== vscode.window.activeTextEditor) return;
     const eye = meosWysOn();   // v5.1.958: 全体の書き方
     if (eye !== _meosWysCtxEye) { _meosWysCtxEye = eye; vscode.commands.executeCommand('setContext', 'laiMembrane.wysEye', eye); } } catch (_) { } }   // v5.1.957: タブ右の札の絵= 今のカーソル行の姿(停止線の印と同じ判定)
-function meosWysTitleBtn() { try { const ed = vscode.window.activeTextEditor; if (!ed || !ed.document || ed.document.languageId !== 'markdown') return;
+async function meosWysTitleBtn(u) { try { await meosGateFocus(u); const ed = vscode.window.activeTextEditor; if (!ed || !ed.document || ed.document.languageId !== 'markdown') return;
     meosWysToggle(ed, ed.selection.active.line); setTimeout(() => meosWysCtx(ed), 60); } catch (_) { } }
 function meosWysClick(e, prevSel) {
   try {
@@ -15616,7 +15616,9 @@ function meosJumbleSet(on, fromPuzzle) {
 let _meosPuzzleBadgeLast = '';
 let _meosUriHandle = null;   // v5.1.958: URI の受け口(タブ右の mGATE の札が呼ぶ)
 let _meosGateCtx = '';
-function meosGateGo(path) { try { meosDbg('[gate] タブ右 ' + path); if (_meosUriHandle) _meosUriHandle(vscode.Uri.parse('vscode://lai.lai-membrane' + path)); } catch (_) { } }   // ★v5.1.958(俊克 957 改良2「mGATEのすべてのボタンをタブツールバーに」): mGATE と同じ行き先
+async function meosGateFocus(uri) { try { if (vscode.window.activeTextEditor) return; const k = uri && uri.toString ? uri.toString() : ''; const ed = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === k) || vscode.window.visibleTextEditors.find(e => e.document.languageId === 'markdown');
+    if (ed) { await vscode.window.showTextDocument(ed.document, { viewColumn: ed.viewColumn, preserveFocus: false }); meosDbg('[gate] 文字の窓へ焦点を戻した ' + ed.viewColumn); } } catch (_) { } }   // ★v5.1.959(958 改良1「eボタンを押すと、エディターが2つに割れた」): Me Dock に焦点がある間は文字の窓が無い→ ワープが新しい窓を開いていた。押したタブの窓へ先に焦点を戻す
+async function meosGateGo(path, uri) { try { meosDbg('[gate] タブ右 ' + path); await meosGateFocus(uri); if (_meosUriHandle) await _meosUriHandle(vscode.Uri.parse('vscode://lai.lai-membrane' + path)); } catch (_) { } }   // ★v5.1.958(俊克 957 改良2「mGATEのすべてのボタンをタブツールバーに」): mGATE と同じ行き先
 function meosPuzzleBadgeFile() {
   meosMbmPzPost();   // v5.1.462: Me Dock の分身の2枚も
   try { const _q = meosPinJump(meosCurFilePath()), _t = String(meosPuzzleDotLetters || '').indexOf('T') >= 0, _p = _q ? (_q.g === '\u21A9' ? 'back' : 'pin') : '', _k = _t + '|' + _p;
@@ -49763,26 +49765,26 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
     vscode.languages.registerFoldingRangeProvider(foldingSelector, (membraneFoldingProviderInstance = new MembraneFoldingProvider())),
     vscode.commands.registerCommand('laiMembrane.gateLogo', () => vscode.commands.executeCommand('laiMembrane.toggleMeDock')),   // v5.1.958 試作: ロゴ= Me Dock の出し入れ(Opt+押す= 終了)
     vscode.commands.registerCommand('laiMembrane.gateQuit', () => vscode.commands.executeCommand('workbench.action.quit')),
-    vscode.commands.registerCommand('laiMembrane.gate_M', () => meosGateGo('/puzzle?ch=M')),
-    vscode.commands.registerCommand('laiMembrane.gate_M_alt', () => meosGateGo('/puzzle?alt=1&ch=M')),
-    vscode.commands.registerCommand('laiMembrane.gate_e', () => meosGateGo('/puzzle?ch=e')),
-    vscode.commands.registerCommand('laiMembrane.gate_e_alt', () => meosGateGo('/puzzle?alt=1&ch=e')),
-    vscode.commands.registerCommand('laiMembrane.gate_D', () => meosGateGo('/puzzle?ch=D')),
-    vscode.commands.registerCommand('laiMembrane.gate_D_alt', () => meosGateGo('/puzzle?alt=1&ch=D')),
-    vscode.commands.registerCommand('laiMembrane.gate_o', () => meosGateGo('/puzzle?ch=o')),
-    vscode.commands.registerCommand('laiMembrane.gate_o_alt', () => meosGateGo('/puzzle?alt=1&ch=o')),
-    vscode.commands.registerCommand('laiMembrane.gate_c', () => meosGateGo('/puzzle?ch=c')),
-    vscode.commands.registerCommand('laiMembrane.gate_c_alt', () => meosGateGo('/puzzle?alt=1&ch=c')),
-    vscode.commands.registerCommand('laiMembrane.gate_k', () => meosGateGo('/puzzle?ch=k')),
-    vscode.commands.registerCommand('laiMembrane.gate_k_alt', () => meosGateGo('/puzzle?alt=1&ch=k')),
-    vscode.commands.registerCommand('laiMembrane.gate_T', () => meosGateGo('/puzzle?ch=T')),
-    vscode.commands.registerCommand('laiMembrane.gate_T_alt', () => meosGateGo('/puzzle?alt=1&ch=T')),
-    vscode.commands.registerCommand('laiMembrane.gateFof', () => meosGateGo('/fof')),
-    vscode.commands.registerCommand('laiMembrane.gateFofAlt', () => meosGateGo('/fof?alt=1')),
-    vscode.commands.registerCommand('laiMembrane.gateBack', () => meosGateGo('/pin')),
-    vscode.commands.registerCommand('laiMembrane.gatePin', () => meosGateGo('/pin')),
-    vscode.commands.registerCommand('laiMembrane.wysEye', () => meosWysTitleBtn()),   // v5.1.957: タブ右の 👁️✏️ / #️⃣✏️
-    vscode.commands.registerCommand('laiMembrane.wysRaw', () => meosWysTitleBtn()),
+    vscode.commands.registerCommand('laiMembrane.gate_M', (u) => meosGateGo('/puzzle?ch=M', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_M_alt', (u) => meosGateGo('/puzzle?alt=1&ch=M', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_e', (u) => meosGateGo('/puzzle?ch=e', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_e_alt', (u) => meosGateGo('/puzzle?alt=1&ch=e', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_D', (u) => meosGateGo('/puzzle?ch=D', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_D_alt', (u) => meosGateGo('/puzzle?alt=1&ch=D', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_o', (u) => meosGateGo('/puzzle?ch=o', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_o_alt', (u) => meosGateGo('/puzzle?alt=1&ch=o', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_c', (u) => meosGateGo('/puzzle?ch=c', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_c_alt', (u) => meosGateGo('/puzzle?alt=1&ch=c', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_k', (u) => meosGateGo('/puzzle?ch=k', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_k_alt', (u) => meosGateGo('/puzzle?alt=1&ch=k', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_T', (u) => meosGateGo('/puzzle?ch=T', u)),
+    vscode.commands.registerCommand('laiMembrane.gate_T_alt', (u) => meosGateGo('/puzzle?alt=1&ch=T', u)),
+    vscode.commands.registerCommand('laiMembrane.gateFof', (u) => meosGateGo('/fof', u)),
+    vscode.commands.registerCommand('laiMembrane.gateFofAlt', (u) => meosGateGo('/fof?alt=1', u)),
+    vscode.commands.registerCommand('laiMembrane.gateBack', (u) => meosGateGo('/pin', u)),
+    vscode.commands.registerCommand('laiMembrane.gatePin', (u) => meosGateGo('/pin', u)),
+    vscode.commands.registerCommand('laiMembrane.wysEye', (u) => meosWysTitleBtn(u)),   // v5.1.957: タブ右の 👁️✏️ / #️⃣✏️
+    vscode.commands.registerCommand('laiMembrane.wysRaw', (u) => meosWysTitleBtn(u)),
     vscode.commands.registerCommand('laiMembrane.shelfA', () => meosShelfTitleBtn('A')),   // v5.1.954 試作: 棚の出張所をタブ右へ(Sticky Scroll は飾りを描かないので外した)
     vscode.commands.registerCommand('laiMembrane.shelfB', () => meosShelfTitleBtn('B')),
     vscode.languages.registerHoverProvider(foldingSelector, {
