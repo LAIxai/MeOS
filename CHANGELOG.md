@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.967 (2026-11-28)
+- The ⇨ in the gutter that marks the current line is white on dark themes, matching the white text cursor. Light themes keep the orange arrow.
+
 ### v5.1.966 (2026-11-28)
 - The text cursor width goes back to VS Code's default (2px). The white cursor on dark themes stays.
 

@@ -29073,6 +29073,7 @@ function ensureMeDockCurrentLineDecoration() {
     gutterIconSize: 'contain'
   };
   try { if (extensionContext && extensionContext.extensionUri) opts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'current-line.svg'); } catch (_) {}
+  try { if (opts.gutterIconPath) opts.dark = { gutterIconPath: vscode.Uri.joinPath(extensionContext.extensionUri, 'current-line-dark.svg') }; } catch (_) {}   // ★v5.1.967(俊克 11.28 pm07:20 改良1「カーソルが橙だったので⇨も橙…白色にすべきかな?」): ダーク系は白(文字カーソルの白 v5.1.965 と揃える)・ライト系は橙のまま
   if (!opts.gutterIconPath) opts.after = { contentText: ' \u21e6', color: 'rgba(255, 120, 0, 1)', fontWeight: 'bold', margin: '0 0 0 6px' };
   meDockCurrentLineDecoration = vscode.window.createTextEditorDecorationType(opts);
   return meDockCurrentLineDecoration;
