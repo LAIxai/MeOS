@@ -8093,6 +8093,7 @@ function meosWysSpot(ed) {
   } catch (_) { return null; }
 }
 function meosWysPaint(ed) {
+  try { meosShelfPaint(ed); } catch (_) { }   // v5.1.953 試作: 棚
   try {
     if (!_meosWysDeco) {
       _meosWysDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -8138,6 +8139,50 @@ function meosWysClick(e, prevSel) {
     return true;
   } catch (_) { return false; }
 }
+// ★★v5.1.953 試作(俊克 11.28 pm00:20〜27「停止線を連続で複数出した時に、ボタン機能を発動」「先ず、mGATEの出張所として…スクロールしない形で、エディターの上端に止める」「まずは、Sticky Scroll版を試作」):
+//   棚= オンの停止線が2本続いた所の1本目(棚の頭)。頭の線の箱の中にボタンを並べる(押す桁= 隠れたコメントの中= 👁️✏️ と同じ理屈)。
+//   上端に止める= 棚の頭から次の棚(無ければ文書の終わり)までを1つの「記号」(DocumentSymbol)として渡す→ Sticky Scroll(アウトラインの型)が頭の線を上端に貼る。
+//   試作で測ること= ①貼られた行に絵が描かれるか ②貼られた行を押すと選択の知らせが来るか・どの桁・どの種類か(ログ [shelf] 着地)
+const MEOS_SHELF_BTNS = [{ col: 10, pic: '🅰️', name: 'A' }, { col: 12, pic: '🅱️', name: 'B' }];
+let _meosShelfDeco = null, _meosShelfIdx = { uri: '', ver: -1, heads: [] };
+function meosShelfIsRule(doc, i) { try { if (i < 0 || i >= doc.lineCount) return false; const t = doc.lineAt(i).text; return t.indexOf('Mew!UFC') >= 0 && MEOS_RULE_LINE_RE.test(t); } catch (_) { return false; } }
+function meosShelfHeadAt(doc, i) { return meosShelfIsRule(doc, i) && meosShelfIsRule(doc, i + 1) && !meosShelfIsRule(doc, i - 1); }
+function meosShelfHeads(doc) { try { const k = doc.uri.toString(); if (_meosShelfIdx.uri === k && _meosShelfIdx.ver === doc.version) return _meosShelfIdx.heads;
+    const heads = [], n = doc.lineCount; let prev = false;
+    for (let i = 0; i < n; i++) { const t = doc.lineAt(i).text, r = t.indexOf('Mew!UFC') >= 0 && MEOS_RULE_LINE_RE.test(t); if (r && !prev && i + 1 < n && meosShelfIsRule(doc, i + 1)) heads.push(i); prev = r; }
+    _meosShelfIdx = { uri: k, ver: doc.version, heads }; return heads; } catch (_) { return []; } }
+function meosShelfCuts(doc, i) { return meosShelfHeadAt(doc, i) ? MEOS_SHELF_BTNS.map(b => b.col) : []; }
+function meosShelfPaint(ed) {
+  try { if (!ed || !ed.document || ed.document.languageId !== 'markdown') return;
+    if (!_meosShelfDeco) _meosShelfDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    const doc = ed.document, out = [];
+    for (const vr of (ed.visibleRanges || [])) for (let i = vr.start.line; i <= vr.end.line && i < doc.lineCount; i++) {
+      if (!meosShelfHeadAt(doc, i)) continue; const sp = meosStopBtnSpots(doc, i, ed); if (!sp || !sp.on || !(sp.pad > 0)) continue;
+      const len = doc.lineAt(i).text.length;
+      MEOS_SHELF_BTNS.forEach((b, k) => { if (b.col >= len) return;
+        out.push({ range: new vscode.Range(i, b.col, i, b.col), renderOptions: { before: { contentText: b.pic, textDecoration: 'none; position: absolute; left: ' + (24 + k * 5) + 'ch; top: 50%; transform: translateY(-50%); z-index: 5; white-space: nowrap; line-height: 1.2; padding: 0 0.4ch; background-color: var(--vscode-editor-background); cursor: ' + meosHandCursor() + '; pointer-events: auto;' } } }); }); }
+    ed.setDecorations(_meosShelfDeco, out);
+  } catch (_) { }
+}
+function meosShelfClick(e, prevSel) {
+  try { const ed = e && e.textEditor, sel = e && e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
+    const doc = ed.document, ln = sel.active.line; if (!meosShelfHeadAt(doc, ln)) return false;
+    const K = vscode.TextEditorSelectionChangeKind, kn = e.kind === K.Mouse ? 'Mouse' : e.kind === K.Keyboard ? 'Keyboard' : e.kind === K.Command ? 'Command' : String(e.kind);
+    const top = (ed.visibleRanges && ed.visibleRanges[0]) ? ed.visibleRanges[0].start.line : -1;
+    meosDbg('[shelf] 着地 行' + (ln + 1) + ' 桁' + sel.active.character + ' 種類=' + kn + ' 画面の上端=' + (top + 1) + ' 前=' + (prevSel ? (prevSel.active.line + 1) + ':' + prevSel.active.character : '-'));
+    if (e.kind === K.Keyboard) return false;
+    const b = MEOS_SHELF_BTNS.find(x => x.col === sel.active.character); if (!b) return false;
+    vscode.window.showInformationMessage('棚のボタン ' + b.pic + ' (' + b.name + ') を押しました [' + kn + ']');
+    try { if (prevSel) ed.selection = prevSel; } catch (_) { }
+    return true;
+  } catch (_) { return false; }
+}
+class MeosShelfSymbolProvider { provideDocumentSymbols(doc) { try { if (doc.languageId !== 'markdown') return [];
+    const heads = meosShelfHeads(doc), out = [];
+    heads.forEach((h, k) => { const end = (k + 1 < heads.length ? heads[k + 1] : doc.lineCount) - 1; if (end <= h) return;
+      const r = new vscode.Range(h, 0, end, doc.lineAt(end).text.length), sr = new vscode.Range(h, 0, h, doc.lineAt(h).text.length);
+      out.push(new vscode.DocumentSymbol('▦ 棚 ' + (h + 1), 'MeOS', vscode.SymbolKind.Namespace, r, sr)); });
+    return out; } catch (_) { return []; } } }
 function meosGhostShownKey(doc, line, col) { try { return doc.uri.toString() + '#' + doc.version + '#' + line + '#' + col; } catch (_) { return ''; } }
 // その桁が ~~👻~~ の上か(マウスの着地は👻の左右で ~~ の端に落ちる= 6字の範囲で見る)。当たれば ~~ の頭の桁
 function meosGhostBtnHit(doc, ln, col) {
@@ -8250,6 +8295,7 @@ function meosGhostBtnClick(e) {
         if (s0.active.character === d0.lineAt(l0).text.length && meosGhostLineStaysCooked(d0, l0)) { const k = meosGhostFcEnd(d0, l0);
           if (k > l0) { const P = new vscode.Position(k, d0.lineAt(k).text.length); setTimeout(() => { try { const s1 = ed0.selection; if (s1 && s1.active.line === l0 && s1.anchor.isEqual(s0.anchor)) { ed0.selection = new vscode.Selection(s0.anchor, P); meosDbg('[ghostSel] 選択の端を FC 行の最後へ 行=' + (l0 + 1) + '→' + (k + 1)); } } catch (_) { } }, 0); } } } } catch (_) { }
     if (meosWysClick(e, _prevSel)) return true;   // ★v5.1.944: 👁️✏️/#️⃣✏️
+    if (meosShelfClick(e, _prevSel)) return true;   // ★v5.1.953 試作: 停止線の棚
     if (!e || e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return false;
     const ed = e.textEditor, sel = e.selections && e.selections[0]; if (!ed || !sel || !sel.isEmpty || e.selections.length > 1) return false;
     const doc = ed.document, ln = sel.active.line;
@@ -16549,7 +16595,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v5.1.645: 🛑を押せる札(見えない字)にする= 札の桁で隠す範囲を割り、2つの型で交互に隠す(1つの範囲の内側に立てた札は字と一緒に幅0= v5.1.40 の穴)。
               //   箱は浮かせて(absolute)札の上に重ねる= 札が場所を取っても絵は行頭から。押す当たりは札・絵は pointer-events: none
               const _sb45 = meosStopBtnSpots(doc, i, editor), _off45 = !MEOS_RULE_LINE_RE.test(txt), _S = MEOS_STOP_SIGN_EM;
-              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.rot > 0) _cuts.push(_sb45.rot); if (_sb45.dot > 0) _cuts.push(_sb45.dot); if (_sb45.gap > 0) _cuts.push(_sb45.gap); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } { const _ws = _meosWysShown; if (_ws && _ws.line === i && _ws.uri === doc.uri.toString() && _ws.col < txt.length && _cuts.indexOf(_ws.col) < 0) _cuts.push(_ws.col); }   // ★v5.1.948: 👁️✏️ の押す桁で割る(1つの隠す範囲の内側に立てると絵も幅0)
+              { const _cuts = [0]; if (_sb45) { _cuts.push(1); if (_sb45.rot > 0) _cuts.push(_sb45.rot); if (_sb45.dot > 0) _cuts.push(_sb45.dot); if (_sb45.gap > 0) _cuts.push(_sb45.gap); if (_sb45.pad > 0) _cuts.push(_sb45.pad); if (_sb45.bulk > 0) _cuts.push(_sb45.bulk); } { const _ws = _meosWysShown; if (_ws && _ws.line === i && _ws.uri === doc.uri.toString() && _ws.col < txt.length && _cuts.indexOf(_ws.col) < 0) _cuts.push(_ws.col); } for (const _sc of meosShelfCuts(doc, i)) if (_sc < txt.length && _cuts.indexOf(_sc) < 0) _cuts.push(_sc);   // v5.1.953: 棚のボタンの桁でも割る
+                // ★v5.1.948: 👁️✏️ の押す桁で割る(1つの隠す範囲の内側に立てると絵も幅0)
                 _cuts.sort((a, b) => a - b); _cuts.push(txt.length);
                 for (let _k = 0; _k + 1 < _cuts.length; _k++) if (_cuts[_k + 1] > _cuts[_k]) (_k % 2 ? stopHide2 : badgeHide).push(new vscode.Range(i, _cuts[_k], i, _cuts[_k + 1]));
                 if (_sb45) { hintSkins.push({ range: new vscode.Range(i, 0, i, _sb45.dot > 0 ? 4 : _sb45.rot > 0 ? 3 : 2) }); if (_sb45.bulk > 0) hintSkins.push({ range: new vscode.Range(i, _sb45.bulk - 1, i, _sb45.bulk + 1) }); } }
@@ -49703,6 +49750,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
 
   disposables = [
     vscode.languages.registerFoldingRangeProvider(foldingSelector, (membraneFoldingProviderInstance = new MembraneFoldingProvider())),
+    (typeof vscode.languages.registerDocumentSymbolProvider === 'function' ? vscode.languages.registerDocumentSymbolProvider([{ language: 'markdown' }], new MeosShelfSymbolProvider()) : { dispose() { } }),   // v5.1.953 試作: 停止線の棚を Sticky Scroll の上端へ(検査の台には無い口)
     vscode.languages.registerHoverProvider(foldingSelector, {
       provideHover(document, position) {
         const editor = vscode.window.visibleTextEditors.find(e => e.document === document);

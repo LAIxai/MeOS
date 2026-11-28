@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.1 era (2026-11 →)
 
+### v5.1.953 (2026-11-28)
+- Prototype: two stop lines in a row make a shelf. The first line carries buttons, and Sticky Scroll can pin it to the top of the editor.
+
 ### v5.1.952 (2026-11-28)
 - Fixed: the 👁️✏️ / #️⃣✏️ switch went to the lowest stop line on screen instead of the nearest one.
 
